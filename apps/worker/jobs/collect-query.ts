@@ -15,6 +15,10 @@ export const collectWorker = createCollectWorker(async (job) => {
     return { ok: true };
   } catch (error) {
     const err = error instanceof Error ? error : new Error("unknown");
+    console.error(
+      `[worker] collect-query job failed runId=${runId} queryId=${queryId}`,
+      err
+    );
     await prisma.queryRun.update({
       where: { id: runId },
       data: {
