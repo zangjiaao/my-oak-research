@@ -11,7 +11,7 @@ import {
   WebSource,
   DarknetSource,
 } from "@/lib/types";
-import { llmGateway } from "@/lib/llm-gateway";
+import { llmGateway } from "@oak/agents/llm-gateway";
 import { publishTaskEvent } from "@/lib/queue";
 import { redact, stripPromptLike } from "@/lib/security";
 

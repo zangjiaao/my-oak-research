@@ -3,10 +3,10 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "@/*": ["../web/*"],
-      "@oak/agents/*": ["../../packages/agents/*"]
+      "@oak/agents/*": ["./*"]
     }
   },
-  "include": ["**/*.ts", "../../packages/agents/**/*.ts"],
+  "include": ["**/*.ts"],
   "exclude": ["node_modules"]
 }
+

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { llmGateway } from "@/lib/llm-gateway";
+import { llmGateway } from "@oak/agents/llm-gateway";
 import { stripPromptLike, redact } from "@/lib/security";
 import { ReportGenerateSchema, ReportLLMOutputSchema } from "../schemas";
 
