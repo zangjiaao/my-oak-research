@@ -334,7 +334,7 @@ const ReportEditor = () => {
                 </Button>
               </div>
 
-              <div className="flex flex-1 flex-col gap-4 overflow-y-auto pr-1">
+              <div className="flex flex-1 flex-col gap-4 overflow-y-auto pr-1 scrollbar-hide">
                 <Card>
                   <CardHeader>
                     <CardTitle>选择模板</CardTitle>
@@ -589,7 +589,7 @@ const ReportEditor = () => {
               </div>
             </CardHeader>
             <CardContent className="flex flex-1 flex-col gap-3">
-              <div className="flex-1 space-y-3 overflow-y-auto pr-1">
+              <div className="flex-1 space-y-3 overflow-y-auto pr-1 scrollbar-hide">
                 {chatMessages.map((message) => (
                   <div
                     key={message.id}
@@ -647,7 +647,7 @@ const ReportEditor = () => {
           </Card>
         </div>
 
-        <div className="flex flex-1 flex-col gap-4 overflow-y-auto lg:w-[36%]">
+        <div className="flex flex-1 flex-col gap-4 overflow-y-auto lg:w-[36%] scrollbar-hide">
           <Card className="flex flex-col gap-3">
             <CardHeader>
               <CardTitle>当前草稿</CardTitle>

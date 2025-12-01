@@ -52,7 +52,7 @@ const NewsDetailCard = ({
           {summary ? summary : "News Summary News Summary News Summary"}
         </p>
       </CardHeader>
-      <CardContent className="px-6 overflow-y-auto">
+      <CardContent className="px-6 overflow-y-auto scrollbar-hide">
         <article className="prose dark:prose-invert max-w-none">
           <ReactMarkdown>{markdown}</ReactMarkdown>
         </article>

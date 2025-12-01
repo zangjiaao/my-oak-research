@@ -190,21 +190,23 @@ const ReportTemplate = () => {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center gap-3">
-        <Input
-          value={searchTerm}
-          onChange={(event) => setSearchTerm(event.target.value)}
-          placeholder="搜索模板"
-          icon={<Search size={16} />}
-          className="flex-1 min-w-[220px]"
-        />
-        <div className="flex gap-2">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex flex-1 flex-col gap-3 lg:flex-row lg:items-center">
+          <Input
+            value={searchTerm}
+            onChange={(event) => setSearchTerm(event.target.value)}
+            placeholder="搜索模板"
+            icon={<Search size={16} />}
+            className="flex-1 min-w-[220px]"
+          />
+        </div>
+        <div className="flex items-center gap-2">
           <Button
-            className="min-w-[160px]"
+            className="h-9 px-4 py-2 has-[>svg]:px-3"
             onClick={() => openEditor()}
-            variant="default"
+            variant="secondary"
           >
-            <Plus />
+            <Plus className="size-4" />
             新建模板
           </Button>
           <Dialog open={dialogOpen} onOpenChange={handleDialogOpenChange}>
@@ -294,8 +296,6 @@ const ReportTemplate = () => {
               </DialogFooter>
             </DialogContent>
           </Dialog>
-          <Button variant="outline">Filter</Button>
-          <Button variant="outline">Editor</Button>
         </div>
       </div>
 
