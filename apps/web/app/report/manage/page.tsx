@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -57,7 +57,11 @@ const fetchReports = async (statusFilter: string, page: number) => {
   if (!response.ok || payload?.success === false) {
     throw new Error(payload?.error?.message ?? "无法加载报告列表");
   }
-  return payload as { success: true; data: ReportItem[]; meta: ReportsResponse["meta"] };
+  return payload as {
+    success: true;
+    data: ReportItem[];
+    meta: ReportsResponse["meta"];
+  };
 };
 
 const ReportManage = () => {
@@ -68,7 +72,7 @@ const ReportManage = () => {
   const { data, isLoading, isError, error, isFetching } = useQuery({
     queryKey: ["reports", statusFilter, page],
     queryFn: () => fetchReports(statusFilter, page),
-    keepPreviousData: true,
+    placeholderData: keepPreviousData,
   });
 
   const reports = data?.data ?? [];
@@ -166,7 +170,6 @@ const ReportManage = () => {
           </div>
         )}
       </div>
-
     </div>
   );
 };

@@ -299,11 +299,11 @@ const ReportEditor = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex h-[calc(100vh-6rem)] flex-col gap-4 lg:flex-row">
+      <div className="flex h-[calc(100vh-7rem)] flex-col gap-4 lg:flex-row">
         <aside
           className={cn(
             "flex flex-col gap-4 rounded-2xl border bg-card p-4 transition-all duration-300 lg:flex-shrink-0",
-            collapsed ? "w-16" : "w-96"
+            collapsed ? "w-16" : "w-1/4"
           )}
         >
           {collapsed ? (

@@ -37,15 +37,13 @@ const fallbackTemplates: TemplatePayload[] = [
     id: "template-tactical",
     name: "战术节点周报",
     description: "强调时间轴与战术节点，适合指控层使用。",
-    markdown:
-      "## 时间轴\n\n- Day 1: ...\n- Day 2: ...\n\n## 风险提示\n\n- ...",
+    markdown: "## 时间轴\n\n- Day 1: ...\n- Day 2: ...\n\n## 风险提示\n\n- ...",
   },
   {
     id: "template-risks",
     name: "风险研判简报",
     description: "聚焦风险与推荐动作，带有表格格式。",
-    markdown:
-      "## 主要风险\n1. 风险 A\n2. 风险 B\n\n## 推荐行动\n- ...",
+    markdown: "## 主要风险\n1. 风险 A\n2. 风险 B\n\n## 推荐行动\n- ...",
   },
 ];
 
@@ -84,9 +82,7 @@ const ReportTemplate = () => {
     };
   }, []);
 
-  const displayedTemplates = templates.length
-    ? templates
-    : fallbackTemplates;
+  const displayedTemplates = templates.length ? templates : fallbackTemplates;
 
   const filteredTemplates = useMemo(() => {
     const keyword = searchTerm.trim().toLowerCase();
@@ -144,9 +140,7 @@ const ReportTemplate = () => {
       setEditingTemplate(null);
       setFormData(initialForm);
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "保存失败，请重试"
-      );
+      toast.error(error instanceof Error ? error.message : "保存失败，请重试");
     } finally {
       setIsSaving(false);
     }
@@ -180,9 +174,7 @@ const ReportTemplate = () => {
       setEditingTemplate(null);
       setFormData(initialForm);
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "删除失败，请重试"
-      );
+      toast.error(error instanceof Error ? error.message : "删除失败，请重试");
     } finally {
       setIsDeleting(false);
     }
@@ -191,22 +183,20 @@ const ReportTemplate = () => {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex flex-1 flex-col gap-3 lg:flex-row lg:items-center">
-          <Input
-            value={searchTerm}
-            onChange={(event) => setSearchTerm(event.target.value)}
-            placeholder="搜索模板"
-            icon={<Search size={16} />}
-            className="flex-1 min-w-[220px]"
-          />
-        </div>
-        <div className="flex items-center gap-2">
+        <Input
+          value={searchTerm}
+          onChange={(event) => setSearchTerm(event.target.value)}
+          placeholder="搜索模板"
+          icon={<Search size={16} />}
+          className="flex-1 min-w-[220px]"
+        />
+        <div className="flex flex-wrap items-center gap-2">
           <Button
-            className="h-9 px-4 py-2 has-[>svg]:px-3"
+            className="min-w-[160px]"
             onClick={() => openEditor()}
-            variant="secondary"
+            variant="default"
           >
-            <Plus className="size-4" />
+            <Plus />
             新建模板
           </Button>
           <Dialog open={dialogOpen} onOpenChange={handleDialogOpenChange}>
@@ -290,8 +280,8 @@ const ReportTemplate = () => {
                   {isSaving
                     ? "保存中..."
                     : editingTemplate
-                    ? "保存更改"
-                    : "创建模板"}
+                      ? "保存更改"
+                      : "创建模板"}
                 </Button>
               </DialogFooter>
             </DialogContent>
