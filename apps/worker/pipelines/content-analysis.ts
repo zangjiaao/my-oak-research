@@ -460,7 +460,7 @@ async function summarizeWithRetry(
   runId: string
 ): Promise<{ summary: string; relevance: boolean }> {
   const prompt = stripPromptLike(
-    `请基于关键词：${keywords}，用 2-3 句中文解释下面内容的要点和价值：\n${item.text}`
+    `请基于关键词：${keywords}，用 2-3 句中文解释下面内容的要点和价值，输出结构化 JSON：{ "summary": "...", "relevance": true/false }；\n${item.text}`
   );
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {

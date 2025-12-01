@@ -31,6 +31,8 @@ export const llmGateway = {
       OpenAI["chat"]["completions"]["create"]
     >[0]["messages"];
 
+    const defaultModel = process.env.LLM_DEFAULT_MODEL?.trim() || "gpt-5";
+
     if (gatewayUrl && apiKey) {
       const client = new OpenAI({ apiKey, baseURL: gatewayUrl });
 
@@ -44,7 +46,7 @@ export const llmGateway = {
       ];
 
       const completion = await client.chat.completions.create({
-        model: request.model ?? "gpt-5",
+        model: request.model ?? defaultModel,
         messages: composedMessage as ChatCompletionMessages,
         temperature: request.temperature ?? 0.3,
       });
@@ -56,7 +58,11 @@ export const llmGateway = {
 
       if (text) {
         try {
-          output = JSON.parse(text);
+          const cleanedText = text
+            .replace(/```json\s*/g, "")
+            .replace(/```$/g, "")
+            .trim();
+          output = JSON.parse(cleanedText);
         } catch {
           output = text;
         }
@@ -71,6 +77,11 @@ export const llmGateway = {
     }
 
     if (request.schema) {
+      if (typeof output === "string") {
+        throw new Error(
+          `LLM returned plain text instead of JSON: ${output.slice(0, 200)}`
+        );
+      }
       return request.schema.parse(output) as T;
     }
     return output as T;
