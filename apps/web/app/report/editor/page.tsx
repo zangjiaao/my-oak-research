@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -22,7 +23,13 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import { ChevronLeft, Paperclip, RefreshCw, Sparkles } from "lucide-react";
+import {
+  ChevronLeft,
+  Paperclip,
+  RefreshCw,
+  Save,
+  Sparkles,
+} from "lucide-react";
 
 type Template = {
   id: string;
@@ -117,7 +124,25 @@ const createMessageId = () =>
     ? (crypto.randomUUID?.() ?? `msg-${Math.random().toString(36).slice(2, 9)}`)
     : `msg-${Math.random().toString(36).slice(2, 9)}`;
 
+type ReportDetail = {
+  id: string;
+  title: string;
+  summary?: string | null;
+  markdown?: string | null;
+  templateId?: string | null;
+  materials?: Array<{
+    id: string;
+    sourceType: string;
+    sourceId: string;
+    title?: string | null;
+    snippet?: string | null;
+  }>;
+};
+
 const ReportEditor = () => {
+  const searchParams = useSearchParams();
+  const reportIdFromUrl = searchParams.get("reportId");
+
   const [templates, setTemplates] = useState<Template[]>([]);
   const [templateLoading, setTemplateLoading] = useState(true);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>();
@@ -131,7 +156,11 @@ const ReportEditor = () => {
   const [collapsed, setCollapsed] = useState(false);
   const [temperature, setTemperature] = useState(0.45);
   const [model, setModel] = useState<string>();
+  const [currentReportId, setCurrentReportId] = useState<string | null>(null);
+  const [isLoadingReport, setIsLoadingReport] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
+  // 加载模板列表
   useEffect(() => {
     let isMounted = true;
     setTemplateLoading(true);
@@ -155,6 +184,89 @@ const ReportEditor = () => {
       isMounted = false;
     };
   }, []);
+
+  // 从 URL 参数加载报告内容
+  useEffect(() => {
+    if (!reportIdFromUrl) return;
+
+    let isMounted = true;
+    setIsLoadingReport(true);
+
+    fetch(`/api/report-writer/reports/${reportIdFromUrl}`)
+      .then((res) => res.json())
+      .then((payload) => {
+        if (!isMounted) return;
+        if (!payload?.success) {
+          toast.error(payload?.error?.message ?? "无法加载报告");
+          return;
+        }
+
+        const report: ReportDetail = payload.data;
+
+        // 设置当前报告 ID
+        setCurrentReportId(report.id);
+
+        // 填充报告内容到编辑器
+        if (report.markdown) {
+          setReportDraft({
+            title: report.title,
+            summary: report.summary || "",
+            markdown: report.markdown,
+            sections: [], // 报告详情 API 可能不返回 sections，先设为空数组
+          });
+        }
+
+        // 设置模板
+        if (report.templateId) {
+          setSelectedTemplateId(report.templateId);
+        }
+
+        // 设置素材（如果有）
+        if (report.materials && report.materials.length > 0) {
+          // 尝试匹配素材到 curatedMaterials
+          const matchedMaterialIds = report.materials
+            .map((material) => {
+              const found = curatedMaterials.find(
+                (m) =>
+                  m.sourceType === material.sourceType &&
+                  m.sourceId === material.sourceId
+              );
+              return found?.id;
+            })
+            .filter((id): id is string => !!id);
+          setSelectedMaterialIds(matchedMaterialIds);
+        }
+
+        // 更新聊天消息，提示已加载报告
+        setChatMessages([
+          {
+            id: createMessageId(),
+            role: "assistant",
+            content: `已加载报告「${report.title}」，你可以继续编辑或生成新内容。`,
+          },
+        ]);
+
+        // 如果已有内容，自动收起配置栏
+        if (report.markdown) {
+          setCollapsed(true);
+        }
+
+        toast.success("报告已加载到编辑器");
+      })
+      .catch((error) => {
+        console.error("加载报告失败:", error);
+        toast.error("加载报告失败，请稍后重试");
+      })
+      .finally(() => {
+        if (isMounted) {
+          setIsLoadingReport(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [reportIdFromUrl]);
 
   const selectedTemplate = useMemo(
     () => templates.find((template) => template.id === selectedTemplateId),
@@ -183,6 +295,85 @@ const ReportEditor = () => {
     setCollapsed(false);
     setSelectedMaterialIds([]);
     setChatInput("");
+    setCurrentReportId(null);
+  };
+
+  const handleSaveReport = async () => {
+    if (!reportDraft) {
+      toast.error("没有可保存的内容");
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const payload = {
+        title: reportDraft.title,
+        summary: reportDraft.summary || null,
+        markdown: reportDraft.markdown || null,
+        templateId: selectedTemplateId || null,
+        status: "DRAFT" as const,
+        materials: materialPayload,
+      };
+
+      let response: Response;
+      let body: {
+        success: boolean;
+        error?: { message: string };
+        data?: { id: string };
+      };
+
+      if (currentReportId) {
+        // 更新现有报告
+        response = await fetch(
+          `/api/report-writer/reports/${currentReportId}`,
+          {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(payload),
+          }
+        );
+        body = await response.json();
+        if (!response.ok || !body.success) {
+          throw new Error(body?.error?.message ?? "保存失败");
+        }
+        toast.success("报告已更新");
+      } else {
+        // 创建新报告
+        response = await fetch("/api/report-writer/reports", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-user-id": "demo-user", // TODO: 从 session 获取真实用户 ID
+          },
+          body: JSON.stringify(payload),
+        });
+        body = await response.json();
+        if (!response.ok || !body.success) {
+          throw new Error(body?.error?.message ?? "创建失败");
+        }
+        // 设置新创建的报告 ID
+        setCurrentReportId(body.data?.id ?? "");
+        toast.success("报告已创建并保存");
+      }
+
+      setChatMessages((prev) => [
+        ...prev,
+        {
+          id: createMessageId(),
+          role: "assistant",
+          content: `报告「${reportDraft.title}」已${currentReportId ? "更新" : "创建"}成功。`,
+        },
+      ]);
+    } catch (error) {
+      console.error("保存报告失败:", error);
+      toast.error(
+        error instanceof Error ? error.message : "保存失败，请稍后重试"
+      );
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleAddSection = () => {
@@ -650,10 +841,34 @@ const ReportEditor = () => {
         <div className="flex flex-1 flex-col gap-4 overflow-y-auto lg:w-[36%] scrollbar-hide">
           <Card className="flex flex-col gap-3">
             <CardHeader>
-              <CardTitle>当前草稿</CardTitle>
-              <CardDescription>
-                你可以实时编辑标题、摘要与 Markdown 内容。
-              </CardDescription>
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <CardTitle>当前草稿</CardTitle>
+                  <CardDescription>
+                    你可以实时编辑标题、摘要与 Markdown 内容。
+                    {currentReportId && (
+                      <span className="block mt-1 text-xs text-muted-foreground">
+                        正在编辑报告 ID: {currentReportId.slice(0, 8)}...
+                      </span>
+                    )}
+                  </CardDescription>
+                </div>
+                {reportDraft && (
+                  <Button
+                    onClick={handleSaveReport}
+                    disabled={isSaving}
+                    size="sm"
+                    variant="default"
+                  >
+                    <Save className="mr-2 h-4 w-4" />
+                    {isSaving
+                      ? "保存中..."
+                      : currentReportId
+                        ? "保存"
+                        : "创建并保存"}
+                  </Button>
+                )}
+              </div>
             </CardHeader>
             <CardContent className="flex flex-col gap-3">
               {reportDraft ? (
