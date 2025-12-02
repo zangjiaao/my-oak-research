@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import ReportCard from "./ReportCard";
+import { ReportDetailDialog } from "./ReportDetailDialog";
 import { Search, Plus } from "lucide-react";
 
 const STATUS_OPTIONS = [
@@ -68,6 +69,8 @@ const ReportManage = () => {
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
   const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(1);
+  const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   const { data, isLoading, isError, error, isFetching } = useQuery({
     queryKey: ["reports", statusFilter, page],
@@ -160,6 +163,10 @@ const ReportManage = () => {
               templateName={report.template?.name ?? undefined}
               materialsCount={report.materials?.length ?? 0}
               version={report.version}
+              onView={(id) => {
+                setSelectedReportId(id);
+                setDialogOpen(true);
+              }}
             />
           ))
         ) : (
@@ -170,6 +177,17 @@ const ReportManage = () => {
           </div>
         )}
       </div>
+
+      <ReportDetailDialog
+        reportId={selectedReportId}
+        open={dialogOpen}
+        onOpenChange={(open) => {
+          setDialogOpen(open);
+          if (!open) {
+            setSelectedReportId(null);
+          }
+        }}
+      />
     </div>
   );
 };
