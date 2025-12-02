@@ -15,13 +15,13 @@ export const ContentList = () => {
 
   return (
     <ScrollArea className="h-[calc(100vh-11rem)]">
-      <div className="flex flex-col gap-4 overflow-visible px-1">
+      <div className="flex flex-col gap-4 overflow-visible pl-1 pr-4 pt-1">
         {isLoading && (
           <div className="space-y-4">
             {Array.from({ length: 3 }).map((_, idx) => (
               <Card
                 key={`content-skeleton-${idx}`}
-                className="rounded-2xl shadow-sm"
+                className="ring-1 ring-gray-200 rounded-xl shadow-md"
               >
                 <CardContent className="px-5 py-1">
                   <div className="flex flex-col gap-3 justify-between overflow-hidden min-h-36 w-full">
@@ -71,7 +71,7 @@ export const ContentList = () => {
               onClick={() => selectContent(content.id)}
               className={`cursor-pointer transition-all duration-200 ${
                 isActive
-                  ? "rounded-2xl bg-muted shadow-xl"
+                  ? "rounded-xl bg-muted shadow-md"
                   : "hover:-translate-y-0.5"
               }`}
             >

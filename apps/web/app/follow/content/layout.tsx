@@ -1,7 +1,10 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { FollowContentProvider, useFollowContent } from "@/components/follow-content/context";
+import {
+  FollowContentProvider,
+  useFollowContent,
+} from "@/components/follow-content/context";
 import { ContentFilters } from "@/components/follow-content/ContentFilters";
 import { ContentList } from "@/components/follow-content/ContentList";
 import { Button } from "@/components/ui/button";
@@ -18,10 +21,11 @@ const InnerLayout = ({ children }: { children: React.ReactNode }) => {
   }, [selectedContent]);
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 relative">
+    <div className="grid grid-cols-1 lg:grid-cols-5 gap-2 relative">
       <div
-        className={`${isContentVisible ? "lg:col-span-2" : "lg:col-span-5"
-          } flex flex-col gap-4 overflow-hidden transition-all duration-300`}
+        className={`${
+          isContentVisible ? "lg:col-span-2" : "lg:col-span-5"
+        } flex flex-col gap-2 overflow-hidden transition-all duration-300`}
       >
         <ContentFilters />
         <ContentList />
@@ -35,8 +39,11 @@ const InnerLayout = ({ children }: { children: React.ReactNode }) => {
           ${isContentVisible ? "lg:flex lg:col-span-3" : "lg:hidden"}
         `}
       >
-        <div className={`absolute top-1/2 -translate-y-1/2 z-10 ${isContentVisible ? "left-0 lg:-translate-x-1/2" : "hidden"
-          }`}>
+        <div
+          className={`absolute top-1/2 -translate-y-1/2 z-10 ${
+            isContentVisible ? "left-0 lg:-translate-x-1/2" : "hidden"
+          }`}
+        >
           <Button
             variant="secondary"
             size="icon"
