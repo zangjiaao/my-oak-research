@@ -49,9 +49,9 @@ const NewsCard = ({
   return (
     <Card>
       <CardContent>
-        <div className="flex gap-4 items-start">
+        <div className="flex gap-4 items-stretch">
           {image && (
-            <div className="bg-gray-200 flex-shrink-0 rounded-md w-36 h-36 overflow-hidden relative">
+            <div className="bg-gray-200 flex-shrink-0 rounded-md w-36 overflow-hidden relative">
               {isSvg ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img

@@ -656,8 +656,8 @@ export namespace Prisma {
   export import Exact = $Public.Exact
 
   /**
-   * Prisma Client JS version: 7.0.0
-   * Query Engine version: 0c19ccc313cf9911a90d99d2ac2eb0280c76c513
+   * Prisma Client JS version: 7.0.1
+   * Query Engine version: f09f2815f091dbba658cdcd2264306d88bb5bda6
    */
   export type PrismaVersion = {
     client: string
@@ -17289,6 +17289,7 @@ export namespace Prisma {
     type: $Enums.ContentType | null
     time: Date | null
     url: string | null
+    image: string | null
     createdAt: Date | null
     updatedAt: Date | null
   }
@@ -17302,6 +17303,7 @@ export namespace Prisma {
     type: $Enums.ContentType | null
     time: Date | null
     url: string | null
+    image: string | null
     createdAt: Date | null
     updatedAt: Date | null
   }
@@ -17315,6 +17317,7 @@ export namespace Prisma {
     type: number
     time: number
     url: number
+    image: number
     meta: number
     createdAt: number
     updatedAt: number
@@ -17331,6 +17334,7 @@ export namespace Prisma {
     type?: true
     time?: true
     url?: true
+    image?: true
     createdAt?: true
     updatedAt?: true
   }
@@ -17344,6 +17348,7 @@ export namespace Prisma {
     type?: true
     time?: true
     url?: true
+    image?: true
     createdAt?: true
     updatedAt?: true
   }
@@ -17357,6 +17362,7 @@ export namespace Prisma {
     type?: true
     time?: true
     url?: true
+    image?: true
     meta?: true
     createdAt?: true
     updatedAt?: true
@@ -17444,6 +17450,7 @@ export namespace Prisma {
     type: $Enums.ContentType
     time: Date
     url: string | null
+    image: string | null
     meta: JsonValue | null
     createdAt: Date
     updatedAt: Date
@@ -17475,6 +17482,7 @@ export namespace Prisma {
     type?: boolean
     time?: boolean
     url?: boolean
+    image?: boolean
     meta?: boolean
     createdAt?: boolean
     updatedAt?: boolean
@@ -17493,6 +17501,7 @@ export namespace Prisma {
     type?: boolean
     time?: boolean
     url?: boolean
+    image?: boolean
     meta?: boolean
     createdAt?: boolean
     updatedAt?: boolean
@@ -17507,6 +17516,7 @@ export namespace Prisma {
     type?: boolean
     time?: boolean
     url?: boolean
+    image?: boolean
     meta?: boolean
     createdAt?: boolean
     updatedAt?: boolean
@@ -17521,12 +17531,13 @@ export namespace Prisma {
     type?: boolean
     time?: boolean
     url?: boolean
+    image?: boolean
     meta?: boolean
     createdAt?: boolean
     updatedAt?: boolean
   }
 
-  export type ContentOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "title" | "summary" | "markdown" | "platform" | "type" | "time" | "url" | "meta" | "createdAt" | "updatedAt", ExtArgs["result"]["content"]>
+  export type ContentOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "title" | "summary" | "markdown" | "platform" | "type" | "time" | "url" | "image" | "meta" | "createdAt" | "updatedAt", ExtArgs["result"]["content"]>
   export type ContentInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     keywords?: boolean | Content$keywordsArgs<ExtArgs>
     entities?: boolean | Content$entitiesArgs<ExtArgs>
@@ -17552,6 +17563,7 @@ export namespace Prisma {
       type: $Enums.ContentType
       time: Date
       url: string | null
+      image: string | null
       meta: Prisma.JsonValue | null
       createdAt: Date
       updatedAt: Date
@@ -17989,6 +18001,7 @@ export namespace Prisma {
     readonly type: FieldRef<"Content", 'ContentType'>
     readonly time: FieldRef<"Content", 'DateTime'>
     readonly url: FieldRef<"Content", 'String'>
+    readonly image: FieldRef<"Content", 'String'>
     readonly meta: FieldRef<"Content", 'Json'>
     readonly createdAt: FieldRef<"Content", 'DateTime'>
     readonly updatedAt: FieldRef<"Content", 'DateTime'>
@@ -28633,6 +28646,7 @@ export namespace Prisma {
     type: 'type',
     time: 'time',
     url: 'url',
+    image: 'image',
     meta: 'meta',
     createdAt: 'createdAt',
     updatedAt: 'updatedAt'
@@ -29997,6 +30011,7 @@ export namespace Prisma {
     type?: EnumContentTypeFilter<"Content"> | $Enums.ContentType
     time?: DateTimeFilter<"Content"> | Date | string
     url?: StringNullableFilter<"Content"> | string | null
+    image?: StringNullableFilter<"Content"> | string | null
     meta?: JsonNullableFilter<"Content">
     createdAt?: DateTimeFilter<"Content"> | Date | string
     updatedAt?: DateTimeFilter<"Content"> | Date | string
@@ -30014,6 +30029,7 @@ export namespace Prisma {
     type?: SortOrder
     time?: SortOrder
     url?: SortOrderInput | SortOrder
+    image?: SortOrderInput | SortOrder
     meta?: SortOrderInput | SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
@@ -30034,6 +30050,7 @@ export namespace Prisma {
     type?: EnumContentTypeFilter<"Content"> | $Enums.ContentType
     time?: DateTimeFilter<"Content"> | Date | string
     url?: StringNullableFilter<"Content"> | string | null
+    image?: StringNullableFilter<"Content"> | string | null
     meta?: JsonNullableFilter<"Content">
     createdAt?: DateTimeFilter<"Content"> | Date | string
     updatedAt?: DateTimeFilter<"Content"> | Date | string
@@ -30051,6 +30068,7 @@ export namespace Prisma {
     type?: SortOrder
     time?: SortOrder
     url?: SortOrderInput | SortOrder
+    image?: SortOrderInput | SortOrder
     meta?: SortOrderInput | SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
@@ -30071,6 +30089,7 @@ export namespace Prisma {
     type?: EnumContentTypeWithAggregatesFilter<"Content"> | $Enums.ContentType
     time?: DateTimeWithAggregatesFilter<"Content"> | Date | string
     url?: StringNullableWithAggregatesFilter<"Content"> | string | null
+    image?: StringNullableWithAggregatesFilter<"Content"> | string | null
     meta?: JsonNullableWithAggregatesFilter<"Content">
     createdAt?: DateTimeWithAggregatesFilter<"Content"> | Date | string
     updatedAt?: DateTimeWithAggregatesFilter<"Content"> | Date | string
@@ -31718,6 +31737,7 @@ export namespace Prisma {
     type: $Enums.ContentType
     time: Date | string
     url?: string | null
+    image?: string | null
     meta?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: Date | string
     updatedAt?: Date | string
@@ -31735,6 +31755,7 @@ export namespace Prisma {
     type: $Enums.ContentType
     time: Date | string
     url?: string | null
+    image?: string | null
     meta?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: Date | string
     updatedAt?: Date | string
@@ -31752,6 +31773,7 @@ export namespace Prisma {
     type?: EnumContentTypeFieldUpdateOperationsInput | $Enums.ContentType
     time?: DateTimeFieldUpdateOperationsInput | Date | string
     url?: NullableStringFieldUpdateOperationsInput | string | null
+    image?: NullableStringFieldUpdateOperationsInput | string | null
     meta?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -31769,6 +31791,7 @@ export namespace Prisma {
     type?: EnumContentTypeFieldUpdateOperationsInput | $Enums.ContentType
     time?: DateTimeFieldUpdateOperationsInput | Date | string
     url?: NullableStringFieldUpdateOperationsInput | string | null
+    image?: NullableStringFieldUpdateOperationsInput | string | null
     meta?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -31786,6 +31809,7 @@ export namespace Prisma {
     type: $Enums.ContentType
     time: Date | string
     url?: string | null
+    image?: string | null
     meta?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: Date | string
     updatedAt?: Date | string
@@ -31800,6 +31824,7 @@ export namespace Prisma {
     type?: EnumContentTypeFieldUpdateOperationsInput | $Enums.ContentType
     time?: DateTimeFieldUpdateOperationsInput | Date | string
     url?: NullableStringFieldUpdateOperationsInput | string | null
+    image?: NullableStringFieldUpdateOperationsInput | string | null
     meta?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -31814,6 +31839,7 @@ export namespace Prisma {
     type?: EnumContentTypeFieldUpdateOperationsInput | $Enums.ContentType
     time?: DateTimeFieldUpdateOperationsInput | Date | string
     url?: NullableStringFieldUpdateOperationsInput | string | null
+    image?: NullableStringFieldUpdateOperationsInput | string | null
     meta?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -33452,6 +33478,7 @@ export namespace Prisma {
     type?: SortOrder
     time?: SortOrder
     url?: SortOrder
+    image?: SortOrder
     meta?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
@@ -33466,6 +33493,7 @@ export namespace Prisma {
     type?: SortOrder
     time?: SortOrder
     url?: SortOrder
+    image?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
   }
@@ -33479,6 +33507,7 @@ export namespace Prisma {
     type?: SortOrder
     time?: SortOrder
     url?: SortOrder
+    image?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
   }
@@ -38169,6 +38198,7 @@ export namespace Prisma {
     type: $Enums.ContentType
     time: Date | string
     url?: string | null
+    image?: string | null
     meta?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: Date | string
     updatedAt?: Date | string
@@ -38185,6 +38215,7 @@ export namespace Prisma {
     type: $Enums.ContentType
     time: Date | string
     url?: string | null
+    image?: string | null
     meta?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: Date | string
     updatedAt?: Date | string
@@ -38254,6 +38285,7 @@ export namespace Prisma {
     type?: EnumContentTypeFieldUpdateOperationsInput | $Enums.ContentType
     time?: DateTimeFieldUpdateOperationsInput | Date | string
     url?: NullableStringFieldUpdateOperationsInput | string | null
+    image?: NullableStringFieldUpdateOperationsInput | string | null
     meta?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -38270,6 +38302,7 @@ export namespace Prisma {
     type?: EnumContentTypeFieldUpdateOperationsInput | $Enums.ContentType
     time?: DateTimeFieldUpdateOperationsInput | Date | string
     url?: NullableStringFieldUpdateOperationsInput | string | null
+    image?: NullableStringFieldUpdateOperationsInput | string | null
     meta?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -38329,6 +38362,7 @@ export namespace Prisma {
     type: $Enums.ContentType
     time: Date | string
     url?: string | null
+    image?: string | null
     meta?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: Date | string
     updatedAt?: Date | string
@@ -38345,6 +38379,7 @@ export namespace Prisma {
     type: $Enums.ContentType
     time: Date | string
     url?: string | null
+    image?: string | null
     meta?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: Date | string
     updatedAt?: Date | string
@@ -38377,6 +38412,7 @@ export namespace Prisma {
     type?: EnumContentTypeFieldUpdateOperationsInput | $Enums.ContentType
     time?: DateTimeFieldUpdateOperationsInput | Date | string
     url?: NullableStringFieldUpdateOperationsInput | string | null
+    image?: NullableStringFieldUpdateOperationsInput | string | null
     meta?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -38393,6 +38429,7 @@ export namespace Prisma {
     type?: EnumContentTypeFieldUpdateOperationsInput | $Enums.ContentType
     time?: DateTimeFieldUpdateOperationsInput | Date | string
     url?: NullableStringFieldUpdateOperationsInput | string | null
+    image?: NullableStringFieldUpdateOperationsInput | string | null
     meta?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -38409,6 +38446,7 @@ export namespace Prisma {
     type: $Enums.ContentType
     time: Date | string
     url?: string | null
+    image?: string | null
     meta?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: Date | string
     updatedAt?: Date | string
@@ -38425,6 +38463,7 @@ export namespace Prisma {
     type: $Enums.ContentType
     time: Date | string
     url?: string | null
+    image?: string | null
     meta?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: Date | string
     updatedAt?: Date | string
@@ -38457,6 +38496,7 @@ export namespace Prisma {
     type?: EnumContentTypeFieldUpdateOperationsInput | $Enums.ContentType
     time?: DateTimeFieldUpdateOperationsInput | Date | string
     url?: NullableStringFieldUpdateOperationsInput | string | null
+    image?: NullableStringFieldUpdateOperationsInput | string | null
     meta?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -38473,6 +38513,7 @@ export namespace Prisma {
     type?: EnumContentTypeFieldUpdateOperationsInput | $Enums.ContentType
     time?: DateTimeFieldUpdateOperationsInput | Date | string
     url?: NullableStringFieldUpdateOperationsInput | string | null
+    image?: NullableStringFieldUpdateOperationsInput | string | null
     meta?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string

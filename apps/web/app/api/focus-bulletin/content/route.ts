@@ -22,7 +22,7 @@ const mapContent = (item: Content & { image?: string | null }) => ({
   platform: item.platform,
   time: item.time.toISOString(),
   url: item.url,
-  image: item.image || undefined, // 封面图（可选），如果没有则不返回
+  image: item.image ?? null, // 封面图（可选），null 或 undefined 时返回 null
   type: item.type,
 });
 
