@@ -10,7 +10,7 @@ const knowledgeList: NewsCardProps[] = [
   {
     title: "Knowledge 1",
     summary: "Knowledge 1 summary Knowledge 1 summary Knowledge 1 summary",
-    image: "https://via.placeholder.com/150",
+    image: "https://placehold.co/150",
     platform: "Twitter",
     time: "2025-01-01",
     mark: false,
@@ -25,7 +25,7 @@ const knowledgeList: NewsCardProps[] = [
   {
     title: "Knowledge 3",
     summary: "Knowledge 3 summary",
-    image: "https://via.placeholder.com/150",
+    image: "https://placehold.co/150",
     platform: "Twitter",
     time: "2025-01-03",
     mark: true,
@@ -40,7 +40,7 @@ const knowledgeList: NewsCardProps[] = [
   {
     title: "Knowledge 5",
     summary: "Knowledge 5 summary",
-    image: "https://via.placeholder.com/150",
+    image: "https://placehold.co/150",
     platform: "Twitter",
     time: "2025-01-05",
     mark: true,
