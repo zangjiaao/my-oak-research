@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Plus, Search } from "lucide-react";
@@ -16,6 +16,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
+import { TEMPLATE_VARIABLES } from "@/lib/template";
 
 type TemplatePayload = {
   id: string;
@@ -30,20 +31,43 @@ const fallbackTemplates: TemplatePayload[] = [
     id: "template-executive",
     name: "Executive Summary",
     description: "通用的执行摘要结构，适合上层汇报。",
-    markdown:
-      "## 摘要\n\n请以 3 段话概括当前核心风险，突出风险驱动因素与建议行动。",
+    markdown: `# {{title}}
+
+## 摘要
+
+{{summary}}
+
+## 内容
+
+{{markdown}}`,
   },
   {
     id: "template-tactical",
     name: "战术节点周报",
     description: "强调时间轴与战术节点，适合指控层使用。",
-    markdown: "## 时间轴\n\n- Day 1: ...\n- Day 2: ...\n\n## 风险提示\n\n- ...",
+    markdown: `# {{title}}
+
+## 摘要
+
+{{summary}}
+
+## 时间轴与节点
+
+{{markdown}}`,
   },
   {
     id: "template-risks",
     name: "风险研判简报",
     description: "聚焦风险与推荐动作，带有表格格式。",
-    markdown: "## 主要风险\n1. 风险 A\n2. 风险 B\n\n## 推荐行动\n- ...",
+    markdown: `# {{title}}
+
+## 摘要
+
+{{summary}}
+
+## 主要风险
+
+{{markdown}}`,
   },
 ];
 
@@ -59,6 +83,7 @@ const ReportTemplate = () => {
   const [formData, setFormData] = useState(initialForm);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const markdownTextareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     let active = true;
@@ -180,6 +205,30 @@ const ReportTemplate = () => {
     }
   };
 
+  const insertVariable = (variable: string) => {
+    const textarea = markdownTextareaRef.current;
+    if (!textarea) return;
+
+    const variableText = `{{${variable}}}`;
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const currentValue = formData.markdown || "";
+    const newValue =
+      currentValue.slice(0, start) + variableText + currentValue.slice(end);
+
+    setFormData((prev) => ({
+      ...prev,
+      markdown: newValue,
+    }));
+
+    // 设置光标位置到插入文本之后
+    setTimeout(() => {
+      textarea.focus();
+      const newCursorPos = start + variableText.length;
+      textarea.setSelectionRange(newCursorPos, newCursorPos);
+    }, 0);
+  };
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -249,6 +298,7 @@ const ReportTemplate = () => {
                     Markdown 内容
                   </label>
                   <Textarea
+                    ref={markdownTextareaRef}
                     value={formData.markdown}
                     onChange={(event) =>
                       setFormData((prev) => ({
@@ -259,6 +309,37 @@ const ReportTemplate = () => {
                     rows={6}
                     placeholder="写作结构或片段（可选）"
                   />
+                  <div className="space-y-1.5 rounded-md border border-border/60 bg-muted/30 p-2.5">
+                    <p className="text-[11px] font-semibold text-muted-foreground">
+                      支持的变量（生成报告时自动替换）：
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {Object.entries(TEMPLATE_VARIABLES).map(
+                        ([key, label]) => (
+                          <Button
+                            key={key}
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => insertVariable(key)}
+                            className="h-auto cursor-pointer rounded-md border px-2 py-1 text-[10px] font-mono hover:bg-accent"
+                          >
+                            <span className="font-semibold">{`{{${key}}}`}</span>
+                            <span className="ml-1.5 text-muted-foreground">
+                              {label}
+                            </span>
+                          </Button>
+                        )
+                      )}
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">
+                      示例：
+                      <code className="rounded bg-background px-1 py-0.5 text-[10px]">
+                        {"# {{title}}"}
+                      </code>{" "}
+                      会在生成报告时替换为实际标题
+                    </p>
+                  </div>
                 </div>
               </div>
               <DialogFooter>

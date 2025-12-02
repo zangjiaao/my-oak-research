@@ -3,6 +3,7 @@ import prisma from "@/lib/prisma";
 import { llmGateway } from "@oak/agents/llm-gateway";
 import { stripPromptLike, redact } from "@/lib/security";
 import { ReportGenerateSchema, ReportLLMOutputSchema } from "../schemas";
+import { renderTemplate } from "@/lib/template";
 
 const respond = (data: unknown) => NextResponse.json({ success: true, data });
 
@@ -99,11 +100,21 @@ export async function POST(req: NextRequest) {
     return fail("LLM output invalid", 422, checked.error.flatten());
   }
 
+  // 如果使用了模板，应用模板变量替换
+  let finalMarkdown = checked.data.markdown;
+  if (template?.markdown) {
+    finalMarkdown = renderTemplate(template.markdown, {
+      title: checked.data.title,
+      summary: checked.data.summary,
+      markdown: checked.data.markdown,
+    });
+  }
+
   const report = await prisma.report.create({
     data: {
       title: checked.data.title,
       summary: checked.data.summary,
-      markdown: checked.data.markdown,
+      markdown: finalMarkdown,
       status: "DRAFT",
       templateId: parse.data.templateId,
       authorId: userId,
