@@ -18,6 +18,7 @@ export type ContentItem = {
   platform: string;
   time: string;
   url?: string | null;
+  image?: string; // 封面图（可选）
   type: string;
 };
 

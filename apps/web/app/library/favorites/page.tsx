@@ -11,7 +11,7 @@ const favoritesList: NewsCardProps[] = [
   {
     title: "Favorites 1",
     summary: "Favorites 1 summary Favorites 1 summary Favorites 1 summary",
-    image: "https://via.placeholder.com/150",
+    image: "https://placehold.co/150",
     platform: "Twitter",
     time: "2025-01-01",
     mark: false,
@@ -26,7 +26,7 @@ const favoritesList: NewsCardProps[] = [
   {
     title: "Favorites 3",
     summary: "Favorites 3 summary",
-    image: "https://via.placeholder.com/150",
+    image: "https://placehold.co/150",
     platform: "Twitter",
     time: "2025-01-03",
     mark: true,
@@ -41,7 +41,7 @@ const favoritesList: NewsCardProps[] = [
   {
     title: "Favorites 5",
     summary: "Knowledge 5 summary",
-    image: "https://via.placeholder.com/150",
+    image: "https://placehold.co/150",
     platform: "Twitter",
     time: "2025-01-05",
     mark: true,

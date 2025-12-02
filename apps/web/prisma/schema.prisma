@@ -319,6 +319,7 @@ model Content {
   type      ContentType
   time      DateTime
   url       String?
+  image     String? // 封面图（可选）
   meta      Json?
   keywords  ContentKeyword[]
   entities  ContentEntity?

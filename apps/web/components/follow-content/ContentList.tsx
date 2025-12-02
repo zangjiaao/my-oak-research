@@ -78,6 +78,7 @@ export const ContentList = () => {
               <NewsCard
                 title={content.title}
                 summary={content.summary}
+                image={content.image}
                 platform={content.platform}
                 time={new Date(content.time).toLocaleDateString()}
                 mark={bookmarked}

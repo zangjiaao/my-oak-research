@@ -14,7 +14,7 @@ const ContentQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(50).default(20),
 });
 
-const mapContent = (item: Content) => ({
+const mapContent = (item: Content & { image?: string | null }) => ({
   id: item.id,
   title: item.title,
   summary: item.summary,
@@ -22,6 +22,7 @@ const mapContent = (item: Content) => ({
   platform: item.platform,
   time: item.time.toISOString(),
   url: item.url,
+  image: item.image || undefined, // 封面图（可选），如果没有则不返回
   type: item.type,
 });
 
