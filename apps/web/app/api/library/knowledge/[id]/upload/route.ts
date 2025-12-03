@@ -44,10 +44,44 @@ export async function POST(
     }
 
     // 解析 FormData
-    const formData = await request.formData();
-    const file = formData.get("file") as File | null;
-    const vectorModel = formData.get("vectorModel")?.toString();
-    const chunkSize = formData.get("chunkSize")?.toString();
+    // 注意：Postman 在处理中文文件名时可能存在编码问题
+    // Next.js 的 formData() 在某些情况下无法正确解析包含非 ASCII 字符的文件名
+    let formData: FormData;
+    let file: File | null = null;
+    let vectorModel: string | undefined;
+    let chunkSize: string | undefined;
+
+    try {
+      formData = await request.formData();
+      file = formData.get("file") as File | null;
+      vectorModel = formData.get("vectorModel")?.toString();
+      chunkSize = formData.get("chunkSize")?.toString();
+    } catch (error) {
+      // FormData 解析失败，通常是编码问题
+      console.error("FormData parsing failed:", error);
+
+      // 检查是否是编码相关的错误
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      if (errorMessage.includes("CRLF") || errorMessage.includes("FormData")) {
+        return badRequest(
+          "文件上传失败：检测到文件名编码问题。\n" +
+            "解决方案：\n" +
+            "1. 在 Postman 中，请确保文件名的 Content-Disposition header 使用正确的编码格式\n" +
+            "2. 或者将文件重命名为仅包含英文字母、数字和常见符号的名称\n" +
+            "3. 或者使用浏览器或 curl 命令上传文件\n" +
+            "\n" +
+            "使用 curl 上传示例：\n" +
+            `curl -X POST "http://localhost:3000/api/library/knowledge/${id}/upload" \\\n` +
+            `  -F "file=@your-file.pdf" \\\n` +
+            `  -F "vectorModel=Doubao-embedding-240715" \\\n` +
+            `  -F "chunkSize=500"`
+        );
+      }
+
+      // 其他错误直接抛出
+      throw error;
+    }
 
     if (!file) {
       return badRequest("File is required");

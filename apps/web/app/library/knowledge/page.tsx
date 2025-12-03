@@ -139,7 +139,7 @@ const KnowledgePage = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>确认删除</AlertDialogTitle>
             <AlertDialogDescription>
-              确定要删除知识库 "{deletingKnowledge?.name}"
+              确定要删除知识库 &quot;{deletingKnowledge?.name}&quot;
               吗？此操作将删除所有关联的文件和切片，且无法恢复。
             </AlertDialogDescription>
           </AlertDialogHeader>
