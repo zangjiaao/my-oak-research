@@ -1,17 +1,26 @@
 "use client";
 
-import React from "react";
+import React, { useMemo } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { NewsCard } from "@/components/business";
-import { useBookmarks } from "@/components/bookmarks/context";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useFollowContent } from "./context";
+import { useToggleFavorite, useFavorites } from "@/hooks/useFavorites";
 
 export const ContentList = () => {
   const { contents, selectedContent, selectContent, isLoading, error } =
     useFollowContent();
-  const { toggleBookmark, isBookmarked } = useBookmarks();
+  const toggleFavorite = useToggleFavorite();
+
+  // 获取所有收藏的内容 ID，用于判断是否已收藏
+  const { data: favoritesData } = useFavorites({ limit: 1000 });
+  const favoriteIds = useMemo(
+    () => new Set(favoritesData?.items.map((item) => item.id) ?? []),
+    [favoritesData?.items]
+  );
+
+  const isBookmarked = (id: string) => favoriteIds.has(id);
 
   return (
     <ScrollArea className="h-[calc(100vh-11rem)]">
@@ -82,7 +91,12 @@ export const ContentList = () => {
                 platform={content.platform}
                 time={new Date(content.time).toLocaleDateString()}
                 mark={bookmarked}
-                onBookmarkToggle={() => toggleBookmark(content)}
+                onBookmarkToggle={() => {
+                  toggleFavorite.mutate({
+                    contentId: content.id,
+                    isFavorite: bookmarked,
+                  });
+                }}
               />
             </div>
           );

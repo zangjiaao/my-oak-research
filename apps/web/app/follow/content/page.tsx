@@ -1,15 +1,24 @@
 "use client";
 
-import React from "react";
+import React, { useMemo } from "react";
 import { NewsDetailCard } from "@/components/business";
 import { useFollowContent } from "@/components/follow-content/context";
-import { useBookmarks } from "@/components/bookmarks/context";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useToggleFavorite, useFavorites } from "@/hooks/useFavorites";
 
 const FollowContent = () => {
   const { selectedContent, error } = useFollowContent();
-  const { toggleBookmark, isBookmarked } = useBookmarks();
+  const toggleFavorite = useToggleFavorite();
+
+  // 获取所有收藏的内容 ID，用于判断是否已收藏
+  const { data: favoritesData } = useFavorites({ limit: 1000 });
+  const favoriteIds = useMemo(
+    () => new Set(favoritesData?.items.map((item) => item.id) ?? []),
+    [favoritesData?.items]
+  );
+
+  const isBookmarked = (id: string) => favoriteIds.has(id);
 
   if (error) {
     return (
@@ -65,7 +74,12 @@ const FollowContent = () => {
           "No content details"
         }
         bookmarked={isBookmarked(selectedContent.id)}
-        onBookmarkToggle={() => toggleBookmark(selectedContent)}
+        onBookmarkToggle={() => {
+          toggleFavorite.mutate({
+            contentId: selectedContent.id,
+            isFavorite: isBookmarked(selectedContent.id),
+          });
+        }}
       />
     </div>
   );

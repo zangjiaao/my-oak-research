@@ -25,11 +25,14 @@ import {
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent } from "@/components/ui/card";
-import { useBookmarks } from "@/components/bookmarks/context";
+import { useFavorites, useToggleFavorite } from "@/hooks/useFavorites";
 
 const Headbar = () => {
   const pathname = usePathname();
-  const { bookmarks, toggleBookmark } = useBookmarks();
+  const { data: favoritesData, isLoading } = useFavorites({ limit: 50 });
+  const toggleFavorite = useToggleFavorite();
+
+  const bookmarks = favoritesData?.items ?? [];
 
   const generateBreadcrumbs = () => {
     const segments = pathname.split("/").filter(Boolean);
@@ -93,7 +96,11 @@ const Headbar = () => {
                 <DialogDescription>快速回到已保存的情报摘要</DialogDescription>
               </DialogHeader>
               <ScrollArea className="max-h-[55vh]">
-                {bookmarks.length === 0 ? (
+                {isLoading ? (
+                  <div className="flex h-full flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-border p-6 text-sm text-muted-foreground">
+                    <p>加载中...</p>
+                  </div>
+                ) : bookmarks.length === 0 ? (
                   <div className="flex h-full flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-border p-6 text-sm text-muted-foreground">
                     <p>暂无收藏内容</p>
                     <p>在内容列表中点击心形即可添加收藏</p>
@@ -119,7 +126,12 @@ const Headbar = () => {
                               variant="ghost"
                               size="icon"
                               aria-label="取消收藏"
-                              onClick={() => toggleBookmark(bookmark)}
+                              onClick={() => {
+                                toggleFavorite.mutate({
+                                  contentId: bookmark.id,
+                                  isFavorite: true,
+                                });
+                              }}
                             >
                               <XIcon className="h-4 w-4" />
                             </Button>
