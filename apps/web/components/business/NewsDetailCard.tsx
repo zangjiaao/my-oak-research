@@ -21,8 +21,10 @@ const NewsDetailCard = ({
   onBookmarkToggle?: () => void;
 }) => {
   return (
-    <Card className={cn("h-full px-8 py-14 bg-gray-100", className)}>
-      <CardHeader>
+    <Card
+      className={cn("h-full px-8 py-14 bg-gray-100 flex flex-col", className)}
+    >
+      <CardHeader className="flex-shrink-0">
         <CardTitle className="mb-4">
           <div className="flex items-center gap-2 justify-between">
             <p className="text-4xl font-bold">{title ? title : "News Title"}</p>
@@ -52,7 +54,7 @@ const NewsDetailCard = ({
           {summary ? summary : "News Summary News Summary News Summary"}
         </p>
       </CardHeader>
-      <CardContent className="px-6 overflow-y-auto scrollbar-hide">
+      <CardContent className="px-6 overflow-y-auto scrollbar-hide flex-1 min-h-0">
         <article className="prose dark:prose-invert max-w-none">
           <ReactMarkdown>{markdown}</ReactMarkdown>
         </article>

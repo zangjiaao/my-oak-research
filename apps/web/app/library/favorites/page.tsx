@@ -104,7 +104,7 @@ const FavoritesPage = () => {
 
         {/* 卡片网格 */}
         <div
-          className={`grid gap-4 px-1 pb-1 max-h-[calc(100vh-160px)] overflow-y-auto ${
+          className={`grid gap-4 px-1 pb-1 max-h-[calc(100vh-170px)] overflow-y-auto ${
             showDetail
               ? "grid-cols-1"
               : "grid-cols-1 md:grid-cols-2 lg:grid-cols-3"
@@ -145,7 +145,7 @@ const FavoritesPage = () => {
 
       {/* 详情区域 */}
       {showDetail && selectedNews && (
-        <div className="col-span-1 lg:col-span-3 transition-all duration-300">
+        <div className="col-span-1 lg:col-span-3 transition-all duration-300 h-full lg:h-[calc(100vh-7rem)]">
           <NewsDetailCard
             title={selectedNews.title}
             summary={selectedNews.summary}
