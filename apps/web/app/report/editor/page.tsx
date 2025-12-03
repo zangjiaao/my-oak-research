@@ -610,7 +610,7 @@ const ReportEditor = () => {
 
                 <Card>
                   <CardHeader>
-                    <CardTitle>素材素材</CardTitle>
+                    <CardTitle>报告素材</CardTitle>
                     <CardDescription>选择素材会降低写作偏差。</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-3">
