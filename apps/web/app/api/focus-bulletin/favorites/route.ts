@@ -104,4 +104,3 @@ export async function DELETE(request: NextRequest) {
     return serverError(error);
   }
 }
-

@@ -74,7 +74,7 @@ export async function GET(request: NextRequest) {
 
     if (platform || search || from || to) {
       where.content = {};
-      
+
       if (platform) {
         where.content.platform = platform;
       }
@@ -126,4 +126,3 @@ export async function GET(request: NextRequest) {
     return serverError(error);
   }
 }
-
