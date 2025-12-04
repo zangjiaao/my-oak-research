@@ -31,6 +31,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { KnowledgeSelector } from "@/components/business/KnowledgeSelector";
+import { useFavorites, type FavoriteItem } from "@/hooks/useFavorites";
 
 type Template = {
   id: string;
@@ -69,37 +70,26 @@ type MaterialOption = {
   metadata?: Record<string, string>;
 };
 
-const curatedMaterials: MaterialOption[] = [
-  {
-    id: "material-report-1",
-    title: "关注速报 · 北约动态",
-    description: "包含北约军事部署与外交声明摘要",
+// 将 FavoriteItem 转换为 MaterialOption
+const favoriteToMaterial = (favorite: FavoriteItem): MaterialOption => {
+  const metadata: Record<string, string> = {
+    platform: favorite.platform,
+    type: favorite.type,
+    time: favorite.time,
+  };
+  if (favorite.url && typeof favorite.url === "string") {
+    metadata.url = favorite.url;
+  }
+  return {
+    id: favorite.favoriteId ?? favorite.id,
+    title: favorite.title,
+    description: `${favorite.platform} · ${favorite.type}`,
     sourceType: "FAVORITE",
-    sourceId: "ck0xz8svw000001q9k8u30ktr",
-    snippet:
-      "北约公布了下一阶段快速反应部队部署计划，并强调乌克兰安全仍为核心议题。",
-    metadata: { platform: "focus-bulletin", tag: "北约" },
-  },
-  {
-    id: "material-report-2",
-    title: "知识库 · 能源安全分析",
-    description: "能源与粮食相关的情报资料",
-    sourceType: "KNOWLEDGE",
-    sourceId: "ck0xz8sww000002q9c2iqihtb",
-    snippet:
-      "俄罗斯乌克兰冲突导致全球能源价格震荡，天然气转运与储备成关键变量。",
-    metadata: { category: "能源", relevance: "high" },
-  },
-  {
-    id: "material-report-3",
-    title: "关注速报 · 社交媒体态势",
-    description: "社交媒体抓取的热门关键词与情绪",
-    sourceType: "FAVORITE",
-    sourceId: "ck0xz8sww000003q9w3b2h4uc",
-    snippet: "多语言社交媒体在讨论俄罗斯战略调整、乌克兰防御以及国际援助进展。",
-    metadata: { platform: "social-stream", signal: "sentiment" },
-  },
-];
+    sourceId: favorite.id,
+    snippet: favorite.summary.slice(0, 200),
+    metadata,
+  };
+};
 
 const recommendedModels = ["deepseek-v3.1", "gpt-4", "gpt-5"];
 
@@ -144,6 +134,17 @@ const ReportEditor = () => {
   const searchParams = useSearchParams();
   const reportIdFromUrl = searchParams.get("reportId");
 
+  // 获取收藏列表作为报告素材
+  const { data: favoritesData, isLoading: favoritesLoading } = useFavorites({
+    limit: 50, // 获取前50条收藏作为素材选项
+  });
+
+  // 将收藏数据转换为素材选项
+  const curatedMaterials = useMemo<MaterialOption[]>(() => {
+    if (!favoritesData?.items) return [];
+    return favoritesData.items.map(favoriteToMaterial);
+  }, [favoritesData]);
+
   const [templates, setTemplates] = useState<Template[]>([]);
   const [templateLoading, setTemplateLoading] = useState(true);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>();
@@ -161,8 +162,14 @@ const ReportEditor = () => {
   const [temperature, setTemperature] = useState(0.45);
   const [model, setModel] = useState<string>();
   const [currentReportId, setCurrentReportId] = useState<string | null>(null);
-  const [isLoadingReport, setIsLoadingReport] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  // 保存待匹配的报告素材信息（用于异步匹配）
+  const [pendingMaterials, setPendingMaterials] = useState<
+    Array<{
+      sourceType: string;
+      sourceId: string;
+    }>
+  >([]);
 
   // 加载模板列表
   useEffect(() => {
@@ -194,7 +201,6 @@ const ReportEditor = () => {
     if (!reportIdFromUrl) return;
 
     let isMounted = true;
-    setIsLoadingReport(true);
 
     fetch(`/api/report-writer/reports/${reportIdFromUrl}`)
       .then((res) => res.json())
@@ -226,19 +232,14 @@ const ReportEditor = () => {
         }
 
         // 设置素材（如果有）
+        // 由于素材是异步加载的，先保存素材信息，等收藏数据加载完成后再匹配
         if (report.materials && report.materials.length > 0) {
-          // 尝试匹配素材到 curatedMaterials
-          const matchedMaterialIds = report.materials
-            .map((material) => {
-              const found = curatedMaterials.find(
-                (m) =>
-                  m.sourceType === material.sourceType &&
-                  m.sourceId === material.sourceId
-              );
-              return found?.id;
-            })
-            .filter((id): id is string => !!id);
-          setSelectedMaterialIds(matchedMaterialIds);
+          setPendingMaterials(
+            report.materials.map((m) => ({
+              sourceType: m.sourceType,
+              sourceId: m.sourceId,
+            }))
+          );
         }
 
         // 更新聊天消息，提示已加载报告
@@ -262,15 +263,39 @@ const ReportEditor = () => {
         toast.error("加载报告失败，请稍后重试");
       })
       .finally(() => {
-        if (isMounted) {
-          setIsLoadingReport(false);
-        }
+        // 清理工作已完成
       });
 
     return () => {
       isMounted = false;
     };
   }, [reportIdFromUrl]);
+
+  // 当收藏数据加载完成且有待匹配的素材时，进行匹配
+  useEffect(() => {
+    if (
+      pendingMaterials.length > 0 &&
+      favoritesData?.items &&
+      !favoritesLoading
+    ) {
+      const materials = favoritesData.items.map(favoriteToMaterial);
+      const matchedMaterialIds = pendingMaterials
+        .map((pending) => {
+          const found = materials.find(
+            (m) =>
+              m.sourceType === pending.sourceType &&
+              m.sourceId === pending.sourceId
+          );
+          return found?.id;
+        })
+        .filter((id): id is string => !!id);
+      if (matchedMaterialIds.length > 0) {
+        setSelectedMaterialIds(matchedMaterialIds);
+      }
+      // 清空待匹配列表
+      setPendingMaterials([]);
+    }
+  }, [favoritesData, favoritesLoading, pendingMaterials]);
 
   const selectedTemplate = useMemo(
     () => templates.find((template) => template.id === selectedTemplateId),
@@ -282,7 +307,7 @@ const ReportEditor = () => {
       curatedMaterials.filter((material) =>
         selectedMaterialIds.includes(material.id)
       ),
-    [selectedMaterialIds]
+    [curatedMaterials, selectedMaterialIds]
   );
 
   const canGenerate = prompt.trim().length >= 20 && !isGenerating;
@@ -665,41 +690,54 @@ const ReportEditor = () => {
                     <CardDescription>选择素材会降低写作偏差。</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-3">
-                    <div className="flex flex-col gap-2">
-                      {curatedMaterials.map((material) => {
-                        const selected = selectedMaterialIds.includes(
-                          material.id
-                        );
-                        return (
-                          <button
-                            type="button"
-                            key={material.id}
-                            onClick={() => handleToggleMaterial(material.id)}
-                            className={cn(
-                              "flex w-full flex-col gap-1 rounded-lg border px-3 py-2 text-left transition hover:border-primary",
-                              selected
-                                ? "border-primary bg-primary/10"
-                                : "border-border"
-                            )}
-                          >
-                            <div className="flex items-center justify-between">
-                              <p className="text-sm font-medium">
-                                {material.title}
+                    {favoritesLoading ? (
+                      <div className="flex items-center justify-center py-8 text-sm text-muted-foreground">
+                        正在加载收藏素材...
+                      </div>
+                    ) : curatedMaterials.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center gap-2 py-8 text-sm text-muted-foreground">
+                        <p>暂无收藏素材</p>
+                        <p className="text-xs">
+                          请先在「关注速报」中收藏内容，然后返回此处选择素材
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col gap-2">
+                        {curatedMaterials.map((material) => {
+                          const selected = selectedMaterialIds.includes(
+                            material.id
+                          );
+                          return (
+                            <button
+                              type="button"
+                              key={material.id}
+                              onClick={() => handleToggleMaterial(material.id)}
+                              className={cn(
+                                "flex w-full flex-col gap-1 rounded-lg border px-3 py-2 text-left transition hover:border-primary",
+                                selected
+                                  ? "border-primary bg-primary/10"
+                                  : "border-border"
+                              )}
+                            >
+                              <div className="flex items-center justify-between">
+                                <p className="text-sm font-medium">
+                                  {material.title}
+                                </p>
+                                <Badge variant="outline">
+                                  {selected ? "已选" : "添加"}
+                                </Badge>
+                              </div>
+                              <p className="text-xs text-muted-foreground">
+                                {material.description}
                               </p>
-                              <Badge variant="outline">
-                                {selected ? "已选" : "添加"}
-                              </Badge>
-                            </div>
-                            <p className="text-xs text-muted-foreground">
-                              {material.description}
-                            </p>
-                            <p className="text-xs text-muted-foreground/80">
-                              {material.snippet}
-                            </p>
-                          </button>
-                        );
-                      })}
-                    </div>
+                              <p className="text-xs text-muted-foreground/80">
+                                {material.snippet}
+                              </p>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
                     <div className="flex flex-wrap gap-2">
                       {selectedMaterials.map((material) => (
                         <Badge key={material.id} variant="secondary">

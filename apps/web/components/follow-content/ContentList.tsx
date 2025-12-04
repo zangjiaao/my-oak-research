@@ -14,7 +14,7 @@ export const ContentList = () => {
   const toggleFavorite = useToggleFavorite();
 
   // 获取所有收藏的内容 ID，用于判断是否已收藏
-  const { data: favoritesData } = useFavorites({ limit: 1000 });
+  const { data: favoritesData } = useFavorites({ limit: 50 });
   const favoriteIds = useMemo(
     () => new Set(favoritesData?.items.map((item) => item.id) ?? []),
     [favoritesData?.items]
