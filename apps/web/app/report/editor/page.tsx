@@ -30,6 +30,7 @@ import {
   Save,
   Sparkles,
 } from "lucide-react";
+import { KnowledgeSelector } from "@/components/business/KnowledgeSelector";
 
 type Template = {
   id: string;
@@ -148,6 +149,9 @@ const ReportEditor = () => {
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>();
   const [prompt, setPrompt] = useState(initialPrompt);
   const [selectedMaterialIds, setSelectedMaterialIds] = useState<string[]>([]);
+  const [selectedKnowledgeIds, setSelectedKnowledgeIds] = useState<string[]>(
+    []
+  );
   const [chatMessages, setChatMessages] =
     useState<ChatMessage[]>(initialMessages);
   const [chatInput, setChatInput] = useState("");
@@ -294,6 +298,7 @@ const ReportEditor = () => {
     setChatMessages(initialMessages);
     setCollapsed(false);
     setSelectedMaterialIds([]);
+    setSelectedKnowledgeIds([]);
     setChatInput("");
     setCurrentReportId(null);
   };
@@ -418,14 +423,60 @@ const ReportEditor = () => {
   const generateDraft = async (followUp?: string) => {
     if (!canGenerate) return;
     setIsGenerating(true);
+
+    // RAG 检索：如果选择了知识库，先检索相关知识片段
+    let ragChunks: string[] = [];
+    if (selectedKnowledgeIds.length > 0 && prompt.trim()) {
+      try {
+        const retrieveResponse = await fetch("/api/library/retrieve", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            query: prompt.trim(),
+            knowledgeIds: selectedKnowledgeIds,
+            topK: 10,
+            minSimilarity: 0.75,
+          }),
+        });
+
+        if (retrieveResponse.ok) {
+          const retrieveData = await retrieveResponse.json();
+          if (retrieveData.success && retrieveData.data?.results) {
+            ragChunks = retrieveData.data.results.map(
+              (chunk: {
+                metadata: { knowledgeName: string };
+                content: string;
+              }) => `[来源: ${chunk.metadata.knowledgeName}] ${chunk.content}`
+            );
+          }
+        }
+      } catch (error) {
+        console.error("RAG 检索失败:", error);
+        // 不阻塞生成流程，继续执行
+      }
+    }
+
     const promptParts = [prompt.trim()];
+
+    // 如果有 RAG 检索结果，添加到提示词前
+    if (ragChunks.length > 0) {
+      promptParts.unshift(
+        `以下是从知识库中检索到的相关内容，请参考这些信息来生成报告：\n\n${ragChunks.join("\n\n---\n\n")}\n\n---\n\n`
+      );
+    }
+
     if (followUp) {
       promptParts.push(`后续指令：${followUp.trim()}`);
     }
+
     const payload = {
       prompt: promptParts.join("\n\n"),
       templateId: selectedTemplateId,
       materials: materialPayload,
+      knowledgeIds:
+        selectedKnowledgeIds.length > 0 ? selectedKnowledgeIds : undefined,
       options: {
         model: model || undefined,
         temperature,
@@ -494,7 +545,7 @@ const ReportEditor = () => {
         <aside
           className={cn(
             "flex flex-col gap-4 rounded-2xl border bg-card p-4 transition-all duration-300 lg:flex-shrink-0",
-            collapsed ? "w-16" : "w-1/4"
+            collapsed ? "w-16" : reportDraft ? "w-1/4" : "w-2/5"
           )}
         >
           {collapsed ? (
@@ -675,6 +726,23 @@ const ReportEditor = () => {
 
                 <Card>
                   <CardHeader>
+                    <CardTitle>知识库（RAG）</CardTitle>
+                    <CardDescription>
+                      选择知识库后，LLM 会检索相关知识片段来增强报告内容。
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <KnowledgeSelector
+                      value={selectedKnowledgeIds}
+                      onChange={setSelectedKnowledgeIds}
+                      maxSelection={5}
+                      placeholder="选择知识库（可选）"
+                    />
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
                     <CardTitle>模型与采样</CardTitle>
                     <CardDescription>
                       由 LLM Gateway 路由，默认模型为 DeepSeek。
@@ -760,7 +828,12 @@ const ReportEditor = () => {
           )}
         </aside>
 
-        <div className="flex flex-1 flex-col gap-4 lg:w-[36%]">
+        <div
+          className={cn(
+            "flex flex-1 flex-col gap-4",
+            reportDraft ? "lg:w-[36%]" : "lg:w-3/5"
+          )}
+        >
           <Card className="flex flex-1 flex-col">
             <CardHeader>
               <div className="flex items-center justify-between gap-2">
@@ -838,22 +911,22 @@ const ReportEditor = () => {
           </Card>
         </div>
 
-        <div className="flex flex-1 flex-col gap-4 overflow-y-auto lg:w-[36%] scrollbar-hide">
-          <Card className="flex flex-col gap-3">
-            <CardHeader>
-              <div className="flex items-center justify-between gap-2">
-                <div>
-                  <CardTitle>当前草稿</CardTitle>
-                  <CardDescription>
-                    你可以实时编辑标题、摘要与 Markdown 内容。
-                    {currentReportId && (
-                      <span className="block mt-1 text-xs text-muted-foreground">
-                        正在编辑报告 ID: {currentReportId.slice(0, 8)}...
-                      </span>
-                    )}
-                  </CardDescription>
-                </div>
-                {reportDraft && (
+        {reportDraft && (
+          <div className="flex flex-1 flex-col gap-4 overflow-y-auto lg:w-[36%] scrollbar-hide">
+            <Card className="flex flex-col gap-3">
+              <CardHeader>
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <CardTitle>当前草稿</CardTitle>
+                    <CardDescription>
+                      你可以实时编辑标题、摘要与 Markdown 内容。
+                      {currentReportId && (
+                        <span className="block mt-1 text-xs text-muted-foreground">
+                          正在编辑报告 ID: {currentReportId.slice(0, 8)}...
+                        </span>
+                      )}
+                    </CardDescription>
+                  </div>
                   <Button
                     onClick={handleSaveReport}
                     disabled={isSaving}
@@ -867,136 +940,126 @@ const ReportEditor = () => {
                         ? "保存"
                         : "创建并保存"}
                   </Button>
-                )}
-              </div>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-3">
-              {reportDraft ? (
-                <>
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-muted-foreground">
-                      标题
-                    </label>
-                    <Input
-                      value={reportDraft.title}
-                      onChange={(event) =>
-                        setReportDraft((prev) =>
-                          prev ? { ...prev, title: event.target.value } : prev
-                        )
-                      }
-                      placeholder="报告标题"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-muted-foreground">
-                      摘要
-                    </label>
-                    <Textarea
-                      value={reportDraft.summary}
-                      onChange={(event) =>
-                        setReportDraft((prev) =>
-                          prev ? { ...prev, summary: event.target.value } : prev
-                        )
-                      }
-                      rows={3}
-                      placeholder="摘要（150~200字）"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-muted-foreground">
-                      Markdown（可编辑）
-                    </label>
-                    <Textarea
-                      value={reportDraft.markdown}
-                      onChange={(event) =>
-                        setReportDraft((prev) =>
-                          prev
-                            ? { ...prev, markdown: event.target.value }
-                            : prev
-                        )
-                      }
-                      rows={8}
-                      placeholder="Markdown 内容，可直接编辑"
-                    />
-                  </div>
-                </>
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  尚未生成草稿，点击左侧“开始写作”即可快速得到初版报告。
-                </p>
-              )}
-            </CardContent>
-          </Card>
+                </div>
+              </CardHeader>
+              <CardContent className="flex flex-col gap-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-muted-foreground">
+                    标题
+                  </label>
+                  <Input
+                    value={reportDraft.title}
+                    onChange={(event) =>
+                      setReportDraft((prev) =>
+                        prev ? { ...prev, title: event.target.value } : prev
+                      )
+                    }
+                    placeholder="报告标题"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-muted-foreground">
+                    摘要
+                  </label>
+                  <Textarea
+                    value={reportDraft.summary}
+                    onChange={(event) =>
+                      setReportDraft((prev) =>
+                        prev ? { ...prev, summary: event.target.value } : prev
+                      )
+                    }
+                    rows={3}
+                    placeholder="摘要（150~200字）"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-muted-foreground">
+                    Markdown（可编辑）
+                  </label>
+                  <Textarea
+                    value={reportDraft.markdown}
+                    onChange={(event) =>
+                      setReportDraft((prev) =>
+                        prev ? { ...prev, markdown: event.target.value } : prev
+                      )
+                    }
+                    rows={8}
+                    placeholder="Markdown 内容，可直接编辑"
+                  />
+                </div>
+              </CardContent>
+            </Card>
 
-          <Card className="flex flex-col gap-3">
-            <CardHeader className="flex items-center justify-between gap-2">
-              <div>
-                <CardTitle>章节与引用</CardTitle>
-                <CardDescription>
-                  调整章节标题、内容与引用来源。
-                </CardDescription>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleAddSection}
-                disabled={!reportDraft}
-              >
-                添加章节
-              </Button>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {reportDraft && reportDraft.sections.length > 0 ? (
-                reportDraft.sections.map((section, index) => (
-                  <div
-                    key={`${section.heading}-${index}`}
-                    className="flex flex-col gap-2 rounded-lg border border-border/60 p-3"
-                  >
-                    <Input
-                      value={section.heading}
-                      onChange={(event) =>
-                        handleSectionChange(
-                          index,
-                          "heading",
-                          event.target.value
-                        )
-                      }
-                      placeholder={`第 ${index + 1} 章标题`}
-                      className="text-sm font-semibold"
-                    />
-                    <Textarea
-                      value={section.content}
-                      onChange={(event) =>
-                        handleSectionChange(
-                          index,
-                          "content",
-                          event.target.value
-                        )
-                      }
-                      rows={4}
-                      placeholder="章节内容"
-                    />
-                    <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-                      {(section.references ?? []).length > 0 ? (
-                        section.references?.map((ref) => (
-                          <Badge key={ref} variant="outline">
-                            {ref}
-                          </Badge>
-                        ))
-                      ) : (
-                        <span>暂无引用</span>
-                      )}
+            <Card className="flex flex-col gap-3">
+              <CardHeader className="flex items-center justify-between gap-2">
+                <div>
+                  <CardTitle>章节与引用</CardTitle>
+                  <CardDescription>
+                    调整章节标题、内容与引用来源。
+                  </CardDescription>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleAddSection}
+                  disabled={!reportDraft}
+                >
+                  添加章节
+                </Button>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {reportDraft.sections.length > 0 ? (
+                  reportDraft.sections.map((section, index) => (
+                    <div
+                      key={`${section.heading}-${index}`}
+                      className="flex flex-col gap-2 rounded-lg border border-border/60 p-3"
+                    >
+                      <Input
+                        value={section.heading}
+                        onChange={(event) =>
+                          handleSectionChange(
+                            index,
+                            "heading",
+                            event.target.value
+                          )
+                        }
+                        placeholder={`第 ${index + 1} 章标题`}
+                        className="text-sm font-semibold"
+                      />
+                      <Textarea
+                        value={section.content}
+                        onChange={(event) =>
+                          handleSectionChange(
+                            index,
+                            "content",
+                            event.target.value
+                          )
+                        }
+                        rows={4}
+                        placeholder="章节内容"
+                      />
+                      <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                        {(section.references ?? []).length > 0 ? (
+                          section.references?.map((ref) => (
+                            <Badge key={ref} variant="outline">
+                              {ref}
+                            </Badge>
+                          ))
+                        ) : (
+                          <span>暂无引用</span>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  目前还没有章节内容，之后生成草稿会自动填充，也可以手动添加。
-                </p>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    目前还没有章节内容，之后生成草稿会自动填充，也可以手动添加。
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -11,6 +11,7 @@ import {
   type KnowledgeItem,
 } from "@/hooks/useKnowledge";
 import { KnowledgeDialog } from "./components/KnowledgeDialog";
+import { KnowledgeDetailDialog } from "./components/KnowledgeDetailDialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -32,6 +33,9 @@ const KnowledgePage = () => {
     useState<KnowledgeItem | null>(null);
   const [deletingKnowledge, setDeletingKnowledge] =
     useState<KnowledgeItem | null>(null);
+  const [detailKnowledge, setDetailKnowledge] = useState<KnowledgeItem | null>(
+    null
+  );
 
   // 防抖搜索
   useEffect(() => {
@@ -120,6 +124,7 @@ const KnowledgePage = () => {
               knowledge={knowledge}
               onEdit={handleEdit}
               onDelete={handleDelete}
+              onClick={setDetailKnowledge}
             />
           ))}
         </div>
@@ -129,6 +134,12 @@ const KnowledgePage = () => {
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         knowledge={editingKnowledge}
+      />
+
+      <KnowledgeDetailDialog
+        open={!!detailKnowledge}
+        onOpenChange={(open) => !open && setDetailKnowledge(null)}
+        knowledge={detailKnowledge}
       />
 
       <AlertDialog
