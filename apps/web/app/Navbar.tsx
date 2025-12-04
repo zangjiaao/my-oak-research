@@ -172,7 +172,18 @@ const Navbar = ({ ...props }: React.ComponentProps<typeof Sidebar>) => {
     );
   }, [isActive]);
 
-  const [localOpen, setLocalOpen] = React.useState<Record<number, boolean>>({});
+  // 默认展开所有有子项的菜单项
+  const [localOpen, setLocalOpen] = React.useState<Record<number, boolean>>(
+    () => {
+      const initial: Record<number, boolean> = {};
+      menuItems.forEach((item, idx) => {
+        if (item.items) {
+          initial[idx] = true;
+        }
+      });
+      return initial;
+    }
+  );
 
   return (
     <Sidebar collapsible="offcanvas" {...props}>
