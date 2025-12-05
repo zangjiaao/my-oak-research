@@ -91,7 +91,7 @@ const favoriteToMaterial = (favorite: FavoriteItem): MaterialOption => {
   };
 };
 
-const recommendedModels = ["deepseek-v3.1", "gpt-4", "gpt-5"];
+const recommendedModels = [process.env.LLM_DEFAULT_MODEL ?? "deepseek-v3.2", "gpt-4", "gpt-5"];
 
 const initialPrompt =
   "请以情报分析视角，结合当前的俄乌战争动态，总结出本期需要关注的战略节点、风险与推荐行动。";
