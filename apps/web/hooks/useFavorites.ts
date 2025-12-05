@@ -242,8 +242,14 @@ export function useToggleFavorite() {
 
       toast.success(variables.isFavorite ? "已取消收藏" : "已添加到收藏夹");
       // 使收藏列表和关注内容列表的缓存失效，获取最新数据
-      queryClient.invalidateQueries({ queryKey: ["favorites"] });
-      queryClient.invalidateQueries({ queryKey: ["follow-content"] });
+      queryClient.invalidateQueries({
+        queryKey: ["favorites"],
+        refetchType: "all",
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["follow-content"],
+        refetchType: "all",
+      });
     },
     onError: (error: Error, variables, context) => {
       console.error("Failed to toggle favorite:", error);

@@ -349,6 +349,7 @@ const ReportTemplate = () => {
                     size="sm"
                     onClick={handleDelete}
                     disabled={isDeleting}
+                    className="min-w-[100px]"
                   >
                     {isDeleting ? "删除中..." : "删除模板"}
                   </Button>
@@ -356,7 +357,8 @@ const ReportTemplate = () => {
                 <Button
                   onClick={handleSave}
                   disabled={isSaving}
-                  className="min-w-[140px]"
+                  size="sm"
+                  className="min-w-[100px]"
                 >
                   {isSaving
                     ? "保存中..."
