@@ -103,10 +103,10 @@ export function useToggleFavorite() {
       isFavorite: boolean;
     }) => {
       const endpoint = "/api/focus-bulletin/favorites";
-      const method = isFavorite ? "DELETE" : "POST";
+      const method = isFavorite ? "POST" : "DELETE";
       const url = isFavorite
-        ? `${endpoint}?contentId=${encodeURIComponent(contentId)}`
-        : endpoint;
+        ? endpoint
+        : `${endpoint}?contentId=${encodeURIComponent(contentId)}`;
 
       const response = await fetch(url, {
         method,
@@ -129,7 +129,7 @@ export function useToggleFavorite() {
       }
 
       // 处理删除时找不到的情况（404），也视为成功（幂等性）
-      if (response.status === 404 && isFavorite) {
+      if (response.status === 404 && !isFavorite) {
         return { success: true, alreadyDeleted: true };
       }
 
@@ -193,39 +193,37 @@ export function useToggleFavorite() {
       queryClient.setQueriesData<FavoritesResponse>(
         { queryKey: ["favorites"] },
         (old) => {
-          if (!old) {
-            // 如果没有缓存，创建一个新的
-            if (isFavorite) {
-              return { items: [], nextCursor: null };
-            }
-            if (contentInfo) {
-              return { items: [contentInfo], nextCursor: null };
-            }
-            return { items: [], nextCursor: null };
+      if (!old) {
+        // 如果没有缓存，创建一个新的
+        if (!isFavorite) {
+          return { items: [], nextCursor: null };
+        }
+        if (contentInfo) {
+          return { items: [contentInfo], nextCursor: null };
+        }
+        return { items: [], nextCursor: null };
           }
 
-          if (isFavorite) {
-            // 删除收藏：从列表中移除
+      if (isFavorite) {
+        // 添加收藏：检查是否已存在
+        const existingItem = old.items.find((item) => item.id === contentId);
+        if (existingItem) {
+          return old; // 如果已存在，不重复添加
+        }
+        // 如果有内容信息，添加到列表开头
+        if (contentInfo) {
+          return {
+            ...old,
+            items: [contentInfo, ...old.items],
+          };
+        }
+        return old;
+      } else {
+        // 删除收藏：从列表中移除
             return {
               ...old,
               items: old.items.filter((item) => item.id !== contentId),
             };
-          } else {
-            // 添加收藏：检查是否已存在
-            const existingItem = old.items.find(
-              (item) => item.id === contentId
-            );
-            if (existingItem) {
-              return old; // 如果已存在，不重复添加
-            }
-            // 如果有内容信息，添加到列表开头
-            if (contentInfo) {
-              return {
-                ...old,
-                items: [contentInfo, ...old.items],
-              };
-            }
-            return old;
           }
         }
       );
@@ -240,7 +238,7 @@ export function useToggleFavorite() {
         return;
       }
 
-      toast.success(variables.isFavorite ? "已取消收藏" : "已添加到收藏夹");
+      toast.success(variables.isFavorite ? "已添加到收藏夹" : "已取消收藏");
       // 使收藏列表和关注内容列表的缓存失效，获取最新数据
       queryClient.invalidateQueries({
         queryKey: ["favorites"],

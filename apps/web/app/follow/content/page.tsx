@@ -75,9 +75,10 @@ const FollowContent = () => {
         }
         bookmarked={isBookmarked(selectedContent.id)}
         onBookmarkToggle={() => {
+          const currentlyBookmarked = isBookmarked(selectedContent.id);
           toggleFavorite.mutate({
             contentId: selectedContent.id,
-            isFavorite: isBookmarked(selectedContent.id),
+            isFavorite: !currentlyBookmarked,
           });
         }}
       />

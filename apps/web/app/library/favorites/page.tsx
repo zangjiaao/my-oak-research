@@ -52,7 +52,7 @@ const FavoritesPage = () => {
   const handleBookmarkToggle = (item: FavoriteItem) => {
     toggleFavorite.mutate({
       contentId: item.id,
-      isFavorite: true, // 在收藏夹页面，点击就是取消收藏
+      isFavorite: false, // 在收藏夹页面，点击就是取消收藏
     });
     // 如果取消收藏的是当前选中的新闻，关闭详情
     if (selectedNews?.id === item.id) {

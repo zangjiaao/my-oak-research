@@ -129,7 +129,7 @@ const Headbar = () => {
                               onClick={() => {
                                 toggleFavorite.mutate({
                                   contentId: bookmark.id,
-                                  isFavorite: true,
+                                  isFavorite: false,
                                 });
                               }}
                             >

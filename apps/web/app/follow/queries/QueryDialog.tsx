@@ -52,6 +52,7 @@ const QueryDialog = ({
     control,
     watch,
     reset,
+    setError,
     formState: { errors },
   } = useForm<QueryFormValues>({
     resolver: formResolver,
@@ -111,8 +112,19 @@ const QueryDialog = ({
   const onSubmit: SubmitHandler<QueryFormValues> = (data) => {
     let parsedRules: QueryFormValues["rules"] = undefined;
     if (data.rules) {
-      parsedRules =
-        typeof data.rules === "string" ? JSON.parse(data.rules) : data.rules;
+      if (typeof data.rules === "string") {
+        try {
+          parsedRules = JSON.parse(data.rules);
+        } catch (err) {
+          setError("rules", {
+            type: "manual",
+            message: "Rules must be valid JSON.",
+          });
+          return;
+        }
+      } else {
+        parsedRules = data.rules;
+      }
     }
     const submittedData = {
       ...data,

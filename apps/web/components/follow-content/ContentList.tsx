@@ -94,7 +94,7 @@ export const ContentList = () => {
                 onBookmarkToggle={() => {
                   toggleFavorite.mutate({
                     contentId: content.id,
-                    isFavorite: bookmarked,
+                    isFavorite: !bookmarked,
                   });
                 }}
               />
