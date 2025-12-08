@@ -14,6 +14,7 @@ import { apiFetcher } from "@/lib/fetcher";
 import { toast } from "sonner";
 import { FileText, Calendar, Hash, Download, Trash2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useQueryClient } from "@tanstack/react-query";
 import type { KnowledgeItem } from "@/hooks/useKnowledge";
 
 type KnowledgeDetailFile = {
@@ -56,7 +57,33 @@ export const KnowledgeDetailDialog: React.FC<KnowledgeDetailDialogProps> = ({
     null
   );
   const [deletingFile, setDeletingFile] = React.useState<string | null>(null);
+  const queryClient = useQueryClient();
   const fetchIdRef = React.useRef(0);
+  const syncKnowledgeStats = React.useCallback(
+    (fileCount: number, chunkCount: number) => {
+      const targetId = knowledge?.id;
+      if (!targetId) return;
+      const queries = queryClient
+        .getQueryCache()
+        .findAll({ queryKey: ["knowledge"] });
+
+      queries.forEach((query) => {
+        queryClient.setQueryData(
+          query.queryKey,
+          (prevData: { items: KnowledgeItem[]; nextCursor?: string } | undefined) => {
+            if (!prevData) return prevData;
+            const updatedItems = prevData.items.map((item) =>
+              item.id === targetId
+                ? { ...item, fileCount, chunkCount }
+                : item
+            );
+            return { ...prevData, items: updatedItems };
+          }
+        );
+      });
+    },
+    [knowledge?.id, queryClient]
+  );
 
   const formatFileSize = (size?: number | null) => {
     if (typeof size !== "number") return "-";
@@ -71,6 +98,9 @@ export const KnowledgeDetailDialog: React.FC<KnowledgeDetailDialogProps> = ({
     return `${value.toFixed(2)} ${units[idx]}`;
   };
 
+  const fileCount = detail?.files.length ?? knowledge?.fileCount ?? 0;
+  const chunkCount = detail?.chunkCount ?? knowledge?.chunkCount ?? 0;
+
   const fetchDetail = React.useCallback(async () => {
     if (!knowledge?.id) return;
     const currentFetchId = ++fetchIdRef.current;
@@ -82,6 +112,7 @@ export const KnowledgeDetailDialog: React.FC<KnowledgeDetailDialogProps> = ({
       )) as KnowledgeDetail;
       if (fetchIdRef.current !== currentFetchId) return;
       setDetail(payload);
+      syncKnowledgeStats(payload.files.length, payload.chunkCount);
     } catch (error) {
       if (fetchIdRef.current !== currentFetchId) return;
       toast.error(
@@ -125,9 +156,8 @@ export const KnowledgeDetailDialog: React.FC<KnowledgeDetailDialogProps> = ({
           method: "DELETE",
         }
       );
-      setDetail((prev) =>
-        prev ? { ...prev, files: prev.files.filter((file) => file.id !== fileId) } : prev
-      );
+      queryClient.invalidateQueries({ queryKey: ["knowledge"] });
+      await fetchDetail();
       toast.success("文件已删除");
     } catch (error) {
       toast.error(
@@ -173,18 +203,14 @@ export const KnowledgeDetailDialog: React.FC<KnowledgeDetailDialogProps> = ({
                     <FileText className="h-4 w-4 text-muted-foreground" />
                     <div>
                       <p className="text-sm text-muted-foreground">文件数量</p>
-                      <p className="text-lg font-semibold">
-                        {knowledge.fileCount}
-                      </p>
+                      <p className="text-lg font-semibold">{fileCount}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <Hash className="h-4 w-4 text-muted-foreground" />
                     <div>
                       <p className="text-sm text-muted-foreground">切片数量</p>
-                      <p className="text-lg font-semibold">
-                        {knowledge.chunkCount}
-                      </p>
+                      <p className="text-lg font-semibold">{chunkCount}</p>
                     </div>
                   </div>
                 </div>
@@ -222,7 +248,7 @@ export const KnowledgeDetailDialog: React.FC<KnowledgeDetailDialogProps> = ({
               <h3 className="text-sm font-semibold mb-2">使用说明</h3>
               <div className="space-y-2 text-sm text-muted-foreground">
                 <p>
-                  • 此知识库包含 {knowledge.chunkCount} 个向量化切片，可用于 RAG
+                  • 此知识库包含 {chunkCount} 个向量化切片，可用于 RAG
                   检索
                 </p>
                 <p>
