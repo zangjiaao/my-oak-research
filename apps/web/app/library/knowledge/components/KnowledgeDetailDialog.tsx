@@ -70,12 +70,14 @@ export const KnowledgeDetailDialog: React.FC<KnowledgeDetailDialogProps> = ({
       queries.forEach((query) => {
         queryClient.setQueryData(
           query.queryKey,
-          (prevData: { items: KnowledgeItem[]; nextCursor?: string } | undefined) => {
+          (
+            prevData:
+              | { items: KnowledgeItem[]; nextCursor?: string }
+              | undefined
+          ) => {
             if (!prevData) return prevData;
             const updatedItems = prevData.items.map((item) =>
-              item.id === targetId
-                ? { ...item, fileCount, chunkCount }
-                : item
+              item.id === targetId ? { ...item, fileCount, chunkCount } : item
             );
             return { ...prevData, items: updatedItems };
           }
@@ -138,9 +140,7 @@ export const KnowledgeDetailDialog: React.FC<KnowledgeDetailDialogProps> = ({
       anchor.rel = "noopener noreferrer";
       anchor.click();
     } catch (error) {
-      toast.error(
-        (error as { message?: string })?.message || "下载文件失败"
-      );
+      toast.error((error as { message?: string })?.message || "下载文件失败");
     } finally {
       setDownloadingFile((prev) => (prev === fileId ? null : prev));
     }
@@ -160,9 +160,7 @@ export const KnowledgeDetailDialog: React.FC<KnowledgeDetailDialogProps> = ({
       await fetchDetail();
       toast.success("文件已删除");
     } catch (error) {
-      toast.error(
-        (error as { message?: string })?.message || "删除文件失败"
-      );
+      toast.error((error as { message?: string })?.message || "删除文件失败");
     } finally {
       setDeletingFile((prev) => (prev === fileId ? null : prev));
     }
@@ -247,10 +245,7 @@ export const KnowledgeDetailDialog: React.FC<KnowledgeDetailDialogProps> = ({
             <div className="border-t pt-4">
               <h3 className="text-sm font-semibold mb-2">使用说明</h3>
               <div className="space-y-2 text-sm text-muted-foreground">
-                <p>
-                  • 此知识库包含 {chunkCount} 个向量化切片，可用于 RAG
-                  检索
-                </p>
+                <p>• 此知识库包含 {chunkCount} 个向量化切片，可用于 RAG 检索</p>
                 <p>
                   • 在报告编辑器中选择此知识库后，LLM
                   会自动检索相关内容来增强报告
@@ -265,8 +260,8 @@ export const KnowledgeDetailDialog: React.FC<KnowledgeDetailDialogProps> = ({
               <h3 className="text-sm font-semibold">文件列表</h3>
               {loadingFiles ? (
                 <div className="space-y-2">
-                  <Skeleton className="h-12 w-full" />
-                  <Skeleton className="h-12 w-full" />
+                  <Skeleton className="h-8 w-full" />
+                  <Skeleton className="h-8 w-full" />
                 </div>
               ) : detail?.files?.length ? (
                 <div className="space-y-2">
@@ -283,7 +278,13 @@ export const KnowledgeDetailDialog: React.FC<KnowledgeDetailDialogProps> = ({
                           <span>{formatFileSize(file.size)}</span>
                           <span>上传于 {formatTimestamp(file.createdAt)}</span>
                           {file.mimeType && (
-                            <Badge variant="outline">{file.mimeType}</Badge>
+                            <Badge
+                              variant="outline"
+                              className="max-w-xs"
+                              title={file.mimeType}
+                            >
+                              <p className="truncate">{file.mimeType}</p>
+                            </Badge>
                           )}
                         </div>
                       </div>
