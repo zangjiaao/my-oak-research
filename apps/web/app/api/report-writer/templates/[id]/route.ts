@@ -56,6 +56,16 @@ export async function DELETE(
   if (!params.id) {
     return errorResponse("Missing template id");
   }
-  await prisma.reportTemplate.deleteMany({ where: { id: params.id } });
+  try {
+    await prisma.reportTemplate.delete({ where: { id: params.id } });
+  } catch (error: unknown) {
+    if (
+      error instanceof Error &&
+      (error as { code?: string }).code === "P2025"
+    ) {
+      return errorResponse("Template not found", 404);
+    }
+    throw error;
+  }
   return templateResponse({ id: params.id });
 }

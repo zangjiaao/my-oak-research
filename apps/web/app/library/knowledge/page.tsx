@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { KnowledgeCard } from "@/components/business/KnowledgeCard";
 import { Input } from "@/components/ui/input";
 import { Search, Plus } from "lucide-react";
@@ -36,6 +36,9 @@ const KnowledgePage = () => {
   const [detailKnowledge, setDetailKnowledge] = useState<KnowledgeItem | null>(
     null
   );
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+  const detailCloseTimer = useRef<NodeJS.Timeout | null>(null);
+  const closingKnowledgeRef = useRef<KnowledgeItem | null>(null);
 
   // 防抖搜索
   useEffect(() => {
@@ -68,6 +71,42 @@ const KnowledgePage = () => {
   const handleDelete = (knowledge: KnowledgeItem) => {
     setDeletingKnowledge(knowledge);
   };
+
+  const handleShowDetail = (knowledge: KnowledgeItem) => {
+    if (detailCloseTimer.current) {
+      clearTimeout(detailCloseTimer.current);
+      detailCloseTimer.current = null;
+    }
+    closingKnowledgeRef.current = null;
+    setDetailKnowledge(knowledge);
+    setDetailDialogOpen(true);
+  };
+
+  const handleDetailDialogOpenChange = (open: boolean) => {
+    setDetailDialogOpen(open);
+    if (!open) {
+      closingKnowledgeRef.current = detailKnowledge;
+      detailCloseTimer.current = setTimeout(() => {
+        closingKnowledgeRef.current = null;
+        detailCloseTimer.current = null;
+      }, 250);
+      setDetailKnowledge(null);
+    }
+
+    if (open && detailCloseTimer.current) {
+      clearTimeout(detailCloseTimer.current);
+      detailCloseTimer.current = null;
+      closingKnowledgeRef.current = null;
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (detailCloseTimer.current) {
+        clearTimeout(detailCloseTimer.current);
+      }
+    };
+  }, []);
 
   const confirmDelete = async () => {
     if (deletingKnowledge) {
@@ -124,7 +163,7 @@ const KnowledgePage = () => {
               knowledge={knowledge}
               onEdit={handleEdit}
               onDelete={handleDelete}
-              onClick={setDetailKnowledge}
+              onClick={handleShowDetail}
             />
           ))}
         </div>
@@ -137,9 +176,9 @@ const KnowledgePage = () => {
       />
 
       <KnowledgeDetailDialog
-        open={!!detailKnowledge}
-        onOpenChange={(open) => !open && setDetailKnowledge(null)}
-        knowledge={detailKnowledge}
+        open={detailDialogOpen}
+        onOpenChange={handleDetailDialogOpenChange}
+        knowledge={detailKnowledge ?? closingKnowledgeRef.current}
       />
 
       <AlertDialog

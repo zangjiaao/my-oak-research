@@ -127,9 +127,10 @@ const Headbar = () => {
                               size="icon"
                               aria-label="取消收藏"
                               onClick={() => {
+                                const currentlyBookmarked = true;
                                 toggleFavorite.mutate({
                                   contentId: bookmark.id,
-                                  isFavorite: false,
+                                  isFavorite: !currentlyBookmarked,
                                 });
                               }}
                             >

@@ -76,9 +76,16 @@ export async function DELETE(
   if (!params.id) {
     return fail("Missing report id");
   }
-  const result = await prisma.report.deleteMany({ where: { id: params.id } });
-  if (result.count === 0) {
-    return fail("Report not found", 404);
+  try {
+    await prisma.report.delete({ where: { id: params.id } });
+  } catch (error: unknown) {
+    if (
+      error instanceof Error &&
+      (error as { code?: string }).code === "P2025"
+    ) {
+      return fail("Report not found", 404);
+    }
+    throw error;
   }
   return respond({ id: params.id });
 }
