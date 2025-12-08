@@ -671,6 +671,7 @@ const ReportEditor = () => {
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
+                    <div className="flex flex-col gap-2">
                     <Textarea
                       value={prompt}
                       onChange={(event) => setPrompt(event.target.value)}
@@ -678,9 +679,11 @@ const ReportEditor = () => {
                       className="min-h-[140px]"
                       placeholder="Describe what you expect the report to cover."
                     />
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs text-muted-foreground text-right">
                       当前字数：{prompt.trim().length}
                     </p>
+                    </div>
+                    
                   </CardContent>
                 </Card>
 
