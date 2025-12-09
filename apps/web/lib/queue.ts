@@ -17,6 +17,14 @@ export type CollectJobPayload = {
   queryId: string;
 };
 
+export type KnowledgeProcessPayload = {
+  knowledgeId: string;
+  fileId: string;
+  storageKey: string;
+  vectorModel: string;
+  chunkSize: number;
+};
+
 export const defaultJobOpts: JobsOptions = {
   attempts: 3,
   backoff: { type: "exponential", delay: 2000 },
@@ -29,6 +37,13 @@ export const collectQueue = new Queue<CollectJobPayload>("collect-query", {
   connection: bullConnection,
 });
 export const collectQueueEvents = new QueueEvents("collect-query", {
+  connection: bullConnection,
+});
+export const knowledgeQueue = new Queue<KnowledgeProcessPayload>("knowledge-process", {
+  connection: bullConnection,
+  defaultJobOptions: defaultJobOpts,
+});
+export const knowledgeQueueEvents = new QueueEvents("knowledge-process", {
   connection: bullConnection,
 });
 
@@ -52,6 +67,16 @@ export function createCollectWorker(
   concurrency = 3
 ) {
   return new Worker<CollectJobPayload>("collect-query", processor, {
+    connection: bullConnection,
+    concurrency,
+  });
+}
+
+export function createKnowledgeWorker(
+  processor: (job: { data: KnowledgeProcessPayload }) => Promise<unknown>,
+  concurrency = 2
+) {
+  return new Worker<KnowledgeProcessPayload>("knowledge-process", processor, {
     connection: bullConnection,
     concurrency,
   });

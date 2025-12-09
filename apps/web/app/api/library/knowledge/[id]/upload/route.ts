@@ -3,6 +3,7 @@ import { z } from "zod";
 import prisma from "@/lib/prisma";
 import { json, badRequest, serverError, notFound } from "@/app/api/_utils/http";
 import { uploadFile, generateStorageKey } from "@/lib/storage";
+import { knowledgeQueue, defaultJobOpts } from "@/lib/queue";
 
 const UploadConfigSchema = z.object({
   vectorModel: z.string().optional().default("Doubao-embedding-240715"),
@@ -151,12 +152,20 @@ export async function POST(
       throw uploadError;
     }
 
-    // TODO: 这里应该将文件处理和向量化任务提交到 worker 队列
-    // 示例：await enqueueJob("knowledge-process", {
-    //   fileId: knowledgeFile.id,
-    //   storageKey,
-    //   config: config.data
-    // });
+    await knowledgeQueue.add(
+      "process",
+      {
+        knowledgeId: id,
+        fileId: knowledgeFile.id,
+        storageKey,
+        vectorModel: config.data.vectorModel,
+        chunkSize: config.data.chunkSize,
+      },
+      {
+        jobId: knowledgeFile.id,
+        ...defaultJobOpts,
+      }
+    );
 
     return json({
       success: true,

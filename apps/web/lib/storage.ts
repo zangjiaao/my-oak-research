@@ -12,6 +12,7 @@ import {
   HeadBucketCommand,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { Readable } from "stream";
 
 // MinIO/S3 配置
 const s3Config = {
@@ -183,6 +184,60 @@ export async function getFileUrl(
       `Failed to generate file URL: ${error instanceof Error ? error.message : "Unknown error"}`
     );
   }
+}
+
+export async function downloadFile(key: string): Promise<Buffer> {
+  try {
+    const command = new GetObjectCommand({
+      Bucket: BUCKET_NAME,
+      Key: key,
+    });
+
+    const response = await s3Client.send(command);
+    const body = response.Body;
+    if (!body) {
+      throw new Error("Empty body returned from storage");
+    }
+
+    if (typeof body === "string") {
+      return Buffer.from(body, "utf-8");
+    }
+
+    if (body instanceof Uint8Array) {
+      return Buffer.from(body);
+    }
+
+    if (body instanceof Readable) {
+      const chunks: Buffer[] = [];
+      for await (const chunk of body) {
+        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+      }
+      return Buffer.concat(chunks);
+    }
+
+    if (isAsyncIterable<Uint8Array>(body)) {
+      const chunks: Buffer[] = [];
+      for await (const chunk of body) {
+        chunks.push(Buffer.from(chunk));
+      }
+      return Buffer.concat(chunks);
+    }
+
+    throw new Error("Unsupported stream type");
+  } catch (error) {
+    console.error("Failed to download file:", error);
+    throw new Error(
+      `Failed to download file: ${error instanceof Error ? error.message : "Unknown error"}`
+    );
+  }
+}
+
+function isAsyncIterable<T>(value: unknown): value is AsyncIterable<T> {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    Symbol.asyncIterator in value
+  );
 }
 
 /**
