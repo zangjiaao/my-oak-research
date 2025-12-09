@@ -3,6 +3,7 @@ import { z } from "zod";
 import prisma from "@/lib/prisma";
 import { Prisma } from "@/app/generated/prisma";
 import { json, badRequest, serverError } from "@/app/api/_utils/http";
+import { createEmbedding } from "@oak/agents/embeddings";
 
 const RetrieveSchema = z.object({
   query: z.string().min(1).max(500),
@@ -51,70 +52,66 @@ export async function POST(request: NextRequest) {
       where.knowledgeId = { in: knowledgeIds };
     }
 
-    // 获取所有相关的切片
-    // TODO: 这里应该使用向量相似度检索，当前使用文本匹配作为临时方案
-    const chunks = await prisma.knowledgeChunk.findMany({
-      where,
-      include: {
-        knowledge: {
-          select: {
-            id: true,
-            name: true,
-            description: true,
-          },
-        },
-      },
-      take: topK * 3, // 获取更多候选，后续可以按相似度排序
-    });
+    const queryEmbedding = await createEmbedding(query);
+    const vectorBuffer = bufferFromVector(queryEmbedding);
 
-    // TODO: 实际应该：
-    // 1. 调用 embeddings API 将 query 转为向量
-    // 2. 计算每个 chunk 的 embedding 与 query embedding 的余弦相似度
-    // 3. 按相似度排序，过滤掉低于 minSimilarity 的
-    // 4. 返回 Top-K
+    const knowledgeFilter =
+      knowledgeIds && knowledgeIds.length > 0
+        ? Prisma.sql`AND kc."knowledgeId" = ANY(${knowledgeIds})`
+        : Prisma.empty;
 
-    // 临时方案：简单的文本匹配评分
-    const scoredChunks = chunks
-      .map((chunk) => {
-        const content = chunk.content.toLowerCase();
-        const queryLower = query.toLowerCase();
-        const queryWords = queryLower.split(/\s+/);
+    const rows = await prisma.$queryRaw<
+      Array<{
+        id: string;
+        content: string;
+        metadata: Prisma.JsonValue | null;
+        similarity: number;
+        knowledgeId: string;
+        knowledgeName: string;
+        knowledgeDescription: string | null;
+      }>
+    >(
+      Prisma.sql`
+        SELECT
+          kc.id,
+          kc.content,
+          kc.metadata,
+          kc."knowledgeId",
+          k.name AS "knowledgeName",
+          k.description AS "knowledgeDescription",
+          kc.embedding <=> ${vectorBuffer} AS similarity
+        FROM "KnowledgeChunk" kc
+        JOIN "Knowledge" k ON kc."knowledgeId" = k."id"
+        WHERE k."ownerId" = ${userId}
+        ${knowledgeFilter}
+        ORDER BY similarity ASC
+        LIMIT ${topK}
+      `
+    );
 
-        // 简单的关键词匹配评分
-        let score = 0;
-        queryWords.forEach((word) => {
-          if (content.includes(word)) {
-            score += 1;
-          }
-        });
+    const similarityThreshold = minSimilarity ?? 0.75;
+    const scoredChunks = rows
+      .map((row) => ({
+        row,
+        normalizedScore: Math.max(0, 1 - row.similarity),
+      }))
+      .filter(({ normalizedScore }) => normalizedScore >= similarityThreshold)
+      .sort((a, b) => b.normalizedScore - a.normalizedScore);
 
-        // 归一化到 0-1
-        const normalizedScore = Math.min(score / queryWords.length, 1);
-
-        return {
-          ...chunk,
-          similarity: normalizedScore,
-        };
-      })
-      .filter((chunk) => chunk.similarity >= (minSimilarity || 0.75))
-      .sort((a, b) => b.similarity - a.similarity)
-      .slice(0, topK);
-
-    const results = scoredChunks.map((chunk) => {
-      // 类型安全的 metadata 处理
-      const chunkMetadata = chunk.metadata as
+    const results = scoredChunks.map(({ row, normalizedScore }) => {
+      const chunkMetadata = row.metadata as
         | Record<string, string | number | boolean | null>
         | null
         | undefined;
 
       return {
-        id: chunk.id,
-        content: chunk.content,
-        similarity: chunk.similarity,
+        id: row.id,
+        content: row.content,
+        similarity: normalizedScore,
         metadata: {
-          knowledgeId: chunk.knowledgeId,
-          knowledgeName: chunk.knowledge.name,
-          knowledgeDescription: chunk.knowledge.description,
+          knowledgeId: row.knowledgeId,
+          knowledgeName: row.knowledgeName,
+          knowledgeDescription: row.knowledgeDescription,
           ...(chunkMetadata || {}),
         },
       };
@@ -131,4 +128,11 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     return serverError(error);
   }
+}
+
+function bufferFromVector(vector: number[]): Buffer {
+  const float32 = Float32Array.from(vector);
+  const buffer = new ArrayBuffer(float32.byteLength);
+  new Float32Array(buffer).set(float32);
+  return Buffer.from(buffer);
 }

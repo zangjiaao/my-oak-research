@@ -42,6 +42,12 @@ interface KnowledgeDetailDialogProps {
   knowledge: KnowledgeItem | null;
 }
 
+type TaskState = {
+  type: string;
+  message: string;
+  chunkCount?: number | null;
+};
+
 /**
  * 知识库详情对话框
  * 显示知识库的文件列表、切片统计等信息
@@ -57,6 +63,9 @@ export const KnowledgeDetailDialog: React.FC<KnowledgeDetailDialogProps> = ({
     null
   );
   const [deletingFile, setDeletingFile] = React.useState<string | null>(null);
+  const [taskStates, setTaskStates] = React.useState<
+    Record<string, TaskState>
+  >({});
   const queryClient = useQueryClient();
   const fetchIdRef = React.useRef(0);
   const syncKnowledgeStats = React.useCallback(
@@ -126,6 +135,51 @@ export const KnowledgeDetailDialog: React.FC<KnowledgeDetailDialogProps> = ({
       }
     }
   }, [knowledge?.id]);
+
+  React.useEffect(() => {
+    if (!detail?.files?.length) {
+      setTaskStates({});
+      return;
+    }
+
+    const sources: EventSource[] = [];
+    detail.files.forEach((file) => {
+      const es = new EventSource(`/api/tasks/${file.id}/stream`);
+
+      const handler = (event: MessageEvent) => {
+        try {
+          const data = JSON.parse(event.data);
+          setTaskStates((prev) => ({
+            ...prev,
+            [file.id]: {
+              type: data?.type ?? prev[file.id]?.type ?? "pending",
+              message:
+                typeof data?.message === "string"
+                  ? data.message
+                  : prev[file.id]?.message ?? "处理中",
+              chunkCount:
+                typeof data?.chunkCount === "number"
+                  ? data.chunkCount
+                  : prev[file.id]?.chunkCount ?? null,
+            },
+          }));
+        } catch {
+          // ignore
+        }
+      };
+
+      es.addEventListener("message", handler);
+      es.onerror = () => {
+        // keep retrying
+      };
+
+      sources.push(es);
+    });
+
+    return () => {
+      sources.forEach((source) => source.close());
+    };
+  }, [detail?.files]);
 
   const handleDownloadFile = async (fileId: string) => {
     if (!knowledge?.id) return;
@@ -254,6 +308,39 @@ export const KnowledgeDetailDialog: React.FC<KnowledgeDetailDialogProps> = ({
                   • 切片数量越多，检索到的相关内容越丰富，但也会增加生成时间
                 </p>
               </div>
+            </div>
+
+            <div className="border-t pt-4 space-y-4">
+              <h3 className="text-sm font-semibold">切片任务状态</h3>
+              {detail?.files?.length ? (
+                <div className="space-y-3">
+                  {detail.files.map((file) => {
+                    const state = taskStates[file.id];
+                    return (
+                      <div
+                        key={`status-${file.id}`}
+                        className="rounded-2xl border px-4 py-3 text-sm"
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <p className="font-semibold truncate">{file.name}</p>
+                          <span className="text-xs text-muted-foreground">
+                            {state?.chunkCount != null
+                              ? `切片 ${state.chunkCount}`
+                              : "等待切片"}
+                          </span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          {state?.message ?? "切片任务未开始或正在排队"}
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  暂无文件相关的切片任务
+                </p>
+              )}
             </div>
 
             <div className="border-t pt-4 space-y-4">
