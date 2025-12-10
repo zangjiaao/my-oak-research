@@ -31,8 +31,10 @@ export async function createEmbeddings(
   inputs: string[],
   model: EmbeddingModel = DEFAULT_MODEL
 ): Promise<number[][]> {
+  console.log(`[embeddings] createEmbeddings called with model=${model}, inputs=${inputs.length}`);
   const client = getOpenAIClient();
   if (!client) {
+    console.log("[embeddings] OpenAI API key missing, returning zero vectors");
     return inputs.map(() => zeros());
   }
 
@@ -40,6 +42,10 @@ export async function createEmbeddings(
     model: resolveModel(model),
     input: inputs,
   });
+
+  console.log(
+    `[embeddings] received ${response.data.length} embeddings from ${resolveModel(model)}`
+  );
 
   return response.data.map((item) => item.embedding);
 }

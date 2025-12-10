@@ -33,14 +33,15 @@ export async function GET(
             createdAt: "desc",
           },
         },
-        knowledgeChunks: {
-          select: {
-            id: true,
-            chunkIndex: true,
-            content: true,
-            metadata: true,
-            createdAt: true,
-          },
+      knowledgeChunks: {
+        select: {
+          id: true,
+          chunkIndex: true,
+          content: true,
+          metadata: true,
+          createdAt: true,
+          fileId: true,
+        },
           orderBy: {
             chunkIndex: "asc",
           },
@@ -51,6 +52,16 @@ export async function GET(
     if (!knowledge) {
       return notFound("Knowledge not found");
     }
+
+    const chunkCountMap = knowledge.knowledgeChunks.reduce<Record<string, number>>(
+      (acc, chunk) => {
+        if (chunk.fileId) {
+          acc[chunk.fileId] = (acc[chunk.fileId] ?? 0) + 1;
+        }
+        return acc;
+      },
+      {}
+    );
 
     return json({
       success: true,
@@ -66,6 +77,7 @@ export async function GET(
           mimeType: file.mimeType,
           size: file.size,
           createdAt: file.createdAt.toISOString(),
+          chunkCount: chunkCountMap[file.id] ?? 0,
         })),
         chunks: knowledge.knowledgeChunks,
         chunkCount: knowledge.knowledgeChunks.length,

@@ -6,6 +6,10 @@ import { createEmbeddings } from "@oak/agents/embeddings";
 export const knowledgeWorker = createKnowledgeWorker(async (job) => {
   const { knowledgeId, fileId, storageKey, vectorModel, chunkSize } = job.data;
 
+  console.log(
+    `[knowledge-worker] start job fileId=${fileId} knowledgeId=${knowledgeId}`
+  );
+
   await publishTaskEvent(fileId, {
     type: "knowledge:enqueue",
     message: "知识库切片任务已入队",
@@ -24,6 +28,10 @@ export const knowledgeWorker = createKnowledgeWorker(async (job) => {
     throw new Error(`Knowledge file ${fileId} not found`);
   }
 
+  console.log(
+    `[knowledge-worker] file ${fileId} downloaded size=${knowledgeFile.size}`
+  );
+
   const buffer = await downloadFile(storageKey);
   const text = extractText(buffer, knowledgeFile.mimeType, knowledgeFile.name);
 
@@ -36,6 +44,9 @@ export const knowledgeWorker = createKnowledgeWorker(async (job) => {
     type: "knowledge:chunk",
     message: `生成 ${chunks.length} 个切片`,
   });
+  console.log(
+    `[knowledge-worker] created ${chunks.length} chunks for fileId=${fileId}`
+  );
 
   const embeddings = await createEmbeddings(chunks, vectorModel);
 
@@ -70,6 +81,9 @@ export const knowledgeWorker = createKnowledgeWorker(async (job) => {
     message: "知识库切片处理完成",
     chunkCount: chunks.length,
   });
+  console.log(
+    `[knowledge-worker] job done for fileId=${fileId} chunkCount=${chunks.length}`
+  );
 });
 
 function extractText(

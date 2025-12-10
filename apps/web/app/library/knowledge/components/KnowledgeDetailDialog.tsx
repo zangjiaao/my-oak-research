@@ -23,6 +23,7 @@ type KnowledgeDetailFile = {
   mimeType: string | null;
   size: number | null;
   createdAt: string;
+  chunkCount: number;
 };
 
 type KnowledgeDetail = {
@@ -149,6 +150,9 @@ export const KnowledgeDetailDialog: React.FC<KnowledgeDetailDialogProps> = ({
       const handler = (event: MessageEvent) => {
         try {
           const data = JSON.parse(event.data);
+          if (data?.type === "heartbeat") {
+            return;
+          }
           setTaskStates((prev) => ({
             ...prev,
             [file.id]: {
@@ -316,6 +320,10 @@ export const KnowledgeDetailDialog: React.FC<KnowledgeDetailDialogProps> = ({
                 <div className="space-y-3">
                   {detail.files.map((file) => {
                     const state = taskStates[file.id];
+                    const completed =
+                      state?.type === "knowledge:done" && state?.chunkCount != null
+                        ? true
+                        : !state && chunkCount > 0;
                     return (
                       <div
                         key={`status-${file.id}`}
@@ -326,11 +334,17 @@ export const KnowledgeDetailDialog: React.FC<KnowledgeDetailDialogProps> = ({
                           <span className="text-xs text-muted-foreground">
                             {state?.chunkCount != null
                               ? `切片 ${state.chunkCount}`
+                              : completed
+                              ? `切片 ${file.chunkCount}`
                               : "等待切片"}
                           </span>
                         </div>
                         <p className="text-xs text-muted-foreground">
-                          {state?.message ?? "切片任务未开始或正在排队"}
+                          {state?.message
+                            ? state.message
+                            : completed
+                            ? `切片任务已完成，共 ${file.chunkCount} 个切片`
+                            : "切片任务未开始或正在排队"}
                         </p>
                       </div>
                     );
