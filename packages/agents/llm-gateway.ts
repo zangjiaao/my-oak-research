@@ -1,9 +1,9 @@
-import { ZodType } from "zod";
-import OpenAI from "openai";
+import { generateObject, generateText } from "ai";
+import { openai, defaultModel, apiKey } from "./provider";
 
 type JsonRequest = {
   prompt: string;
-  schema?: ZodType;
+  schema?: any; // Using 'any' to avoid "Type instantiation is excessively deep" error with AI SDK
   model?: string;
   temperature?: number;
   metadata?: Record<string, unknown>;
@@ -20,70 +20,53 @@ const DEFAULT_LLMSUMMARY = (prompt: string) => {
 
 export const llmGateway = {
   async json<T>(task: string, request: JsonRequest): Promise<T> {
-    const gatewayUrl =
-      process.env.LLM_GATEWAY_URL ??
-      process.env.LLM_GATEWAY_BASE_URL ??
-      "https://api.llmgateway.io/v1";
-    const apiKey = process.env.LLM_GATEWAY_API_KEY;
-    let output: unknown;
+    const modelId = request.model ?? defaultModel;
+    console.log(`[llm-gateway] task=${task} model=${modelId}`);
 
-    type ChatCompletionMessages = Parameters<
-      OpenAI["chat"]["completions"]["create"]
-    >[0]["messages"];
+    if (!apiKey) {
+      console.warn("[llm-gateway] No API key found, returning default summary");
+      return {
+        summary: DEFAULT_LLMSUMMARY(request.prompt),
+        relevance: true,
+      } as unknown as T;
+    }
 
-    const defaultModel = process.env.LLM_DEFAULT_MODEL?.trim() || "gpt-5";
+    const prompt = [`Task: ${task}`, request.prompt]
+      .filter(Boolean)
+      .join("\n\n");
 
-    if (gatewayUrl && apiKey) {
-      const client = new OpenAI({ apiKey, baseURL: gatewayUrl });
+    try {
+      if (request.schema) {
+        const result = await generateObject({
+          model: openai(modelId),
+          schema: request.schema,
+          prompt,
+          temperature: request.temperature ?? 0.3,
+          // Use 'object' output to ensure structured data
+          output: "object",
+        });
+        return result.object as T;
+      } else {
+        const { text } = await generateText({
+          model: openai(modelId),
+          prompt,
+          temperature: request.temperature ?? 0.3,
+        });
 
-      const composedMessage: ChatCompletionMessages = [
-        {
-          role: "user",
-          content: [`Task: ${task}`, request.prompt]
-            .filter(Boolean)
-            .join("\n\n"),
-        },
-      ];
-
-      const completion = await client.chat.completions.create({
-        model: request.model ?? defaultModel,
-        messages: composedMessage as ChatCompletionMessages,
-        temperature: request.temperature ?? 0.3,
-      });
-
-      const text =
-        completion.choices?.[0]?.message?.content?.trim() ??
-        completion.choices?.[0]?.message?.content ??
-        "";
-
-      if (text) {
         try {
+          // Attempt to parse JSON if no schema was provided but it looks like JSON
           const cleanedText = text
             .replace(/```json\s*/g, "")
             .replace(/```$/g, "")
             .trim();
-          output = JSON.parse(cleanedText);
+          return JSON.parse(cleanedText) as T;
         } catch {
-          output = text;
+          return text as unknown as T;
         }
-      } else {
-        output = text;
       }
-    } else {
-      output = {
-        summary: DEFAULT_LLMSUMMARY(request.prompt),
-        relevance: true,
-      };
+    } catch (error: any) {
+      console.error(`[llm-gateway] Error in LLM task "${task}":`, error.message);
+      throw error;
     }
-
-    if (request.schema) {
-      if (typeof output === "string") {
-        throw new Error(
-          `LLM returned plain text instead of JSON: ${output.slice(0, 200)}`
-        );
-      }
-      return request.schema.parse(output) as T;
-    }
-    return output as T;
   },
 };

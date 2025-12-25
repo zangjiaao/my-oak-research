@@ -43,7 +43,7 @@ alwaysApply: true
 4. **向量化**
 
    - 统一调用 `packages/agents/embeddings.ts`
-   - 默认模型：`Doubao-embedding-240715`
+   - 默认模型：`text-embedding-ada-002`
    - 结果存储到向量库（Postgres + pgvector 或外部 Milvus/Weaviate）
 
 5. **存储**

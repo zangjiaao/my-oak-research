@@ -2,7 +2,7 @@
   "name": "worker",
   "private": true,
   "scripts": {
-    "dev": "tsx --env-file .env index.ts",
+    "dev": "tsx watch --env-file .env index.ts",
     "build": "tsc -p tsconfig.json",
     "start": "tsx index.ts",
     "lint": "echo 'worker lint not configured'",
@@ -12,7 +12,8 @@
   "dependencies": {
     "@prisma/client": "^7.0.1",
     "@prisma/adapter-pg": "^7.0.1",
-    "prisma": "^7.0.1"
+    "prisma": "^7.0.1",
+    "@oak/agents": "*"
   },
   "devDependencies": {
     "tsx": "^4.20.5",

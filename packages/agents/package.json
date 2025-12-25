@@ -1,0 +1,12 @@
+{
+  "name": "@oak/agents",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./index.ts",
+  "types": "./index.ts",
+  "dependencies": {
+    "@ai-sdk/openai": "^3.0.1",
+    "ai": "^6.0.3",
+    "zod": "^3.0.0"
+  }
+}

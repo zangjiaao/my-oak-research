@@ -6,7 +6,7 @@ import { uploadFile, generateStorageKey } from "@/lib/storage";
 import { knowledgeQueue, defaultJobOpts } from "@/lib/queue";
 
 const UploadConfigSchema = z.object({
-  vectorModel: z.string().optional().default("Doubao-embedding-240715"),
+  vectorModel: z.string().optional().default("text-embedding-ada-002"),
   chunkSize: z.coerce.number().int().min(200).max(2000).default(500),
 });
 
@@ -67,16 +67,16 @@ export async function POST(
       if (errorMessage.includes("CRLF") || errorMessage.includes("FormData")) {
         return badRequest(
           "文件上传失败：检测到文件名编码问题。\n" +
-            "解决方案：\n" +
-            "1. 在 Postman 中，请确保文件名的 Content-Disposition header 使用正确的编码格式\n" +
-            "2. 或者将文件重命名为仅包含英文字母、数字和常见符号的名称\n" +
-            "3. 或者使用浏览器或 curl 命令上传文件\n" +
-            "\n" +
-            "使用 curl 上传示例：\n" +
-            `curl -X POST "http://localhost:3000/api/library/knowledge/${id}/upload" \\\n` +
-            `  -F "file=@your-file.pdf" \\\n` +
-            `  -F "vectorModel=Doubao-embedding-240715" \\\n` +
-            `  -F "chunkSize=500"`
+          "解决方案：\n" +
+          "1. 在 Postman 中，请确保文件名的 Content-Disposition header 使用正确的编码格式\n" +
+          "2. 或者将文件重命名为仅包含英文字母、数字和常见符号的名称\n" +
+          "3. 或者使用浏览器或 curl 命令上传文件\n" +
+          "\n" +
+          "使用 curl 上传示例：\n" +
+          `curl -X POST "http://localhost:3000/api/library/knowledge/${id}/upload" \\\n` +
+          `  -F "file=@your-file.pdf" \\\n` +
+          `  -F "vectorModel=text-embedding-ada-002" \\\n` +
+          `  -F "chunkSize=500"`
         );
       }
 

@@ -47,7 +47,7 @@ const KnowledgeSchema = z.object({
     .max(100, "名称不能超过100个字符"),
   description: z.string().max(500, "描述不能超过500个字符").optional(),
   file: z.instanceof(File).optional(),
-  vectorModel: z.string().optional().default("Doubao-embedding-240715"),
+  vectorModel: z.string().optional().default("text-embedding-ada-002"),
   chunkSize: z.coerce.number().int().min(200).max(2000).default(500).optional(),
 });
 
@@ -60,7 +60,6 @@ interface KnowledgeDialogProps {
 }
 
 const VECTOR_MODELS = [
-  { value: "Doubao-embedding-240715", label: "Doubao Embedding" },
   { value: "text-embedding-ada-002", label: "OpenAI Ada-002" },
 ];
 
@@ -79,7 +78,7 @@ export const KnowledgeDialog: React.FC<KnowledgeDialogProps> = ({
     defaultValues: {
       name: knowledge?.name || "",
       description: knowledge?.description || "",
-      vectorModel: "Doubao-embedding-240715",
+      vectorModel: "text-embedding-ada-002",
       chunkSize: 500,
     },
   });
@@ -89,14 +88,14 @@ export const KnowledgeDialog: React.FC<KnowledgeDialogProps> = ({
       form.reset({
         name: knowledge.name,
         description: knowledge.description || "",
-        vectorModel: "Doubao-embedding-240715",
+        vectorModel: "text-embedding-ada-002",
         chunkSize: 500,
       });
     } else {
       form.reset({
         name: "",
         description: "",
-        vectorModel: "Doubao-embedding-240715",
+        vectorModel: "text-embedding-ada-002",
         chunkSize: 500,
       });
     }
