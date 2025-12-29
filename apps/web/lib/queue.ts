@@ -79,5 +79,6 @@ export function createKnowledgeWorker(
   return new Worker<KnowledgeProcessPayload>("knowledge-process", processor, {
     connection: bullConnection,
     concurrency,
+    lockDuration: 1800000, // 30 minutes for massive files
   });
 }

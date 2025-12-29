@@ -82,8 +82,20 @@ export async function DELETE(
       }
     }
 
+    // 1. Delete associated chunks first (since there's no cascade in schema)
+    await prisma.knowledgeChunk.deleteMany({
+      where: { fileId: fileId },
+    });
+
+    // 2. Delete the file record
     await prisma.knowledgeFile.delete({
       where: { id: fileId },
+    });
+
+    // 3. Update knowledge timestamp
+    await prisma.knowledge.update({
+      where: { id: id },
+      data: { updatedAt: new Date() },
     });
 
     return json({
