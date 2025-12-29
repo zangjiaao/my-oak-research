@@ -330,21 +330,21 @@ export const KnowledgeDetailDialog: React.FC<KnowledgeDetailDialogProps> = ({
                         className="rounded-2xl border px-4 py-3 text-sm"
                       >
                         <div className="flex items-center justify-between gap-3">
-                          <p className="font-semibold truncate">{file.name}</p>
-                          <span className="text-xs text-muted-foreground">
+                          <p className="font-semibold truncate min-w-0">{file.name}</p>
+                          <span className="text-xs text-muted-foreground shrink-0">
                             {state?.chunkCount != null
                               ? `切片 ${state.chunkCount}`
                               : completed
-                              ? `切片 ${file.chunkCount}`
-                              : "等待切片"}
+                                ? `切片 ${file.chunkCount}`
+                                : "等待切片"}
                           </span>
                         </div>
                         <p className="text-xs text-muted-foreground">
                           {state?.message
                             ? state.message
                             : completed
-                            ? `切片任务已完成，共 ${file.chunkCount} 个切片`
-                            : "切片任务未开始或正在排队"}
+                              ? `切片任务已完成，共 ${file.chunkCount} 个切片`
+                              : "切片任务未开始或正在排队"}
                         </p>
                       </div>
                     );

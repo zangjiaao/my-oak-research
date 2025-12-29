@@ -53,7 +53,8 @@ export async function POST(request: NextRequest) {
     }
 
     const queryEmbedding = await createEmbedding(query);
-    const vectorBuffer = bufferFromVector(queryEmbedding);
+    // 将向量数组转换为 pgvector 特定的字符串格式 [0.1, 0.2, ...]
+    const vectorString = `[${queryEmbedding.join(",")}]`;
 
     const knowledgeFilter =
       knowledgeIds && knowledgeIds.length > 0
@@ -79,7 +80,7 @@ export async function POST(request: NextRequest) {
           kc."knowledgeId",
           k.name AS "knowledgeName",
           k.description AS "knowledgeDescription",
-          kc.embedding <=> ${vectorBuffer} AS similarity
+          kc.embedding::vector <=> ${vectorString}::vector AS similarity
         FROM "KnowledgeChunk" kc
         JOIN "Knowledge" k ON kc."knowledgeId" = k."id"
         WHERE k."ownerId" = ${userId}
@@ -128,11 +129,4 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     return serverError(error);
   }
-}
-
-function bufferFromVector(vector: number[]): Buffer {
-  const float32 = Float32Array.from(vector);
-  const buffer = new ArrayBuffer(float32.byteLength);
-  new Float32Array(buffer).set(float32);
-  return Buffer.from(buffer);
 }

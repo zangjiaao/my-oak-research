@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Dialog,
   DialogContent,
@@ -14,8 +14,20 @@ import { Separator } from "@/components/ui/separator";
 import { MarkdownRenderer } from "@/components/ui/markdown/MarkdownRenderer";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
-import { FileText } from "lucide-react";
+import { FileText, Trash2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import Link from "next/link";
+import { toast } from "sonner";
+import React from "react";
 
 interface ReportDetailDialogProps {
   reportId: string | null;
@@ -81,11 +93,46 @@ export function ReportDetailDialog({
   open,
   onOpenChange,
 }: ReportDetailDialogProps) {
+  const queryClient = useQueryClient();
+  const [isDeleting, setIsDeleting] = React.useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
+
   const { data: report, isLoading, error } = useQuery({
     queryKey: ["report-detail", reportId],
     queryFn: () => fetchReportDetail(reportId!),
     enabled: open && !!reportId,
   });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const response = await fetch(`/api/report-writer/reports/${id}`, {
+        method: "DELETE",
+      });
+      const payload = await response.json();
+      if (!response.ok || payload?.success === false) {
+        throw new Error(payload?.error?.message ?? "删除报告失败");
+      }
+      return payload.data;
+    },
+    onSuccess: () => {
+      toast.success("报告已成功删除");
+      queryClient.invalidateQueries({ queryKey: ["reports"] });
+      onOpenChange(false);
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+    onSettled: () => {
+      setIsDeleting(false);
+    },
+  });
+
+  const handleDelete = () => {
+    if (!reportId) return;
+    setIsDeleting(true);
+    deleteMutation.mutate(reportId);
+    setShowDeleteConfirm(false);
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -190,12 +237,45 @@ export function ReportDetailDialog({
           </div>
           <div className="flex items-center gap-2">
             {report && (
-              <Button asChild variant="outline" size="sm">
-                <Link href={`/report/editor?reportId=${report.id}`}>
-                  <FileText className="mr-2 h-4 w-4" />
-                  继续编辑
-                </Link>
-              </Button>
+              <>
+                <div onClick={(e) => e.stopPropagation()}>
+                  <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                      onClick={() => setShowDeleteConfirm(true)}
+                      disabled={isDeleting}
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      删除
+                    </Button>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>确定要删除这份报告吗？</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          此操作无法撤销，该报告的所有内容、摘要以及关联的素材引用将被永久删除。
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>取消</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={handleDelete}
+                          className="bg-destructive text-white hover:bg-destructive/90"
+                        >
+                          确认删除
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
+                <Button asChild variant="outline" size="sm">
+                  <Link href={`/report/editor?reportId=${report.id}`}>
+                    <FileText className="mr-2 h-4 w-4" />
+                    继续编辑
+                  </Link>
+                </Button>
+              </>
             )}
           </div>
         </div>
