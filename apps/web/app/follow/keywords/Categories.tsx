@@ -1,60 +1,67 @@
 "use client";
-
 import { Category } from "@/app/generated/prisma";
-import {
-  Table,
-  TableHeader,
-  TableRow,
-  TableHead,
-  TableBody,
-  TableCell,
-} from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { PencilIcon, TrashIcon } from "lucide-react";
 import EditCategoryDialog from "./CategoryDialog";
 import DeleteCategoryDialog from "./CategoryAlert";
+import {
+  DataTable,
+  DataTableColumn,
+  DataTableAction,
+} from "@/components/common";
 
 const CategoryTable = ({ categories }: { categories: Category[] }) => {
+  // 定义表格列配置
+  const columns: DataTableColumn<Category>[] = [
+    {
+      key: "name",
+      label: "Name",
+      render: (category) => category.name,
+    },
+    {
+      key: "description",
+      label: "Description",
+      render: (category) => category.description || "-",
+    },
+  ];
+
+  // 定义操作配置
+  const actions: DataTableAction<Category>[] = [
+    {
+      type: "edit",
+      render: (category) => (
+        <EditCategoryDialog
+          category={category}
+          triggerButton={
+            <Button size="sm" variant="outline">
+              <PencilIcon className="size-3" />
+            </Button>
+          }
+        />
+      ),
+    },
+    {
+      type: "delete",
+      render: (category) => (
+        <DeleteCategoryDialog
+          category={category}
+          triggerButton={
+            <Button size="sm" variant="outline">
+              <TrashIcon className="size-3" />
+            </Button>
+          }
+        />
+      ),
+    },
+  ];
+
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>ID</TableHead>
-          <TableHead>Name</TableHead>
-          <TableHead>Description</TableHead>
-          <TableHead>Action</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {categories.map((category, index) => (
-          <TableRow key={category.id}>
-            <TableCell>{index + 1}</TableCell>
-            <TableCell>{category.name}</TableCell>
-            <TableCell>{category.description || "-"}</TableCell>
-            <TableCell>
-              <div className="flex items-center gap-2">
-                <EditCategoryDialog
-                  category={category}
-                  triggerButton={
-                    <Button size="sm" variant="outline">
-                      <PencilIcon className="size-3" />
-                    </Button>
-                  }
-                />
-                <DeleteCategoryDialog
-                  category={category}
-                  triggerButton={
-                    <Button size="sm" variant="outline">
-                      <TrashIcon className="size-3" />
-                    </Button>
-                  }
-                />
-              </div>
-            </TableCell>
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+    <DataTable
+      data={categories}
+      columns={columns}
+      actions={actions}
+      emptyMessage="No categories found. Add your first category to get started."
+    />
   );
 };
 
