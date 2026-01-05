@@ -13,13 +13,14 @@ const errorResponse = (message: string, status = 400, details?: unknown) =>
 
 export async function GET(
   _req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  if (!params.id) {
+  const { id } = await params;
+  if (!id) {
     return errorResponse("Missing template id");
   }
   const template = await prisma.reportTemplate.findUnique({
-    where: { id: params.id },
+    where: { id },
   });
   if (!template) return errorResponse("Template not found", 404);
   return templateResponse(template);
@@ -27,9 +28,10 @@ export async function GET(
 
 export async function PATCH(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  if (!params.id) {
+  const { id } = await params;
+  if (!id) {
     return errorResponse("Missing template id");
   }
   const body = await req.json().catch(() => ({}));
@@ -38,7 +40,7 @@ export async function PATCH(
     return errorResponse("Invalid payload", 400, parsed.error.flatten());
   }
   const template = await prisma.reportTemplate.update({
-    where: { id: params.id },
+    where: { id },
     data: {
       name: parsed.data.name,
       description: parsed.data.description,
@@ -51,13 +53,14 @@ export async function PATCH(
 
 export async function DELETE(
   _req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  if (!params.id) {
+  const { id } = await params;
+  if (!id) {
     return errorResponse("Missing template id");
   }
   try {
-    await prisma.reportTemplate.delete({ where: { id: params.id } });
+    await prisma.reportTemplate.delete({ where: { id } });
   } catch (error: unknown) {
     if (
       error instanceof Error &&
@@ -67,5 +70,5 @@ export async function DELETE(
     }
     throw error;
   }
-  return templateResponse({ id: params.id });
+  return templateResponse({ id });
 }

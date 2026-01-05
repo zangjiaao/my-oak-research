@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import { createKnowledgeWorker, publishTaskEvent } from "@/lib/queue";
 import prisma from "@/lib/prisma";
 import { downloadFile } from "@/lib/storage";
@@ -83,22 +84,27 @@ export const knowledgeWorker = createKnowledgeWorker(async (job) => {
           subBatch.map((content, index) => {
             const localBatchIndex = k + index;
             const globalIndex = i + localBatchIndex;
-            return prisma.knowledgeChunk.create({
-              data: {
-                knowledgeId,
+            const embedding = embeddings[localBatchIndex];
+            const vectorString = `[${embedding.join(",")}]`;
+
+            return prisma.$executeRawUnsafe(
+              `INSERT INTO "KnowledgeChunk" ("id", "knowledgeId", "fileId", "content", "metadata", "embedding", "chunkIndex", "createdAt")
+               VALUES ($1, $2, $3, $4, $5::jsonb, ${vectorString}::vector, $6, NOW())`,
+              // Manually generate a CUID-like ID or use a UUID
+              // For simplicity and since we are using raw SQL, we use a random UUID
+              crypto.randomUUID(),
+              knowledgeId,
+              fileId,
+              content,
+              JSON.stringify({
+                fileName: knowledgeFile.name,
                 fileId,
-                content,
-                metadata: {
-                  fileName: knowledgeFile.name,
-                  fileId,
-                  chunkIndex: globalIndex,
-                  chunkSize,
-                  knowledgeName: knowledgeFile.knowledge?.name,
-                },
-                embedding: vectorToBuffer(embeddings[localBatchIndex]),
                 chunkIndex: globalIndex,
-              },
-            });
+                chunkSize,
+                knowledgeName: knowledgeFile.knowledge?.name,
+              }),
+              globalIndex
+            );
           })
         ).catch(err => {
           throw new Error(`数据库存入失败: ${err.message}`);
@@ -214,10 +220,4 @@ function splitTextIntoChunks(text: string, maxTokens: number): string[] {
   return result;
 }
 
-function vectorToBuffer(vector: number[]): Uint8Array<ArrayBuffer> {
-  const float32 = Float32Array.from(vector);
-  const arrayBuffer = new ArrayBuffer(float32.byteLength);
-  new Float32Array(arrayBuffer).set(float32);
-  const bytes = new Uint8Array(arrayBuffer);
-  return bytes as Uint8Array<ArrayBuffer>;
-}
+

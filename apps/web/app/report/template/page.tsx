@@ -17,6 +17,9 @@ import {
 } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { TEMPLATE_VARIABLES } from "@/lib/template";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Card, CardContent } from "@/components/ui/card";
+
 
 type TemplatePayload = {
   id: string;
@@ -26,50 +29,24 @@ type TemplatePayload = {
   metadata?: Record<string, unknown> | null;
 };
 
-const fallbackTemplates: TemplatePayload[] = [
-  {
-    id: "template-executive",
-    name: "Executive Summary",
-    description: "通用的执行摘要结构，适合上层汇报。",
-    markdown: `# {{title}}
+const TemplateSkeleton = () => (
+  <Card>
+    <CardContent className="p-4">
+      <div className="flex flex-col gap-3">
+        <Skeleton className="h-44 w-full" />
+        <div className="flex flex-col gap-2">
+          <Skeleton className="h-6 w-3/4" />
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-full" />
+        </div>
+        <div className="flex items-center justify-end gap-2 pt-2">
+          <Skeleton className="h-8 w-16" />
+        </div>
+      </div>
+    </CardContent>
+  </Card>
+);
 
-## 摘要
-
-{{summary}}
-
-## 内容
-
-{{markdown}}`,
-  },
-  {
-    id: "template-tactical",
-    name: "战术节点周报",
-    description: "强调时间轴与战术节点，适合指控层使用。",
-    markdown: `# {{title}}
-
-## 摘要
-
-{{summary}}
-
-## 时间轴与节点
-
-{{markdown}}`,
-  },
-  {
-    id: "template-risks",
-    name: "风险研判简报",
-    description: "聚焦风险与推荐动作，带有表格格式。",
-    markdown: `# {{title}}
-
-## 摘要
-
-{{summary}}
-
-## 主要风险
-
-{{markdown}}`,
-  },
-];
 
 const initialForm = { name: "", description: "", markdown: "" };
 
@@ -107,7 +84,7 @@ const ReportTemplate = () => {
     };
   }, []);
 
-  const displayedTemplates = templates.length ? templates : fallbackTemplates;
+  const displayedTemplates = templates;
 
   const filteredTemplates = useMemo(() => {
     const keyword = searchTerm.trim().toLowerCase();
@@ -156,8 +133,8 @@ const ReportTemplate = () => {
       setTemplates((prev) =>
         editingTemplate
           ? prev.map((item) =>
-              item.id === savedTemplate.id ? savedTemplate : item
-            )
+            item.id === savedTemplate.id ? savedTemplate : item
+          )
           : [savedTemplate, ...prev]
       );
       toast.success(editingTemplate ? "模板已更新" : "模板已创建");
@@ -373,27 +350,30 @@ const ReportTemplate = () => {
       </div>
 
       <div className="max-h-[calc(100vh-170px)] overflow-y-auto">
-        {isLoading && (
-          <p className="text-sm text-muted-foreground">正在加载模板...</p>
-        )}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
-          {filteredTemplates.map((template) => (
-            <ReportTemplateCard
-              key={template.id}
-              name={template.name}
-              description={template.description}
-              markdown={template.markdown}
-              actions={
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => openEditor(template)}
-                >
-                  编辑
-                </Button>
-              }
-            />
-          ))}
+          {isLoading ? (
+            Array.from({ length: 3 }).map((_, i) => (
+              <TemplateSkeleton key={i} />
+            ))
+          ) : (
+            filteredTemplates.map((template) => (
+              <ReportTemplateCard
+                key={template.id}
+                name={template.name}
+                description={template.description}
+                markdown={template.markdown}
+                actions={
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => openEditor(template)}
+                  >
+                    编辑
+                  </Button>
+                }
+              />
+            ))
+          )}
         </div>
         {!isLoading && filteredTemplates.length === 0 && (
           <p className="text-sm text-muted-foreground">
