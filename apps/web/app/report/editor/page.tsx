@@ -93,21 +93,13 @@ const favoriteToMaterial = (favorite: FavoriteItem): MaterialOption => {
 
 const recommendedModels = [process.env.LLM_DEFAULT_MODEL ?? "deepseek-v3.2", "gpt-4", "gpt-5"];
 
-const initialPrompt =
-  "请以情报分析视角，结合当前的俄乌战争动态，总结出本期需要关注的战略节点、风险与推荐行动。";
-
 const initialMessages: ChatMessage[] = [
   {
     id: "chat-init-1",
     role: "assistant",
     content:
       "欢迎使用报告写作工作区。请先设定主题、模板与素材，随后我会为你生成初版草稿。",
-  },
-  {
-    id: "chat-init-2",
-    role: "user",
-    content: "准备好了，请就“俄乌战争”提供一份情报级别的分析报告。",
-  },
+  }
 ];
 
 const createMessageId = () =>
@@ -148,7 +140,7 @@ const ReportEditor = () => {
   const [templates, setTemplates] = useState<Template[]>([]);
   const [templateLoading, setTemplateLoading] = useState(true);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>();
-  const [prompt, setPrompt] = useState(initialPrompt);
+  const [prompt, setPrompt] = useState("");
   const [selectedMaterialIds, setSelectedMaterialIds] = useState<string[]>([]);
   const [selectedKnowledgeIds, setSelectedKnowledgeIds] = useState<string[]>(
     []
@@ -340,7 +332,7 @@ const ReportEditor = () => {
         title: reportDraft.title,
         summary: reportDraft.summary || null,
         markdown: reportDraft.markdown || null,
-        templateId: selectedTemplateId || null,
+        templateId: selectedTemplateId || undefined,
         status: "DRAFT" as const,
         materials: materialPayload,
       };
@@ -457,24 +449,40 @@ const ReportEditor = () => {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            "x-user-id": "demo-user", // Ensure consistency
           },
           body: JSON.stringify({
             query: prompt.trim(),
             knowledgeIds: selectedKnowledgeIds,
-            topK: 10,
-            minSimilarity: 0.75,
+            topK: 15, // Increase limit
+            minSimilarity: 0.5, // Lower threshold
           }),
         });
 
         if (retrieveResponse.ok) {
           const retrieveData = await retrieveResponse.json();
           if (retrieveData.success && retrieveData.data?.results) {
-            ragChunks = retrieveData.data.results.map(
+            const results = retrieveData.data.results;
+            ragChunks = results.map(
               (chunk: {
                 metadata: { knowledgeName: string };
                 content: string;
               }) => `[来源: ${chunk.metadata.knowledgeName}] ${chunk.content}`
             );
+
+            if (results.length > 0) {
+              toast.info(`知识库增强：已找到 ${results.length} 处相关背景资料`);
+              setChatMessages((prev) => [
+                ...prev,
+                {
+                  id: createMessageId(),
+                  role: "assistant",
+                  content: `🔍 **知识库增强**：已从选定的知识库中检索到 ${results.length} 条相关片段。我将结合这些深度信息为您优化报告内容。`,
+                },
+              ]);
+            } else {
+              toast.warning("未能在选定的知识库中找到高相关的匹配内容。");
+            }
           }
         }
       } catch (error) {
@@ -672,18 +680,18 @@ const ReportEditor = () => {
                   </CardHeader>
                   <CardContent>
                     <div className="flex flex-col gap-2">
-                    <Textarea
-                      value={prompt}
-                      onChange={(event) => setPrompt(event.target.value)}
-                      rows={6}
-                      className="min-h-[140px]"
-                      placeholder="Describe what you expect the report to cover."
-                    />
-                    <p className="text-xs text-muted-foreground text-right">
-                      当前字数：{prompt.trim().length}
-                    </p>
+                      <Textarea
+                        value={prompt}
+                        onChange={(event) => setPrompt(event.target.value)}
+                        rows={6}
+                        className="min-h-[140px]"
+                        placeholder="Describe what you expect the report to cover."
+                      />
+                      <p className="text-xs text-muted-foreground text-right">
+                        当前字数：{prompt.trim().length}
+                      </p>
                     </div>
-                    
+
                   </CardContent>
                 </Card>
 

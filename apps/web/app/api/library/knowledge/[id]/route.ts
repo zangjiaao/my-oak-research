@@ -10,7 +10,9 @@ const UpdateKnowledgeSchema = z.object({
 });
 
 // TODO: 从认证系统获取 userId，目前使用临时方案
-function getUserId(): string {
+function getUserId(req: NextRequest): string {
+  const headerId = req.headers.get("x-user-id");
+  if (headerId) return headerId;
   return process.env.DEFAULT_USER_ID || "default-user-id";
 }
 
@@ -20,7 +22,7 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const userId = getUserId();
+    const userId = getUserId(request);
 
     const knowledge = await prisma.knowledge.findFirst({
       where: {
@@ -33,15 +35,15 @@ export async function GET(
             createdAt: "desc",
           },
         },
-      knowledgeChunks: {
-        select: {
-          id: true,
-          chunkIndex: true,
-          content: true,
-          metadata: true,
-          createdAt: true,
-          fileId: true,
-        },
+        knowledgeChunks: {
+          select: {
+            id: true,
+            chunkIndex: true,
+            content: true,
+            metadata: true,
+            createdAt: true,
+            fileId: true,
+          },
           orderBy: {
             chunkIndex: "asc",
           },
@@ -94,7 +96,7 @@ export async function PATCH(
 ) {
   try {
     const { id } = await params;
-    const userId = getUserId();
+    const userId = getUserId(request);
     const body = await request.json().catch(() => ({}));
     const parsed = UpdateKnowledgeSchema.safeParse(body);
 
@@ -168,7 +170,7 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    const userId = getUserId();
+    const userId = getUserId(request);
 
     // 检查知识库是否存在且属于当前用户，同时获取文件列表
     const existing = await prisma.knowledge.findFirst({

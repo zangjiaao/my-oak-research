@@ -37,11 +37,15 @@ const fetchKnowledge = async (
     params.set("limit", String(query.limit));
   }
 
-  const url = `/api/library/knowledge${
-    params.toString() ? `?${params.toString()}` : ""
-  }`;
+  const url = `/api/library/knowledge${params.toString() ? `?${params.toString()}` : ""
+    }`;
 
-  const response = await fetch(url, { cache: "no-store" });
+  const response = await fetch(url, {
+    cache: "no-store",
+    headers: {
+      "x-user-id": "demo-user",
+    }
+  });
   if (!response.ok) {
     throw new Error("Failed to fetch knowledge");
   }
@@ -53,7 +57,7 @@ export function useKnowledge(query: KnowledgeQuery = {}) {
     queryKey: ["knowledge", query],
     queryFn: () => fetchKnowledge(query),
     placeholderData: (prev) => prev,
-    staleTime: 1000 * 60 * 5, // 5分钟内认为数据是新鲜的
+    staleTime: 1000 * 60 * 5, // 5分钟内认为数据 is fresh
   });
 }
 
@@ -76,6 +80,7 @@ export function useCreateKnowledge() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "x-user-id": "demo-user",
         },
         body: JSON.stringify(input),
       });
@@ -112,6 +117,7 @@ export function useUpdateKnowledge() {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
+          "x-user-id": "demo-user",
         },
         body: JSON.stringify(data),
       });
@@ -140,6 +146,9 @@ export function useDeleteKnowledge() {
     mutationFn: async (id: string) => {
       const response = await fetch(`/api/library/knowledge/${id}`, {
         method: "DELETE",
+        headers: {
+          "x-user-id": "demo-user",
+        },
       });
 
       if (!response.ok) {
@@ -184,6 +193,9 @@ export function useUploadFile() {
         `/api/library/knowledge/${input.knowledgeId}/upload`,
         {
           method: "POST",
+          headers: {
+            "x-user-id": "demo-user",
+          },
           body: formData,
         }
       );

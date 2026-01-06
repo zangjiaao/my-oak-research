@@ -30,17 +30,17 @@ export const MaterialSourceSchema = z.enum(["FAVORITE", "KNOWLEDGE"]);
 
 export const MaterialSchema = z.object({
   sourceType: MaterialSourceSchema,
-  sourceId: z.string().cuid(),
-  title: z.string().max(256).optional().nullable(),
-  snippet: z.string().max(1024).optional().nullable(),
+  sourceId: z.string(),
+  title: z.string().max(512).optional().nullable(),
+  snippet: z.string().max(5000).optional().nullable(),
   metadata: jsonish(),
 });
 
 export const ReportCreateSchema = z.object({
-  title: z.string().min(1).max(256),
-  summary: z.string().max(1000).optional().nullable(),
+  title: z.string().min(1).max(512),
+  summary: z.string().max(5000).optional().nullable(),
   markdown: z.string().optional().nullable(),
-  templateId: z.string().cuid().optional(),
+  templateId: z.string().cuid().optional().nullable(),
   status: z.enum(["DRAFT", "REVIEW", "PUBLISHED"]).optional(),
   metadata: jsonish(),
   materials: z.array(MaterialSchema).optional(),
@@ -56,7 +56,7 @@ export const ReportListQuerySchema = z.object({
 
 export const ReportGenerateSchema = z.object({
   prompt: z.string().min(20),
-  templateId: z.string().cuid().optional(),
+  templateId: z.string().cuid().optional().nullable(),
   materials: z.array(MaterialSchema).optional(),
   options: z
     .object({

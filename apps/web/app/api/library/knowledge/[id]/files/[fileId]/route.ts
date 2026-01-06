@@ -4,7 +4,9 @@ import { getFileUrl, deleteFile } from "@/lib/storage";
 import { json, notFound, badRequest, serverError } from "@/app/api/_utils/http";
 
 // TODO: 从认证系统获取 userId，目前使用临时方案
-function getUserId(): string {
+function getUserId(req: NextRequest): string {
+  const headerId = req.headers.get("x-user-id");
+  if (headerId) return headerId;
   return process.env.DEFAULT_USER_ID || "default-user-id";
 }
 
@@ -14,7 +16,7 @@ export async function GET(
 ) {
   try {
     const { id, fileId } = await params;
-    const userId = getUserId();
+    const userId = getUserId(request);
 
     const knowledgeFile = await prisma.knowledgeFile.findFirst({
       where: {
@@ -54,7 +56,7 @@ export async function DELETE(
 ) {
   try {
     const { id, fileId } = await params;
-    const userId = getUserId();
+    const userId = getUserId(request);
 
     const knowledgeFile = await prisma.knowledgeFile.findFirst({
       where: {

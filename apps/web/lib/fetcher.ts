@@ -4,7 +4,16 @@
  */
 
 export async function apiFetcher(input: string | URL, init?: RequestInit) {
-  const res = await fetch(input, { ...init, credentials: "include" });
+  const headers = new Headers(init?.headers);
+  if (!headers.has("x-user-id")) {
+    headers.set("x-user-id", "demo-user");
+  }
+
+  const res = await fetch(input, {
+    ...init,
+    headers,
+    credentials: "include",
+  });
   const json = await res.json().catch(() => ({}));
 
   if (!res.ok || json?.success === false) {

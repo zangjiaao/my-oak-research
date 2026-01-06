@@ -14,9 +14,9 @@ const FavoritesQuerySchema = z.object({
 });
 
 // TODO: 从认证系统获取 userId，目前使用临时方案
-function getUserId(): string {
-  // 临时方案：从环境变量或请求头获取
-  // 实际应该从 session/cookie/token 中获取
+function getUserId(req: NextRequest): string {
+  const headerId = req.headers.get("x-user-id");
+  if (headerId) return headerId;
   return process.env.DEFAULT_USER_ID || "default-user-id";
 }
 
@@ -66,7 +66,7 @@ export async function GET(request: NextRequest) {
     }
 
     const { platform, search, from, to, cursor, limit } = parsed.data;
-    const userId = getUserId();
+    const userId = getUserId(request);
 
     const where: Prisma.FavoriteWhereInput = {
       userId,

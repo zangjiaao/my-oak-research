@@ -35,13 +35,16 @@ export const llmGateway = {
       .filter(Boolean)
       .join("\n\n");
 
+    const isReasoningModel = modelId.startsWith("o1-") || modelId === "o1" || modelId.includes("gpt-5");
+    const temperature = isReasoningModel ? undefined : (request.temperature ?? 0.3);
+
     try {
       if (request.schema) {
         const result = await generateObject({
           model: openai(modelId),
           schema: request.schema,
           prompt,
-          temperature: request.temperature ?? 0.3,
+          temperature,
           // Use 'object' output to ensure structured data
           output: "object",
         });
@@ -50,7 +53,7 @@ export const llmGateway = {
         const { text } = await generateText({
           model: openai(modelId),
           prompt,
-          temperature: request.temperature ?? 0.3,
+          temperature,
         });
 
         try {

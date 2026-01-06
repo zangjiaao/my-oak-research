@@ -8,7 +8,7 @@ type EmbeddingModel =
   | string;
 
 const DEFAULT_MODEL: EmbeddingModel =
-  (process.env.EMBEDDING_MODEL as EmbeddingModel) ?? "text-embedding-ada-002";
+  (process.env.EMBEDDING_MODEL as EmbeddingModel) ?? "text-embedding-3-small";
 
 // OpenAI embedding models have a limit of 8192 tokens.
 // We use a character limit as a safety proxy. 

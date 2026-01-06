@@ -13,7 +13,9 @@ const RetrieveSchema = z.object({
 });
 
 // TODO: 从认证系统获取 userId，目前使用临时方案
-function getUserId(): string {
+function getUserId(req: NextRequest): string {
+  const headerId = req.headers.get("x-user-id");
+  if (headerId) return headerId;
   return process.env.DEFAULT_USER_ID || "default-user-id";
 }
 
@@ -38,7 +40,7 @@ export async function POST(request: NextRequest) {
     }
 
     const { query, knowledgeIds, topK, minSimilarity } = parsed.data;
-    const userId = getUserId();
+    const userId = getUserId(request);
 
     // 构建查询条件
     const where: Prisma.KnowledgeChunkWhereInput = {
