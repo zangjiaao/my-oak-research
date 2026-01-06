@@ -113,6 +113,7 @@ type ReportDetail = {
   summary?: string | null;
   markdown?: string | null;
   templateId?: string | null;
+  metadata?: any;
   materials?: Array<{
     id: string;
     sourceType: string;
@@ -249,6 +250,21 @@ const ReportEditor = () => {
           setCollapsed(true);
         }
 
+        // 恢复编辑器状态
+        if (report.metadata?.editorState) {
+          const state = report.metadata.editorState;
+          if (state.prompt) setPrompt(state.prompt);
+          if (state.selectedKnowledgeIds) setSelectedKnowledgeIds(state.selectedKnowledgeIds);
+          if (state.selectedMaterialIds) setSelectedMaterialIds(state.selectedMaterialIds);
+          if (state.model) setModel(state.model);
+          if (typeof state.temperature === 'number') setTemperature(state.temperature);
+        }
+
+        // 恢复章节内容
+        if (report.metadata?.sections && report.metadata.sections.length > 0) {
+          setReportDraft(prev => prev ? { ...prev, sections: report.metadata.sections } : null);
+        }
+
         toast.success("报告已加载到编辑器");
       })
       .catch((error) => {
@@ -336,6 +352,16 @@ const ReportEditor = () => {
         templateId: selectedTemplateId || undefined,
         status: "DRAFT" as const,
         materials: materialPayload,
+        metadata: {
+          sections: reportDraft.sections,
+          editorState: {
+            prompt,
+            selectedKnowledgeIds,
+            selectedMaterialIds,
+            model,
+            temperature,
+          }
+        }
       };
 
       let response: Response;
@@ -447,7 +473,8 @@ const ReportEditor = () => {
 
     // RAG 检索：如果选择了知识库，先检索相关知识片段
     let ragChunks: string[] = [];
-    if (selectedKnowledgeIds.length > 0 && prompt.trim()) {
+    const ragQuery = followUp?.trim() || prompt.trim();
+    if (selectedKnowledgeIds.length > 0 && ragQuery) {
       try {
         const retrieveResponse = await fetch("/api/library/retrieve", {
           method: "POST",
@@ -456,7 +483,7 @@ const ReportEditor = () => {
             "x-user-id": "demo-user", // Ensure consistency
           },
           body: JSON.stringify({
-            query: prompt.trim(),
+            query: ragQuery,
             knowledgeIds: selectedKnowledgeIds,
             topK: 15, // Increase limit
             minSimilarity: 0.5, // Lower threshold
