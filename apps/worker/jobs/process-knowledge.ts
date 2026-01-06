@@ -31,20 +31,10 @@ export const knowledgeWorker = createKnowledgeWorker(async (job) => {
       throw new Error(`Knowledge file ${fileId} not found`);
     }
 
-    // 0. Check if already processed (Idempotency)
-    const existingCount = await prisma.knowledgeChunk.count({
+    // 0. Cleanup old chunks if any (Ensures a clean state if retrying after partial failure)
+    await prisma.knowledgeChunk.deleteMany({
       where: { fileId },
     });
-
-    if (existingCount > 0) {
-      console.log(`[knowledge-worker] fileId=${fileId} already has ${existingCount} chunks, skipping process.`);
-      await publishTaskEvent(fileId, {
-        type: "knowledge:done",
-        message: "知识库切片处理完成（已从快照恢复）",
-        chunkCount: existingCount,
-      });
-      return;
-    }
 
     console.log(
       `[knowledge-worker] file ${fileId} downloaded size=${knowledgeFile.size}`
@@ -75,38 +65,48 @@ export const knowledgeWorker = createKnowledgeWorker(async (job) => {
         throw new Error(`向量生成失败: ${err.message}`);
       });
 
-      // 2. Save Chunks (Sequential batching for maximum DB stability)
-      const DB_BATCH_SIZE = 25;
+      // 2. Save Chunks (Bulk insert for maximum performance and stability)
+      const DB_BATCH_SIZE = 20;
       for (let k = 0; k < currentBatch.length; k += DB_BATCH_SIZE) {
         const subBatch = currentBatch.slice(k, k + DB_BATCH_SIZE);
 
-        await prisma.$transaction(
-          subBatch.map((content, index) => {
-            const localBatchIndex = k + index;
-            const globalIndex = i + localBatchIndex;
-            const embedding = embeddings[localBatchIndex];
-            const vectorString = `[${embedding.join(",")}]`;
+        // Construct bulk insert SQL
+        const placeholders: string[] = [];
+        const values: any[] = [];
 
-            return prisma.$executeRawUnsafe(
-              `INSERT INTO "KnowledgeChunk" ("id", "knowledgeId", "fileId", "content", "metadata", "embedding", "chunkIndex", "createdAt")
-               VALUES ($1, $2, $3, $4, $5::jsonb, ${vectorString}::vector, $6, NOW())`,
-              // Manually generate a CUID-like ID or use a UUID
-              // For simplicity and since we are using raw SQL, we use a random UUID
-              crypto.randomUUID(),
-              knowledgeId,
+        subBatch.forEach((content, index) => {
+          const localBatchIndex = k + index;
+          const globalIndex = i + localBatchIndex;
+          const embedding = embeddings[localBatchIndex];
+          const vectorString = `[${embedding.join(",")}]`;
+          const baseIdx = index * 7;
+
+          placeholders.push(`($${baseIdx + 1}, $${baseIdx + 2}, $${baseIdx + 3}, $${baseIdx + 4}, $${baseIdx + 5}::jsonb, $${baseIdx + 6}::vector, $${baseIdx + 7}, NOW())`);
+
+          values.push(
+            crypto.randomUUID(),
+            knowledgeId,
+            fileId,
+            content,
+            JSON.stringify({
+              fileName: knowledgeFile.name,
               fileId,
-              content,
-              JSON.stringify({
-                fileName: knowledgeFile.name,
-                fileId,
-                chunkIndex: globalIndex,
-                chunkSize,
-                knowledgeName: knowledgeFile.knowledge?.name,
-              }),
-              globalIndex
-            );
-          })
-        ).catch(err => {
+              chunkIndex: globalIndex,
+              chunkSize,
+              knowledgeName: knowledgeFile.knowledge?.name,
+            }),
+            vectorString,
+            globalIndex
+          );
+        });
+
+        const sql = `
+          INSERT INTO "KnowledgeChunk" ("id", "knowledgeId", "fileId", "content", "metadata", "embedding", "chunkIndex", "createdAt")
+          VALUES ${placeholders.join(", ")}
+        `;
+
+        await prisma.$executeRawUnsafe(sql, ...values).catch(err => {
+          console.error(`[knowledge-worker] Bulk insert failed for batch starting at ${k}:`, err);
           throw new Error(`数据库存入失败: ${err.message}`);
         });
       }
