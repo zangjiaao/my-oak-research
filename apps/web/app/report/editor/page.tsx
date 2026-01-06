@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -155,6 +155,7 @@ const ReportEditor = () => {
   const [model, setModel] = useState<string>();
   const [currentReportId, setCurrentReportId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
   // 保存待匹配的报告素材信息（用于异步匹配）
   const [pendingMaterials, setPendingMaterials] = useState<
     Array<{
@@ -572,6 +573,13 @@ const ReportEditor = () => {
     await generateDraft(trimmed);
   };
 
+  // 自动滚动到聊天底部
+  useEffect(() => {
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    }
+  }, [chatMessages]);
+
   return (
     <div className="space-y-6">
       <div className="flex h-[calc(100vh-7rem)] flex-col gap-4 lg:flex-row">
@@ -879,11 +887,11 @@ const ReportEditor = () => {
 
         <div
           className={cn(
-            "flex flex-1 flex-col gap-4",
+            "flex flex-1 flex-col gap-4 min-h-0",
             reportDraft ? "lg:w-[36%]" : "lg:w-3/5"
           )}
         >
-          <Card className="flex flex-1 flex-col">
+          <Card className="flex flex-1 flex-col min-h-0 overflow-hidden">
             <CardHeader>
               <div className="flex items-center justify-between gap-2">
                 <div>
@@ -901,8 +909,11 @@ const ReportEditor = () => {
                 </Button>
               </div>
             </CardHeader>
-            <CardContent className="flex flex-1 flex-col gap-3">
-              <div className="flex-1 space-y-3 overflow-y-auto pr-1 scrollbar-hide">
+            <CardContent className="flex flex-1 flex-col gap-3 min-h-0">
+              <div
+                ref={chatContainerRef}
+                className="flex-1 space-y-3 overflow-y-auto pr-1 min-h-0 scrollbar-hide"
+              >
                 {chatMessages.map((message) => (
                   <div
                     key={message.id}
