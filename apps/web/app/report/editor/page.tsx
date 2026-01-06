@@ -303,7 +303,7 @@ const ReportEditor = () => {
     [curatedMaterials, selectedMaterialIds]
   );
 
-  const canGenerate = prompt.trim().length >= 20 && !isGenerating;
+  const canGenerate = (prompt.trim().length >= 20 || !!reportDraft) && !isGenerating;
 
   const handleToggleMaterial = (id: string) => {
     setSelectedMaterialIds((prev) =>
@@ -439,7 +439,10 @@ const ReportEditor = () => {
   );
 
   const generateDraft = async (followUp?: string) => {
-    if (!canGenerate) return;
+    // 允许在有草稿的情况下或有足够长度的 prompt 时生成
+    const canDoGenerate = (prompt.trim().length >= 20 || !!reportDraft) && !isGenerating;
+    if (!canDoGenerate && !followUp) return;
+
     setIsGenerating(true);
 
     // RAG 检索：如果选择了知识库，先检索相关知识片段
