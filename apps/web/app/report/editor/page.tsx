@@ -545,25 +545,25 @@ const ReportEditor = () => {
       }
     }
 
-    const promptParts = [prompt.trim()];
+    const promptParts = [];
 
-    // 如果有 RAG 检索结果，添加到提示词前
+    // 如果是聊天输入（followUp），那么 prompt 是用户输入的聊天内容，sidebar 的 prompt 作为 instruction
+    // 如果是点击“开始写作”（没有 followUp），那么 prompt 就是 sidebar 的内容
+    const requestPrompt = followUp ? followUp.trim() : prompt.trim();
+    const requestInstruction = followUp ? prompt.trim() : undefined;
+
+    // 如果有 RAG 检索结果，仍需添加到提示词中（这部分不计入 ChatMessage，但在 LLM 组合中会用到）
     if (ragChunks.length > 0) {
-      promptParts.unshift(
-        `以下是从知识库中检索到的相关内容，请参考这些信息来生成报告：\n\n${ragChunks.join("\n\n---\n\n")}\n\n---\n\n`
-      );
-    }
-
-    if (followUp) {
-      promptParts.push(`后续指令：${followUp.trim()}`);
+      promptParts.push(`以下是从知识库中检索到的相关内容，请参考这些信息：\n\n${ragChunks.join("\n\n---\n\n")}`);
     }
 
     const payload = {
-      prompt: promptParts.join("\n\n"),
+      prompt: requestPrompt,
+      instruction: requestInstruction,
       messages: chatMessages.map((m) => ({
         role: m.role,
         content: m.content,
-      })).slice(-10), // 只传递最近 10 条消息以减少 Token 消耗
+      })).slice(-10),
       reportId: currentReportId || undefined,
       sessionId: currentSessionId || undefined,
       templateId: selectedTemplateId,
@@ -574,6 +574,8 @@ const ReportEditor = () => {
         model: model || undefined,
         temperature,
       },
+      // 将检索到的内容也传过去，或者在 prompt 中体现
+      context: ragChunks.length > 0 ? ragChunks.join("\n\n") : undefined
     };
 
     try {

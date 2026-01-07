@@ -22,7 +22,16 @@ export async function POST(req: NextRequest) {
     }
 
     const userId = req.headers.get("x-user-id") ?? null;
-    const { prompt: userPrompt, reportId, sessionId: inputSessionId, templateId, messages, materials, options } = parse.data;
+    const {
+      prompt: userPrompt,
+      instruction: baseInstruction,
+      reportId,
+      sessionId: inputSessionId,
+      templateId,
+      messages,
+      materials,
+      options
+    } = parse.data;
 
     // 1. Identify or Create ChatSession
     let sessionId: string | null = inputSessionId || null;
@@ -54,6 +63,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 2. Save User Message immediately
+    // Note: We save ONLY the userPrompt (the clean input), not the system instructions
     await prisma.chatMessage.create({
       data: {
         sessionId: sessionId!,
@@ -80,9 +90,12 @@ export async function POST(req: NextRequest) {
       ?.map((m) => `${m.role.toUpperCase()}: ${m.content}`)
       .join("\n") || "No previous messages.";
 
+    // Build the instruction for the LLM
     const systemPrompt = [
       "You are a professional report writing assistant.",
       "Your goal is to communicate with the user and help them write or refine reports.",
+      "",
+      baseInstruction ? `USER BASE REQUIREMENTS:\n${baseInstruction}\n` : null,
       "",
       "CRITICAL INSTRUCTIONS:",
       "1. If the user is just asking questions, chatting, or providing vague ideas, use action: 'REPLY' and provide a helpful response. DO NOT generate or update the report object.",
@@ -95,7 +108,7 @@ export async function POST(req: NextRequest) {
       template ? `Current Template: ${template.name}` : "No template selected",
       template?.markdown ? `Template content:\n${template.markdown}` : null,
       `Reference Materials:\n${materialOverview}`,
-      `Current Instruction: ${stripPromptLike(userPrompt)}`,
+      `Current Request from User: ${stripPromptLike(userPrompt)}`,
       `Output Schema:\n${JSON.stringify(
         {
           action: "REPLY | GENERATE_REPORT | UPDATE_REPORT",
@@ -139,7 +152,7 @@ export async function POST(req: NextRequest) {
 
     const { action, reply, report: llmReport } = checked.data;
 
-    // Save Assistant Response
+    // Save Assistant Response to database
     await prisma.chatMessage.create({
       data: {
         sessionId: sessionId!,
@@ -202,7 +215,6 @@ export async function POST(req: NextRequest) {
               metadata: m.metadata,
             })) ?? [],
           },
-          // Link existing session to the new report
         },
       });
 

@@ -68,6 +68,7 @@ export const ChatSessionSchema = z.object({
 
 export const ReportGenerateSchema = z.object({
   prompt: z.string().min(2),
+  instruction: z.string().optional(),
   messages: z
     .array(ChatMessageSchema)
     .optional(),
