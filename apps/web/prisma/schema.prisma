@@ -397,8 +397,31 @@ model Report {
   createdAt  DateTime     @default(now())
   updatedAt  DateTime     @updatedAt
 
-  template  ReportTemplate?  @relation(fields: [templateId], references: [id])
-  materials ReportMaterial[]
+  template    ReportTemplate?  @relation(fields: [templateId], references: [id])
+  materials   ReportMaterial[]
+  chatSession ChatSession?
+}
+
+model ChatSession {
+  id        String        @id @default(cuid())
+  title     String?
+  userId    String?
+  metadata  Json?
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  messages  ChatMessage[]
+  reportId  String?       @unique
+  report    Report?       @relation(fields: [reportId], references: [id], onDelete: SetNull)
+}
+
+model ChatMessage {
+  id            String      @id @default(cuid())
+  sessionId     String
+  role          String // "user", "assistant", "system"
+  content       String
+  metadata      Json?
+  createdAt     DateTime    @default(now())
+  session       ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 }
 
 model ReportMaterial {

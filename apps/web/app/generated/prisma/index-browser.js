@@ -320,6 +320,25 @@ exports.Prisma.ReportScalarFieldEnum = {
   updatedAt: 'updatedAt'
 };
 
+exports.Prisma.ChatSessionScalarFieldEnum = {
+  id: 'id',
+  title: 'title',
+  userId: 'userId',
+  metadata: 'metadata',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt',
+  reportId: 'reportId'
+};
+
+exports.Prisma.ChatMessageScalarFieldEnum = {
+  id: 'id',
+  sessionId: 'sessionId',
+  role: 'role',
+  content: 'content',
+  metadata: 'metadata',
+  createdAt: 'createdAt'
+};
+
 exports.Prisma.ReportMaterialScalarFieldEnum = {
   id: 'id',
   reportId: 'reportId',
@@ -357,7 +376,6 @@ exports.Prisma.KnowledgeChunkScalarFieldEnum = {
   fileId: 'fileId',
   content: 'content',
   metadata: 'metadata',
-  embedding: 'embedding',
   chunkIndex: 'chunkIndex',
   createdAt: 'createdAt'
 };
@@ -481,6 +499,8 @@ exports.Prisma.ModelName = {
   Favorite: 'Favorite',
   ReportTemplate: 'ReportTemplate',
   Report: 'Report',
+  ChatSession: 'ChatSession',
+  ChatMessage: 'ChatMessage',
   ReportMaterial: 'ReportMaterial',
   Knowledge: 'Knowledge',
   KnowledgeFile: 'KnowledgeFile',

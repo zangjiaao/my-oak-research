@@ -20,7 +20,17 @@ export async function GET(
   }
   const report = await prisma.report.findUnique({
     where: { id: params.id },
-    include: { materials: true, template: true },
+    include: {
+      materials: true,
+      template: true,
+      chatSession: {
+        include: {
+          messages: {
+            orderBy: { createdAt: "asc" },
+          },
+        },
+      },
+    },
   });
   if (!report) return fail("Report not found", 404);
   return respond(report);

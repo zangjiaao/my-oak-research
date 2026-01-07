@@ -120,6 +120,41 @@ export async function POST(req: NextRequest) {
       return respond({ action, reply });
     }
 
+    // 为报告生成或更新处理 ChatSession
+    // 如果提供了 reportId，尝试找到对应的 session；如果没有则创建一个
+    let sessionId: string | null = null;
+    const reportId = parse.data.reportId;
+
+    if (reportId) {
+      const existingReport = await prisma.report.findUnique({
+        where: { id: reportId },
+        include: { chatSession: true },
+      });
+      if (existingReport?.chatSession) {
+        sessionId = existingReport.chatSession.id;
+      } else if (existingReport) {
+        // 创建关联的 Session
+        const session = await prisma.chatSession.create({
+          data: {
+            reportId: existingReport.id,
+            userId,
+          },
+        });
+        sessionId = session.id;
+      }
+    }
+
+    // 保存当前用户 Prompt 到 Message
+    if (sessionId && parse.data.prompt) {
+      await prisma.chatMessage.create({
+        data: {
+          sessionId,
+          role: "user",
+          content: parse.data.prompt,
+        },
+      });
+    }
+
     // 处理报告内容（模版渲染）
     let finalMarkdown = llmReport.markdown;
     if (template?.markdown) {
@@ -130,40 +165,103 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // 创建或更新报告记录（如果业务逻辑需要，可以根据输入参数判断是 create 还是 update）
-    // 这里暂时保持原有的 create 逻辑，或者根据后续需求调整
-    const dbReport = await prisma.report.create({
-      data: {
-        title: llmReport.title,
-        summary: llmReport.summary,
-        markdown: finalMarkdown,
-        status: "DRAFT",
-        templateId: parse.data.templateId,
-        authorId: userId,
-        metadata: llmReport.sections
-          ? { sections: llmReport.sections }
-          : undefined,
-        materials: {
-          create:
-            parse.data.materials?.map((material) => ({
-              sourceType: material.sourceType,
-              sourceId: material.sourceId,
-              title: material.title,
-              snippet: material.snippet,
-              metadata: material.metadata,
-            })) ?? [],
+    let resultReport;
+    if (reportId) {
+      // 更新现有报告
+      resultReport = await prisma.report.update({
+        where: { id: reportId },
+        data: {
+          title: llmReport.title,
+          summary: llmReport.summary,
+          markdown: finalMarkdown,
+          metadata: llmReport.sections
+            ? { sections: llmReport.sections }
+            : undefined,
         },
-      },
-      include: {
-        materials: true,
-        template: true,
-      },
-    });
+        include: {
+          materials: true,
+          template: true,
+          chatSession: {
+            include: { messages: { orderBy: { createdAt: "asc" } } },
+          },
+        },
+      });
+      if (!sessionId && resultReport.chatSession) {
+        sessionId = resultReport.chatSession.id;
+      }
+    } else {
+      // 创建新报告
+      resultReport = await prisma.report.create({
+        data: {
+          title: llmReport.title,
+          summary: llmReport.summary,
+          markdown: finalMarkdown,
+          status: "DRAFT",
+          templateId: parse.data.templateId,
+          authorId: userId,
+          metadata: llmReport.sections
+            ? { sections: llmReport.sections }
+            : undefined,
+          materials: {
+            create:
+              parse.data.materials?.map((material) => ({
+                sourceType: material.sourceType,
+                sourceId: material.sourceId,
+                title: material.title,
+                snippet: material.snippet,
+                metadata: material.metadata,
+              })) ?? [],
+          },
+          chatSession: {
+            create: {
+              userId,
+              messages: {
+                create: {
+                  role: "user",
+                  content: parse.data.prompt,
+                },
+              },
+            },
+          },
+        },
+        include: {
+          materials: true,
+          template: true,
+          chatSession: {
+            include: { messages: { orderBy: { createdAt: "asc" } } },
+          },
+        },
+      });
+      sessionId = resultReport.chatSession?.id ?? null;
+    }
+
+    // 保存 AI 响应到 Message
+    if (sessionId && reply) {
+      await prisma.chatMessage.create({
+        data: {
+          sessionId,
+          role: "assistant",
+          content: reply,
+        },
+      });
+
+      // 重新获取包含最新消息的 report
+      resultReport = await prisma.report.findUnique({
+        where: { id: resultReport.id },
+        include: {
+          materials: true,
+          template: true,
+          chatSession: {
+            include: { messages: { orderBy: { createdAt: "asc" } } },
+          },
+        },
+      });
+    }
 
     return respond({
       action,
       reply,
-      report: dbReport,
+      report: resultReport,
     });
   } catch (error: any) {
     console.error("[report-generate] Critical API Error:", error);

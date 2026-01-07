@@ -122,6 +122,13 @@ type ReportDetail = {
     title?: string | null;
     snippet?: string | null;
   }>;
+  chatSession?: {
+    messages: Array<{
+      id: string;
+      role: "user" | "assistant";
+      content: string;
+    }>;
+  };
 };
 
 const ReportEditor = () => {
@@ -237,14 +244,19 @@ const ReportEditor = () => {
           );
         }
 
-        // 更新聊天消息，提示已加载报告
-        setChatMessages([
-          {
-            id: createMessageId(),
-            role: "assistant",
-            content: `已加载报告「${report.title}」，你可以继续编辑或生成新内容。`,
-          },
-        ]);
+        // 设置 chatMessages
+        if (report.chatSession?.messages && report.chatSession.messages.length > 0) {
+          setChatMessages(report.chatSession.messages);
+        } else {
+          // 更新聊天消息，提示已加载报告
+          setChatMessages([
+            {
+              id: createMessageId(),
+              role: "assistant",
+              content: `已加载报告「${report.title}」，你可以继续编辑或生成新内容。`,
+            },
+          ]);
+        }
 
         // 如果已有内容，自动收起配置栏
         if (report.markdown) {
@@ -541,7 +553,8 @@ const ReportEditor = () => {
       messages: chatMessages.map((m) => ({
         role: m.role,
         content: m.content,
-      })),
+      })).slice(-10), // 只传递最近 10 条消息以减少 Token 消耗
+      reportId: currentReportId || undefined,
       templateId: selectedTemplateId,
       materials: materialPayload,
       knowledgeIds:
@@ -573,14 +586,21 @@ const ReportEditor = () => {
       };
 
       // 无论什么动作，都先显示 AI 的回复消息
-      setChatMessages((prev) => [
-        ...prev,
-        {
-          id: createMessageId(),
-          role: "assistant",
-          content: payloadData.reply,
-        },
-      ]);
+      // 注意：如果 API 返回了完整的 report (其中包含更新后的消息列表)，
+      // 我们可以选择直接用 API 的消息列表，或者手动追加。
+      // 为保证一致性，我们优先使用 API 返回的消息列表。
+      if (payloadData.report?.chatSession?.messages) {
+        setChatMessages(payloadData.report.chatSession.messages);
+      } else {
+        setChatMessages((prev) => [
+          ...prev,
+          {
+            id: createMessageId(),
+            role: "assistant",
+            content: payloadData.reply,
+          },
+        ]);
+      }
 
       // 如果有报告生成或更新，则同步到编辑器
       if (payloadData.report) {

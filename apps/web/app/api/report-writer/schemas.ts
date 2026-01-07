@@ -54,16 +54,24 @@ export const ReportListQuerySchema = z.object({
   pageSize: z.coerce.number().int().min(1).max(50).default(20),
 });
 
+export const ChatMessageSchema = z.object({
+  id: z.string().optional(),
+  role: z.enum(["user", "assistant"]),
+  content: z.string(),
+});
+
+export const ChatSessionSchema = z.object({
+  id: z.string().cuid(),
+  reportId: z.string().cuid().optional().nullable(),
+  messages: z.array(ChatMessageSchema).optional(),
+});
+
 export const ReportGenerateSchema = z.object({
   prompt: z.string().min(2),
   messages: z
-    .array(
-      z.object({
-        role: z.enum(["user", "assistant"]),
-        content: z.string(),
-      })
-    )
+    .array(ChatMessageSchema)
     .optional(),
+  reportId: z.string().optional(),
   templateId: z.string().cuid().optional().nullable(),
   materials: z.array(MaterialSchema).optional(),
   options: z
