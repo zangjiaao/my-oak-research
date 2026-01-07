@@ -42,23 +42,36 @@ export async function POST(req: NextRequest) {
         )
         .join("\n") || "No materials provided.";
 
+    const history = parse.data.messages
+      ?.map((m) => `${m.role.toUpperCase()}: ${m.content}`)
+      .join("\n") || "No previous messages.";
+
     const prompt = [
-      template ? `Template: ${template.name}` : "No template selected",
+      "You are a professional report writing assistant.",
+      "Your goal is to communicate with the user and help them write or refine reports.",
+      "",
+      "CRITICAL INSTRUCTIONS:",
+      "1. If the user is just asking questions, chatting, or providing vague ideas, use action: 'REPLY' and provide a helpful response. DO NOT generate or update the report object.",
+      "2. If the user explicitly asks to 'generate a report', 'write a draft', or provides enough information to start writing, use action: 'GENERATE_REPORT' and provide both 'reply' and the full 'report' object.",
+      "3. If a report draft already exists and the user asks for specific changes, improvements, or additions, use action: 'UPDATE_REPORT' and provide both 'reply' and the updated 'report' object.",
+      "",
+      "CONVERSATION HISTORY:",
+      history,
+      "",
+      template ? `Current Template: ${template.name}` : "No template selected",
       template?.markdown ? `Template content:\n${template.markdown}` : null,
-      `Materials:\n${materialOverview}`,
-      `Task:\n${stripPromptLike(parse.data.prompt)}`,
-      `Output format:\n${JSON.stringify(
+      `Reference Materials:\n${materialOverview}`,
+      `Current Instruction: ${stripPromptLike(parse.data.prompt)}`,
+      `Output Schema:\n${JSON.stringify(
         {
-          title: "string (report title)",
-          summary: "string (plain-text summary, 150-200 characters)",
-          markdown: "string (full report body in Markdown)",
-          sections: [
-            {
-              heading: "string",
-              content: "string",
-              references: ["string"],
-            },
-          ],
+          action: "REPLY | GENERATE_REPORT | UPDATE_REPORT",
+          reply: "string (your response to the user)",
+          report: {
+            title: "string",
+            summary: "string (150-200 characters)",
+            markdown: "string (full body)",
+            sections: [{ heading: "string", content: "string", references: ["string"] }]
+          }
         },
         null,
         2
@@ -70,7 +83,7 @@ export async function POST(req: NextRequest) {
     const chosenModel =
       parse.data.options?.model ?? process.env.LLM_DEFAULT_MODEL ?? "gpt-5";
 
-    let llmResponse: unknown;
+    let llmResponse: any;
     try {
       llmResponse = await llmGateway.json("report-generate", {
         prompt,
@@ -100,26 +113,35 @@ export async function POST(req: NextRequest) {
       return fail("LLM output invalid", 422, checked.error.flatten());
     }
 
-    // 如果使用了模板，应用模板变量替换
-    let finalMarkdown = checked.data.markdown;
+    const { action, reply, report: llmReport } = checked.data;
+
+    // 如果只是回复，直接返回
+    if (action === "REPLY" || !llmReport) {
+      return respond({ action, reply });
+    }
+
+    // 处理报告内容（模版渲染）
+    let finalMarkdown = llmReport.markdown;
     if (template?.markdown) {
       finalMarkdown = renderTemplate(template.markdown, {
-        title: checked.data.title,
-        summary: checked.data.summary,
-        markdown: checked.data.markdown,
+        title: llmReport.title,
+        summary: llmReport.summary,
+        markdown: llmReport.markdown,
       });
     }
 
-    const report = await prisma.report.create({
+    // 创建或更新报告记录（如果业务逻辑需要，可以根据输入参数判断是 create 还是 update）
+    // 这里暂时保持原有的 create 逻辑，或者根据后续需求调整
+    const dbReport = await prisma.report.create({
       data: {
-        title: checked.data.title,
-        summary: checked.data.summary,
+        title: llmReport.title,
+        summary: llmReport.summary,
         markdown: finalMarkdown,
         status: "DRAFT",
         templateId: parse.data.templateId,
         authorId: userId,
-        metadata: checked.data.sections
-          ? { sections: checked.data.sections }
+        metadata: llmReport.sections
+          ? { sections: llmReport.sections }
           : undefined,
         materials: {
           create:
@@ -138,7 +160,11 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    return respond(report);
+    return respond({
+      action,
+      reply,
+      report: dbReport,
+    });
   } catch (error: any) {
     console.error("[report-generate] Critical API Error:", error);
     return fail(

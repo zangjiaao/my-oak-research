@@ -55,7 +55,15 @@ export const ReportListQuerySchema = z.object({
 });
 
 export const ReportGenerateSchema = z.object({
-  prompt: z.string().min(20),
+  prompt: z.string().min(2),
+  messages: z
+    .array(
+      z.object({
+        role: z.enum(["user", "assistant"]),
+        content: z.string(),
+      })
+    )
+    .optional(),
   templateId: z.string().cuid().optional().nullable(),
   materials: z.array(MaterialSchema).optional(),
   options: z
@@ -73,8 +81,16 @@ export const ReportSectionSchema = z.object({
 });
 
 export const ReportLLMOutputSchema = z.object({
-  title: z.string().min(1),
-  summary: z.string().min(1),
-  markdown: z.string().min(1),
-  sections: z.array(ReportSectionSchema).optional(),
+  action: z.enum(["REPLY", "GENERATE_REPORT", "UPDATE_REPORT"]),
+  reply: z.string().min(1).describe("AI 对用户消息的直接回复，或者是对生成/修改报告的说明"),
+  report: z
+    .object({
+      title: z.string().min(1),
+      summary: z.string().min(1),
+      markdown: z.string().min(1),
+      sections: z.array(ReportSectionSchema).optional(),
+    })
+    .optional()
+    .nullable()
+    .describe("只有在需要编写或修改报告时才提供此对象"),
 });

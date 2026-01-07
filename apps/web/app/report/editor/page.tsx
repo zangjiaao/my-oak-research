@@ -537,6 +537,10 @@ const ReportEditor = () => {
 
     const payload = {
       prompt: promptParts.join("\n\n"),
+      messages: chatMessages.map((m) => ({
+        role: m.role,
+        content: m.content,
+      })),
       templateId: selectedTemplateId,
       materials: materialPayload,
       knowledgeIds:
@@ -561,26 +565,39 @@ const ReportEditor = () => {
         throw new Error(body?.error?.message ?? "生成失败，请稍后重试");
       }
 
-      const data = body.data as ReportDraft;
-      setReportDraft({
-        title: data.title,
-        summary: data.summary,
-        markdown: data.markdown,
-        sections: data.sections ?? [],
-      });
+      const payloadData = body.data as {
+        action: "REPLY" | "GENERATE_REPORT" | "UPDATE_REPORT";
+        reply: string;
+        report?: any;
+      };
+
+      // 无论什么动作，都先显示 AI 的回复消息
       setChatMessages((prev) => [
         ...prev,
         {
           id: createMessageId(),
           role: "assistant",
-          content: `草稿「${data.title}」已生成，摘要：${data.summary.slice(
-            0,
-            120
-          )}`,
+          content: payloadData.reply,
         },
       ]);
-      setCollapsed(true);
-      toast.success("已生成报告草稿");
+
+      // 如果有报告生成或更新，则同步到编辑器
+      if (payloadData.report) {
+        const data = payloadData.report;
+        setReportDraft({
+          title: data.title,
+          summary: data.summary,
+          markdown: data.markdown,
+          sections: data.metadata?.sections ?? [],
+        });
+        setCurrentReportId(data.id);
+        setCollapsed(true);
+        toast.success(
+          payloadData.action === "GENERATE_REPORT"
+            ? "已生成报告草稿"
+            : "报告已根据指令更新"
+        );
+      }
     } catch (error) {
       toast.error(
         error instanceof Error
@@ -789,7 +806,7 @@ const ReportEditor = () => {
                     )}
                     <div className="flex flex-wrap gap-2">
                       {selectedMaterials.map((material) => (
-                        <Badge key={material.id} variant="secondary">
+                        <Badge key={material.id} variant="secondary" className="max-w-full whitespace-normal h-auto py-1 text-left">
                           {material.title}
                         </Badge>
                       ))}
@@ -1131,7 +1148,7 @@ const ReportEditor = () => {
                       <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
                         {(section.references ?? []).length > 0 ? (
                           section.references?.map((ref) => (
-                            <Badge key={ref} variant="outline">
+                            <Badge key={ref} variant="outline" className="max-w-full whitespace-normal h-auto py-1 text-left">
                               {ref}
                             </Badge>
                           ))
