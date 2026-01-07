@@ -123,6 +123,7 @@ type ReportDetail = {
     snippet?: string | null;
   }>;
   chatSession?: {
+    id: string;
     messages: Array<{
       id: string;
       role: "user" | "assistant";
@@ -163,6 +164,7 @@ const ReportEditor = () => {
   const [temperature, setTemperature] = useState(0.45);
   const [model, setModel] = useState<string>();
   const [currentReportId, setCurrentReportId] = useState<string | null>(null);
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   // 保存待匹配的报告素材信息（用于异步匹配）
@@ -217,6 +219,9 @@ const ReportEditor = () => {
 
         // 设置当前报告 ID
         setCurrentReportId(report.id);
+        if (report.chatSession) {
+          setCurrentSessionId(report.chatSession.id);
+        }
 
         // 填充报告内容到编辑器
         if (report.markdown) {
@@ -348,6 +353,11 @@ const ReportEditor = () => {
     setSelectedKnowledgeIds([]);
     setChatInput("");
     setCurrentReportId(null);
+    setCurrentSessionId(null);
+    // 清理 URL 参数
+    const newUrl = new URL(window.location.href);
+    newUrl.searchParams.delete('reportId');
+    window.history.replaceState(null, '', newUrl.toString());
   };
 
   const handleSaveReport = async () => {
@@ -555,6 +565,7 @@ const ReportEditor = () => {
         content: m.content,
       })).slice(-10), // 只传递最近 10 条消息以减少 Token 消耗
       reportId: currentReportId || undefined,
+      sessionId: currentSessionId || undefined,
       templateId: selectedTemplateId,
       materials: materialPayload,
       knowledgeIds:
@@ -583,6 +594,7 @@ const ReportEditor = () => {
         action: "REPLY" | "GENERATE_REPORT" | "UPDATE_REPORT";
         reply: string;
         report?: any;
+        chatSession?: any;
       };
 
       // 无论什么动作，都先显示 AI 的回复消息
@@ -591,6 +603,12 @@ const ReportEditor = () => {
       // 为保证一致性，我们优先使用 API 返回的消息列表。
       if (payloadData.report?.chatSession?.messages) {
         setChatMessages(payloadData.report.chatSession.messages);
+        if (payloadData.report.chatSession.id) {
+          setCurrentSessionId(payloadData.report.chatSession.id);
+        }
+      } else if (payloadData.chatSession?.messages) {
+        setChatMessages(payloadData.chatSession.messages);
+        setCurrentSessionId(payloadData.chatSession.id);
       } else {
         setChatMessages((prev) => [
           ...prev,
@@ -600,6 +618,13 @@ const ReportEditor = () => {
             content: payloadData.reply,
           },
         ]);
+      }
+
+      // 如果生成了新报告，更新 URL
+      if (payloadData.report?.id && !reportIdFromUrl) {
+        const newUrl = new URL(window.location.href);
+        newUrl.searchParams.set('reportId', payloadData.report.id);
+        window.history.replaceState(null, '', newUrl.toString());
       }
 
       // 如果有报告生成或更新，则同步到编辑器

@@ -22,31 +22,65 @@ export async function POST(req: NextRequest) {
     }
 
     const userId = req.headers.get("x-user-id") ?? null;
+    const { prompt: userPrompt, reportId, sessionId: inputSessionId, templateId, messages, materials, options } = parse.data;
 
-    const template = parse.data.templateId
+    // 1. Identify or Create ChatSession
+    let sessionId: string | null = inputSessionId || null;
+
+    if (!sessionId && reportId) {
+      const existingReport = await prisma.report.findUnique({
+        where: { id: reportId },
+        include: { chatSession: true },
+      });
+      if (existingReport?.chatSession) {
+        sessionId = existingReport.chatSession.id;
+      } else if (existingReport) {
+        const session = await prisma.chatSession.create({
+          data: { reportId: existingReport.id, userId },
+        });
+        sessionId = session.id;
+      }
+    }
+
+    if (!sessionId) {
+      const session = await prisma.chatSession.create({
+        data: {
+          userId,
+          reportId: reportId || undefined,
+          title: userPrompt.slice(0, 50),
+        },
+      });
+      sessionId = session.id;
+    }
+
+    // 2. Save User Message immediately
+    await prisma.chatMessage.create({
+      data: {
+        sessionId: sessionId!,
+        role: "user",
+        content: userPrompt,
+      },
+    });
+
+    const template = templateId
       ? await prisma.reportTemplate.findUnique({
-        where: { id: parse.data.templateId },
+        where: { id: templateId },
       })
       : null;
 
-    if (parse.data.templateId && !template) {
-      return fail("Template not found", 404);
-    }
-
     const materialOverview =
-      parse.data.materials
+      materials
         ?.map(
-          (material) =>
-            `${material.sourceType}:${material.sourceId} ${material.title ? `(${material.title})` : ""
-            }`
+          (m) =>
+            `${m.sourceType}:${m.sourceId} ${m.title ? `(${m.title})` : ""}`
         )
         .join("\n") || "No materials provided.";
 
-    const history = parse.data.messages
+    const history = messages
       ?.map((m) => `${m.role.toUpperCase()}: ${m.content}`)
       .join("\n") || "No previous messages.";
 
-    const prompt = [
+    const systemPrompt = [
       "You are a professional report writing assistant.",
       "Your goal is to communicate with the user and help them write or refine reports.",
       "",
@@ -61,7 +95,7 @@ export async function POST(req: NextRequest) {
       template ? `Current Template: ${template.name}` : "No template selected",
       template?.markdown ? `Template content:\n${template.markdown}` : null,
       `Reference Materials:\n${materialOverview}`,
-      `Current Instruction: ${stripPromptLike(parse.data.prompt)}`,
+      `Current Instruction: ${stripPromptLike(userPrompt)}`,
       `Output Schema:\n${JSON.stringify(
         {
           action: "REPLY | GENERATE_REPORT | UPDATE_REPORT",
@@ -80,32 +114,22 @@ export async function POST(req: NextRequest) {
       .filter(Boolean)
       .join("\n\n");
 
-    const chosenModel =
-      parse.data.options?.model ?? process.env.LLM_DEFAULT_MODEL ?? "gpt-5";
+    const chosenModel = options?.model ?? process.env.LLM_DEFAULT_MODEL ?? "gpt-5";
 
     let llmResponse: any;
     try {
       llmResponse = await llmGateway.json("report-generate", {
-        prompt,
+        prompt: systemPrompt,
         model: chosenModel,
-        temperature: parse.data.options?.temperature,
+        temperature: options?.temperature,
         metadata: redact({
           userId,
-          templateId: parse.data.templateId,
-          materials: parse.data.materials,
+          templateId,
+          materials,
         }),
       });
     } catch (error) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : "Unknown error when calling LLM gateway";
-      const isClientError = /4\d{2}/.test(message);
-      return fail(
-        `LLM gateway error (${chosenModel})`,
-        isClientError ? 422 : 502,
-        { detail: message }
-      );
+      return fail(`LLM gateway error (${chosenModel})`, 502, { detail: error instanceof Error ? error.message : String(error) });
     }
 
     const checked = ReportLLMOutputSchema.safeParse(llmResponse);
@@ -115,47 +139,25 @@ export async function POST(req: NextRequest) {
 
     const { action, reply, report: llmReport } = checked.data;
 
-    // 如果只是回复，直接返回
+    // Save Assistant Response
+    await prisma.chatMessage.create({
+      data: {
+        sessionId: sessionId!,
+        role: "assistant",
+        content: reply,
+      },
+    });
+
+    // Handle early return for REPLY
     if (action === "REPLY" || !llmReport) {
-      return respond({ action, reply });
-    }
-
-    // 为报告生成或更新处理 ChatSession
-    // 如果提供了 reportId，尝试找到对应的 session；如果没有则创建一个
-    let sessionId: string | null = null;
-    const reportId = parse.data.reportId;
-
-    if (reportId) {
-      const existingReport = await prisma.report.findUnique({
-        where: { id: reportId },
-        include: { chatSession: true },
+      const updatedSession = await prisma.chatSession.findUnique({
+        where: { id: sessionId! },
+        include: { messages: { orderBy: { createdAt: "asc" } } },
       });
-      if (existingReport?.chatSession) {
-        sessionId = existingReport.chatSession.id;
-      } else if (existingReport) {
-        // 创建关联的 Session
-        const session = await prisma.chatSession.create({
-          data: {
-            reportId: existingReport.id,
-            userId,
-          },
-        });
-        sessionId = session.id;
-      }
+      return respond({ action, reply, chatSession: updatedSession });
     }
 
-    // 保存当前用户 Prompt 到 Message
-    if (sessionId && parse.data.prompt) {
-      await prisma.chatMessage.create({
-        data: {
-          sessionId,
-          role: "user",
-          content: parse.data.prompt,
-        },
-      });
-    }
-
-    // 处理报告内容（模版渲染）
+    // Handle Report Generation/Update
     let finalMarkdown = llmReport.markdown;
     if (template?.markdown) {
       finalMarkdown = renderTemplate(template.markdown, {
@@ -167,93 +169,55 @@ export async function POST(req: NextRequest) {
 
     let resultReport;
     if (reportId) {
-      // 更新现有报告
       resultReport = await prisma.report.update({
         where: { id: reportId },
         data: {
           title: llmReport.title,
           summary: llmReport.summary,
           markdown: finalMarkdown,
-          metadata: llmReport.sections
-            ? { sections: llmReport.sections }
-            : undefined,
+          metadata: llmReport.sections ? { sections: llmReport.sections } : undefined,
         },
         include: {
           materials: true,
           template: true,
-          chatSession: {
-            include: { messages: { orderBy: { createdAt: "asc" } } },
-          },
+          chatSession: { include: { messages: { orderBy: { createdAt: "asc" } } } },
         },
       });
-      if (!sessionId && resultReport.chatSession) {
-        sessionId = resultReport.chatSession.id;
-      }
     } else {
-      // 创建新报告
       resultReport = await prisma.report.create({
         data: {
           title: llmReport.title,
           summary: llmReport.summary,
           markdown: finalMarkdown,
           status: "DRAFT",
-          templateId: parse.data.templateId,
+          templateId,
           authorId: userId,
-          metadata: llmReport.sections
-            ? { sections: llmReport.sections }
-            : undefined,
+          metadata: llmReport.sections ? { sections: llmReport.sections } : undefined,
           materials: {
-            create:
-              parse.data.materials?.map((material) => ({
-                sourceType: material.sourceType,
-                sourceId: material.sourceId,
-                title: material.title,
-                snippet: material.snippet,
-                metadata: material.metadata,
-              })) ?? [],
+            create: materials?.map((m) => ({
+              sourceType: m.sourceType,
+              sourceId: m.sourceId,
+              title: m.title,
+              snippet: m.snippet,
+              metadata: m.metadata,
+            })) ?? [],
           },
-          chatSession: {
-            create: {
-              userId,
-              messages: {
-                create: {
-                  role: "user",
-                  content: parse.data.prompt,
-                },
-              },
-            },
-          },
-        },
-        include: {
-          materials: true,
-          template: true,
-          chatSession: {
-            include: { messages: { orderBy: { createdAt: "asc" } } },
-          },
-        },
-      });
-      sessionId = resultReport.chatSession?.id ?? null;
-    }
-
-    // 保存 AI 响应到 Message
-    if (sessionId && reply) {
-      await prisma.chatMessage.create({
-        data: {
-          sessionId,
-          role: "assistant",
-          content: reply,
+          // Link existing session to the new report
         },
       });
 
-      // 重新获取包含最新消息的 report
+      // Update session to link to the new report
+      await prisma.chatSession.update({
+        where: { id: sessionId! },
+        data: { reportId: resultReport.id },
+      });
+
       resultReport = await prisma.report.findUnique({
         where: { id: resultReport.id },
         include: {
           materials: true,
           template: true,
-          chatSession: {
-            include: { messages: { orderBy: { createdAt: "asc" } } },
-          },
+          chatSession: { include: { messages: { orderBy: { createdAt: "asc" } } } },
         },
       });
     }
@@ -265,9 +229,6 @@ export async function POST(req: NextRequest) {
     });
   } catch (error: any) {
     console.error("[report-generate] Critical API Error:", error);
-    return fail(
-      `生成过程发生解析或连接错误: ${error.message || "未知错误"}`,
-      500
-    );
+    return fail(`生成过程发生解析或连接错误: ${error.message || "未知错误"}`, 500);
   }
 }

@@ -72,6 +72,7 @@ export const ReportGenerateSchema = z.object({
     .array(ChatMessageSchema)
     .optional(),
   reportId: z.string().optional(),
+  sessionId: z.string().optional(),
   templateId: z.string().cuid().optional().nullable(),
   materials: z.array(MaterialSchema).optional(),
   options: z
