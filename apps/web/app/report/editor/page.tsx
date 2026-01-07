@@ -25,6 +25,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import {
   ChevronLeft,
+  Loader2,
   Paperclip,
   RefreshCw,
   Save,
@@ -625,7 +626,7 @@ const ReportEditor = () => {
     if (chatContainerRef.current) {
       chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
     }
-  }, [chatMessages]);
+  }, [chatMessages, isGenerating]);
 
   return (
     <div className="space-y-6">
@@ -993,6 +994,19 @@ const ReportEditor = () => {
                     )}
                   </div>
                 ))}
+
+                {isGenerating && (
+                  <div className="flex gap-3 justify-end">
+                    <div className="flex items-center gap-2 rounded-2xl px-4 py-3 bg-muted text-muted-foreground text-sm animate-pulse">
+                      <Loader2 className="size-4 animate-spin" />
+                      正在思考并生成中...
+                    </div>
+                    <Avatar>
+                      <AvatarImage src="https://github.com/shadcn.png" />
+                      <AvatarFallback>LLM</AvatarFallback>
+                    </Avatar>
+                  </div>
+                )}
               </div>
               <div className="flex gap-3">
                 <Input
