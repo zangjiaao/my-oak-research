@@ -1,5 +1,5 @@
 import { embedMany } from "ai";
-import { openai, apiKey } from "./provider";
+import { openai, deepseek, google } from "./provider";
 
 type EmbeddingModel =
   | "text-embedding-ada-002"
@@ -9,6 +9,22 @@ type EmbeddingModel =
 
 const DEFAULT_MODEL: EmbeddingModel =
   (process.env.EMBEDDING_MODEL as EmbeddingModel) ?? "text-embedding-3-small";
+
+/**
+ * Select the correct embedding model instance based on string identifier
+ */
+function getEmbeddingModel(modelId: string) {
+  const lower = modelId.toLowerCase();
+  if (lower.includes("gemini") || lower.includes("embedding-004")) {
+    return google.embedding(modelId);
+  }
+  // DeepSeek currently doesn't provide an official embedding API in many regions, 
+  // but if it uses OpenAI compatible endpoint:
+  if (lower.includes("deepseek")) {
+    return deepseek.embedding(modelId);
+  }
+  return openai.embedding(modelId);
+}
 
 // OpenAI embedding models have a limit of 8192 tokens.
 // We use a character limit as a safety proxy. 
@@ -25,13 +41,8 @@ export async function createEmbeddings(
   model: EmbeddingModel = DEFAULT_MODEL
 ): Promise<number[][]> {
   console.log(
-    `[embeddings] createEmbeddings (AI SDK) called with model=${model}, inputs=${inputs.length}`
+    `[embeddings] createEmbeddings called with model=${model}, inputs=${inputs.length}`
   );
-
-  if (!apiKey) {
-    console.log("[embeddings] No API key found, returning zero vectors");
-    return inputs.map(() => zeros());
-  }
 
   try {
     const BATCH_SIZE = 100;
@@ -53,7 +64,7 @@ export async function createEmbeddings(
       console.log(`[embeddings] processing batch ${Math.floor(startIndex / BATCH_SIZE) + 1}/${Math.ceil(inputs.length / BATCH_SIZE)}...`);
 
       const { embeddings } = await embedMany({
-        model: openai.embedding(model),
+        model: getEmbeddingModel(model),
         values: batch,
       });
 

@@ -92,7 +92,15 @@ const favoriteToMaterial = (favorite: FavoriteItem): MaterialOption => {
   };
 };
 
-const recommendedModels = [process.env.LLM_DEFAULT_MODEL ?? "deepseek-v3.2", "gpt-4", "gpt-5"];
+const recommendedModels = [
+  "gpt-4o",
+  "gpt-4o-mini",
+  "o1-mini",
+  "deepseek-chat",
+  "deepseek-reasoner",
+  "gemini-1.5-pro",
+  "gemini-1.5-flash"
+];
 
 const initialMessages: ChatMessage[] = [
   {

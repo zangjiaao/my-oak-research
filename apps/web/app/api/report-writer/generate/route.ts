@@ -158,6 +158,14 @@ ${existingReportData.markdown || "N/A"}
       return fail(`LLM gateway error (${chosenModel})`, 502, { detail: error instanceof Error ? error.message : String(error) });
     }
 
+    // 预处理：如果 AI 选择了 REPLY 动作，且 report 对象里的字段都是空的，则将其设置为 null 以通过校验
+    if (llmResponse.action === "REPLY" && llmResponse.report) {
+      const r = llmResponse.report;
+      if (!r.title && !r.summary && !r.markdown) {
+        llmResponse.report = null;
+      }
+    }
+
     const checked = ReportLLMOutputSchema.safeParse(llmResponse);
     if (!checked.success) {
       console.error("[report-generate] LLM Output validation failed:", JSON.stringify(llmResponse, null, 2));
