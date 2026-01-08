@@ -44,10 +44,7 @@ export const llmGateway = {
     console.log(`[llm-gateway] task=${task} model=${modelId}`);
 
     const modelInstance = getModelInstance(modelId);
-
-    const prompt = [`Task: ${task}`, request.prompt]
-      .filter(Boolean)
-      .join("\n\n");
+    const prompt = [`Task: ${task}`, request.prompt].filter(Boolean).join("\n\n");
 
     const isReasoningModel =
       modelId.startsWith("o1-") ||
@@ -57,13 +54,13 @@ export const llmGateway = {
 
     const temperature = isReasoningModel ? undefined : (request.temperature ?? 0.3);
 
+    let rawText = "";
+
     try {
-      // 1. 如果是 DeepSeek 模型，绕过 AI SDK 直接使用 fetch 调用（解决协议错乱和 404 问题）
+      // 1. DeepSeek Direct Fetch
       if (modelId.toLowerCase().includes("deepseek")) {
         const apiKey = process.env.DEEPSEEK_API_KEY;
-        const baseURL = (process.env.DEEPSEEK_BASE_URL || 'https://api.deepseek.com').replace(/\/v1\/?$/, '');
-
-        console.log(`[llm-gateway] Direct fetch to DeepSeek: ${baseURL}/v1/chat/completions`);
+        const baseURL = (process.env.DEEPSEEK_BASE_URL || "https://api.deepseek.com").replace(/\/v1\/?$/, "");
 
         const response = await fetch(`${baseURL}/v1/chat/completions`, {
           method: "POST",
@@ -75,7 +72,7 @@ export const llmGateway = {
             model: modelId,
             messages: [{ role: "user", content: prompt + "\n\nPlease respond in JSON format." }],
             temperature: temperature ?? 1.0,
-            response_format: { type: "json_object" }
+            response_format: { type: "json_object" },
           }),
         });
 
@@ -85,50 +82,38 @@ export const llmGateway = {
         }
 
         const data = await response.json();
-        const text = data.choices[0].message.content;
-
-        try {
-          const cleanedText = text.replace(/```json\n?|\n?```/g, "").trim();
-          return JSON.parse(cleanedText) as T;
-        } catch (e) {
-          console.error("[llm-gateway] Failed to parse DeepSeek direct response:", text);
-          throw new Error("DeepSeek response was not valid JSON");
-        }
+        rawText = data.choices[0].message.content;
       }
-
-      // 2. 如果提供了 Schema 且不是特殊模型，使用 generateObject
-      else if (request.schema) {
-        const result = await generateObject({
-          model: modelInstance,
-          schema: request.schema,
-          messages: [{ role: "user", content: prompt }],
-          temperature,
-          output: "object",
-        });
-        return result.object as T;
-      }
-
-      // 3. 其他情况使用 generateText 并手动解析
+      // 2. Standard AI SDK calls
       else {
         const { text } = await generateText({
           model: modelInstance,
-          messages: [{ role: "user", content: prompt }],
+          messages: [{ role: "user", content: prompt + (request.schema ? "\n\nCRITICAL: You MUST respond with a valid JSON object matching the requested schema." : "") }],
           temperature,
         });
+        rawText = text;
+      }
 
-        try {
-          const cleanedText = text.replace(/```json\n?|\n?```/g, "").trim();
-          return JSON.parse(cleanedText) as T;
-        } catch (e) {
-          return text as unknown as T;
+      // Cleanup and Parse JSON
+      try {
+        const cleanedText = rawText.replace(/```json\n?|\n?```/g, "").trim();
+        return JSON.parse(cleanedText) as T;
+      } catch (parseError) {
+        // If it's not valid JSON but we expected an object, try to wrap it as a REPLY
+        console.warn("[llm-gateway] LLM output is not valid JSON, attempting to wrap as REPLY action.");
+        if (typeof rawText === "string" && rawText.length > 0) {
+          return {
+            action: "REPLY",
+            reply: rawText,
+            report: null,
+          } as unknown as T;
         }
+        throw parseError;
       }
     } catch (error: any) {
       console.error(`[llm-gateway] Error in LLM task "${task}" (Model: ${modelId}):`);
       console.error(`- Message: ${error.message}`);
-      console.error(`- Name: ${error.name}`);
       if (error.status) console.error(`- Status: ${error.status}`);
-      if (error.data) console.error(`- Data: ${JSON.stringify(error.data)}`);
       throw error;
     }
   },

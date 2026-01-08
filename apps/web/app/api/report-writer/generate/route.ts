@@ -158,11 +158,19 @@ ${existingReportData.markdown || "N/A"}
       return fail(`LLM gateway error (${chosenModel})`, 502, { detail: error instanceof Error ? error.message : String(error) });
     }
 
-    // 预处理：如果 AI 选择了 REPLY 动作，且 report 对象里的字段都是空的，则将其设置为 null 以通过校验
-    if (llmResponse.action === "REPLY" && llmResponse.report) {
+    // 预处理 LLM 输出，增加容错性
+    if (llmResponse.report) {
       const r = llmResponse.report;
+
+      // 1. 如果 report 字段全为空，则视为没有报告，设为 null（防止 min(1) 校验失败）
       if (!r.title && !r.summary && !r.markdown) {
         llmResponse.report = null;
+      }
+      // 2. 如果提供了 sections 但没有提供 markdown 正文，则根据 sections 自动生成 markdown
+      else if (!r.markdown && r.sections && r.sections.length > 0) {
+        llmResponse.report.markdown = r.sections
+          .map((s: any) => `## ${s.heading}\n\n${s.content}`)
+          .join("\n\n");
       }
     }
 

@@ -97,7 +97,7 @@ export const ReportLLMOutputSchema = z.object({
     .object({
       title: z.string().min(1),
       summary: z.string().min(1),
-      markdown: z.string().min(1),
+      markdown: z.string().default(""),
       sections: z.array(ReportSectionSchema).optional(),
     })
     .optional()

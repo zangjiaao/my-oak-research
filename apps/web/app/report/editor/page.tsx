@@ -175,6 +175,23 @@ const ReportEditor = () => {
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const chatContainerRef = useRef<HTMLDivElement>(null);
+
+  const [availableModels, setAvailableModels] = useState<{ id: string; provider: string; name: string }[]>([]);
+
+  useEffect(() => {
+    fetch("/api/llm/models")
+      .then(res => res.json())
+      .then(data => {
+        if (data.models) {
+          setAvailableModels(data.models);
+          // 如果当前模型不在列表中，且列表不为空，自动切换到第一个
+          if (data.models.length > 0 && !data.models.find((m: any) => m.id === model)) {
+            // setModel(data.models[0].id);
+          }
+        }
+      })
+      .catch(err => console.error("Failed to fetch models:", err));
+  }, []);
   // 保存待匹配的报告素材信息（用于异步匹配）
   const [pendingMaterials, setPendingMaterials] = useState<
     Array<{
@@ -917,9 +934,9 @@ const ReportEditor = () => {
                         <SelectValue placeholder="选择模型（可留空）" />
                       </SelectTrigger>
                       <SelectContent>
-                        {recommendedModels.map((modelOption) => (
-                          <SelectItem key={modelOption} value={modelOption}>
-                            {modelOption}
+                        {availableModels.map((modelOption) => (
+                          <SelectItem key={modelOption.id} value={modelOption.id}>
+                            {modelOption.name}
                           </SelectItem>
                         ))}
                       </SelectContent>
