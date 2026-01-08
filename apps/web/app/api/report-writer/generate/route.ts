@@ -127,9 +127,9 @@ ${existingReportData.markdown || "N/A"}
           action: "REPLY | GENERATE_REPORT | UPDATE_REPORT",
           reply: "string (your response to the user)",
           report: {
-            title: "string",
-            summary: "string (150-200 characters)",
-            markdown: "string (full body)",
+            title: "string (report title)",
+            summary: "string (150-200 characters executive summary)",
+            markdown: "string (the actual body content, DO NOT include the title or summary again)",
             sections: [{ heading: "string", content: "string", references: ["string"] }]
           }
         },

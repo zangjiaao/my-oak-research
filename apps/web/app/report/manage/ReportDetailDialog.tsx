@@ -200,24 +200,8 @@ export function ReportDetailDialog({
                 </div>
               ) : report ? (
                 <div className="space-y-6">
-                  {report.summary && (
-                    <div className="space-y-2">
-                      <h3 className="text-sm font-semibold text-muted-foreground">
-                        摘要
-                      </h3>
-                      <p className="text-sm text-muted-foreground leading-relaxed">
-                        {report.summary}
-                      </p>
-                    </div>
-                  )}
-
                   {report.markdown ? (
-                    <div className="space-y-2">
-                      <h3 className="text-sm font-semibold text-muted-foreground">
-                        正文
-                      </h3>
-                      <MarkdownRenderer content={report.markdown} />
-                    </div>
+                    <MarkdownRenderer content={report.markdown} />
                   ) : (
                     <div className="py-8 text-center text-sm text-muted-foreground">
                       暂无内容
