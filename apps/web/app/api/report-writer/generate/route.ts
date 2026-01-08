@@ -33,19 +33,21 @@ export async function POST(req: NextRequest) {
       options
     } = parse.data;
 
-    // 1. Identify or Create ChatSession
+    // 1. Identify or Create ChatSession and Fetch Existing Report
     let sessionId: string | null = inputSessionId || null;
+    let existingReportData: any = null;
 
-    if (!sessionId && reportId) {
-      const existingReport = await prisma.report.findUnique({
+    if (reportId) {
+      existingReportData = await prisma.report.findUnique({
         where: { id: reportId },
         include: { chatSession: true },
       });
-      if (existingReport?.chatSession) {
-        sessionId = existingReport.chatSession.id;
-      } else if (existingReport) {
+
+      if (existingReportData?.chatSession) {
+        sessionId = existingReportData.chatSession.id;
+      } else if (existingReportData && !sessionId) {
         const session = await prisma.chatSession.create({
-          data: { reportId: existingReport.id, userId },
+          data: { reportId: existingReportData.id, userId },
         });
         sessionId = session.id;
       }
@@ -90,6 +92,14 @@ export async function POST(req: NextRequest) {
       ?.map((m) => `${m.role.toUpperCase()}: ${m.content}`)
       .join("\n") || "No previous messages.";
 
+    const currentReportContent = existingReportData
+      ? `Title: ${existingReportData.title}
+Summary: ${existingReportData.summary || "N/A"}
+Content:
+${existingReportData.markdown || "N/A"}
+`
+      : "No existing report content.";
+
     // Build the instruction for the LLM
     const systemPrompt = [
       "You are a professional report writing assistant.",
@@ -101,6 +111,9 @@ export async function POST(req: NextRequest) {
       "1. If the user is just asking questions, chatting, or providing vague ideas, use action: 'REPLY' and provide a helpful response. DO NOT generate or update the report object.",
       "2. If the user explicitly asks to 'generate a report', 'write a draft', or provides enough information to start writing, use action: 'GENERATE_REPORT' and provide both 'reply' and the full 'report' object.",
       "3. If a report draft already exists and the user asks for specific changes, improvements, or additions, use action: 'UPDATE_REPORT' and provide both 'reply' and the updated 'report' object.",
+      "",
+      "CURRENT REPORT CONTENT:",
+      currentReportContent,
       "",
       "CONVERSATION HISTORY:",
       history,
@@ -147,6 +160,8 @@ export async function POST(req: NextRequest) {
 
     const checked = ReportLLMOutputSchema.safeParse(llmResponse);
     if (!checked.success) {
+      console.error("[report-generate] LLM Output validation failed:", JSON.stringify(llmResponse, null, 2));
+      console.error("[report-generate] Validation errors:", checked.error.flatten());
       return fail("LLM output invalid", 422, checked.error.flatten());
     }
 
