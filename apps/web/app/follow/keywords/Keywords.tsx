@@ -50,11 +50,12 @@ const KeywordsTable = ({
               {include}
             </Badge>
           ))}
-          {keyword.synonyms.map((synonym) => (
-            <Badge key={synonym} variant="secondary">
-              {synonym}
-            </Badge>
-          ))}
+          {keyword.enableAiExpand &&
+            keyword.synonyms.map((synonym) => (
+              <Badge key={synonym} variant="secondary">
+                {synonym}
+              </Badge>
+            ))}
         </div>
       ),
     },

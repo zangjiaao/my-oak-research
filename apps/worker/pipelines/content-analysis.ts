@@ -100,12 +100,25 @@ export async function runFocusCollector(runId: string, queryId: string) {
     return;
   }
 
+  const expandedKeywords = query.keywords.map((kw) => {
+    const parts = [kw.name, ...kw.includes];
+    if (kw.enableAiExpand && kw.synonyms.length > 0) {
+      parts.push(...kw.synonyms);
+    }
+    return Array.from(new Set(parts)).join(", ");
+  });
+
+  const keywordsStr = expandedKeywords.join("; ") || "无关键词";
+
   for (let i = 0; i < cleaned.length; i++) {
     const item = cleaned[i];
     await send({ type: "summary", message: `第 ${i + 1} 条内容生成摘要` });
-    const keywords =
-      query.keywords.map((kw) => kw.name).join("，") || "无关键词";
-    const summary = await summarizeWithRetry(item, keywords, queryId, runId);
+    const summary = await summarizeWithRetry(
+      item,
+      keywordsStr,
+      queryId,
+      runId
+    );
 
     const content = await prisma.content.create({
       data: {
@@ -122,7 +135,7 @@ export async function runFocusCollector(runId: string, queryId: string) {
         meta: {
           sourceFingerprint: item.fingerprint,
           driver: item.driver,
-          keywords: query.keywords.map((keyword) => keyword.name),
+          keywords: expandedKeywords,
           summaryRelevance: summary.relevance,
           sourceId: item.sourceId,
           sourceType: item.sourceType,
@@ -387,9 +400,8 @@ async function fetchSearchSource(
   if (!apiUrl) {
     return [
       {
-        text: `搜索引擎 ${source.name} 未配置 API，使用默认查询 ${
-          source.search?.query || "unknown"
-        }`,
+        text: `搜索引擎 ${source.name} 未配置 API，使用默认查询 ${source.search?.query || "unknown"
+          }`,
         markdown: `搜索引擎 ${source.name} 结果占位`,
         platform: source.name,
         time: new Date(),
@@ -490,8 +502,7 @@ async function summarizeWithRetry(
         source: item.platform,
       });
       console.log(
-        `[collector] summary-error attempt=${attempt} source=${
-          item.platform
+        `[collector] summary-error attempt=${attempt} source=${item.platform
         } error=${(error as Error).message}`
       );
       if (attempt === 3) throw error;
