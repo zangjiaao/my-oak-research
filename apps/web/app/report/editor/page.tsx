@@ -1022,8 +1022,25 @@ const ReportEditor = () => {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => {
-                    setChatMessages(initialMessages);
+                  onClick={async () => {
+                    if (currentSessionId) {
+                      try {
+                        const res = await fetch(`/api/report-writer/sessions/${currentSessionId}/messages`, {
+                          method: "DELETE"
+                        });
+                        const data = await res.json();
+                        if (data.success) {
+                          setChatMessages(initialMessages);
+                          toast.success("会话历史已清空");
+                        } else {
+                          toast.error(data.error || "清空失败");
+                        }
+                      } catch (error) {
+                        toast.error("网络错误，清空失败");
+                      }
+                    } else {
+                      setChatMessages(initialMessages);
+                    }
                   }}
                 >
                   清空对话
