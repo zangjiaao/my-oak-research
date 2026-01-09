@@ -31,9 +31,11 @@ import {
   RefreshCw,
   Save,
   Sparkles,
+  Trash2,
 } from "lucide-react";
 import { KnowledgeSelector } from "@/components/business/KnowledgeSelector";
 import { useFavorites, type FavoriteItem } from "@/hooks/useFavorites";
+import { Checkbox } from "@/components/ui/checkbox";
 
 type Template = {
   id: string;
@@ -175,6 +177,8 @@ const ReportEditor = () => {
   const [currentReportId, setCurrentReportId] = useState<string | null>(null);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
+  const [selectedMessageIds, setSelectedMessageIds] = useState<string[]>([]);
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
   const [availableModels, setAvailableModels] = useState<{ id: string; provider: string; name: string }[]>([]);
@@ -694,6 +698,35 @@ const ReportEditor = () => {
     await generateDraft(trimmed);
   };
 
+  const handleBatchDelete = async () => {
+    if (selectedMessageIds.length === 0) return;
+
+    try {
+      const res = await fetch("/api/report-writer/messages/batch", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: selectedMessageIds }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setChatMessages(prev => prev.filter(m => !selectedMessageIds.includes(m.id)));
+        setSelectedMessageIds([]);
+        setIsSelectionMode(false);
+        toast.success(`已删除 ${selectedMessageIds.length} 条对话内容`);
+      } else {
+        toast.error(data.error || "删除失败");
+      }
+    } catch (error) {
+      toast.error("网络错误，删除失败");
+    }
+  };
+
+  const toggleMessageSelection = (id: string) => {
+    setSelectedMessageIds(prev =>
+      prev.includes(id) ? prev.filter(mId => mId !== id) : [...prev, id]
+    );
+  };
+
   // 自动滚动到聊天底部
   useEffect(() => {
     if (chatContainerRef.current) {
@@ -1019,32 +1052,68 @@ const ReportEditor = () => {
                   <CardTitle>与 LLM 协作</CardTitle>
                   <CardDescription>随时提问或调整报告方向。</CardDescription>
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={async () => {
-                    if (currentSessionId) {
-                      try {
-                        const res = await fetch(`/api/report-writer/sessions/${currentSessionId}/messages`, {
-                          method: "DELETE"
-                        });
-                        const data = await res.json();
-                        if (data.success) {
-                          setChatMessages(initialMessages);
-                          toast.success("会话历史已清空");
-                        } else {
-                          toast.error(data.error || "清空失败");
-                        }
-                      } catch (error) {
-                        toast.error("网络错误，清空失败");
-                      }
-                    } else {
-                      setChatMessages(initialMessages);
-                    }
-                  }}
-                >
-                  清空对话
-                </Button>
+                <div className="flex items-center gap-2">
+                  {isSelectionMode ? (
+                    <>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={handleBatchDelete}
+                        disabled={selectedMessageIds.length === 0}
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        删除 ({selectedMessageIds.length})
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setIsSelectionMode(false);
+                          setSelectedMessageIds([]);
+                        }}
+                      >
+                        取消
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setIsSelectionMode(true)}
+                        disabled={chatMessages.length <= 1}
+                      >
+                        选择
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={async () => {
+                          if (currentSessionId) {
+                            try {
+                              const res = await fetch(`/api/report-writer/sessions/${currentSessionId}/messages`, {
+                                method: "DELETE"
+                              });
+                              const data = await res.json();
+                              if (data.success) {
+                                setChatMessages(initialMessages);
+                                toast.success("会话历史已清空");
+                              } else {
+                                toast.error(data.error || "清空失败");
+                              }
+                            } catch (error) {
+                              toast.error("网络错误，清空失败");
+                            }
+                          } else {
+                            setChatMessages(initialMessages);
+                          }
+                        }}
+                      >
+                        清空对话
+                      </Button>
+                    </>
+                  )}
+                </div>
               </div>
             </CardHeader>
             <CardContent className="flex flex-1 flex-col gap-3 min-h-0">
@@ -1052,38 +1121,61 @@ const ReportEditor = () => {
                 ref={chatContainerRef}
                 className="flex-1 space-y-3 overflow-y-auto pr-1 min-h-0 scrollbar-hide"
               >
-                {chatMessages.map((message) => (
-                  <div
-                    key={message.id}
-                    className={cn(
-                      "flex gap-3",
-                      message.role === "user" ? "justify-start" : "justify-end"
-                    )}
-                  >
-                    {message.role === "user" && (
-                      <Avatar>
-                        <AvatarImage src="https://github.com/evilrabbit.png" />
-                        <AvatarFallback>你</AvatarFallback>
-                      </Avatar>
-                    )}
+                {chatMessages.map((message) => {
+                  const isSystemMsg = message.id.startsWith("chat-init");
+                  return (
                     <div
+                      key={message.id}
                       className={cn(
-                        "rounded-2xl px-4 py-3 max-w-[70%] text-sm break-words whitespace-pre-line",
-                        message.role === "user"
-                          ? "bg-blue-100 text-blue-900"
-                          : "bg-muted text-muted-foreground"
+                        "flex gap-2 items-start",
+                        message.role === "user" ? "justify-start" : "justify-end"
                       )}
                     >
-                      {message.content}
+                      {isSelectionMode && !isSystemMsg && message.role === "user" && (
+                        <div className="pt-2 shrink-0 pr-1">
+                          <Checkbox
+                            checked={selectedMessageIds.includes(message.id)}
+                            onCheckedChange={() => toggleMessageSelection(message.id)}
+                          />
+                        </div>
+                      )}
+
+                      <div className="flex gap-3 max-w-[85%] items-start">
+                        {message.role === "user" && (
+                          <Avatar className="shrink-0 size-8">
+                            <AvatarImage src="https://github.com/evilrabbit.png" />
+                            <AvatarFallback>你</AvatarFallback>
+                          </Avatar>
+                        )}
+                        <div
+                          className={cn(
+                            "rounded-2xl px-4 py-3 text-sm break-words whitespace-pre-line shadow-sm",
+                            message.role === "user"
+                              ? "bg-blue-100 text-blue-900"
+                              : "bg-muted text-muted-foreground"
+                          )}
+                        >
+                          {message.content}
+                        </div>
+                        {message.role === "assistant" && (
+                          <Avatar className="shrink-0 size-8">
+                            <AvatarImage src="https://github.com/shadcn.png" />
+                            <AvatarFallback>LLM</AvatarFallback>
+                          </Avatar>
+                        )}
+                      </div>
+
+                      {isSelectionMode && !isSystemMsg && message.role === "assistant" && (
+                        <div className="pt-2 shrink-0 pl-1">
+                          <Checkbox
+                            checked={selectedMessageIds.includes(message.id)}
+                            onCheckedChange={() => toggleMessageSelection(message.id)}
+                          />
+                        </div>
+                      )}
                     </div>
-                    {message.role === "assistant" && (
-                      <Avatar>
-                        <AvatarImage src="https://github.com/shadcn.png" />
-                        <AvatarFallback>LLM</AvatarFallback>
-                      </Avatar>
-                    )}
-                  </div>
-                ))}
+                  );
+                })}
 
                 {isGenerating && (
                   <div className="flex gap-3 justify-end">
