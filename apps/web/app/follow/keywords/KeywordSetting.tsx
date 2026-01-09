@@ -30,7 +30,7 @@ interface Props {
 
 // Fetcher function for keywords
 async function fetchKeywords() {
-  const response = await fetch("/api/follow/keywords");
+  const response = await fetch("/api/follow/keywords", { cache: "no-store" });
   if (!response.ok) {
     throw new Error("Failed to fetch keywords");
   }
@@ -39,7 +39,7 @@ async function fetchKeywords() {
   return Array.isArray(data?.items) ? data.items : [];
 }
 
-const KeywordSettinggCard = ({ initialKeywords, categories }: Props) => {
+const KeywordSettingCard = ({ initialKeywords, categories }: Props) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string | undefined>();
 
@@ -47,12 +47,16 @@ const KeywordSettinggCard = ({ initialKeywords, categories }: Props) => {
   const {
     data: keywords,
     isLoading,
+    isFetching,
     error,
   } = useQuery({
     queryKey: ["keywords"],
     queryFn: fetchKeywords,
     initialData: initialKeywords,
   });
+
+  const isActuallyLoading = isLoading || (isFetching && !keywords);
+  const isRefreshing = isFetching && !!keywords;
 
   if (error) {
     return (
@@ -120,18 +124,20 @@ const KeywordSettinggCard = ({ initialKeywords, categories }: Props) => {
             }
           />
         </div>
-        {isLoading ? (
+        {isActuallyLoading ? (
           <div className="space-y-4">
             <Skeleton className="h-12 w-full" />
             <Skeleton className="h-12 w-full" />
             <Skeleton className="h-12 w-full" />
           </div>
         ) : (
-          <KeywordsTable keywords={filteredKeywords} categories={categories} />
+          <div className={isRefreshing ? "opacity-50 transition-opacity" : ""}>
+            <KeywordsTable keywords={filteredKeywords} categories={categories} />
+          </div>
         )}
       </div>
     </SettingCard>
   );
 };
 
-export default KeywordSettinggCard;
+export default KeywordSettingCard;

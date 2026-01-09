@@ -51,7 +51,14 @@ export function useKeywordMutation({
         endpoint,
         isUpdate,
       }),
-    onSuccess: () => {
+    onSuccess: async () => {
+      // Invalidate 相关查询并等待
+      await queryClient.invalidateQueries({ queryKey: ["keywords"] });
+      queryClient.invalidateQueries({ queryKey: ["categories"] });
+      if (keywordId) {
+        queryClient.invalidateQueries({ queryKey: ["keyword", keywordId] });
+      }
+
       // 显示成功消息
       toast.success(
         isUpdate ? "Keyword updated successfully" : "Keyword added successfully"
@@ -59,20 +66,13 @@ export function useKeywordMutation({
 
       // 执行用户提供的成功回调
       onSuccess?.();
-
-      // Invalidate 相关查询
-      queryClient.invalidateQueries({ queryKey: ["keywords"] });
-      queryClient.invalidateQueries({ queryKey: ["categories"] });
-      if (keywordId) {
-        queryClient.invalidateQueries({ queryKey: ["keyword", keywordId] });
-      }
     },
     onError: (error: Error) => {
       // 增强的错误处理
       console.error("Failed to submit keyword:", error);
       toast.error(
         error.message ||
-          (isUpdate ? "Failed to update keyword" : "Failed to add keyword")
+        (isUpdate ? "Failed to update keyword" : "Failed to add keyword")
       );
     },
   });
