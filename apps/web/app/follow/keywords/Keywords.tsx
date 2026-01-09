@@ -2,7 +2,7 @@
 
 import { Category, Prisma } from "@/app/generated/prisma";
 import { Button } from "@/components/ui/button";
-import { PencilIcon, TrashIcon, XIcon } from "lucide-react";
+import { PencilIcon, TrashIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
   DataTable,
@@ -46,27 +46,13 @@ const KeywordsTable = ({
       render: (keyword) => (
         <div className="flex flex-wrap gap-1 max-w-md">
           {keyword.includes.map((include) => (
-            <Badge
-              key={include}
-              variant="outline"
-              className="flex items-center gap-1"
-            >
+            <Badge key={include} variant="outline">
               {include}
-              <XIcon
-                size={12}
-                color="gray"
-                className="cursor-pointer hover:text-red-500"
-              />
             </Badge>
           ))}
           {keyword.synonyms.map((synonym) => (
             <Badge key={synonym} variant="secondary">
               {synonym}
-              <XIcon
-                size={12}
-                color="gray"
-                className="cursor-pointer hover:text-red-500"
-              />
             </Badge>
           ))}
         </div>
@@ -80,11 +66,6 @@ const KeywordsTable = ({
           {keyword.excludes.map((exclude) => (
             <Badge key={exclude} variant="outline">
               {exclude}
-              <XIcon
-                size={12}
-                color="gray"
-                className="cursor-pointer hover:text-red-500"
-              />
             </Badge>
           ))}
         </div>
