@@ -1233,6 +1233,12 @@ const ReportEditor = () => {
                     placeholder="Markdown 内容，可直接编辑"
                   />
                 </div>
+                <div className="flex justify-between items-center mt-1 px-1">
+                  <div className="text-[10px] text-muted-foreground/60 flex gap-3">
+                    <span>正文: {reportDraft.markdown.length} 字</span>
+                    <span>总计: {reportDraft.title.length + reportDraft.summary.length + reportDraft.markdown.length} 字</span>
+                  </div>
+                </div>
               </CardContent>
             </Card>
 
