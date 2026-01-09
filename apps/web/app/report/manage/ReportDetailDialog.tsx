@@ -136,7 +136,7 @@ export function ReportDetailDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl h-[90vh] max-h-[90vh] flex flex-col p-0 overflow-hidden">
+      <DialogContent className="max-w-[95vw] sm:max-w-[80vw] lg:max-w-[1200px] h-[90vh] max-h-[90vh] flex flex-col p-0 overflow-hidden">
         <div className="flex-shrink-0 px-6 pt-6 pb-4">
           <DialogHeader>
             <DialogTitle className="text-xl">
