@@ -1081,7 +1081,7 @@ const ReportEditor = () => {
                   </div>
                 )}
               </div>
-              <div className="flex flex-col gap-2 rounded-2xl border bg-background p-2 shadow-sm focus-within:ring-2 focus-within:ring-primary/20 transition-all border-border/80">
+              <div className="flex flex-col gap-1 rounded-2xl border p-2 shadow-sm focus-within:ring-2 focus-within:ring-primary/20 transition-all border-border/80">
                 <Textarea
                   placeholder="请输入想法或指令，Shift + Enter 换行..."
                   value={chatInput}
@@ -1096,12 +1096,12 @@ const ReportEditor = () => {
                   className="min-h-[60px] w-full resize-none !border-none bg-transparent !ring-0 focus-visible:ring-0 focus-visible:ring-offset-0 !shadow-none outline-none px-3 py-2 text-sm"
                 />
                 <div className="flex items-center justify-between gap-3 px-1 pb-1">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1">
                     <Select
                       value={model}
                       onValueChange={(value) => setModel(value || undefined)}
                     >
-                      <SelectTrigger className="h-8 w-fit !bg-transparent !border-none !shadow-none hover:text-primary transition-colors text-xs gap-2 px-2">
+                      <SelectTrigger className="h-7 w-fit bg-muted/60 hover:bg-muted border-none rounded-full shadow-none transition-colors text-[11px] gap-1.5 px-3 focus:ring-0 focus:ring-offset-0">
                         <SelectValue placeholder="选择模型" />
                       </SelectTrigger>
                       <SelectContent>
@@ -1113,7 +1113,7 @@ const ReportEditor = () => {
                       </SelectContent>
                     </Select>
                     {temperature !== undefined && (
-                      <span className="text-[10px] text-muted-foreground bg-muted/30 px-2 py-0.5 rounded-full">
+                      <span className="text-[11px] text-muted-foreground bg-muted/30 px-2 py-0.5 rounded-full">
                         Temp: {temperature.toFixed(2)}
                       </span>
                     )}
