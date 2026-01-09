@@ -24,6 +24,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import {
+  ArrowUp,
   ChevronLeft,
   Loader2,
   Paperclip,
@@ -1080,9 +1081,9 @@ const ReportEditor = () => {
                   </div>
                 )}
               </div>
-              <div className="flex gap-3">
-                <Input
-                  placeholder="请输入想法，按回车可快速发送"
+              <div className="flex flex-col gap-2 rounded-2xl border bg-background p-2 shadow-sm focus-within:ring-2 focus-within:ring-primary/20 transition-all border-border/80">
+                <Textarea
+                  placeholder="请输入想法或指令，Shift + Enter 换行..."
                   value={chatInput}
                   onChange={(event) => setChatInput(event.target.value)}
                   onKeyDown={(event) => {
@@ -1092,13 +1093,48 @@ const ReportEditor = () => {
                     }
                   }}
                   disabled={isGenerating}
+                  className="min-h-[60px] w-full resize-none !border-none bg-transparent !ring-0 focus-visible:ring-0 focus-visible:ring-offset-0 !shadow-none outline-none px-3 py-2 text-sm"
                 />
-                <Button
-                  onClick={handleChatSubmit}
-                  disabled={!chatInput.trim() || isGenerating}
-                >
-                  发送
-                </Button>
+                <div className="flex items-center justify-between gap-3 px-1 pb-1">
+                  <div className="flex items-center gap-2">
+                    <Select
+                      value={model}
+                      onValueChange={(value) => setModel(value || undefined)}
+                    >
+                      <SelectTrigger className="h-8 w-fit !bg-transparent !border-none !shadow-none hover:text-primary transition-colors text-xs gap-2 px-2">
+                        <SelectValue placeholder="选择模型" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableModels.map((modelOption) => (
+                          <SelectItem key={modelOption.id} value={modelOption.id} className="text-xs">
+                            {modelOption.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {temperature !== undefined && (
+                      <span className="text-[10px] text-muted-foreground bg-muted/30 px-2 py-0.5 rounded-full">
+                        Temp: {temperature.toFixed(2)}
+                      </span>
+                    )}
+                  </div>
+
+                  <Button
+                    size="icon"
+                    onClick={handleChatSubmit}
+                    disabled={!chatInput.trim() || isGenerating}
+                    className={cn(
+                      "size-8 rounded-full transition-all shrink-0",
+                      chatInput.trim() ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20" : "bg-muted text-muted-foreground"
+                    )}
+                  >
+                    {isGenerating ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : (
+                      <ArrowUp className="size-4" />
+                    )}
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>
