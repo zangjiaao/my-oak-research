@@ -53,11 +53,15 @@ const fetchFavorites = async (
     params.set("limit", String(query.limit));
   }
 
-  const url = `/api/library/favorites${
-    params.toString() ? `?${params.toString()}` : ""
-  }`;
+  const url = `/api/library/favorites${params.toString() ? `?${params.toString()}` : ""
+    }`;
 
-  const response = await fetch(url, { cache: "no-store" });
+  const response = await fetch(url, {
+    cache: "no-store",
+    headers: {
+      "x-user-id": "default-user-id",
+    },
+  });
   if (!response.ok) {
     throw new Error("Failed to fetch favorites");
   }
@@ -193,33 +197,33 @@ export function useToggleFavorite() {
       queryClient.setQueriesData<FavoritesResponse>(
         { queryKey: ["favorites"] },
         (old) => {
-      if (!old) {
-        // 如果没有缓存，创建一个新的
-        if (!isFavorite) {
-          return { items: [], nextCursor: null };
-        }
-        if (contentInfo) {
-          return { items: [contentInfo], nextCursor: null };
-        }
-        return { items: [], nextCursor: null };
+          if (!old) {
+            // 如果没有缓存，创建一个新的
+            if (!isFavorite) {
+              return { items: [], nextCursor: null };
+            }
+            if (contentInfo) {
+              return { items: [contentInfo], nextCursor: null };
+            }
+            return { items: [], nextCursor: null };
           }
 
-      if (isFavorite) {
-        // 添加收藏：检查是否已存在
-        const existingItem = old.items.find((item) => item.id === contentId);
-        if (existingItem) {
-          return old; // 如果已存在，不重复添加
-        }
-        // 如果有内容信息，添加到列表开头
-        if (contentInfo) {
-          return {
-            ...old,
-            items: [contentInfo, ...old.items],
-          };
-        }
-        return old;
-      } else {
-        // 删除收藏：从列表中移除
+          if (isFavorite) {
+            // 添加收藏：检查是否已存在
+            const existingItem = old.items.find((item) => item.id === contentId);
+            if (existingItem) {
+              return old; // 如果已存在，不重复添加
+            }
+            // 如果有内容信息，添加到列表开头
+            if (contentInfo) {
+              return {
+                ...old,
+                items: [contentInfo, ...old.items],
+              };
+            }
+            return old;
+          } else {
+            // 删除收藏：从列表中移除
             return {
               ...old,
               items: old.items.filter((item) => item.id !== contentId),

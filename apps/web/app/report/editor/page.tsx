@@ -32,7 +32,9 @@ import {
   Save,
   Sparkles,
   Trash2,
+  Upload,
 } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { KnowledgeSelector } from "@/components/business/KnowledgeSelector";
 import { useFavorites, type FavoriteItem } from "@/hooks/useFavorites";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -180,6 +182,58 @@ const ReportEditor = () => {
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [selectedMessageIds, setSelectedMessageIds] = useState<string[]>([]);
   const chatContainerRef = useRef<HTMLDivElement>(null);
+  const queryClient = useQueryClient();
+
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setIsUploading(true);
+    const formData = new FormData();
+    Array.from(files).forEach((file) => {
+      formData.append("files", file);
+    });
+
+    try {
+      const response = await fetch("/api/report-writer/materials/upload", {
+        method: "POST",
+        headers: {
+          "x-user-id": "default-user-id",
+        },
+        body: formData,
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        const { successCount, failed, items } = result.data;
+
+        if (successCount > 0) {
+          toast.success(`成功上传并解析 ${successCount} 个文件`);
+          // 自动勾选新素材
+          const newIds = items.map((item: any) => item.id);
+          setSelectedMaterialIds((prev) => [...new Set([...prev, ...newIds])]);
+          // 触发收藏列表刷新
+          queryClient.invalidateQueries({ queryKey: ["favorites"] });
+        }
+
+        if (failed.length > 0) {
+          failed.forEach((f: any) => {
+            toast.error(`文件 ${f.fileName} 处理失败: ${f.error}`);
+          });
+        }
+      } else {
+        toast.error(result.error || "上传失败");
+      }
+    } catch (error) {
+      toast.error("网络错误，上传失败");
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
 
   const [availableModels, setAvailableModels] = useState<{ id: string; provider: string; name: string }[]>([]);
 
@@ -447,7 +501,7 @@ const ReportEditor = () => {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "x-user-id": "demo-user", // TODO: 从 session 获取真实用户 ID
+            "x-user-id": "default-user-id", // TODO: 从 session 获取真实用户 ID
           },
           body: JSON.stringify(payload),
         });
@@ -533,7 +587,7 @@ const ReportEditor = () => {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "x-user-id": "demo-user", // Ensure consistency
+            "x-user-id": "default-user-id", // Ensure consistency
           },
           body: JSON.stringify({
             query: ragQuery,
@@ -613,7 +667,7 @@ const ReportEditor = () => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-user-id": "demo-user",
+          "x-user-id": "default-user-id",
         },
         body: JSON.stringify(payload),
       });
@@ -859,7 +913,33 @@ const ReportEditor = () => {
 
                 <Card>
                   <CardHeader>
-                    <CardTitle>报告素材</CardTitle>
+                    <div className="flex items-center justify-between">
+                      <CardTitle>报告素材</CardTitle>
+                      <div>
+                        <input
+                          type="file"
+                          ref={fileInputRef}
+                          onChange={handleFileUpload}
+                          multiple
+                          accept=".pdf,.docx,.txt,.md"
+                          className="hidden"
+                        />
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={isUploading}
+                          onClick={() => fileInputRef.current?.click()}
+                          className="h-7 gap-1.5"
+                        >
+                          {isUploading ? (
+                            <Loader2 className="size-3 animate-spin" />
+                          ) : (
+                            <Upload className="size-3" />
+                          )}
+                          上传素材
+                        </Button>
+                      </div>
+                    </div>
                     <CardDescription>选择素材会降低写作偏差。</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-3">

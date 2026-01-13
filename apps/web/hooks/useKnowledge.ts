@@ -43,7 +43,7 @@ const fetchKnowledge = async (
   const response = await fetch(url, {
     cache: "no-store",
     headers: {
-      "x-user-id": "demo-user",
+      "x-user-id": "default-user-id",
     }
   });
   if (!response.ok) {
@@ -80,7 +80,7 @@ export function useCreateKnowledge() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-user-id": "demo-user",
+          "x-user-id": "default-user-id",
         },
         body: JSON.stringify(input),
       });
@@ -117,7 +117,7 @@ export function useUpdateKnowledge() {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
-          "x-user-id": "demo-user",
+          "x-user-id": "default-user-id",
         },
         body: JSON.stringify(data),
       });
@@ -147,7 +147,7 @@ export function useDeleteKnowledge() {
       const response = await fetch(`/api/library/knowledge/${id}`, {
         method: "DELETE",
         headers: {
-          "x-user-id": "demo-user",
+          "x-user-id": "default-user-id",
         },
       });
 
@@ -194,7 +194,7 @@ export function useUploadFile() {
         {
           method: "POST",
           headers: {
-            "x-user-id": "demo-user",
+            "x-user-id": "default-user-id",
           },
           body: formData,
         }
