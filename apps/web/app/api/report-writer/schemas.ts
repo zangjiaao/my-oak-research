@@ -86,7 +86,7 @@ export const ReportGenerateSchema = z.object({
 
 export const ReportSectionSchema = z.object({
   heading: z.string().min(1),
-  content: z.string().min(1),
+  content: z.string().default(""),
   references: z.array(z.string()).optional(),
 });
 

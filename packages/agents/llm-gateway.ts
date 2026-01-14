@@ -6,6 +6,7 @@ type JsonRequest = {
   schema?: any; // Using 'any' to avoid "Type instantiation is excessively deep" error with AI SDK
   model?: string;
   temperature?: number;
+  maxOutputTokens?: number;
   metadata?: Record<string, unknown>;
 };
 
@@ -72,6 +73,7 @@ export const llmGateway = {
             model: modelId,
             messages: [{ role: "user", content: prompt + "\n\nPlease respond in JSON format." }],
             temperature: temperature ?? 1.0,
+            max_tokens: request.maxOutputTokens ?? 8192,
             response_format: { type: "json_object" },
           }),
         });
@@ -90,6 +92,7 @@ export const llmGateway = {
           model: modelInstance,
           messages: [{ role: "user", content: prompt + (request.schema ? "\n\nCRITICAL: You MUST respond with a valid JSON object matching the requested schema." : "") }],
           temperature,
+          maxOutputTokens: request.maxOutputTokens ?? 8192,
         });
         rawText = text;
       }
