@@ -11,7 +11,7 @@ import {
   WebSource,
   DarknetSource,
 } from "@/lib/types";
-import { llmGateway } from "@oak/agents/llm-gateway";
+import { llmGateway, browserAgent } from "@oak/agents";
 import { publishTaskEvent } from "@/lib/queue";
 import { redact, stripPromptLike } from "@/lib/security";
 
@@ -324,21 +324,59 @@ async function fetchPlaywrightSource(
   source: WebSource | DarknetSource
 ): Promise<CleanItem[]> {
   console.log(
-    `[collector] fetchPlaywrightSource -> fetchHtmlSource ${source.name}`
+    `[collector] fetchPlaywrightSource ${source.name}`
   );
-  const fallback = await fetchHtmlSource(source);
-  return fallback;
+  return fetchBrowserSource(source);
+}
+
+async function fetchBrowserSource(
+  source: WebSource | DarknetSource
+): Promise<CleanItem[]> {
+  console.log(`[collector] fetchBrowserSource ${source.name}`);
+
+  let urls: string[] = [];
+  if (isWebSource(source) && source.web?.url) {
+    urls = Array.isArray(source.web.url) ? source.web.url : [source.web.url];
+  } else if (isDarknetSource(source) && source.darknet?.url) {
+    urls = Array.isArray(source.darknet.url) ? source.darknet.url : [source.darknet.url];
+  }
+
+  if (urls.length === 0) {
+    const fallbackUrl = source.description || `https://example.com/${source.id}`;
+    urls = [fallbackUrl];
+  }
+
+  const allItems: CleanItem[] = [];
+  for (const url of urls) {
+    try {
+      const { title, content, markdown } = await browserAgent.fetchPageContent(url);
+      console.log(`[collector] fetchBrowserSource success: ${url}`, { title });
+      allItems.push({
+        title,
+        text: content,
+        markdown,
+        platform: source.name,
+        url,
+        time: new Date(),
+        sourceId: source.id,
+        sourceType: source.type,
+      });
+    } catch (error) {
+      console.error(`[collector] fetchBrowserSource error: ${url}`, error);
+    }
+  }
+
+  return allItems;
 }
 
 async function fetchAICrawlerSource(
   source: SourceWithRelations
 ): Promise<CleanItem[]> {
-  // Placeholder for AI 驱动的爬虫，当前仍使用 HTTP 获取但会标记 driver
   if (isWebSource(source) || isDarknetSource(source)) {
     console.log(
-      `[collector] fetchAICrawlerSource -> fetchHtmlSource ${source.name}`
+      `[collector] fetchAICrawlerSource -> fetchBrowserSource ${source.name}`
     );
-    return fetchHtmlSource(source);
+    return fetchBrowserSource(source);
   }
   if (source.type === SourceType.SEARCH_ENGINE) {
     console.log(
