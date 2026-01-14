@@ -368,28 +368,42 @@ async function fetchHtmlSource(
   source: WebSource | DarknetSource
 ): Promise<CleanItem[]> {
   console.log(`[collector] fetchHtmlSource ${source.name}`);
-  const fallbackUrl = source.description || `https://example.com/${source.id}`;
-  let url = fallbackUrl;
+
+  let urls: string[] = [];
   if (isWebSource(source) && source.web?.url) {
-    url = source.web.url;
+    urls = Array.isArray(source.web.url) ? source.web.url : [source.web.url];
   } else if (isDarknetSource(source) && source.darknet?.url) {
-    url = source.darknet.url;
+    urls = Array.isArray(source.darknet.url) ? source.darknet.url : [source.darknet.url];
   }
-  const html = await fetchWithTimeout(url);
-  const { title, text, markdown } = toMarkdown(html);
-  console.log(`[collector] fetchHtmlSource ${url}`, { title, text, markdown });
-  return [
-    {
-      title,
-      text,
-      markdown,
-      platform: source.name,
-      url,
-      time: new Date(),
-      sourceId: source.id,
-      sourceType: source.type,
-    },
-  ];
+
+  if (urls.length === 0) {
+    const fallbackUrl = source.description || `https://example.com/${source.id}`;
+    urls = [fallbackUrl];
+  }
+
+  const allItems: CleanItem[] = [];
+  for (const url of urls) {
+    try {
+      const html = await fetchWithTimeout(url);
+      const { title, text, markdown } = toMarkdown(html);
+      console.log(`[collector] fetchHtmlSource success: ${url}`, { title, text });
+      allItems.push({
+        title,
+        text,
+        markdown,
+        platform: source.name,
+        url,
+        time: new Date(),
+        sourceId: source.id,
+        sourceType: source.type,
+      });
+    } catch (error) {
+      console.error(`[collector] fetchHtmlSource error: ${url}`, error);
+      // Continue to next URL
+    }
+  }
+
+  return allItems;
 }
 
 async function fetchSearchSource(

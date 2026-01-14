@@ -31,13 +31,13 @@ export async function GET(req: Request) {
 
     const include = includeRelations
       ? {
-          web: true,
-          darknet: { include: { proxy: true } },
-          search: true,
-          social: true,
-          proxy: true,
-          credential: true,
-        }
+        web: true,
+        darknet: { include: { proxy: true } },
+        search: true,
+        social: true,
+        proxy: true,
+        credential: true,
+      }
       : undefined;
 
     const [total, items] = await Promise.all([
@@ -70,12 +70,10 @@ export async function POST(req: Request) {
 
     const data = parsed.data;
 
-    const source = await prisma.source.findUnique({
-      where: {
-        name: data.name,
-      },
+    const existingSource = await prisma.source.findUnique({
+      where: { name: data.name },
     });
-    if (source) return conflict("Source already exists");
+    if (existingSource) return conflict("Source already exists");
 
     const created = await prisma.$transaction(async (tx) => {
       const base = await tx.source.create({

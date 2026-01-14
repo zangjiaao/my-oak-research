@@ -44,10 +44,11 @@ export const DarknetFields = ({
   return (
     <>
       <div className="grid gap-3">
-        <Label htmlFor="darknet.url">Domain</Label>
-        <Input
+        <Label htmlFor="darknet.url">Domain(s)</Label>
+        <Textarea
           id="darknet.url"
-          placeholder="https://xxxxxxxxxxxxxxxx.onion"
+          placeholder={"https://xxxxxxxxxxxxxxxx.onion\nhttps://yyyyyyyyyyyyyyyy.onion"}
+          rows={3}
           {...register("darknet.url")}
         />
         <ErrorMessage>

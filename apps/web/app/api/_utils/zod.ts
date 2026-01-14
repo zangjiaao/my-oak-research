@@ -131,7 +131,7 @@ function parseJson(val: unknown) {
     try {
       const parse = JSON.parse(val);
       return parse;
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (_unused) {
       return val;
     }
@@ -140,7 +140,7 @@ function parseJson(val: unknown) {
 }
 
 export const WebConfigInput = z.object({
-  url: z.url(),
+  url: delimitedStringArray({ itemMin: 1, itemMax: 1024, totalMax: 50, minItems: 1 }),
   headers: z.preprocess((val) => parseJson(val), z.record(z.string(), z.string()).optional().nullable()),
   crawlerEngine: CrawlerEngineEnum.optional().default("FETCH"),
   crawlerConfig: z.preprocess((val) => parseJson(val), z.any().optional().nullable()),
@@ -151,12 +151,12 @@ export const WebConfigInput = z.object({
 });
 
 export const DarknetConfigInput = z.object({
-  url: z.string().min(1), // .onion 也可能不是严格的 url()，放宽
+  url: delimitedStringArray({ itemMin: 1, itemMax: 1024, totalMax: 50, minItems: 1 }), // .onion 也可能不是严格的 url()，放宽
   headers: z.preprocess((val) => parseJson(val), z.record(z.string(), z.string()).optional().nullable()),
   crawlerEngine: CrawlerEngineEnum.optional().default("FETCH"),
   crawlerConfig: z.preprocess((val) => parseJson(val), z.any().optional().nullable()),
   // Darknet 通常强制使用代理（TOR/SOCKS5）
-   proxyId: cuid, // 改为必需
+  proxyId: cuid, // 改为必需
   render: z.boolean().optional().default(false),
   parseRules: z.preprocess((val) => parseJson(val), z.record(z.string(), z.any()).optional().nullable()),
 });
@@ -172,7 +172,7 @@ export const SearchEngineConfigInput = z.object({
   credentialId: cuidOpt,
 });
 
-export const SocialConfigByPlatform =  z.discriminatedUnion("platform", [
+export const SocialConfigByPlatform = z.discriminatedUnion("platform", [
   z.object({
     platform: z.literal("X"),
     config: z
@@ -279,7 +279,7 @@ export const SourceTestSchema = SourceCreateSchema;
 // Proxy schemas
 export const ProxyTypeEnum = z.enum([
   "HTTP",
-  "HTTPS", 
+  "HTTPS",
   "SOCKS4",
   "SOCKS5",
   "TOR",

@@ -9539,7 +9539,6 @@ export namespace Prisma {
 
   export type WebSourceConfigMinAggregateOutputType = {
     sourceId: string | null
-    url: string | null
     crawlerEngine: $Enums.CrawlerEngine | null
     render: boolean | null
     robotsRespect: boolean | null
@@ -9550,7 +9549,6 @@ export namespace Prisma {
 
   export type WebSourceConfigMaxAggregateOutputType = {
     sourceId: string | null
-    url: string | null
     crawlerEngine: $Enums.CrawlerEngine | null
     render: boolean | null
     robotsRespect: boolean | null
@@ -9576,7 +9574,6 @@ export namespace Prisma {
 
   export type WebSourceConfigMinAggregateInputType = {
     sourceId?: true
-    url?: true
     crawlerEngine?: true
     render?: true
     robotsRespect?: true
@@ -9587,7 +9584,6 @@ export namespace Prisma {
 
   export type WebSourceConfigMaxAggregateInputType = {
     sourceId?: true
-    url?: true
     crawlerEngine?: true
     render?: true
     robotsRespect?: true
@@ -9684,7 +9680,7 @@ export namespace Prisma {
 
   export type WebSourceConfigGroupByOutputType = {
     sourceId: string
-    url: string
+    url: string[]
     headers: JsonValue | null
     crawlerEngine: $Enums.CrawlerEngine
     render: boolean
@@ -9792,7 +9788,7 @@ export namespace Prisma {
     }
     scalars: $Extensions.GetPayloadResult<{
       sourceId: string
-      url: string
+      url: string[]
       headers: Prisma.JsonValue | null
       crawlerEngine: $Enums.CrawlerEngine
       render: boolean
@@ -10227,7 +10223,7 @@ export namespace Prisma {
    */
   interface WebSourceConfigFieldRefs {
     readonly sourceId: FieldRef<"WebSourceConfig", 'String'>
-    readonly url: FieldRef<"WebSourceConfig", 'String'>
+    readonly url: FieldRef<"WebSourceConfig", 'String[]'>
     readonly headers: FieldRef<"WebSourceConfig", 'Json'>
     readonly crawlerEngine: FieldRef<"WebSourceConfig", 'CrawlerEngine'>
     readonly render: FieldRef<"WebSourceConfig", 'Boolean'>
@@ -10681,7 +10677,6 @@ export namespace Prisma {
 
   export type DarknetSourceConfigMinAggregateOutputType = {
     sourceId: string | null
-    url: string | null
     crawlerEngine: $Enums.CrawlerEngine | null
     proxyId: string | null
     render: boolean | null
@@ -10691,7 +10686,6 @@ export namespace Prisma {
 
   export type DarknetSourceConfigMaxAggregateOutputType = {
     sourceId: string | null
-    url: string | null
     crawlerEngine: $Enums.CrawlerEngine | null
     proxyId: string | null
     render: boolean | null
@@ -10715,7 +10709,6 @@ export namespace Prisma {
 
   export type DarknetSourceConfigMinAggregateInputType = {
     sourceId?: true
-    url?: true
     crawlerEngine?: true
     proxyId?: true
     render?: true
@@ -10725,7 +10718,6 @@ export namespace Prisma {
 
   export type DarknetSourceConfigMaxAggregateInputType = {
     sourceId?: true
-    url?: true
     crawlerEngine?: true
     proxyId?: true
     render?: true
@@ -10820,7 +10812,7 @@ export namespace Prisma {
 
   export type DarknetSourceConfigGroupByOutputType = {
     sourceId: string
-    url: string
+    url: string[]
     headers: JsonValue | null
     crawlerEngine: $Enums.CrawlerEngine
     proxyId: string
@@ -10923,7 +10915,7 @@ export namespace Prisma {
     }
     scalars: $Extensions.GetPayloadResult<{
       sourceId: string
-      url: string
+      url: string[]
       headers: Prisma.JsonValue | null
       crawlerEngine: $Enums.CrawlerEngine
       proxyId: string
@@ -11357,7 +11349,7 @@ export namespace Prisma {
    */
   interface DarknetSourceConfigFieldRefs {
     readonly sourceId: FieldRef<"DarknetSourceConfig", 'String'>
-    readonly url: FieldRef<"DarknetSourceConfig", 'String'>
+    readonly url: FieldRef<"DarknetSourceConfig", 'String[]'>
     readonly headers: FieldRef<"DarknetSourceConfig", 'Json'>
     readonly crawlerEngine: FieldRef<"DarknetSourceConfig", 'CrawlerEngine'>
     readonly proxyId: FieldRef<"DarknetSourceConfig", 'String'>
@@ -31892,7 +31884,7 @@ export namespace Prisma {
     OR?: WebSourceConfigWhereInput[]
     NOT?: WebSourceConfigWhereInput | WebSourceConfigWhereInput[]
     sourceId?: StringFilter<"WebSourceConfig"> | string
-    url?: StringFilter<"WebSourceConfig"> | string
+    url?: StringNullableListFilter<"WebSourceConfig">
     headers?: JsonNullableFilter<"WebSourceConfig">
     crawlerEngine?: EnumCrawlerEngineFilter<"WebSourceConfig"> | $Enums.CrawlerEngine
     render?: BoolFilter<"WebSourceConfig"> | boolean
@@ -31925,7 +31917,7 @@ export namespace Prisma {
     AND?: WebSourceConfigWhereInput | WebSourceConfigWhereInput[]
     OR?: WebSourceConfigWhereInput[]
     NOT?: WebSourceConfigWhereInput | WebSourceConfigWhereInput[]
-    url?: StringFilter<"WebSourceConfig"> | string
+    url?: StringNullableListFilter<"WebSourceConfig">
     headers?: JsonNullableFilter<"WebSourceConfig">
     crawlerEngine?: EnumCrawlerEngineFilter<"WebSourceConfig"> | $Enums.CrawlerEngine
     render?: BoolFilter<"WebSourceConfig"> | boolean
@@ -31959,7 +31951,7 @@ export namespace Prisma {
     OR?: WebSourceConfigScalarWhereWithAggregatesInput[]
     NOT?: WebSourceConfigScalarWhereWithAggregatesInput | WebSourceConfigScalarWhereWithAggregatesInput[]
     sourceId?: StringWithAggregatesFilter<"WebSourceConfig"> | string
-    url?: StringWithAggregatesFilter<"WebSourceConfig"> | string
+    url?: StringNullableListFilter<"WebSourceConfig">
     headers?: JsonNullableWithAggregatesFilter<"WebSourceConfig">
     crawlerEngine?: EnumCrawlerEngineWithAggregatesFilter<"WebSourceConfig"> | $Enums.CrawlerEngine
     render?: BoolWithAggregatesFilter<"WebSourceConfig"> | boolean
@@ -31975,7 +31967,7 @@ export namespace Prisma {
     OR?: DarknetSourceConfigWhereInput[]
     NOT?: DarknetSourceConfigWhereInput | DarknetSourceConfigWhereInput[]
     sourceId?: StringFilter<"DarknetSourceConfig"> | string
-    url?: StringFilter<"DarknetSourceConfig"> | string
+    url?: StringNullableListFilter<"DarknetSourceConfig">
     headers?: JsonNullableFilter<"DarknetSourceConfig">
     crawlerEngine?: EnumCrawlerEngineFilter<"DarknetSourceConfig"> | $Enums.CrawlerEngine
     proxyId?: StringFilter<"DarknetSourceConfig"> | string
@@ -32006,7 +31998,7 @@ export namespace Prisma {
     AND?: DarknetSourceConfigWhereInput | DarknetSourceConfigWhereInput[]
     OR?: DarknetSourceConfigWhereInput[]
     NOT?: DarknetSourceConfigWhereInput | DarknetSourceConfigWhereInput[]
-    url?: StringFilter<"DarknetSourceConfig"> | string
+    url?: StringNullableListFilter<"DarknetSourceConfig">
     headers?: JsonNullableFilter<"DarknetSourceConfig">
     crawlerEngine?: EnumCrawlerEngineFilter<"DarknetSourceConfig"> | $Enums.CrawlerEngine
     proxyId?: StringFilter<"DarknetSourceConfig"> | string
@@ -32038,7 +32030,7 @@ export namespace Prisma {
     OR?: DarknetSourceConfigScalarWhereWithAggregatesInput[]
     NOT?: DarknetSourceConfigScalarWhereWithAggregatesInput | DarknetSourceConfigScalarWhereWithAggregatesInput[]
     sourceId?: StringWithAggregatesFilter<"DarknetSourceConfig"> | string
-    url?: StringWithAggregatesFilter<"DarknetSourceConfig"> | string
+    url?: StringNullableListFilter<"DarknetSourceConfig">
     headers?: JsonNullableWithAggregatesFilter<"DarknetSourceConfig">
     crawlerEngine?: EnumCrawlerEngineWithAggregatesFilter<"DarknetSourceConfig"> | $Enums.CrawlerEngine
     proxyId?: StringWithAggregatesFilter<"DarknetSourceConfig"> | string
@@ -33705,7 +33697,7 @@ export namespace Prisma {
   }
 
   export type WebSourceConfigCreateInput = {
-    url: string
+    url?: WebSourceConfigCreateurlInput | string[]
     headers?: NullableJsonNullValueInput | InputJsonValue
     crawlerEngine?: $Enums.CrawlerEngine
     render?: boolean
@@ -33719,7 +33711,7 @@ export namespace Prisma {
 
   export type WebSourceConfigUncheckedCreateInput = {
     sourceId: string
-    url: string
+    url?: WebSourceConfigCreateurlInput | string[]
     headers?: NullableJsonNullValueInput | InputJsonValue
     crawlerEngine?: $Enums.CrawlerEngine
     render?: boolean
@@ -33731,7 +33723,7 @@ export namespace Prisma {
   }
 
   export type WebSourceConfigUpdateInput = {
-    url?: StringFieldUpdateOperationsInput | string
+    url?: WebSourceConfigUpdateurlInput | string[]
     headers?: NullableJsonNullValueInput | InputJsonValue
     crawlerEngine?: EnumCrawlerEngineFieldUpdateOperationsInput | $Enums.CrawlerEngine
     render?: BoolFieldUpdateOperationsInput | boolean
@@ -33745,7 +33737,7 @@ export namespace Prisma {
 
   export type WebSourceConfigUncheckedUpdateInput = {
     sourceId?: StringFieldUpdateOperationsInput | string
-    url?: StringFieldUpdateOperationsInput | string
+    url?: WebSourceConfigUpdateurlInput | string[]
     headers?: NullableJsonNullValueInput | InputJsonValue
     crawlerEngine?: EnumCrawlerEngineFieldUpdateOperationsInput | $Enums.CrawlerEngine
     render?: BoolFieldUpdateOperationsInput | boolean
@@ -33758,7 +33750,7 @@ export namespace Prisma {
 
   export type WebSourceConfigCreateManyInput = {
     sourceId: string
-    url: string
+    url?: WebSourceConfigCreateurlInput | string[]
     headers?: NullableJsonNullValueInput | InputJsonValue
     crawlerEngine?: $Enums.CrawlerEngine
     render?: boolean
@@ -33770,7 +33762,7 @@ export namespace Prisma {
   }
 
   export type WebSourceConfigUpdateManyMutationInput = {
-    url?: StringFieldUpdateOperationsInput | string
+    url?: WebSourceConfigUpdateurlInput | string[]
     headers?: NullableJsonNullValueInput | InputJsonValue
     crawlerEngine?: EnumCrawlerEngineFieldUpdateOperationsInput | $Enums.CrawlerEngine
     render?: BoolFieldUpdateOperationsInput | boolean
@@ -33782,7 +33774,7 @@ export namespace Prisma {
 
   export type WebSourceConfigUncheckedUpdateManyInput = {
     sourceId?: StringFieldUpdateOperationsInput | string
-    url?: StringFieldUpdateOperationsInput | string
+    url?: WebSourceConfigUpdateurlInput | string[]
     headers?: NullableJsonNullValueInput | InputJsonValue
     crawlerEngine?: EnumCrawlerEngineFieldUpdateOperationsInput | $Enums.CrawlerEngine
     render?: BoolFieldUpdateOperationsInput | boolean
@@ -33794,7 +33786,7 @@ export namespace Prisma {
   }
 
   export type DarknetSourceConfigCreateInput = {
-    url: string
+    url?: DarknetSourceConfigCreateurlInput | string[]
     headers?: NullableJsonNullValueInput | InputJsonValue
     crawlerEngine?: $Enums.CrawlerEngine
     render?: boolean
@@ -33807,7 +33799,7 @@ export namespace Prisma {
 
   export type DarknetSourceConfigUncheckedCreateInput = {
     sourceId: string
-    url: string
+    url?: DarknetSourceConfigCreateurlInput | string[]
     headers?: NullableJsonNullValueInput | InputJsonValue
     crawlerEngine?: $Enums.CrawlerEngine
     proxyId: string
@@ -33818,7 +33810,7 @@ export namespace Prisma {
   }
 
   export type DarknetSourceConfigUpdateInput = {
-    url?: StringFieldUpdateOperationsInput | string
+    url?: DarknetSourceConfigUpdateurlInput | string[]
     headers?: NullableJsonNullValueInput | InputJsonValue
     crawlerEngine?: EnumCrawlerEngineFieldUpdateOperationsInput | $Enums.CrawlerEngine
     render?: BoolFieldUpdateOperationsInput | boolean
@@ -33831,7 +33823,7 @@ export namespace Prisma {
 
   export type DarknetSourceConfigUncheckedUpdateInput = {
     sourceId?: StringFieldUpdateOperationsInput | string
-    url?: StringFieldUpdateOperationsInput | string
+    url?: DarknetSourceConfigUpdateurlInput | string[]
     headers?: NullableJsonNullValueInput | InputJsonValue
     crawlerEngine?: EnumCrawlerEngineFieldUpdateOperationsInput | $Enums.CrawlerEngine
     proxyId?: StringFieldUpdateOperationsInput | string
@@ -33843,7 +33835,7 @@ export namespace Prisma {
 
   export type DarknetSourceConfigCreateManyInput = {
     sourceId: string
-    url: string
+    url?: DarknetSourceConfigCreateurlInput | string[]
     headers?: NullableJsonNullValueInput | InputJsonValue
     crawlerEngine?: $Enums.CrawlerEngine
     proxyId: string
@@ -33854,7 +33846,7 @@ export namespace Prisma {
   }
 
   export type DarknetSourceConfigUpdateManyMutationInput = {
-    url?: StringFieldUpdateOperationsInput | string
+    url?: DarknetSourceConfigUpdateurlInput | string[]
     headers?: NullableJsonNullValueInput | InputJsonValue
     crawlerEngine?: EnumCrawlerEngineFieldUpdateOperationsInput | $Enums.CrawlerEngine
     render?: BoolFieldUpdateOperationsInput | boolean
@@ -33865,7 +33857,7 @@ export namespace Prisma {
 
   export type DarknetSourceConfigUncheckedUpdateManyInput = {
     sourceId?: StringFieldUpdateOperationsInput | string
-    url?: StringFieldUpdateOperationsInput | string
+    url?: DarknetSourceConfigUpdateurlInput | string[]
     headers?: NullableJsonNullValueInput | InputJsonValue
     crawlerEngine?: EnumCrawlerEngineFieldUpdateOperationsInput | $Enums.CrawlerEngine
     proxyId?: StringFieldUpdateOperationsInput | string
@@ -35747,7 +35739,6 @@ export namespace Prisma {
 
   export type WebSourceConfigMaxOrderByAggregateInput = {
     sourceId?: SortOrder
-    url?: SortOrder
     crawlerEngine?: SortOrder
     render?: SortOrder
     robotsRespect?: SortOrder
@@ -35758,7 +35749,6 @@ export namespace Prisma {
 
   export type WebSourceConfigMinOrderByAggregateInput = {
     sourceId?: SortOrder
-    url?: SortOrder
     crawlerEngine?: SortOrder
     render?: SortOrder
     robotsRespect?: SortOrder
@@ -35822,7 +35812,6 @@ export namespace Prisma {
 
   export type DarknetSourceConfigMaxOrderByAggregateInput = {
     sourceId?: SortOrder
-    url?: SortOrder
     crawlerEngine?: SortOrder
     proxyId?: SortOrder
     render?: SortOrder
@@ -35832,7 +35821,6 @@ export namespace Prisma {
 
   export type DarknetSourceConfigMinOrderByAggregateInput = {
     sourceId?: SortOrder
-    url?: SortOrder
     crawlerEngine?: SortOrder
     proxyId?: SortOrder
     render?: SortOrder
@@ -37365,6 +37353,10 @@ export namespace Prisma {
     deleteMany?: QueryScalarWhereInput | QueryScalarWhereInput[]
   }
 
+  export type WebSourceConfigCreateurlInput = {
+    set: string[]
+  }
+
   export type SourceCreateNestedOneWithoutWebInput = {
     create?: XOR<SourceCreateWithoutWebInput, SourceUncheckedCreateWithoutWebInput>
     connectOrCreate?: SourceCreateOrConnectWithoutWebInput
@@ -37375,6 +37367,11 @@ export namespace Prisma {
     create?: XOR<ProxyCreateWithoutWebOverridesInput, ProxyUncheckedCreateWithoutWebOverridesInput>
     connectOrCreate?: ProxyCreateOrConnectWithoutWebOverridesInput
     connect?: ProxyWhereUniqueInput
+  }
+
+  export type WebSourceConfigUpdateurlInput = {
+    set?: string[]
+    push?: string | string[]
   }
 
   export type EnumCrawlerEngineFieldUpdateOperationsInput = {
@@ -37399,6 +37396,10 @@ export namespace Prisma {
     update?: XOR<XOR<ProxyUpdateToOneWithWhereWithoutWebOverridesInput, ProxyUpdateWithoutWebOverridesInput>, ProxyUncheckedUpdateWithoutWebOverridesInput>
   }
 
+  export type DarknetSourceConfigCreateurlInput = {
+    set: string[]
+  }
+
   export type SourceCreateNestedOneWithoutDarknetInput = {
     create?: XOR<SourceCreateWithoutDarknetInput, SourceUncheckedCreateWithoutDarknetInput>
     connectOrCreate?: SourceCreateOrConnectWithoutDarknetInput
@@ -37409,6 +37410,11 @@ export namespace Prisma {
     create?: XOR<ProxyCreateWithoutDarknetOverridesInput, ProxyUncheckedCreateWithoutDarknetOverridesInput>
     connectOrCreate?: ProxyCreateOrConnectWithoutDarknetOverridesInput
     connect?: ProxyWhereUniqueInput
+  }
+
+  export type DarknetSourceConfigUpdateurlInput = {
+    set?: string[]
+    push?: string | string[]
   }
 
   export type SourceUpdateOneRequiredWithoutDarknetNestedInput = {
@@ -39013,7 +39019,7 @@ export namespace Prisma {
   }
 
   export type DarknetSourceConfigCreateWithoutProxyInput = {
-    url: string
+    url?: DarknetSourceConfigCreateurlInput | string[]
     headers?: NullableJsonNullValueInput | InputJsonValue
     crawlerEngine?: $Enums.CrawlerEngine
     render?: boolean
@@ -39025,7 +39031,7 @@ export namespace Prisma {
 
   export type DarknetSourceConfigUncheckedCreateWithoutProxyInput = {
     sourceId: string
-    url: string
+    url?: DarknetSourceConfigCreateurlInput | string[]
     headers?: NullableJsonNullValueInput | InputJsonValue
     crawlerEngine?: $Enums.CrawlerEngine
     render?: boolean
@@ -39045,7 +39051,7 @@ export namespace Prisma {
   }
 
   export type WebSourceConfigCreateWithoutProxyInput = {
-    url: string
+    url?: WebSourceConfigCreateurlInput | string[]
     headers?: NullableJsonNullValueInput | InputJsonValue
     crawlerEngine?: $Enums.CrawlerEngine
     render?: boolean
@@ -39058,7 +39064,7 @@ export namespace Prisma {
 
   export type WebSourceConfigUncheckedCreateWithoutProxyInput = {
     sourceId: string
-    url: string
+    url?: WebSourceConfigCreateurlInput | string[]
     headers?: NullableJsonNullValueInput | InputJsonValue
     crawlerEngine?: $Enums.CrawlerEngine
     render?: boolean
@@ -39161,7 +39167,7 @@ export namespace Prisma {
     OR?: DarknetSourceConfigScalarWhereInput[]
     NOT?: DarknetSourceConfigScalarWhereInput | DarknetSourceConfigScalarWhereInput[]
     sourceId?: StringFilter<"DarknetSourceConfig"> | string
-    url?: StringFilter<"DarknetSourceConfig"> | string
+    url?: StringNullableListFilter<"DarknetSourceConfig">
     headers?: JsonNullableFilter<"DarknetSourceConfig">
     crawlerEngine?: EnumCrawlerEngineFilter<"DarknetSourceConfig"> | $Enums.CrawlerEngine
     proxyId?: StringFilter<"DarknetSourceConfig"> | string
@@ -39192,7 +39198,7 @@ export namespace Prisma {
     OR?: WebSourceConfigScalarWhereInput[]
     NOT?: WebSourceConfigScalarWhereInput | WebSourceConfigScalarWhereInput[]
     sourceId?: StringFilter<"WebSourceConfig"> | string
-    url?: StringFilter<"WebSourceConfig"> | string
+    url?: StringNullableListFilter<"WebSourceConfig">
     headers?: JsonNullableFilter<"WebSourceConfig">
     crawlerEngine?: EnumCrawlerEngineFilter<"WebSourceConfig"> | $Enums.CrawlerEngine
     render?: BoolFilter<"WebSourceConfig"> | boolean
@@ -39465,7 +39471,7 @@ export namespace Prisma {
   }
 
   export type WebSourceConfigCreateWithoutSourceInput = {
-    url: string
+    url?: WebSourceConfigCreateurlInput | string[]
     headers?: NullableJsonNullValueInput | InputJsonValue
     crawlerEngine?: $Enums.CrawlerEngine
     render?: boolean
@@ -39477,7 +39483,7 @@ export namespace Prisma {
   }
 
   export type WebSourceConfigUncheckedCreateWithoutSourceInput = {
-    url: string
+    url?: WebSourceConfigCreateurlInput | string[]
     headers?: NullableJsonNullValueInput | InputJsonValue
     crawlerEngine?: $Enums.CrawlerEngine
     render?: boolean
@@ -39494,7 +39500,7 @@ export namespace Prisma {
   }
 
   export type DarknetSourceConfigCreateWithoutSourceInput = {
-    url: string
+    url?: DarknetSourceConfigCreateurlInput | string[]
     headers?: NullableJsonNullValueInput | InputJsonValue
     crawlerEngine?: $Enums.CrawlerEngine
     render?: boolean
@@ -39505,7 +39511,7 @@ export namespace Prisma {
   }
 
   export type DarknetSourceConfigUncheckedCreateWithoutSourceInput = {
-    url: string
+    url?: DarknetSourceConfigCreateurlInput | string[]
     headers?: NullableJsonNullValueInput | InputJsonValue
     crawlerEngine?: $Enums.CrawlerEngine
     proxyId: string
@@ -39687,7 +39693,7 @@ export namespace Prisma {
   }
 
   export type WebSourceConfigUpdateWithoutSourceInput = {
-    url?: StringFieldUpdateOperationsInput | string
+    url?: WebSourceConfigUpdateurlInput | string[]
     headers?: NullableJsonNullValueInput | InputJsonValue
     crawlerEngine?: EnumCrawlerEngineFieldUpdateOperationsInput | $Enums.CrawlerEngine
     render?: BoolFieldUpdateOperationsInput | boolean
@@ -39699,7 +39705,7 @@ export namespace Prisma {
   }
 
   export type WebSourceConfigUncheckedUpdateWithoutSourceInput = {
-    url?: StringFieldUpdateOperationsInput | string
+    url?: WebSourceConfigUpdateurlInput | string[]
     headers?: NullableJsonNullValueInput | InputJsonValue
     crawlerEngine?: EnumCrawlerEngineFieldUpdateOperationsInput | $Enums.CrawlerEngine
     render?: BoolFieldUpdateOperationsInput | boolean
@@ -39722,7 +39728,7 @@ export namespace Prisma {
   }
 
   export type DarknetSourceConfigUpdateWithoutSourceInput = {
-    url?: StringFieldUpdateOperationsInput | string
+    url?: DarknetSourceConfigUpdateurlInput | string[]
     headers?: NullableJsonNullValueInput | InputJsonValue
     crawlerEngine?: EnumCrawlerEngineFieldUpdateOperationsInput | $Enums.CrawlerEngine
     render?: BoolFieldUpdateOperationsInput | boolean
@@ -39733,7 +39739,7 @@ export namespace Prisma {
   }
 
   export type DarknetSourceConfigUncheckedUpdateWithoutSourceInput = {
-    url?: StringFieldUpdateOperationsInput | string
+    url?: DarknetSourceConfigUpdateurlInput | string[]
     headers?: NullableJsonNullValueInput | InputJsonValue
     crawlerEngine?: EnumCrawlerEngineFieldUpdateOperationsInput | $Enums.CrawlerEngine
     proxyId?: StringFieldUpdateOperationsInput | string
@@ -42331,7 +42337,7 @@ export namespace Prisma {
 
   export type DarknetSourceConfigCreateManyProxyInput = {
     sourceId: string
-    url: string
+    url?: DarknetSourceConfigCreateurlInput | string[]
     headers?: NullableJsonNullValueInput | InputJsonValue
     crawlerEngine?: $Enums.CrawlerEngine
     render?: boolean
@@ -42342,7 +42348,7 @@ export namespace Prisma {
 
   export type WebSourceConfigCreateManyProxyInput = {
     sourceId: string
-    url: string
+    url?: WebSourceConfigCreateurlInput | string[]
     headers?: NullableJsonNullValueInput | InputJsonValue
     crawlerEngine?: $Enums.CrawlerEngine
     render?: boolean
@@ -42414,7 +42420,7 @@ export namespace Prisma {
   }
 
   export type DarknetSourceConfigUpdateWithoutProxyInput = {
-    url?: StringFieldUpdateOperationsInput | string
+    url?: DarknetSourceConfigUpdateurlInput | string[]
     headers?: NullableJsonNullValueInput | InputJsonValue
     crawlerEngine?: EnumCrawlerEngineFieldUpdateOperationsInput | $Enums.CrawlerEngine
     render?: BoolFieldUpdateOperationsInput | boolean
@@ -42426,7 +42432,7 @@ export namespace Prisma {
 
   export type DarknetSourceConfigUncheckedUpdateWithoutProxyInput = {
     sourceId?: StringFieldUpdateOperationsInput | string
-    url?: StringFieldUpdateOperationsInput | string
+    url?: DarknetSourceConfigUpdateurlInput | string[]
     headers?: NullableJsonNullValueInput | InputJsonValue
     crawlerEngine?: EnumCrawlerEngineFieldUpdateOperationsInput | $Enums.CrawlerEngine
     render?: BoolFieldUpdateOperationsInput | boolean
@@ -42437,7 +42443,7 @@ export namespace Prisma {
 
   export type DarknetSourceConfigUncheckedUpdateManyWithoutProxyInput = {
     sourceId?: StringFieldUpdateOperationsInput | string
-    url?: StringFieldUpdateOperationsInput | string
+    url?: DarknetSourceConfigUpdateurlInput | string[]
     headers?: NullableJsonNullValueInput | InputJsonValue
     crawlerEngine?: EnumCrawlerEngineFieldUpdateOperationsInput | $Enums.CrawlerEngine
     render?: BoolFieldUpdateOperationsInput | boolean
@@ -42447,7 +42453,7 @@ export namespace Prisma {
   }
 
   export type WebSourceConfigUpdateWithoutProxyInput = {
-    url?: StringFieldUpdateOperationsInput | string
+    url?: WebSourceConfigUpdateurlInput | string[]
     headers?: NullableJsonNullValueInput | InputJsonValue
     crawlerEngine?: EnumCrawlerEngineFieldUpdateOperationsInput | $Enums.CrawlerEngine
     render?: BoolFieldUpdateOperationsInput | boolean
@@ -42460,7 +42466,7 @@ export namespace Prisma {
 
   export type WebSourceConfigUncheckedUpdateWithoutProxyInput = {
     sourceId?: StringFieldUpdateOperationsInput | string
-    url?: StringFieldUpdateOperationsInput | string
+    url?: WebSourceConfigUpdateurlInput | string[]
     headers?: NullableJsonNullValueInput | InputJsonValue
     crawlerEngine?: EnumCrawlerEngineFieldUpdateOperationsInput | $Enums.CrawlerEngine
     render?: BoolFieldUpdateOperationsInput | boolean
@@ -42472,7 +42478,7 @@ export namespace Prisma {
 
   export type WebSourceConfigUncheckedUpdateManyWithoutProxyInput = {
     sourceId?: StringFieldUpdateOperationsInput | string
-    url?: StringFieldUpdateOperationsInput | string
+    url?: WebSourceConfigUpdateurlInput | string[]
     headers?: NullableJsonNullValueInput | InputJsonValue
     crawlerEngine?: EnumCrawlerEngineFieldUpdateOperationsInput | $Enums.CrawlerEngine
     render?: BoolFieldUpdateOperationsInput | boolean

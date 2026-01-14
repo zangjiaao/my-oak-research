@@ -155,7 +155,7 @@ model WebSourceConfig {
   sourceId String @id
   source   Source @relation(fields: [sourceId], references: [id])
 
-  url           String // 必填
+  url           String[] // 必填
   headers       Json? // { "User-Agent": "...", ... }
   crawlerEngine CrawlerEngine @default(FETCH)
   // 抓取/解析策略：是否渲染、分页规则、选择器等
@@ -175,7 +175,7 @@ model DarknetSourceConfig {
   sourceId String @id
   source   Source @relation(fields: [sourceId], references: [id])
 
-  url           String // .onion 等
+  url           String[] // .onion 等
   headers       Json?
   crawlerEngine CrawlerEngine @default(FETCH)
 

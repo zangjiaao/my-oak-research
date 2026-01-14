@@ -105,7 +105,9 @@ const getDefaultValues = (
     case "WEB": {
       const webRelation = isWebSource(source) ? source.web : undefined;
       const webConfig: WebFormValues["web"] = {
-        url: webRelation?.url ?? "",
+        url: (Array.isArray(webRelation?.url)
+          ? webRelation.url.join("\n")
+          : (webRelation?.url ?? "")) as any,
         crawlerEngine: webRelation?.crawlerEngine ?? "FETCH",
         render: webRelation?.render ?? false,
         robotsRespect: webRelation?.robotsRespect ?? true,
@@ -134,7 +136,9 @@ const getDefaultValues = (
         ? source.darknet
         : undefined;
       const darknetConfig: DarknetFormValues["darknet"] = {
-        url: darknetRelation?.url ?? "",
+        url: (Array.isArray(darknetRelation?.url)
+          ? darknetRelation.url.join("\n")
+          : (darknetRelation?.url ?? "")) as any,
         headers:
           (darknetRelation?.headers as
             | Record<string, string>
@@ -232,7 +236,7 @@ const getDefaultValues = (
           crawlerConfig: undefined,
           parseRules: undefined,
           proxyId: null,
-        },
+        } as any,
       } as SourceFormValues;
   }
 };
@@ -268,6 +272,7 @@ interface WebFieldsProps {
   errors: FieldErrors<SourceFormValues>;
   proxies: Proxy[];
   watch: UseFormWatch<SourceFormValues>;
+  isUpdate: boolean;
 }
 
 const WebFields = ({
@@ -276,6 +281,7 @@ const WebFields = ({
   errors,
   proxies,
   watch,
+  isUpdate,
 }: WebFieldsProps) => {
   const crawlerEngine = watch("web.crawlerEngine") as
     | z.infer<typeof CrawlerEngineEnum>
@@ -286,12 +292,16 @@ const WebFields = ({
   return (
     <>
       <div className="grid gap-3">
-        <Label htmlFor="web.url">URL</Label>
-        <Input
+        <Label htmlFor="web.url">URL(s)</Label>
+        <Textarea
           id="web.url"
-          placeholder="https://www.example.com"
+          placeholder={"https://www.example.com\nhttps://another.com"}
+          rows={5}
           {...register("web.url")}
         />
+        <p className="text-xs text-muted-foreground">
+          Enter one or more URLs, one per line.
+        </p>
         <ErrorMessage>{webErrors.web?.url?.message?.toString()}</ErrorMessage>
       </div>
       <div className="grid gap-3">
@@ -446,6 +456,7 @@ const SourceDialog = ({
             errors={errors}
             proxies={proxies}
             watch={watch}
+            isUpdate={isUpdate}
           />
         )}
         {effectiveType === "DARKNET" && (
