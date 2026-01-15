@@ -46,7 +46,7 @@ const KnowledgeSchema = z.object({
     .min(2, "名称至少需要2个字符")
     .max(100, "名称不能超过100个字符"),
   description: z.string().max(500, "描述不能超过500个字符").optional(),
-  file: z.instanceof(File).optional(),
+  files: z.array(z.instanceof(File)).optional(),
   vectorModel: z.string().optional().default("text-embedding-3-small"),
   chunkSize: z.coerce.number().int().min(200).max(2000).default(500).optional(),
 });
@@ -70,7 +70,7 @@ export const KnowledgeDialog: React.FC<KnowledgeDialogProps> = ({
   onOpenChange,
   knowledge,
 }) => {
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const createMutation = useCreateKnowledge();
   const updateMutation = useUpdateKnowledge();
   const uploadMutation = useUploadFile();
@@ -101,7 +101,7 @@ export const KnowledgeDialog: React.FC<KnowledgeDialogProps> = ({
         chunkSize: 500,
       });
     }
-    setFile(null);
+    setFiles([]);
   }, [knowledge, form, open]);
 
   const onSubmit = async (values: KnowledgeFormValues) => {
@@ -116,14 +116,18 @@ export const KnowledgeDialog: React.FC<KnowledgeDialogProps> = ({
           },
         });
 
-        // 如果有文件，上传文件
-        if (file) {
-          await uploadMutation.mutateAsync({
-            knowledgeId: knowledge.id,
-            file,
-            vectorModel: values.vectorModel,
-            chunkSize: values.chunkSize,
-          });
+        // 如果有文件，批量上传文件
+        if (files.length > 0) {
+          await Promise.all(
+            files.map((f) =>
+              uploadMutation.mutateAsync({
+                knowledgeId: knowledge.id,
+                file: f,
+                vectorModel: values.vectorModel,
+                chunkSize: values.chunkSize,
+              })
+            )
+          );
         }
       } else {
         // 创建知识库
@@ -132,20 +136,24 @@ export const KnowledgeDialog: React.FC<KnowledgeDialogProps> = ({
           description: values.description,
         });
 
-        // 如果有文件，上传文件
-        if (file && result.data) {
-          await uploadMutation.mutateAsync({
-            knowledgeId: result.data.id,
-            file,
-            vectorModel: values.vectorModel,
-            chunkSize: values.chunkSize,
-          });
+        // 如果有文件，批量上传文件
+        if (files.length > 0 && result?.id) {
+          await Promise.all(
+            files.map((f) =>
+              uploadMutation.mutateAsync({
+                knowledgeId: result.id,
+                file: f,
+                vectorModel: values.vectorModel,
+                chunkSize: values.chunkSize,
+              })
+            )
+          );
         }
       }
 
       onOpenChange(false);
       form.reset();
-      setFile(null);
+      setFiles([]);
     } catch {
       // 错误已在 mutation 中处理
     }
@@ -214,31 +222,55 @@ export const KnowledgeDialog: React.FC<KnowledgeDialogProps> = ({
                   <label className="text-sm font-medium mb-2 block">
                     选择文件
                   </label>
-                  <div className="flex items-center gap-2">
+                  <div className="space-y-2">
                     <Input
                       type="file"
+                      multiple
                       accept=".pdf,.doc,.docx,.txt,.md"
                       onChange={(e) => {
-                        const selectedFile = e.target.files?.[0];
-                        if (selectedFile) {
-                          setFile(selectedFile);
-                          form.setValue("file", selectedFile);
+                        const selectedFiles = Array.from(e.target.files || []);
+                        if (selectedFiles.length > 0) {
+                          const updatedFiles = [...files, ...selectedFiles];
+                          setFiles(updatedFiles);
+                          form.setValue("files", updatedFiles);
+                          // 重置 input 以便可以重复选择相同的文件
+                          e.target.value = "";
                         }
                       }}
                       className="cursor-pointer"
                     />
-                    {file && (
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Upload className="h-4 w-4" />
-                        <span className="truncate max-w-xs">{file.name}</span>
-                        <span className="text-xs">
-                          ({(file.size / 1024 / 1024).toFixed(2)} MB)
-                        </span>
+                    {files.length > 0 && (
+                      <div className="space-y-1 mt-2">
+                        {files.map((f, index) => (
+                          <div
+                            key={index}
+                            className="flex items-center gap-2 text-sm text-muted-foreground bg-secondary/20 p-2 rounded-lg"
+                          >
+                            <Upload className="h-4 w-4" />
+                            <span className="truncate max-w-xs">{f.name}</span>
+                            <span className="text-xs">
+                              ({(f.size / 1024 / 1024).toFixed(2)} MB)
+                            </span>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="ml-auto h-6 w-6 p-0"
+                              onClick={() => {
+                                const newFiles = files.filter((_, i) => i !== index);
+                                setFiles(newFiles);
+                                form.setValue("files", newFiles);
+                              }}
+                            >
+                              ×
+                            </Button>
+                          </div>
+                        ))}
                       </div>
                     )}
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">
-                    支持 PDF、Word、TXT、Markdown 文件，最大 50MB
+                    支持多个 PDF、Word、TXT、Markdown 文件，每个最大 50MB
                   </p>
                 </div>
 
