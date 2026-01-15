@@ -97,7 +97,10 @@ async def fetch_data(request: FetchRequest):
 
 if __name__ == "__main__":
     import uvicorn
-    host = os.getenv("GATHER_HOST", "127.0.0.1")
+    host = os.getenv("GATHER_HOST", "0.0.0.0")
     port = int(os.getenv("GATHER_PORT", "8000"))
-    print(f"[gather] Starting service on {host}:{port}")
-    uvicorn.run(app, host=host, port=port)
+    reload = os.getenv("GATHER_RELOAD", "false").lower() == "true"
+    
+    print(f"[gather] Starting service on {host}:{port} (reload={reload})")
+    # Using string import "main:app" to support reload
+    uvicorn.run("main:app", host=host, port=port, reload=reload)
