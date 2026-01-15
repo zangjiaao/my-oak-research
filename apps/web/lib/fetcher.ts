@@ -6,7 +6,7 @@
 export async function apiFetcher(input: string | URL, init?: RequestInit) {
   const headers = new Headers(init?.headers);
   if (!headers.has("x-user-id")) {
-    headers.set("x-user-id", "demo-user");
+    headers.set("x-user-id", "default-user-id");
   }
 
   const res = await fetch(input, {

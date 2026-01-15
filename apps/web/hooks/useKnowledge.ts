@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { apiFetcher } from "@/lib/fetcher";
 
 export type KnowledgeItem = {
   id: string;
@@ -37,19 +38,10 @@ const fetchKnowledge = async (
     params.set("limit", String(query.limit));
   }
 
-  const url = `/api/library/knowledge${params.toString() ? `?${params.toString()}` : ""
-    }`;
+  const queryString = params.toString();
+  const url = `/api/library/knowledge${queryString ? `?${queryString}` : ""}`;
 
-  const response = await fetch(url, {
-    cache: "no-store",
-    headers: {
-      "x-user-id": "default-user-id",
-    }
-  });
-  if (!response.ok) {
-    throw new Error("Failed to fetch knowledge");
-  }
-  return response.json();
+  return apiFetcher(url);
 };
 
 export function useKnowledge(query: KnowledgeQuery = {}) {
@@ -76,21 +68,13 @@ export function useCreateKnowledge() {
 
   return useMutation({
     mutationFn: async (input: CreateKnowledgeInput) => {
-      const response = await fetch("/api/library/knowledge", {
+      return apiFetcher("/api/library/knowledge", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-user-id": "default-user-id",
         },
         body: JSON.stringify(input),
       });
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({}));
-        throw new Error(error.error || "Failed to create knowledge");
-      }
-
-      return response.json();
     },
     onSuccess: () => {
       toast.success("知识库创建成功");
@@ -113,21 +97,13 @@ export function useUpdateKnowledge() {
       id: string;
       data: UpdateKnowledgeInput;
     }) => {
-      const response = await fetch(`/api/library/knowledge/${id}`, {
+      return apiFetcher(`/api/library/knowledge/${id}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
-          "x-user-id": "default-user-id",
         },
         body: JSON.stringify(data),
       });
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({}));
-        throw new Error(error.error || "Failed to update knowledge");
-      }
-
-      return response.json();
     },
     onSuccess: () => {
       toast.success("知识库更新成功");
@@ -144,19 +120,9 @@ export function useDeleteKnowledge() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const response = await fetch(`/api/library/knowledge/${id}`, {
+      return apiFetcher(`/api/library/knowledge/${id}`, {
         method: "DELETE",
-        headers: {
-          "x-user-id": "default-user-id",
-        },
       });
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({}));
-        throw new Error(error.error || "Failed to delete knowledge");
-      }
-
-      return response.json();
     },
     onSuccess: () => {
       toast.success("知识库删除成功");
@@ -189,23 +155,13 @@ export function useUploadFile() {
         formData.append("chunkSize", String(input.chunkSize));
       }
 
-      const response = await fetch(
+      return apiFetcher(
         `/api/library/knowledge/${input.knowledgeId}/upload`,
         {
           method: "POST",
-          headers: {
-            "x-user-id": "default-user-id",
-          },
           body: formData,
         }
       );
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({}));
-        throw new Error(error.error || "Failed to upload file");
-      }
-
-      return response.json();
     },
     onSuccess: () => {
       toast.success("文件上传成功，正在处理中...");
