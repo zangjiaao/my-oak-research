@@ -499,22 +499,44 @@ async function fetchSearchSource(
 async function fetchSocialSource(
   source: SocialMediaSource
 ): Promise<CleanItem[]> {
-  console.log(`[collector] fetchSocialSource ${source.name}`);
+  console.log(`[collector] fetchSocialSource ${source.name} via Python Gather`);
+
+  const gatherUrl = process.env.GATHER_SERVICE_URL || "http://localhost:8000";
   const config = source.social?.config || {};
-  const markdown = Object.entries(config)
-    .map(([key, value]) => `- ${key}: ${JSON.stringify(value)}`)
-    .join("\n");
-  return [
-    {
-      title: `${source.social?.platform || "Social"} ${source.name}`,
-      text: `社交平台 ${source.name} 配置：${JSON.stringify(config)}`,
-      markdown,
-      platform: source.name,
-      time: new Date(),
-      sourceId: source.id,
-      sourceType: source.type,
-    },
-  ];
+
+  try {
+    const response = await fetch(`${gatherUrl}/fetch`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        platform: source.social?.platform || "unknown",
+        config: config,
+        source_id: source.id,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Gather service returned ${response.status}: ${errorText}`);
+    }
+
+    const data = await response.json();
+    return data as CleanItem[];
+  } catch (error) {
+    console.error(`[collector] fetchSocialSource error:`, error);
+    // Fallback to basic info if gather service is down
+    return [
+      {
+        title: `${source.social?.platform || "Social"} ${source.name} (Fallback)`,
+        text: `社交平台 ${source.name} (采集服务异常: ${(error as Error).message})`,
+        markdown: `采集服务异常，请检查 GATHER_SERVICE_URL`,
+        platform: source.name,
+        time: new Date(),
+        sourceId: source.id,
+        sourceType: source.type,
+      },
+    ];
+  }
 }
 
 async function summarizeWithRetry(

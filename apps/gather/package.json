@@ -1,0 +1,9 @@
+{
+  "name": "gather",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "uv run uvicorn main:app --reload --port 8000",
+    "start": "uv run uvicorn main:app --host 0.0.0.0 --port 8000"
+  }
+}
