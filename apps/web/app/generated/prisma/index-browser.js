@@ -443,7 +443,8 @@ exports.SearchEngineKind = exports.$Enums.SearchEngineKind = {
 exports.SocialPlatform = exports.$Enums.SocialPlatform = {
   X: 'X',
   TELEGRAM: 'TELEGRAM',
-  REDDIT: 'REDDIT'
+  REDDIT: 'REDDIT',
+  XIAOHONGSHU: 'XIAOHONGSHU'
 };
 
 exports.QueryFrequency = exports.$Enums.QueryFrequency = {

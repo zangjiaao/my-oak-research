@@ -123,7 +123,7 @@ export const SearchEngineKindEnum = z.enum([
   "SEARXNG",
   "CUSTOM",
 ]);
-export const SocialPlatformEnum = z.enum(["X", "TELEGRAM", "REDDIT"]);
+export const SocialPlatformEnum = z.enum(["X", "TELEGRAM", "REDDIT", "XIAOHONGSHU"]);
 
 function parseJson(val: unknown) {
   if (val === "") return undefined;
@@ -202,6 +202,20 @@ export const SocialConfigByPlatform = z.discriminatedUnion("platform", [
       subreddit: z.string().min(1),
       sort: z.enum(["hot", "new", "top"]).optional(),
     }),
+    credentialId: cuidOpt,
+    proxyId: cuidOpt,
+  }),
+  z.object({
+    platform: z.literal("XIAOHONGSHU"),
+    config: z
+      .object({
+        userId: z.string().optional(),
+        noteId: z.string().optional(),
+        query: z.string().optional(),
+      })
+      .refine((v) => v.userId || v.noteId || v.query, {
+        message: "Xiaohongshu: provide at least one of userId/noteId/query",
+      }),
     credentialId: cuidOpt,
     proxyId: cuidOpt,
   }),

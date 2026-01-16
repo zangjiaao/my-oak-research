@@ -1,3 +1,7 @@
+"""
+Oak Gather Service
+Social media data fetching service using Playwright with cookie-based authentication.
+"""
 import os
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
@@ -10,10 +14,25 @@ load_dotenv()
 
 app = FastAPI(title="Oak Gather Service")
 
+
 class FetchRequest(BaseModel):
     platform: str
     config: Dict[str, Any]
     source_id: str
+    auth_data: Optional[Dict[str, Any]] = None  # Playwright storage_state format
+
+
+class VerifyAuthRequest(BaseModel):
+    platform: str
+    auth_data: Dict[str, Any]  # Playwright storage_state format (cookies + origins)
+    headless: bool = False  # Set to False for debugging, True for production
+
+
+class VerifyAuthResponse(BaseModel):
+    valid: bool
+    message: str
+    details: Optional[Dict[str, Any]] = None
+
 
 class CleanItem(BaseModel):
     title: Optional[str] = None
@@ -26,37 +45,152 @@ class CleanItem(BaseModel):
     sourceType: str
     driver: Optional[str] = "python-gather"
 
+
 @app.get("/")
 async def root():
     return {"status": "ok", "service": "oak-gather"}
+
+
+@app.post("/verify-auth", response_model=VerifyAuthResponse)
+async def verify_auth(request: VerifyAuthRequest):
+    """
+    Verify if the provided authentication data (cookies) is valid for the specified platform.
+    This endpoint is used when users upload auth.json files to check if they're still valid.
+    """
+    platform = request.platform.lower()
+    auth_data = request.auth_data
+    headless = request.headless
+    
+    print(f"[gather] Verifying auth for {platform} (headless={headless})")
+    
+    # Validate auth_data structure
+    if not auth_data.get("cookies"):
+        return VerifyAuthResponse(
+            valid=False,
+            message="Invalid auth data: missing 'cookies' field",
+            details={"error": "auth_data must contain 'cookies' array"}
+        )
+    
+    try:
+        if platform == "x" or platform == "twitter":
+            from clients.x_client import XPlaywrightClient
+            
+            async with XPlaywrightClient(auth_data=auth_data, headless=headless) as client:
+                is_valid = await client.verify_auth()
+                
+            if is_valid:
+                return VerifyAuthResponse(
+                    valid=True,
+                    message="X.com authentication is valid",
+                    details={"platform": "X", "cookies_count": len(auth_data.get("cookies", []))}
+                )
+            else:
+                return VerifyAuthResponse(
+                    valid=False,
+                    message="X.com authentication is invalid or expired",
+                    details={"platform": "X", "suggestion": "Please re-export cookies from Chrome"}
+                )
+                
+        elif platform == "xiaohongshu" or platform == "xhs":
+            from clients.xiaohongshu_client import XiaohongshuPlaywrightClient
+            
+            async with XiaohongshuPlaywrightClient(auth_data=auth_data, headless=headless) as client:
+                is_valid = await client.verify_auth()
+                
+            if is_valid:
+                return VerifyAuthResponse(
+                    valid=True,
+                    message="Xiaohongshu authentication is valid",
+                    details={"platform": "Xiaohongshu", "cookies_count": len(auth_data.get("cookies", []))}
+                )
+            else:
+                return VerifyAuthResponse(
+                    valid=False,
+                    message="Xiaohongshu authentication is invalid or expired",
+                    details={"platform": "Xiaohongshu", "suggestion": "Please re-export cookies from Chrome"}
+                )
+                
+        else:
+            return VerifyAuthResponse(
+                valid=False,
+                message=f"Platform '{platform}' is not supported for auth verification",
+                details={"supported_platforms": ["x", "twitter", "xiaohongshu", "xhs"]}
+            )
+            
+    except ImportError as e:
+        return VerifyAuthResponse(
+            valid=False,
+            message=f"Client module not found: {e}",
+            details={"error": "Internal server configuration error"}
+        )
+    except Exception as e:
+        print(f"[gather] Auth verification error for {platform}: {e}")
+        return VerifyAuthResponse(
+            valid=False,
+            message=f"Error during verification: {str(e)}",
+            details={"error": str(e)}
+        )
+
 
 @app.post("/fetch", response_model=List[CleanItem])
 async def fetch_data(request: FetchRequest):
     """
     Unified entry point for social media data fetching.
+    Uses Playwright with cookie-based authentication.
     """
     platform = request.platform.lower()
     config = request.config
+    auth_data = request.auth_data
     
     print(f"[gather] Fetching data for {platform} with config {config}")
-    
-    # Placeholder logic for different platforms
-    # In a real implementation, each platform's logic would be in a separate module
     
     results = []
     
     try:
         if platform == "x" or platform == "twitter":
-            # TODO: Implement X crawler
-            results.append(CleanItem(
-                title="X Post Placeholder",
-                text=f"This is a placeholder for X content based on config {config}",
-                markdown=f"### X Post\n\nPlaceholder content.",
-                platform="X",
-                sourceId=request.source_id,
-                sourceType="SOCIAL_MEDIA",
-                time=datetime.now()
-            ))
+            if not auth_data:
+                raise HTTPException(
+                    status_code=400, 
+                    detail="auth_data is required for X.com. Please provide valid cookies."
+                )
+            
+            from clients.x_client import XPlaywrightClient
+            
+            async with XPlaywrightClient(auth_data=auth_data, headless=True) as client:
+                async for tweet in client.fetch_data(config):
+                    results.append(CleanItem(
+                        title=tweet.get("display_name"),
+                        text=tweet.get("text", ""),
+                        markdown=f"**@{tweet.get('username', 'unknown')}**: {tweet.get('text', '')}",
+                        platform="X",
+                        url=tweet.get("url"),
+                        sourceId=request.source_id,
+                        sourceType="SOCIAL_MEDIA",
+                        time=datetime.fromisoformat(tweet["timestamp"]) if tweet.get("timestamp") else datetime.now()
+                    ))
+                    
+        elif platform == "xiaohongshu" or platform == "xhs":
+            if not auth_data:
+                raise HTTPException(
+                    status_code=400,
+                    detail="auth_data is required for Xiaohongshu. Please provide valid cookies."
+                )
+            
+            from clients.xiaohongshu_client import XiaohongshuPlaywrightClient
+            
+            async with XiaohongshuPlaywrightClient(auth_data=auth_data, headless=True) as client:
+                async for note in client.fetch_data(config):
+                    results.append(CleanItem(
+                        title=note.get("title"),
+                        text=note.get("content", note.get("title", "")),
+                        markdown=f"# {note.get('title', '')}\n\n{note.get('content', '')}",
+                        platform="Xiaohongshu",
+                        url=note.get("url"),
+                        sourceId=request.source_id,
+                        sourceType="SOCIAL_MEDIA",
+                        time=datetime.now()
+                    ))
+                    
         elif platform == "telegram":
             # TODO: Implement Telegram crawler
             results.append(CleanItem(
@@ -68,17 +202,7 @@ async def fetch_data(request: FetchRequest):
                 sourceType="SOCIAL_MEDIA",
                 time=datetime.now()
             ))
-        elif platform == "xiaohongshu" or platform == "xhs":
-            # TODO: Implement XHS crawler
-            results.append(CleanItem(
-                title="Xiaohongshu Note Placeholder",
-                text=f"This is a placeholder for XHS content based on config {config}",
-                markdown=f"### XHS Note\n\nPlaceholder content.",
-                platform="Xiaohongshu",
-                sourceId=request.source_id,
-                sourceType="SOCIAL_MEDIA",
-                time=datetime.now()
-            ))
+            
         else:
             # Fallback or generic logic
             results.append(CleanItem(
@@ -91,9 +215,13 @@ async def fetch_data(request: FetchRequest):
             ))
             
         return results
+        
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"[gather] Error fetching {platform}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
 
 if __name__ == "__main__":
     import uvicorn

@@ -184,7 +184,8 @@ export type SearchEngineKind = (typeof SearchEngineKind)[keyof typeof SearchEngi
 export const SocialPlatform: {
   X: 'X',
   TELEGRAM: 'TELEGRAM',
-  REDDIT: 'REDDIT'
+  REDDIT: 'REDDIT',
+  XIAOHONGSHU: 'XIAOHONGSHU'
 };
 
 export type SocialPlatform = (typeof SocialPlatform)[keyof typeof SocialPlatform]
