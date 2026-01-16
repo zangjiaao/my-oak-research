@@ -3,7 +3,7 @@ import prisma from "@/lib/prisma";
 import { z } from "zod";
 
 const UploadAuthSchema = z.object({
-  platform: z.enum(["X", "TELEGRAM", "REDDIT", "XIAOHONGSHU"]),
+  platform: z.enum(["X", "TELEGRAM", "REDDIT", "XIAOHONGSHU", "DOUYIN"]),
   sourceId: z.string().cuid().optional(), // If provided, associate with existing source
   authData: z.object({
     cookies: z.array(z.object({

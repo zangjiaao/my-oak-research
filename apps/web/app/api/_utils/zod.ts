@@ -123,7 +123,7 @@ export const SearchEngineKindEnum = z.enum([
   "SEARXNG",
   "CUSTOM",
 ]);
-export const SocialPlatformEnum = z.enum(["X", "TELEGRAM", "REDDIT", "XIAOHONGSHU"]);
+export const SocialPlatformEnum = z.enum(["X", "TELEGRAM", "REDDIT", "XIAOHONGSHU", "DOUYIN"]);
 
 function parseJson(val: unknown) {
   if (val === "") return undefined;
@@ -215,6 +215,20 @@ export const SocialConfigByPlatform = z.discriminatedUnion("platform", [
       })
       .refine((v) => v.userId || v.noteId || v.query, {
         message: "Xiaohongshu: provide at least one of userId/noteId/query",
+      }),
+    credentialId: cuidOpt,
+    proxyId: cuidOpt,
+  }),
+  z.object({
+    platform: z.literal("DOUYIN"),
+    config: z
+      .object({
+        userId: z.string().optional(),
+        videoId: z.string().optional(),
+        query: z.string().optional(),
+      })
+      .refine((v) => v.userId || v.videoId || v.query, {
+        message: "Douyin: provide at least one of userId/videoId/query",
       }),
     credentialId: cuidOpt,
     proxyId: cuidOpt,

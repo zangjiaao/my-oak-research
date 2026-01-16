@@ -1,16 +1,24 @@
 """
 Export Chrome cookies for social media platforms in Playwright storage_state format.
-Supports: X.com, Xiaohongshu, Telegram, etc.
+Supports: X.com, Xiaohongshu, Telegram, Reddit, Douyin, etc.
 
 Usage:
-    python export_chrome_cookies.py x          # Export X.com cookies
-    python export_chrome_cookies.py xiaohongshu # Export Xiaohongshu cookies
-    python export_chrome_cookies.py --help      # Show help
+    uv run export_chrome_cookies.py x          # Export X.com cookies
+    uv run export_chrome_cookies.py xiaohongshu # Export Xiaohongshu cookies
+    uv run export_chrome_cookies.py --help      # Show help
+
+Files are saved to .auth/ directory (gitignored by default).
 """
+import os
 import sys
 import json
 import argparse
 import browser_cookie3
+from pathlib import Path
+
+# Auth files directory (relative to script location)
+SCRIPT_DIR = Path(__file__).parent
+AUTH_DIR = SCRIPT_DIR / ".auth"
 
 # Platform configurations
 PLATFORMS = {
@@ -44,6 +52,11 @@ PLATFORMS = {
         "output_file": "reddit_auth.json",
         "display_name": "Reddit",
     },
+    "douyin": {
+        "domains": [".douyin.com"],
+        "output_file": "douyin_auth.json",
+        "display_name": "抖音 (Douyin)",
+    },
 }
 
 
@@ -63,7 +76,18 @@ def export_cookies(platform: str, output_file: str = None):
         return False
     
     config = PLATFORMS[platform_lower]
-    output = output_file or config["output_file"]
+    
+    # Ensure .auth directory exists
+    AUTH_DIR.mkdir(exist_ok=True)
+    
+    # Determine output path
+    if output_file:
+        # If custom path provided, use it as-is if absolute, otherwise put in .auth
+        output = Path(output_file)
+        if not output.is_absolute():
+            output = AUTH_DIR / output_file
+    else:
+        output = AUTH_DIR / config["output_file"]
     
     print(f"正在从 Chrome 导出 {config['display_name']} cookies...")
     print(f"目标域名: {', '.join(config['domains'])}")

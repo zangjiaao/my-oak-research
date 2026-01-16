@@ -185,7 +185,8 @@ export const SocialPlatform: {
   X: 'X',
   TELEGRAM: 'TELEGRAM',
   REDDIT: 'REDDIT',
-  XIAOHONGSHU: 'XIAOHONGSHU'
+  XIAOHONGSHU: 'XIAOHONGSHU',
+  DOUYIN: 'DOUYIN'
 };
 
 export type SocialPlatform = (typeof SocialPlatform)[keyof typeof SocialPlatform]

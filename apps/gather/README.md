@@ -7,6 +7,7 @@
 - **X.com (Twitter)** - 需要 Cookie 认证
 - **小红书 (Xiaohongshu)** - 需要 Cookie 认证
 - **Reddit** - 需要 Cookie 认证
+- **抖音 (Douyin)** - 需要 Cookie 认证
 - **Telegram** - 计划中
 
 ## 快速开始
@@ -25,16 +26,21 @@ playwright install chromium
 
 ```bash
 # 导出 X.com cookies
-python export_chrome_cookies.py x
+uv run export_chrome_cookies.py x
 
 # 导出小红书 cookies
-python export_chrome_cookies.py xiaohongshu
+uv run export_chrome_cookies.py xiaohongshu
 
 # 导出 Reddit cookies
-python export_chrome_cookies.py reddit
+uv run export_chrome_cookies.py reddit
+
+# 导出抖音 cookies
+uv run export_chrome_cookies.py douyin
 ```
 
-**注意**：运行此脚本之前，请完全关闭 Chrome 浏览器。
+**注意**：
+- 运行此脚本之前，请完全关闭 Chrome 浏览器
+- 导出的文件会保存在 `.auth/` 目录下（已被 gitignore 忽略，不会提交到仓库）
 
 导出的文件格式为 Playwright storage_state 格式：
 
@@ -138,6 +144,12 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 - `sort`: 排序方式（hot, new, top, rising，默认 hot）
 - `maxResults`: 最大结果数（默认 10）
 
+#### 抖音 (Douyin)
+- `query`: 搜索关键词
+- `userId`: 用户 ID 或 sec_uid（获取用户视频）
+- `videoId`: 视频 ID（获取单个视频详情）
+- `maxResults`: 最大结果数（默认 10）
+
 ## 使用示例
 
 ### Python 调用
@@ -191,7 +203,8 @@ apps/gather/
 │   ├── base_playwright.py  # Playwright 基类
 │   ├── x_client.py         # X.com 客户端
 │   ├── xiaohongshu_client.py # 小红书客户端
-│   └── reddit_client.py    # Reddit 客户端
+│   ├── reddit_client.py    # Reddit 客户端
+│   └── douyin_client.py    # 抖音客户端
 ├── pyproject.toml          # Python 依赖
 └── README.md               # 本文档
 ```

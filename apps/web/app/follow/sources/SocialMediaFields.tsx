@@ -58,13 +58,14 @@ interface CredentialInfo {
 }
 
 // Platforms that require cookie-based authentication
-const COOKIE_AUTH_PLATFORMS = ["X", "XIAOHONGSHU", "REDDIT"] as const;
+const COOKIE_AUTH_PLATFORMS = ["X", "XIAOHONGSHU", "REDDIT", "DOUYIN"] as const;
 
 // Map platform to credential kind
 const PLATFORM_TO_KIND: Record<string, string> = {
   "X": "x-cookie",
   "XIAOHONGSHU": "xiaohongshu-cookie",
   "REDDIT": "reddit-cookie",
+  "DOUYIN": "douyin-cookie",
 };
 
 export const SocialMediaFields = ({
@@ -574,6 +575,38 @@ export const SocialMediaFields = ({
               {...register("social.config.noteId")}
             />
             <ErrorMessage>{getConfigErrorMessage("noteId")}</ErrorMessage>
+          </div>
+          <div className="grid gap-3">
+            <Label htmlFor="social.config.query">搜索关键词</Label>
+            <Input
+              id="social.config.query"
+              placeholder="搜索关键词"
+              {...register("social.config.query")}
+            />
+            <ErrorMessage>{getConfigErrorMessage("query")}</ErrorMessage>
+          </div>
+        </>
+      )}
+
+      {socialPlatform === "DOUYIN" && (
+        <>
+          <div className="grid gap-3">
+            <Label htmlFor="social.config.userId">用户 ID</Label>
+            <Input
+              id="social.config.userId"
+              placeholder="抖音用户 ID 或 sec_uid"
+              {...register("social.config.userId")}
+            />
+            <ErrorMessage>{getConfigErrorMessage("userId")}</ErrorMessage>
+          </div>
+          <div className="grid gap-3">
+            <Label htmlFor="social.config.videoId">视频 ID</Label>
+            <Input
+              id="social.config.videoId"
+              placeholder="抖音视频 ID"
+              {...register("social.config.videoId")}
+            />
+            <ErrorMessage>{getConfigErrorMessage("videoId")}</ErrorMessage>
           </div>
           <div className="grid gap-3">
             <Label htmlFor="social.config.query">搜索关键词</Label>

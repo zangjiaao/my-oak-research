@@ -79,3 +79,7 @@ wheels/
 venv/
 ENV/
 .python-version
+
+# Auth files (contain sensitive cookie data)
+.auth/
+*_auth.json

@@ -444,7 +444,8 @@ exports.SocialPlatform = exports.$Enums.SocialPlatform = {
   X: 'X',
   TELEGRAM: 'TELEGRAM',
   REDDIT: 'REDDIT',
-  XIAOHONGSHU: 'XIAOHONGSHU'
+  XIAOHONGSHU: 'XIAOHONGSHU',
+  DOUYIN: 'DOUYIN'
 };
 
 exports.QueryFrequency = exports.$Enums.QueryFrequency = {
