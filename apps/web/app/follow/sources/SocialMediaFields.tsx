@@ -58,12 +58,13 @@ interface CredentialInfo {
 }
 
 // Platforms that require cookie-based authentication
-const COOKIE_AUTH_PLATFORMS = ["X", "XIAOHONGSHU"] as const;
+const COOKIE_AUTH_PLATFORMS = ["X", "XIAOHONGSHU", "REDDIT"] as const;
 
 // Map platform to credential kind
 const PLATFORM_TO_KIND: Record<string, string> = {
   "X": "x-cookie",
   "XIAOHONGSHU": "xiaohongshu-cookie",
+  "REDDIT": "reddit-cookie",
 };
 
 export const SocialMediaFields = ({

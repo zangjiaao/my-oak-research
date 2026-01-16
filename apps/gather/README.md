@@ -6,8 +6,8 @@
 
 - **X.com (Twitter)** - 需要 Cookie 认证
 - **小红书 (Xiaohongshu)** - 需要 Cookie 认证
+- **Reddit** - 需要 Cookie 认证
 - **Telegram** - 计划中
-- **Reddit** - 计划中
 
 ## 快速开始
 
@@ -29,6 +29,9 @@ python export_chrome_cookies.py x
 
 # 导出小红书 cookies
 python export_chrome_cookies.py xiaohongshu
+
+# 导出 Reddit cookies
+python export_chrome_cookies.py reddit
 ```
 
 **注意**：运行此脚本之前，请完全关闭 Chrome 浏览器。
@@ -128,6 +131,13 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 - `noteId`: 笔记 ID（获取单个笔记详情）
 - `maxResults`: 最大结果数（默认 10）
 
+#### Reddit
+- `subreddit`: Subreddit 名称（例如 "programming"）
+- `query`: 搜索关键词
+- `username`: 用户名（获取用户帖子）
+- `sort`: 排序方式（hot, new, top, rising，默认 hot）
+- `maxResults`: 最大结果数（默认 10）
+
 ## 使用示例
 
 ### Python 调用
@@ -180,7 +190,8 @@ apps/gather/
 │   ├── __init__.py
 │   ├── base_playwright.py  # Playwright 基类
 │   ├── x_client.py         # X.com 客户端
-│   └── xiaohongshu_client.py # 小红书客户端
+│   ├── xiaohongshu_client.py # 小红书客户端
+│   └── reddit_client.py    # Reddit 客户端
 ├── pyproject.toml          # Python 依赖
 └── README.md               # 本文档
 ```

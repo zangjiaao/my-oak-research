@@ -110,11 +110,30 @@ async def verify_auth(request: VerifyAuthRequest):
                     details={"platform": "Xiaohongshu", "suggestion": "Please re-export cookies from Chrome"}
                 )
                 
+        elif platform == "reddit":
+            from clients.reddit_client import RedditPlaywrightClient
+            
+            async with RedditPlaywrightClient(auth_data=auth_data, headless=headless) as client:
+                is_valid = await client.verify_auth()
+                
+            if is_valid:
+                return VerifyAuthResponse(
+                    valid=True,
+                    message="Reddit authentication is valid",
+                    details={"platform": "Reddit", "cookies_count": len(auth_data.get("cookies", []))}
+                )
+            else:
+                return VerifyAuthResponse(
+                    valid=False,
+                    message="Reddit authentication is invalid or expired",
+                    details={"platform": "Reddit", "suggestion": "Please re-export cookies from Chrome"}
+                )
+                
         else:
             return VerifyAuthResponse(
                 valid=False,
                 message=f"Platform '{platform}' is not supported for auth verification",
-                details={"supported_platforms": ["x", "twitter", "xiaohongshu", "xhs"]}
+                details={"supported_platforms": ["x", "twitter", "xiaohongshu", "xhs", "reddit"]}
             )
             
     except ImportError as e:
@@ -189,6 +208,37 @@ async def fetch_data(request: FetchRequest):
                         sourceId=request.source_id,
                         sourceType="SOCIAL_MEDIA",
                         time=datetime.now()
+                    ))
+        
+        elif platform == "reddit":
+            if not auth_data:
+                raise HTTPException(
+                    status_code=400,
+                    detail="auth_data is required for Reddit. Please provide valid cookies."
+                )
+            
+            from clients.reddit_client import RedditPlaywrightClient
+            
+            async with RedditPlaywrightClient(auth_data=auth_data, headless=True) as client:
+                async for post in client.fetch_data(config):
+                    # Build markdown content
+                    md_parts = [f"# {post.get('title', '')}"]
+                    if post.get('subreddit'):
+                        md_parts.append(f"\n**Subreddit:** {post.get('subreddit')}")
+                    if post.get('author'):
+                        md_parts.append(f"**Author:** {post.get('author')}")
+                    if post.get('score'):
+                        md_parts.append(f"**Score:** {post.get('score')}")
+                    
+                    results.append(CleanItem(
+                        title=post.get("title"),
+                        text=post.get("title", ""),
+                        markdown="\n".join(md_parts),
+                        platform="Reddit",
+                        url=post.get("url"),
+                        sourceId=request.source_id,
+                        sourceType="SOCIAL_MEDIA",
+                        time=datetime.fromisoformat(post["timestamp"]) if post.get("timestamp") and "T" in str(post.get("timestamp", "")) else datetime.now()
                     ))
                     
         elif platform == "telegram":
