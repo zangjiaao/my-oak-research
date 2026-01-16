@@ -1,0 +1,106 @@
+import { z } from "zod";
+
+const stripJson = (val: unknown) => {
+  if (typeof val === "string") {
+    try {
+      return JSON.parse(val);
+    } catch {
+      return val;
+    }
+  }
+  return val;
+};
+
+const jsonish = () =>
+  z
+    .union([z.record(z.string(), z.any()), z.string(), z.undefined(), z.null()])
+    .transform((val) => (typeof val === "string" ? stripJson(val) : val))
+    .optional();
+
+export const TemplateCreateSchema = z.object({
+  name: z.string().min(1).max(128),
+  description: z.string().max(500).optional().nullable(),
+  markdown: z.string().optional().nullable(),
+  metadata: jsonish(),
+});
+
+export const TemplateUpdateSchema = TemplateCreateSchema.partial();
+
+export const MaterialSourceSchema = z.enum(["FAVORITE", "KNOWLEDGE"]);
+
+export const MaterialSchema = z.object({
+  sourceType: MaterialSourceSchema,
+  sourceId: z.string(),
+  title: z.string().max(512).optional().nullable(),
+  snippet: z.string().max(5000).optional().nullable(),
+  metadata: jsonish(),
+});
+
+export const ReportCreateSchema = z.object({
+  title: z.string().min(1).max(512),
+  summary: z.string().max(5000).optional().nullable(),
+  markdown: z.string().optional().nullable(),
+  templateId: z.string().cuid().optional().nullable(),
+  status: z.enum(["DRAFT", "REVIEW", "PUBLISHED"]).optional(),
+  metadata: jsonish(),
+  materials: z.array(MaterialSchema).optional(),
+});
+
+export const ReportUpdateSchema = ReportCreateSchema.partial();
+
+export const ReportListQuerySchema = z.object({
+  status: z.enum(["DRAFT", "REVIEW", "PUBLISHED"]).optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(50).default(20),
+});
+
+export const ChatMessageSchema = z.object({
+  id: z.string().optional(),
+  role: z.enum(["user", "assistant"]),
+  content: z.string(),
+});
+
+export const ChatSessionSchema = z.object({
+  id: z.string().cuid(),
+  reportId: z.string().cuid().optional().nullable(),
+  messages: z.array(ChatMessageSchema).optional(),
+});
+
+export const ReportGenerateSchema = z.object({
+  prompt: z.string().min(2),
+  instruction: z.string().optional(),
+  messages: z
+    .array(ChatMessageSchema)
+    .optional(),
+  reportId: z.string().optional(),
+  sessionId: z.string().optional(),
+  templateId: z.string().cuid().optional().nullable(),
+  materials: z.array(MaterialSchema).optional(),
+  options: z
+    .object({
+      model: z.string().optional(),
+      temperature: z.number().min(0).max(1).optional(),
+    })
+    .optional(),
+});
+
+export const ReportSectionSchema = z.object({
+  heading: z.string().min(1),
+  content: z.string().default(""),
+  references: z.array(z.string()).optional(),
+});
+
+export const ReportLLMOutputSchema = z.object({
+  action: z.enum(["REPLY", "GENERATE_REPORT", "UPDATE_REPORT"]),
+  reply: z.string().min(1).describe("AI 对用户消息的直接回复，或者是对生成/修改报告的说明"),
+  report: z
+    .object({
+      title: z.string().min(1),
+      summary: z.string().min(1),
+      markdown: z.string().default(""),
+      sections: z.array(ReportSectionSchema).optional(),
+    })
+    .optional()
+    .nullable()
+    .describe("只有在需要编写或修改报告时才提供此对象"),
+});

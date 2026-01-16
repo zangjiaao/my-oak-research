@@ -1,0 +1,12 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["../web/*"],
+      "@oak/agents/*": ["../../packages/agents/*"]
+    }
+  },
+  "include": ["**/*.ts", "../../packages/agents/**/*.ts"],
+  "exclude": ["node_modules"]
+}

@@ -1,0 +1,9 @@
+{
+  "name": "gather",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "uv run main.py",
+    "start": "uv run main.py"
+  }
+}

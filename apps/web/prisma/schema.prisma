@@ -1,0 +1,481 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider        = "prisma-client-js"
+  output          = "../app/generated/prisma"
+  previewFeatures = []
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Category {
+  id          String    @id @default(cuid())
+  name        String
+  description String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  keywords    Keyword[]
+
+  @@unique([name])
+}
+
+model Keyword {
+  id          String  @id @default(cuid())
+  name        String
+  description String?
+  lang        String?
+
+  categoryId String?
+  category   Category? @relation(fields: [categoryId], references: [id])
+
+  includes       String[]
+  excludes       String[]
+  enableAiExpand Boolean  @default(false)
+  synonyms       String[]
+  active         Boolean  @default(true)
+
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  queries         Query[]
+  contentKeywords ContentKeyword[]
+
+  @@unique([name])
+}
+
+enum SourceType {
+  WEB
+  DARKNET
+  SEARCH_ENGINE
+  SOCIAL_MEDIA
+}
+
+enum CrawlerEngine {
+  FETCH // node-fetch/undici
+  CHEERIO // 轻量解析
+  PLAYWRIGHT // 有头/无头浏览器渲染
+  PUPPETEER
+  CUSTOM
+}
+
+enum ProxyType {
+  HTTP
+  HTTPS
+  SOCKS4
+  SOCKS5
+  TOR // 语义上的 Tor（底层通常也是 SOCKS5）
+}
+
+enum SearchEngineKind {
+  GOOGLE
+  BING
+  DDG
+  SEARXNG
+  CUSTOM
+}
+
+enum SocialPlatform {
+  X
+  TELEGRAM
+  REDDIT
+  XIAOHONGSHU
+  DOUYIN
+}
+
+model Proxy {
+  id        String    @id @default(cuid())
+  name      String
+  type      ProxyType
+  // 建议统一 URL 形态保存，包含认证：scheme://user:pass@host:port
+  url       String
+  active    Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  // 反向引用
+  sources          Source[]
+  // 某些配置表也可能有 override：
+  darknetOverrides DarknetSourceConfig[] // 可选
+  webOverrides     WebSourceConfig[] // 可选
+  socialOverrides  SocialMediaSourceConfig[] // 可选
+}
+
+model Credential {
+  id        String   @id @default(cuid())
+  name      String
+  // 分类标签（便于审计/过滤）
+  kind      String // e.g. "search-api", "x-oauth", "telegram-bot"
+  // 建议密文或 KMS/vault 引用；此处示例用 Json 承载（生产可改成外部密管）
+  data      Json // { apiKey: "...", bearerToken: "...", ... }
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // 反向引用
+  sources Source[]
+
+  socialOverrides SocialMediaSourceConfig[] // 可选
+  searchOverrides SearchEngineSourceConfig[] // 可选
+}
+
+model Source {
+  id            String     @id @default(cuid())
+  name          String
+  description   String?
+  type          SourceType
+  active        Boolean    @default(true)
+  rateLimit     Int? // req/min
+  lastFetchedAt DateTime?
+  lastStatus    String?
+
+  // 通用：若来源级别就配了代理/凭据（各 config 可局部覆盖）
+  proxyId String?
+  proxy   Proxy?  @relation(fields: [proxyId], references: [id])
+
+  credentialId String?
+  credential   Credential? @relation(fields: [credentialId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // 1:1 configs（按类型存在其一）
+  web     WebSourceConfig?
+  darknet DarknetSourceConfig?
+  search  SearchEngineSourceConfig?
+  social  SocialMediaSourceConfig?
+  queries Query[]
+
+  @@unique([name])
+  @@index([type])
+}
+
+model WebSourceConfig {
+  sourceId String @id
+  source   Source @relation(fields: [sourceId], references: [id])
+
+  url           String[] // 必填
+  headers       Json? // { "User-Agent": "...", ... }
+  crawlerEngine CrawlerEngine @default(FETCH)
+  // 抓取/解析策略：是否渲染、分页规则、选择器等
+  render        Boolean       @default(false)
+  parseRules    Json? // { listSelector: "...", title: "...", content: "...", nextSelector: "...", ... }
+  robotsRespect Boolean       @default(true)
+
+  // 可覆盖 Source 上的代理
+  proxyId String?
+  proxy   Proxy?  @relation(fields: [proxyId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model DarknetSourceConfig {
+  sourceId String @id
+  source   Source @relation(fields: [sourceId], references: [id])
+
+  url           String[] // .onion 等
+  headers       Json?
+  crawlerEngine CrawlerEngine @default(FETCH)
+
+  // Darknet 通常强制使用代理（TOR/SOCKS5）
+  proxyId String // REQUIRED
+  proxy   Proxy  @relation(fields: [proxyId], references: [id])
+
+  render     Boolean  @default(false)
+  parseRules Json?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model SearchEngineSourceConfig {
+  sourceId String @id
+  source   Source @relation(fields: [sourceId], references: [id])
+
+  engine      SearchEngineKind
+  // 标准字段
+  query       String
+  region      String? // "us", "tw", ...
+  lang        String? // "en", "zh", ...
+  // API 调用端点（某些场景用自建 SearXNG 或第三方 API）
+  apiEndpoint String?
+  // 透传额外参数（时间窗、结果数、safe mode 等）
+  options     Json? // { timeRange: "7d", num: 50, safe: "active", ... }
+
+  // 覆盖凭据（优先级：config > source）
+  credentialId String?
+  credential   Credential? @relation(fields: [credentialId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model SocialMediaSourceConfig {
+  sourceId String @id
+  source   Source @relation(fields: [sourceId], references: [id])
+
+  platform SocialPlatform
+
+  // 为减少多列空值，这里用 Json 承载平台特定字段：
+  // X: { user?: "...", listId?: "...", query?: "..." }
+  // Telegram: { channel: "@xxx" | "12345", mode?: "history|updates" }
+  // Reddit: { subreddit: "xxx", sort?: "hot|new|top" }
+  config Json
+
+  // API / token 等（优先级：config > source）
+  credentialId String?
+  credential   Credential? @relation(fields: [credentialId], references: [id])
+
+  // 某些平台也允许代理覆盖（比如地区限制）
+  proxyId String?
+  proxy   Proxy?  @relation(fields: [proxyId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum QueryFrequency {
+  MANUAL
+  HOURLY
+  DAILY
+  WEEKLY
+  MONTHLY
+  CRONTAB // New type for custom cron schedules
+}
+
+model Query {
+  id          String  @id @default(cuid())
+  name        String  @unique
+  description String?
+
+  enabled      Boolean        @default(true)
+  frequency    QueryFrequency @default(MANUAL)
+  cronSchedule String? // Field to store crontab string
+
+  keywords Keyword[]
+  sources  Source[]
+
+  rules Json?
+
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  queryRuns QueryRun[]
+}
+
+// ------------------------------
+// Task/Run tracking for queries
+// ------------------------------
+
+enum TaskStatus {
+  PENDING
+  RUNNING
+  SUCCEEDED
+  FAILED
+  CANCELLED
+}
+
+model QueryRun {
+  id         String      @id @default(cuid())
+  queryId    String
+  query      Query       @relation(fields: [queryId], references: [id], onDelete: Cascade)
+  status     TaskStatus  @default(PENDING)
+  progress   Int         @default(0) // 0-100
+  error      String?
+  startedAt  DateTime?
+  finishedAt DateTime?
+  meta       Json?
+  events     TaskEvent[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([queryId, createdAt])
+}
+
+model TaskEvent {
+  id        String   @id @default(cuid())
+  runId     String
+  run       QueryRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  type      String // e.g. enqueue | start | fetch | clean | summary | store | progress | done | error
+  message   String
+  data      Json?
+  createdAt DateTime @default(now())
+
+  @@index([runId, createdAt])
+}
+
+enum ContentType {
+  Web
+  Client
+  Darknet
+}
+
+model Content {
+  id        String           @id @default(cuid())
+  title     String
+  summary   String
+  markdown  String
+  platform  String
+  type      ContentType
+  time      DateTime
+  url       String?
+  image     String? // 封面图（可选）
+  meta      Json?
+  keywords  ContentKeyword[]
+  entities  ContentEntity?
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+  favorites Favorite[]
+
+  @@index([platform, time])
+  @@index([type, time])
+}
+
+model ContentKeyword {
+  id        String  @id @default(cuid())
+  contentId String
+  keywordId String
+  content   Content @relation(fields: [contentId], references: [id], onDelete: Cascade)
+  keyword   Keyword @relation(fields: [keywordId], references: [id], onDelete: Cascade)
+
+  @@unique([contentId, keywordId])
+}
+
+model ContentEntity {
+  id        String   @id @default(cuid())
+  contentId String   @unique
+  persons   String[]
+  orgs      String[]
+  locations String[]
+  content   Content  @relation(fields: [contentId], references: [id], onDelete: Cascade)
+}
+
+model Favorite {
+  id        String   @id @default(cuid())
+  userId    String
+  contentId String
+  content   Content  @relation(fields: [contentId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, contentId])
+}
+
+enum MaterialSource {
+  FAVORITE
+  KNOWLEDGE
+}
+
+enum ReportStatus {
+  DRAFT
+  REVIEW
+  PUBLISHED
+}
+
+model ReportTemplate {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  markdown    String?
+  metadata    Json?
+  createdBy   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  reports     Report[]
+}
+
+model Report {
+  id         String       @id @default(cuid())
+  title      String
+  summary    String?
+  status     ReportStatus @default(DRAFT)
+  templateId String?
+  authorId   String?
+  markdown   String?
+  metadata   Json?
+  version    Int          @default(1)
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  template    ReportTemplate?  @relation(fields: [templateId], references: [id])
+  materials   ReportMaterial[]
+  chatSession ChatSession?
+}
+
+model ChatSession {
+  id        String        @id @default(cuid())
+  title     String?
+  userId    String?
+  metadata  Json?
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  messages  ChatMessage[]
+  reportId  String?       @unique
+  report    Report?       @relation(fields: [reportId], references: [id], onDelete: SetNull)
+}
+
+model ChatMessage {
+  id            String      @id @default(cuid())
+  sessionId     String
+  role          String // "user", "assistant", "system"
+  content       String
+  metadata      Json?
+  createdAt     DateTime    @default(now())
+  session       ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+}
+
+model ReportMaterial {
+  id         String         @id @default(cuid())
+  reportId   String
+  sourceType MaterialSource
+  sourceId   String
+  title      String?
+  snippet    String?
+  metadata   Json?
+  createdAt  DateTime       @default(now())
+
+  report Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
+}
+
+model Knowledge {
+  id              String           @id @default(cuid())
+  name            String
+  description     String?
+  ownerId         String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  files           KnowledgeFile[]
+  knowledgeChunks KnowledgeChunk[]
+}
+
+model KnowledgeFile {
+  id          String   @id @default(cuid())
+  knowledgeId String
+  name        String
+  mimeType    String?
+  size        Int?
+  storageKey  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  knowledge Knowledge        @relation(fields: [knowledgeId], references: [id], onDelete: Cascade)
+  chunks    KnowledgeChunk[]
+}
+
+model KnowledgeChunk {
+  id          String   @id @default(cuid())
+  knowledgeId String
+  fileId      String?
+  content     String
+  metadata    Json?
+  embedding   Unsupported("vector(1536)")?
+  chunkIndex  Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  knowledge Knowledge      @relation(fields: [knowledgeId], references: [id], onDelete: Cascade)
+  file      KnowledgeFile? @relation(fields: [fileId], references: [id])
+
+  @@index([knowledgeId])
+}
