@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import {
   Control,
   UseFormRegister,
@@ -29,6 +29,8 @@ import {
   Loader2,
   AlertCircle,
   FileJson,
+  Plus,
+  KeyRound,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -47,8 +49,22 @@ interface AuthStatus {
   credentialId?: string;
 }
 
+interface CredentialInfo {
+  id: string;
+  name: string;
+  kind: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // Platforms that require cookie-based authentication
 const COOKIE_AUTH_PLATFORMS = ["X", "XIAOHONGSHU"] as const;
+
+// Map platform to credential kind
+const PLATFORM_TO_KIND: Record<string, string> = {
+  "X": "x-cookie",
+  "XIAOHONGSHU": "xiaohongshu-cookie",
+};
 
 export const SocialMediaFields = ({
   register,
@@ -56,8 +72,11 @@ export const SocialMediaFields = ({
   errors,
   proxies,
   watch,
+  setValue,
 }: SocialMediaFieldsProps) => {
   const socialPlatform = watch("social.platform") as SocialPlatform | undefined;
+  const currentCredentialId = watch("social.credentialId") as string | null | undefined;
+
   const socialErrors = errors as FieldErrors<
     z.infer<typeof SocialMediaSourceCreateSchema>
   >;
@@ -68,6 +87,11 @@ export const SocialMediaFields = ({
   // Auth state management
   const [authStatus, setAuthStatus] = useState<AuthStatus>({ status: "idle" });
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [showUploadForm, setShowUploadForm] = useState(false);
+
+  // Credentials list
+  const [credentials, setCredentials] = useState<CredentialInfo[]>([]);
+  const [loadingCredentials, setLoadingCredentials] = useState(false);
 
   const getConfigErrorMessage = (key: string) => {
     const value = socialConfigErrors?.[key];
@@ -85,6 +109,32 @@ export const SocialMediaFields = ({
   // Check if current platform requires cookie auth
   const needsCookieAuth = socialPlatform &&
     COOKIE_AUTH_PLATFORMS.includes(socialPlatform as typeof COOKIE_AUTH_PLATFORMS[number]);
+
+  // Fetch existing credentials when platform changes
+  useEffect(() => {
+    if (!needsCookieAuth || !socialPlatform) {
+      setCredentials([]);
+      return;
+    }
+
+    const fetchCredentials = async () => {
+      setLoadingCredentials(true);
+      try {
+        const kind = PLATFORM_TO_KIND[socialPlatform];
+        const response = await fetch(`/api/follow/credentials?kind=${kind}`);
+        if (response.ok) {
+          const data = await response.json();
+          setCredentials(data.credentials || []);
+        }
+      } catch (error) {
+        console.error("Failed to fetch credentials:", error);
+      } finally {
+        setLoadingCredentials(false);
+      }
+    };
+
+    fetchCredentials();
+  }, [socialPlatform, needsCookieAuth]);
 
   // Handle file selection
   const handleFileSelect = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
@@ -160,6 +210,23 @@ export const SocialMediaFields = ({
         credentialId: result.credentialId,
       });
 
+      // Update form with the new credential ID
+      if (setValue && result.credentialId) {
+        setValue("social.credentialId", result.credentialId);
+      }
+
+      // Refresh credentials list
+      const kind = PLATFORM_TO_KIND[socialPlatform];
+      const credResponse = await fetch(`/api/follow/credentials?kind=${kind}`);
+      if (credResponse.ok) {
+        const data = await credResponse.json();
+        setCredentials(data.credentials || []);
+      }
+
+      // Hide upload form and reset
+      setShowUploadForm(false);
+      setSelectedFile(null);
+
     } catch (error) {
       console.error("Auth upload error:", error);
       setAuthStatus({
@@ -167,7 +234,18 @@ export const SocialMediaFields = ({
         message: error instanceof Error ? error.message : "上传验证失败",
       });
     }
-  }, [selectedFile, socialPlatform]);
+  }, [selectedFile, socialPlatform, setValue]);
+
+  // Handle credential selection
+  const handleCredentialSelect = useCallback((credentialId: string) => {
+    if (setValue) {
+      setValue("social.credentialId", credentialId === "__none__" ? null : credentialId);
+    }
+    setShowUploadForm(false);
+  }, [setValue]);
+
+  // Get selected credential info
+  const selectedCredential = credentials.find(c => c.id === currentCredentialId);
 
   // Render auth status indicator
   const renderAuthStatus = () => {
@@ -211,9 +289,13 @@ export const SocialMediaFields = ({
               value={field.value as string}
               onValueChange={(value) => {
                 field.onChange(value);
-                // Reset auth status when platform changes
+                // Reset auth status and credential when platform changes
                 setAuthStatus({ status: "idle" });
                 setSelectedFile(null);
+                setShowUploadForm(false);
+                if (setValue) {
+                  setValue("social.credentialId", null);
+                }
               }}
               placeholder="Select a social media platform"
             >
@@ -230,80 +312,166 @@ export const SocialMediaFields = ({
         </ErrorMessage>
       </div>
 
-      {/* Cookie Auth Upload Section */}
+      {/* Cookie Auth Selection Section */}
       {needsCookieAuth && (
         <div className="grid gap-3 p-4 border rounded-lg bg-muted/30">
-          <div className="flex items-center gap-2">
-            <FileJson className="h-5 w-5 text-muted-foreground" />
-            <Label className="text-base font-medium">认证配置</Label>
-          </div>
-
-          <p className="text-sm text-muted-foreground">
-            {socialPlatform === "X"
-              ? "请上传从 Chrome 导出的 X.com 认证文件 (x_auth.json)"
-              : "请上传从 Chrome 导出的小红书认证文件 (xiaohongshu_auth.json)"}
-          </p>
-
-          <div className="flex items-center gap-2 p-3 rounded-md border bg-yellow-50 dark:bg-yellow-950/20 border-yellow-200 dark:border-yellow-800">
-            <AlertCircle className="h-4 w-4 text-yellow-600 dark:text-yellow-500 flex-shrink-0" />
-            <p className="text-xs text-yellow-700 dark:text-yellow-400">
-              首先在 Chrome 中登录 {socialPlatform === "X" ? "X.com" : "小红书"}，
-              然后运行 <code className="px-1 py-0.5 rounded bg-yellow-100 dark:bg-yellow-900/50">
-                python export_chrome_cookies.py {socialPlatform === "X" ? "x" : "xiaohongshu"}
-              </code> 导出 cookies
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <div className="flex-1">
-              <Input
-                type="file"
-                accept=".json"
-                onChange={handleFileSelect}
-                className="cursor-pointer"
-              />
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <KeyRound className="h-5 w-5 text-muted-foreground" />
+              <Label className="text-base font-medium">认证凭证</Label>
             </div>
-            <Button
-              type="button"
-              variant={authStatus.status === "success" ? "outline" : "default"}
-              disabled={!selectedFile || authStatus.status === "uploading" || authStatus.status === "verifying"}
-              onClick={handleUploadAndVerify}
-              className={cn(
-                "min-w-[120px]",
-                authStatus.status === "success" && "border-green-500 text-green-600"
-              )}
-            >
-              {authStatus.status === "uploading" || authStatus.status === "verifying" ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  验证中...
-                </>
-              ) : authStatus.status === "success" ? (
-                <>
-                  <CheckCircle2 className="h-4 w-4 mr-2" />
-                  已验证
-                </>
-              ) : (
-                <>
-                  <Upload className="h-4 w-4 mr-2" />
-                  上传验证
-                </>
-              )}
-            </Button>
+            {!showUploadForm && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setShowUploadForm(true)}
+              >
+                <Plus className="h-4 w-4 mr-1" />
+                上传新凭证
+              </Button>
+            )}
           </div>
 
-          {selectedFile && authStatus.status === "idle" && (
-            <p className="text-xs text-muted-foreground">
-              已选择: {selectedFile.name}
-            </p>
+          {/* Existing Credentials Selector */}
+          {!showUploadForm && (
+            <>
+              {loadingCredentials ? (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>加载凭证列表...</span>
+                </div>
+              ) : credentials.length > 0 ? (
+                <div className="grid gap-2">
+                  <Label htmlFor="credential-select">选择已有凭证</Label>
+                  <Controller
+                    name="social.credentialId"
+                    control={control}
+                    render={({ field }) => (
+                      <ControlledSelect
+                        value={(field.value as string) || "__none__"}
+                        onValueChange={(value) => handleCredentialSelect(value || "__none__")}
+                        placeholder="选择凭证"
+                      >
+                        <SelectItem value="__none__">
+                          <span className="text-muted-foreground">不使用凭证</span>
+                        </SelectItem>
+                        {credentials.map((cred) => (
+                          <SelectItem key={cred.id} value={cred.id}>
+                            <div className="flex items-center gap-2">
+                              <CheckCircle2 className="h-3 w-3 text-green-500" />
+                              <span>{cred.name}</span>
+                              <span className="text-xs text-muted-foreground">
+                                (更新于 {new Date(cred.updatedAt).toLocaleDateString()})
+                              </span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </ControlledSelect>
+                    )}
+                  />
+                  {selectedCredential && (
+                    <p className="text-xs text-green-600 flex items-center gap-1">
+                      <CheckCircle2 className="h-3 w-3" />
+                      已选择: {selectedCredential.name}
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div className="text-sm text-muted-foreground p-3 bg-yellow-50 dark:bg-yellow-950/20 rounded-md border border-yellow-200 dark:border-yellow-800">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4 text-yellow-600" />
+                    <span>暂无可用凭证，请上传新的认证文件</span>
+                  </div>
+                </div>
+              )}
+            </>
           )}
 
-          {renderAuthStatus()}
+          {/* Upload New Credential Form */}
+          {showUploadForm && (
+            <div className="grid gap-3 p-3 border rounded-md bg-background">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <FileJson className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">上传新凭证</span>
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setShowUploadForm(false);
+                    setSelectedFile(null);
+                    setAuthStatus({ status: "idle" });
+                  }}
+                >
+                  取消
+                </Button>
+              </div>
 
-          {authStatus.status === "success" && authStatus.credentialId && (
-            <p className="text-xs text-muted-foreground">
-              认证 ID: {authStatus.credentialId}
-            </p>
+              <p className="text-sm text-muted-foreground">
+                {socialPlatform === "X"
+                  ? "请上传从 Chrome 导出的 X.com 认证文件 (x_auth.json)"
+                  : "请上传从 Chrome 导出的小红书认证文件 (xiaohongshu_auth.json)"}
+              </p>
+
+              <div className="flex items-center gap-2 p-2 rounded-md border bg-yellow-50 dark:bg-yellow-950/20 border-yellow-200 dark:border-yellow-800">
+                <AlertCircle className="h-4 w-4 text-yellow-600 dark:text-yellow-500 flex-shrink-0" />
+                <p className="text-xs text-yellow-700 dark:text-yellow-400">
+                  首先在 Chrome 中登录 {socialPlatform === "X" ? "X.com" : "小红书"}，
+                  然后运行 <code className="px-1 py-0.5 rounded bg-yellow-100 dark:bg-yellow-900/50">
+                    python export_chrome_cookies.py {socialPlatform === "X" ? "x" : "xiaohongshu"}
+                  </code> 导出 cookies
+                </p>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <div className="flex-1">
+                  <Input
+                    type="file"
+                    accept=".json"
+                    onChange={handleFileSelect}
+                    className="cursor-pointer"
+                  />
+                </div>
+                <Button
+                  type="button"
+                  variant={authStatus.status === "success" ? "outline" : "default"}
+                  disabled={!selectedFile || authStatus.status === "uploading" || authStatus.status === "verifying"}
+                  onClick={handleUploadAndVerify}
+                  className={cn(
+                    "min-w-[120px]",
+                    authStatus.status === "success" && "border-green-500 text-green-600"
+                  )}
+                >
+                  {authStatus.status === "uploading" || authStatus.status === "verifying" ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      验证中...
+                    </>
+                  ) : authStatus.status === "success" ? (
+                    <>
+                      <CheckCircle2 className="h-4 w-4 mr-2" />
+                      已验证
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="h-4 w-4 mr-2" />
+                      上传验证
+                    </>
+                  )}
+                </Button>
+              </div>
+
+              {selectedFile && authStatus.status === "idle" && (
+                <p className="text-xs text-muted-foreground">
+                  已选择: {selectedFile.name}
+                </p>
+              )}
+
+              {renderAuthStatus()}
+            </div>
           )}
         </div>
       )}

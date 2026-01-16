@@ -399,6 +399,7 @@ const SourceDialog = ({
     register,
     handleSubmit,
     watch,
+    setValue,
     formState: { errors },
     reset,
   } = useForm<SourceFormValues>({
@@ -475,6 +476,7 @@ const SourceDialog = ({
             errors={errors}
             proxies={proxies}
             watch={watch}
+            setValue={setValue}
           />
         )}
         {effectiveType === "SEARCH_ENGINE" && (
