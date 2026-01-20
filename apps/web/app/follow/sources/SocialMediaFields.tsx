@@ -31,7 +31,18 @@ import {
   FileJson,
   Plus,
   KeyRound,
+  Trash2,
 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 
 interface SocialMediaFieldsProps {
@@ -95,6 +106,26 @@ export const SocialMediaFields = ({
   // Credentials list
   const [credentials, setCredentials] = useState<CredentialInfo[]>([]);
   const [loadingCredentials, setLoadingCredentials] = useState(false);
+  const [credentialToDelete, setCredentialToDelete] = useState<CredentialInfo | null>(null);
+
+  const handleDeleteCredential = async () => {
+    if (!credentialToDelete) return;
+
+    try {
+      const response = await fetch(`/api/follow/credentials/${credentialToDelete.id}`, {
+        method: "DELETE",
+      });
+      if (response.ok) {
+        setCredentials(prev => prev.filter(c => c.id !== credentialToDelete.id));
+        if (currentCredentialId === credentialToDelete.id && setValue) {
+          setValue("social.credentialId", null);
+        }
+        setCredentialToDelete(null);
+      }
+    } catch (error) {
+      console.error("Failed to delete credential:", error);
+    }
+  };
 
   const getConfigErrorMessage = (key: string) => {
     const value = socialConfigErrors?.[key];
@@ -365,12 +396,30 @@ export const SocialMediaFields = ({
                         </SelectItem>
                         {credentials.map((cred) => (
                           <SelectItem key={cred.id} value={cred.id}>
-                            <div className="flex items-center gap-2">
-                              <CheckCircle2 className="h-3 w-3 text-green-500" />
-                              <span>{cred.name}</span>
-                              <span className="text-xs text-muted-foreground">
-                                (更新于 {new Date(cred.updatedAt).toLocaleDateString()})
-                              </span>
+                            <div className="flex items-center justify-between w-full min-w-[300px]">
+                              <div className="flex items-center gap-2">
+                                <CheckCircle2 className="h-3 w-3 text-green-500" />
+                                <span>{cred.name}</span>
+                                <span className="text-xs text-muted-foreground whitespace-nowrap">
+                                  (更新于 {new Date(cred.updatedAt).toLocaleDateString()})
+                                </span>
+                              </div>
+                              {/* 
+                                  Note: SelectItem intercepts clicks. 
+                                  We use asChild if we want a different element, but here we just want to avoid selection.
+                                  Actually, putting a button inside SelectItem is tricky.
+                                  Let's use a simpler approach: add a small trash icon that users can click.
+                              */}
+                              <div
+                                className="ml-4 p-1.5 rounded-md hover:bg-red-100 dark:hover:bg-red-900/40 text-muted-foreground hover:text-red-500 transition-colors pointer-events-auto z-50 relative"
+                                onPointerDown={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  setCredentialToDelete(cred);
+                                }}
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </div>
                             </div>
                           </SelectItem>
                         ))}
@@ -643,6 +692,30 @@ export const SocialMediaFields = ({
         name="social.proxyId"
         error={socialErrors.social?.proxyId?.message?.toString()}
       />
+
+      <AlertDialog
+        open={!!credentialToDelete}
+        onOpenChange={(open) => !open && setCredentialToDelete(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>确认删除凭据？</AlertDialogTitle>
+            <AlertDialogDescription>
+              您确定要删除凭据 <span className="font-semibold text-foreground">"{credentialToDelete?.name}"</span> 吗？
+              此操作无法撤销，删除后使用该凭据的采集任务控制可能失效。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteCredential}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              确认删除
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 };
