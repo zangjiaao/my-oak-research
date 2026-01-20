@@ -90,6 +90,7 @@ export const SocialMediaFields = ({
   const [authStatus, setAuthStatus] = useState<AuthStatus>({ status: "idle" });
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [showUploadForm, setShowUploadForm] = useState(false);
+  const [newCredentialName, setNewCredentialName] = useState("");
 
   // Credentials list
   const [credentials, setCredentials] = useState<CredentialInfo[]>([]);
@@ -193,7 +194,10 @@ export const SocialMediaFields = ({
       const response = await fetch(`/api/follow/sources/auth/${platformName}/cookie`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ authData }),
+        body: JSON.stringify({
+          authData,
+          name: newCredentialName || undefined
+        }),
       });
 
       const result = await response.json();
@@ -228,6 +232,7 @@ export const SocialMediaFields = ({
       // Hide upload form and reset
       setShowUploadForm(false);
       setSelectedFile(null);
+      setNewCredentialName("");
 
     } catch (error) {
       console.error("Auth upload error:", error);
@@ -236,7 +241,7 @@ export const SocialMediaFields = ({
         message: error instanceof Error ? error.message : "上传验证失败",
       });
     }
-  }, [selectedFile, socialPlatform, setValue]);
+  }, [selectedFile, socialPlatform, setValue, newCredentialName]);
 
   // Handle credential selection
   const handleCredentialSelect = useCallback((credentialId: string) => {
@@ -405,6 +410,7 @@ export const SocialMediaFields = ({
                   onClick={() => {
                     setShowUploadForm(false);
                     setSelectedFile(null);
+                    setNewCredentialName("");
                     setAuthStatus({ status: "idle" });
                   }}
                 >
@@ -426,6 +432,17 @@ export const SocialMediaFields = ({
                     python export_chrome_cookies.py {socialPlatform === "X" ? "x" : "xiaohongshu"}
                   </code> 导出 cookies
                 </p>
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="credential-name" className="text-xs">凭证别名 (可选，系统默认会覆盖同名凭证)</Label>
+                <Input
+                  id="credential-name"
+                  placeholder="例如: 我的主账号, 备选账号..."
+                  value={newCredentialName}
+                  onChange={(e) => setNewCredentialName(e.target.value)}
+                  className="h-8 text-sm"
+                />
               </div>
 
               <div className="flex items-center gap-3">

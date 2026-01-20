@@ -5,6 +5,7 @@ import { z } from "zod";
 const UploadAuthSchema = z.object({
   platform: z.enum(["X", "TELEGRAM", "REDDIT", "XIAOHONGSHU", "DOUYIN"]),
   sourceId: z.string().cuid().optional(), // If provided, associate with existing source
+  name: z.string().min(1, "Credential name is required").optional(),
   authData: z.object({
     cookies: z.array(z.object({
       name: z.string(),
@@ -50,7 +51,7 @@ export async function POST(
       });
     }
 
-    const { authData, sourceId } = parsed.data;
+    const { authData, sourceId, name: providedName } = parsed.data;
     const platformNormalized = platform.toLowerCase();
 
     // Step 1: Verify auth with gather service
@@ -84,8 +85,10 @@ export async function POST(
     }
 
     // Step 2: Create or update Credential
-    const credentialName = `${platform.toUpperCase()}_cookie_auth`;
+    const credentialName = providedName || `${platform.toUpperCase()}_cookie_auth`;
     const credentialKind = `${platformNormalized}-cookie`;
+
+    console.log(`[auth] Using credential name: "${credentialName}" for kind: "${credentialKind}"`);
 
     const existingCredential = await prisma.credential.findFirst({
       where: {
@@ -104,7 +107,7 @@ export async function POST(
           updatedAt: new Date(),
         },
       });
-      console.log(`[auth] Updated existing credential: ${credential.id}`);
+      console.log(`[auth] Updated existing credential: ${credential.id} (Name: ${credentialName})`);
     } else {
       // Create new credential
       credential = await prisma.credential.create({
@@ -114,7 +117,7 @@ export async function POST(
           data: authData as any,
         },
       });
-      console.log(`[auth] Created new credential: ${credential.id}`);
+      console.log(`[auth] Created new credential: ${credential.id} (Name: ${credentialName})`);
     }
 
     // Step 3: If sourceId provided, associate credential with source
