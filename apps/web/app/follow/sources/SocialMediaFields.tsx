@@ -69,7 +69,7 @@ interface CredentialInfo {
 }
 
 // Platforms that require cookie-based authentication
-const COOKIE_AUTH_PLATFORMS = ["X", "XIAOHONGSHU", "REDDIT", "DOUYIN", "TIKTOK"] as const;
+const COOKIE_AUTH_PLATFORMS = ["X", "XIAOHONGSHU", "REDDIT", "DOUYIN", "TIKTOK", "WEIBO"] as const;
 
 // Map platform to credential kind
 const PLATFORM_TO_KIND: Record<string, string> = {
@@ -78,6 +78,7 @@ const PLATFORM_TO_KIND: Record<string, string> = {
   "REDDIT": "reddit-cookie",
   "DOUYIN": "douyin-cookie",
   "TIKTOK": "tiktok-cookie",
+  "WEIBO": "weibo-cookie",
 };
 
 export const SocialMediaFields = ({
@@ -715,6 +716,46 @@ export const SocialMediaFields = ({
               {...register("social.config.query")}
             />
             <ErrorMessage>{getConfigErrorMessage("query")}</ErrorMessage>
+          </div>
+        </>
+      )}
+
+      {socialPlatform === "WEIBO" && (
+        <>
+          <div className="grid gap-3">
+            <Label htmlFor="social.config.userId">用户 ID</Label>
+            <Input
+              id="social.config.userId"
+              placeholder="微博用户 ID (uid)"
+              {...register("social.config.userId")}
+            />
+            <ErrorMessage>{getConfigErrorMessage("userId")}</ErrorMessage>
+          </div>
+          <div className="grid gap-3">
+            <Label htmlFor="social.config.query">搜索关键词</Label>
+            <Input
+              id="social.config.query"
+              placeholder="搜索关键词"
+              {...register("social.config.query")}
+            />
+            <ErrorMessage>{getConfigErrorMessage("query")}</ErrorMessage>
+          </div>
+          <div className="flex items-center gap-3">
+            <Controller
+              name="social.config.hotTopics"
+              control={control}
+              render={({ field }) => (
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={field.value || false}
+                    onChange={(e) => field.onChange(e.target.checked)}
+                    className="rounded border-gray-300"
+                  />
+                  <span className="text-sm">获取热门话题</span>
+                </label>
+              )}
+            />
           </div>
         </>
       )}

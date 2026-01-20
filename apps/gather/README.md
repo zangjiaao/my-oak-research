@@ -9,6 +9,7 @@
 - **Reddit** - 需要 Cookie 认证
 - **抖音 (Douyin)** - 需要 Cookie 认证
 - **TikTok** - 需要 Cookie 认证
+- **微博 (Weibo)** - 需要 Cookie 认证
 - **Telegram** - 计划中
 
 ## 快速开始
@@ -40,6 +41,9 @@ uv run export_chrome_cookies.py douyin
 
 # 导出 TikTok cookies
 uv run export_chrome_cookies.py tiktok
+
+# 导出微博 cookies
+uv run export_chrome_cookies.py weibo
 ```
 
 **注意**：
@@ -160,6 +164,12 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 - `videoId`: 视频 ID（获取单个视频详情）
 - `maxResults`: 最大结果数（默认 10）
 
+#### 微博 (Weibo)
+- `query`: 搜索关键词
+- `userId`: 用户 ID (uid)
+- `hotTopics`: 设为 true 获取热搜话题
+- `maxResults`: 最大结果数（默认 10）
+
 ## 使用示例
 
 ### Python 调用
@@ -215,7 +225,8 @@ apps/gather/
 │   ├── xiaohongshu_client.py # 小红书客户端
 │   ├── reddit_client.py    # Reddit 客户端
 │   ├── douyin_client.py    # 抖音客户端
-│   └── tiktok_client.py    # TikTok 客户端
+│   ├── tiktok_client.py    # TikTok 客户端
+│   └── weibo_client.py     # 微博客户端
 ├── pyproject.toml          # Python 依赖
 └── README.md               # 本文档
 ```

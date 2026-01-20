@@ -62,6 +62,11 @@ PLATFORMS = {
         "output_file": "tiktok_auth.json",
         "display_name": "TikTok",
     },
+    "weibo": {
+        "domains": [".weibo.com", ".weibo.cn"],
+        "output_file": "weibo_auth.json",
+        "display_name": "微博 (Weibo)",
+    },
 }
 
 

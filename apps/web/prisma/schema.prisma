@@ -86,6 +86,7 @@ enum SocialPlatform {
   XIAOHONGSHU
   DOUYIN
   TIKTOK
+  WEIBO
 }
 
 model Proxy {

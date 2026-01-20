@@ -167,11 +167,30 @@ async def verify_auth(request: VerifyAuthRequest):
                     details={"platform": "TikTok", "suggestion": "Please re-export cookies from Chrome"}
                 )
                 
+        elif platform == "weibo":
+            from clients.weibo_client import WeiboPlaywrightClient
+            
+            async with WeiboPlaywrightClient(auth_data=auth_data, headless=headless) as client:
+                is_valid = await client.verify_auth()
+                
+            if is_valid:
+                return VerifyAuthResponse(
+                    valid=True,
+                    message="Weibo authentication is valid",
+                    details={"platform": "Weibo", "cookies_count": len(auth_data.get("cookies", []))}
+                )
+            else:
+                return VerifyAuthResponse(
+                    valid=False,
+                    message="Weibo authentication is invalid or expired",
+                    details={"platform": "Weibo", "suggestion": "Please re-export cookies from Chrome"}
+                )
+                
         else:
             return VerifyAuthResponse(
                 valid=False,
                 message=f"Platform '{platform}' is not supported for auth verification",
-                details={"supported_platforms": ["x", "twitter", "xiaohongshu", "xhs", "reddit", "douyin", "tiktok"]}
+                details={"supported_platforms": ["x", "twitter", "xiaohongshu", "xhs", "reddit", "douyin", "tiktok", "weibo"]}
             )
             
     except ImportError as e:
@@ -338,6 +357,41 @@ async def fetch_data(request: FetchRequest):
                         markdown="\n".join(md_parts) if md_parts else "TikTok video",
                         platform="TikTok",
                         url=video.get("url"),
+                        sourceId=request.source_id,
+                        sourceType="SOCIAL_MEDIA",
+                        time=datetime.now()
+                    ))
+        
+        elif platform == "weibo":
+            if not auth_data:
+                raise HTTPException(
+                    status_code=400,
+                    detail="auth_data is required for Weibo. Please provide valid cookies."
+                )
+            
+            from clients.weibo_client import WeiboPlaywrightClient
+            
+            async with WeiboPlaywrightClient(auth_data=auth_data, headless=True) as client:
+                async for post in client.fetch_data(config):
+                    # Build markdown content
+                    md_parts = []
+                    if post.get('content'):
+                        md_parts.append(post.get('content', ''))
+                    if post.get('author'):
+                        md_parts.insert(0, f"**@{post.get('author')}**\n")
+                    if post.get('reposts'):
+                        md_parts.append(f"\n转发: {post.get('reposts')}")
+                    if post.get('comments'):
+                        md_parts.append(f"评论: {post.get('comments')}")
+                    if post.get('likes'):
+                        md_parts.append(f"点赞: {post.get('likes')}")
+                    
+                    results.append(CleanItem(
+                        title=post.get("title", post.get("content", "")[:50] if post.get("content") else None),
+                        text=post.get("content", ""),
+                        markdown="\n".join(md_parts) if md_parts else "Weibo post",
+                        platform="Weibo",
+                        url=post.get("url"),
                         sourceId=request.source_id,
                         sourceType="SOCIAL_MEDIA",
                         time=datetime.now()

@@ -123,7 +123,7 @@ export const SearchEngineKindEnum = z.enum([
   "SEARXNG",
   "CUSTOM",
 ]);
-export const SocialPlatformEnum = z.enum(["X", "TELEGRAM", "REDDIT", "XIAOHONGSHU", "DOUYIN", "TIKTOK"]);
+export const SocialPlatformEnum = z.enum(["X", "TELEGRAM", "REDDIT", "XIAOHONGSHU", "DOUYIN", "TIKTOK", "WEIBO"]);
 
 function parseJson(val: unknown) {
   if (val === "") return undefined;
@@ -243,6 +243,20 @@ export const SocialConfigByPlatform = z.discriminatedUnion("platform", [
       })
       .refine((v) => v.username || v.videoId || v.query, {
         message: "TikTok: provide at least one of username/videoId/query",
+      }),
+    credentialId: cuidOpt,
+    proxyId: cuidOpt,
+  }),
+  z.object({
+    platform: z.literal("WEIBO"),
+    config: z
+      .object({
+        userId: z.string().optional(),
+        query: z.string().optional(),
+        hotTopics: z.boolean().optional(),
+      })
+      .refine((v) => v.userId || v.query || v.hotTopics, {
+        message: "Weibo: provide at least one of userId/query/hotTopics",
       }),
     credentialId: cuidOpt,
     proxyId: cuidOpt,
