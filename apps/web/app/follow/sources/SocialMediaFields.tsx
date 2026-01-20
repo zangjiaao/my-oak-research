@@ -69,7 +69,7 @@ interface CredentialInfo {
 }
 
 // Platforms that require cookie-based authentication
-const COOKIE_AUTH_PLATFORMS = ["X", "XIAOHONGSHU", "REDDIT", "DOUYIN"] as const;
+const COOKIE_AUTH_PLATFORMS = ["X", "XIAOHONGSHU", "REDDIT", "DOUYIN", "TIKTOK"] as const;
 
 // Map platform to credential kind
 const PLATFORM_TO_KIND: Record<string, string> = {
@@ -77,6 +77,7 @@ const PLATFORM_TO_KIND: Record<string, string> = {
   "XIAOHONGSHU": "xiaohongshu-cookie",
   "REDDIT": "reddit-cookie",
   "DOUYIN": "douyin-cookie",
+  "TIKTOK": "tiktok-cookie",
 };
 
 export const SocialMediaFields = ({
@@ -670,6 +671,38 @@ export const SocialMediaFields = ({
             <Input
               id="social.config.videoId"
               placeholder="抖音视频 ID"
+              {...register("social.config.videoId")}
+            />
+            <ErrorMessage>{getConfigErrorMessage("videoId")}</ErrorMessage>
+          </div>
+          <div className="grid gap-3">
+            <Label htmlFor="social.config.query">搜索关键词</Label>
+            <Input
+              id="social.config.query"
+              placeholder="搜索关键词"
+              {...register("social.config.query")}
+            />
+            <ErrorMessage>{getConfigErrorMessage("query")}</ErrorMessage>
+          </div>
+        </>
+      )}
+
+      {socialPlatform === "TIKTOK" && (
+        <>
+          <div className="grid gap-3">
+            <Label htmlFor="social.config.username">用户名</Label>
+            <Input
+              id="social.config.username"
+              placeholder="TikTok 用户名 (不带 @)"
+              {...register("social.config.username")}
+            />
+            <ErrorMessage>{getConfigErrorMessage("username")}</ErrorMessage>
+          </div>
+          <div className="grid gap-3">
+            <Label htmlFor="social.config.videoId">视频 ID</Label>
+            <Input
+              id="social.config.videoId"
+              placeholder="TikTok 视频 ID"
               {...register("social.config.videoId")}
             />
             <ErrorMessage>{getConfigErrorMessage("videoId")}</ErrorMessage>

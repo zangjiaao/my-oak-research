@@ -148,11 +148,30 @@ async def verify_auth(request: VerifyAuthRequest):
                     details={"platform": "Douyin", "suggestion": "Please re-export cookies from Chrome"}
                 )
                 
+        elif platform == "tiktok":
+            from clients.tiktok_client import TikTokPlaywrightClient
+            
+            async with TikTokPlaywrightClient(auth_data=auth_data, headless=headless) as client:
+                is_valid = await client.verify_auth()
+                
+            if is_valid:
+                return VerifyAuthResponse(
+                    valid=True,
+                    message="TikTok authentication is valid",
+                    details={"platform": "TikTok", "cookies_count": len(auth_data.get("cookies", []))}
+                )
+            else:
+                return VerifyAuthResponse(
+                    valid=False,
+                    message="TikTok authentication is invalid or expired",
+                    details={"platform": "TikTok", "suggestion": "Please re-export cookies from Chrome"}
+                )
+                
         else:
             return VerifyAuthResponse(
                 valid=False,
                 message=f"Platform '{platform}' is not supported for auth verification",
-                details={"supported_platforms": ["x", "twitter", "xiaohongshu", "xhs", "reddit", "douyin"]}
+                details={"supported_platforms": ["x", "twitter", "xiaohongshu", "xhs", "reddit", "douyin", "tiktok"]}
             )
             
     except ImportError as e:
@@ -285,6 +304,39 @@ async def fetch_data(request: FetchRequest):
                         text=video.get("description", video.get("title", "")),
                         markdown="\n".join(md_parts) if md_parts else "Douyin video",
                         platform="Douyin",
+                        url=video.get("url"),
+                        sourceId=request.source_id,
+                        sourceType="SOCIAL_MEDIA",
+                        time=datetime.now()
+                    ))
+        
+        elif platform == "tiktok":
+            if not auth_data:
+                raise HTTPException(
+                    status_code=400,
+                    detail="auth_data is required for TikTok. Please provide valid cookies."
+                )
+            
+            from clients.tiktok_client import TikTokPlaywrightClient
+            
+            async with TikTokPlaywrightClient(auth_data=auth_data, headless=True) as client:
+                async for video in client.fetch_data(config):
+                    # Build markdown content
+                    md_parts = []
+                    if video.get('description'):
+                        md_parts.append(f"# {video.get('description', '')[:100]}")
+                    if video.get('author'):
+                        md_parts.append(f"\n**Author:** {video.get('author')}")
+                    if video.get('likes'):
+                        md_parts.append(f"**Likes:** {video.get('likes')}")
+                    if video.get('views'):
+                        md_parts.append(f"**Views:** {video.get('views')}")
+                    
+                    results.append(CleanItem(
+                        title=video.get("description", "")[:100] if video.get("description") else None,
+                        text=video.get("description", ""),
+                        markdown="\n".join(md_parts) if md_parts else "TikTok video",
+                        platform="TikTok",
                         url=video.get("url"),
                         sourceId=request.source_id,
                         sourceType="SOCIAL_MEDIA",

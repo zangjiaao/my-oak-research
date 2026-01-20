@@ -57,6 +57,11 @@ PLATFORMS = {
         "output_file": "douyin_auth.json",
         "display_name": "抖音 (Douyin)",
     },
+    "tiktok": {
+        "domains": [".tiktok.com"],
+        "output_file": "tiktok_auth.json",
+        "display_name": "TikTok",
+    },
 }
 
 
