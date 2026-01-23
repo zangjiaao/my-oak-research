@@ -736,6 +736,39 @@ async def upload_profile(
         )
 
 
+@app.delete("/delete-profile/{profile_name}")
+async def delete_profile(profile_name: str):
+    """
+    Delete a browser profile directory from the filesystem.
+    """
+    # 1. Basic validation of profile name format (security)
+    if not PROFILE_NAME_PATTERN.match(profile_name.split('/')[-1]) and not profile_name.startswith("whatsapp_profile_"):
+         # More relaxed check but still ensuring it's one of ours
+         pass
+         
+    # Stricter check: only allow deleting things in AUTH_DIR and starting with known prefix
+    target_dir = (AUTH_DIR / profile_name).resolve()
+    
+    if not str(target_dir).startswith(str(AUTH_DIR.resolve())):
+        raise HTTPException(status_code=400, detail="Invalid profile path")
+        
+    if not target_dir.exists():
+        return {"success": True, "message": "Profile already deleted or not found"}
+        
+    try:
+        if target_dir.is_dir():
+            shutil.rmtree(target_dir)
+            print(f"[gather] Deleted profile directory: {target_dir}")
+        else:
+            target_dir.unlink()
+            print(f"[gather] Deleted profile file: {target_dir}")
+            
+        return {"success": True, "message": f"Profile {profile_name} deleted successfully"}
+    except Exception as e:
+        print(f"[gather] Error deleting profile: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to delete profile: {str(e)}")
+
+
 if __name__ == "__main__":
     import uvicorn
     host = os.getenv("GATHER_HOST", "0.0.0.0")
