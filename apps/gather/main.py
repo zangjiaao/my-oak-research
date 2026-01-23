@@ -554,14 +554,8 @@ async def upload_profile(
 ):
     """
     Upload and verify a browser profile (e.g., WhatsApp).
-    
-    Security measures:
-    - Whitelist profile name format
-    - File size limit
-    - ZIP file validation
-    - Path traversal prevention
-    - Symlink blocking
     """
+    import uuid
     platform = platform.lower()
     
     # Only WhatsApp uses profile-based auth for now
@@ -593,9 +587,14 @@ async def upload_profile(
             detail="Invalid file format. Please upload a ZIP file"
         )
     
-    # 4. Setup target directory with fixed path (no escaping)
+    # Generate a unique directory name using UUID to avoid collisions
+    # Format: whatsapp_profile_{alias}_{uuid_short}
+    unique_suffix = str(uuid.uuid4())[:8]
+    # Sanitized name for directory
+    safe_name = f"{profile_name}_{unique_suffix}"
+    
     AUTH_DIR.mkdir(exist_ok=True)
-    target_dir = AUTH_DIR / f"whatsapp_profile_{profile_name}"
+    target_dir = AUTH_DIR / f"whatsapp_profile_{safe_name}"
     target_dir_resolved = target_dir.resolve()
     auth_dir_resolved = AUTH_DIR.resolve()
     
@@ -713,7 +712,7 @@ async def upload_profile(
             return UploadProfileResponse(
                 success=True,
                 message="Profile uploaded and verified successfully",
-                profile_name=f"whatsapp_profile_{profile_name}",
+                profile_name=target_dir.name,
                 verified=True,
                 details={"platform": "WhatsApp", "auth_type": "profile"}
             )
@@ -721,7 +720,7 @@ async def upload_profile(
             return UploadProfileResponse(
                 success=True,
                 message="Profile uploaded but authentication is invalid or expired",
-                profile_name=f"whatsapp_profile_{profile_name}",
+                profile_name=target_dir.name,
                 verified=False,
                 details={"platform": "WhatsApp", "suggestion": "Please re-export the profile after logging in"}
             )
@@ -731,7 +730,7 @@ async def upload_profile(
         return UploadProfileResponse(
             success=True,
             message=f"Profile uploaded but verification failed: {str(e)}",
-            profile_name=f"whatsapp_profile_{profile_name}",
+            profile_name=target_dir.name,
             verified=False,
             details={"error": str(e)}
         )
