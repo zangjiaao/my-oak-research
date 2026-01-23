@@ -69,7 +69,7 @@ interface CredentialInfo {
 }
 
 // Platforms that require cookie-based authentication
-const COOKIE_AUTH_PLATFORMS = ["X", "XIAOHONGSHU", "REDDIT", "DOUYIN", "TIKTOK", "WEIBO"] as const;
+const COOKIE_AUTH_PLATFORMS = ["X", "XIAOHONGSHU", "REDDIT", "DOUYIN", "TIKTOK", "WEIBO", "TELEGRAM", "WHATSAPP"] as const;
 
 // Map platform to credential kind
 const PLATFORM_TO_KIND: Record<string, string> = {
@@ -79,6 +79,8 @@ const PLATFORM_TO_KIND: Record<string, string> = {
   "DOUYIN": "douyin-cookie",
   "TIKTOK": "tiktok-cookie",
   "WEIBO": "weibo-cookie",
+  "TELEGRAM": "telegram-cookie",
+  "WHATSAPP": "whatsapp-profile",
 };
 
 export const SocialMediaFields = ({
@@ -209,11 +211,14 @@ export const SocialMediaFields = ({
         return;
       }
 
-      // Validate basic structure
-      if (!authData.cookies || !Array.isArray(authData.cookies)) {
+      // Validate basic structure - need either cookies or origins with localStorage
+      const hasCookies = authData.cookies && Array.isArray(authData.cookies) && authData.cookies.length > 0;
+      const hasOrigins = authData.origins && Array.isArray(authData.origins) && authData.origins.length > 0;
+
+      if (!hasCookies && !hasOrigins) {
         setAuthStatus({
           status: "error",
-          message: "无效的认证文件格式：缺少 cookies 字段",
+          message: "无效的认证文件格式：需要 cookies 或 origins 数据",
         });
         return;
       }
@@ -578,29 +583,6 @@ export const SocialMediaFields = ({
         </>
       )}
 
-      {socialPlatform === "TELEGRAM" && (
-        <>
-          <div className="grid gap-3">
-            <Label htmlFor="social.config.channel">Channel</Label>
-            <Input
-              id="social.config.channel"
-              placeholder="@channel or channel_id"
-              {...register("social.config.channel")}
-            />
-            <ErrorMessage>{getConfigErrorMessage("channel")}</ErrorMessage>
-          </div>
-          <div className="grid gap-3">
-            <Label htmlFor="social.config.mode">Mode</Label>
-            <Input
-              id="social.config.mode"
-              placeholder="Mode"
-              {...register("social.config.mode")}
-            />
-            <ErrorMessage>{getConfigErrorMessage("mode")}</ErrorMessage>
-          </div>
-        </>
-      )}
-
       {socialPlatform === "REDDIT" && (
         <>
           <div className="grid gap-3">
@@ -756,6 +738,40 @@ export const SocialMediaFields = ({
                 </label>
               )}
             />
+          </div>
+        </>
+      )}
+
+      {socialPlatform === "TELEGRAM" && (
+        <>
+          <div className="grid gap-3">
+            <Label htmlFor="social.config.chatId">频道/群组 ID</Label>
+            <Input
+              id="social.config.chatId"
+              placeholder="频道或群组的 ID 或用户名"
+              {...register("social.config.chatId")}
+            />
+            <ErrorMessage>{getConfigErrorMessage("chatId")}</ErrorMessage>
+            <p className="text-xs text-muted-foreground">
+              留空则获取最近聊天记录
+            </p>
+          </div>
+        </>
+      )}
+
+      {socialPlatform === "WHATSAPP" && (
+        <>
+          <div className="grid gap-3">
+            <Label htmlFor="social.config.contactName">联系人/群组名称</Label>
+            <Input
+              id="social.config.contactName"
+              placeholder="联系人或群组名称"
+              {...register("social.config.contactName")}
+            />
+            <ErrorMessage>{getConfigErrorMessage("contactName")}</ErrorMessage>
+            <p className="text-xs text-muted-foreground">
+              留空则获取最近聊天记录。WhatsApp 使用持久化浏览器配置文件认证，首次需要扫描 QR 码。
+            </p>
           </div>
         </>
       )}

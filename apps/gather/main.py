@@ -63,13 +63,17 @@ async def verify_auth(request: VerifyAuthRequest):
     
     print(f"[gather] Verifying auth for {platform} (headless={headless})")
     
-    # Validate auth_data structure
-    if not auth_data.get("cookies"):
-        return VerifyAuthResponse(
-            valid=False,
-            message="Invalid auth data: missing 'cookies' field",
-            details={"error": "auth_data must contain 'cookies' array"}
-        )
+    # Validate auth_data structure (skip for WhatsApp which uses persistent profile)
+    if platform != "whatsapp":
+        has_cookies = auth_data.get("cookies") and len(auth_data.get("cookies", [])) > 0
+        has_origins = auth_data.get("origins") and len(auth_data.get("origins", [])) > 0
+        
+        if not has_cookies and not has_origins:
+            return VerifyAuthResponse(
+                valid=False,
+                message="Invalid auth data: missing 'cookies' or 'origins' field",
+                details={"error": "auth_data must contain 'cookies' array or 'origins' with localStorage"}
+            )
     
     try:
         if platform == "x" or platform == "twitter":
@@ -186,11 +190,50 @@ async def verify_auth(request: VerifyAuthRequest):
                     details={"platform": "Weibo", "suggestion": "Please re-export cookies from Chrome"}
                 )
                 
+        elif platform == "telegram":
+            from clients.telegram_client import TelegramPlaywrightClient
+            
+            async with TelegramPlaywrightClient(auth_data=auth_data, headless=headless) as client:
+                is_valid = await client.verify_auth()
+                
+            if is_valid:
+                return VerifyAuthResponse(
+                    valid=True,
+                    message="Telegram authentication is valid",
+                    details={"platform": "Telegram", "cookies_count": len(auth_data.get("cookies", []))}
+                )
+            else:
+                return VerifyAuthResponse(
+                    valid=False,
+                    message="Telegram authentication is invalid or expired",
+                    details={"platform": "Telegram", "suggestion": "Please re-export cookies and localStorage from Chrome"}
+                )
+                
+        elif platform == "whatsapp":
+            # WhatsApp uses persistent context, not cookie-based auth
+            from clients.whatsapp_client import WhatsAppPlaywrightClient
+            
+            async with WhatsAppPlaywrightClient(headless=headless) as client:
+                is_valid = await client.verify_auth()
+                
+            if is_valid:
+                return VerifyAuthResponse(
+                    valid=True,
+                    message="WhatsApp authentication is valid",
+                    details={"platform": "WhatsApp", "auth_type": "persistent_profile"}
+                )
+            else:
+                return VerifyAuthResponse(
+                    valid=False,
+                    message="WhatsApp authentication is invalid or expired",
+                    details={"platform": "WhatsApp", "suggestion": "Please run: uv run export_chrome_cookies.py whatsapp"}
+                )
+                
         else:
             return VerifyAuthResponse(
                 valid=False,
                 message=f"Platform '{platform}' is not supported for auth verification",
-                details={"supported_platforms": ["x", "twitter", "xiaohongshu", "xhs", "reddit", "douyin", "tiktok", "weibo"]}
+                details={"supported_platforms": ["x", "twitter", "xiaohongshu", "xhs", "reddit", "douyin", "tiktok", "weibo", "telegram", "whatsapp"]}
             )
             
     except ImportError as e:
@@ -398,16 +441,60 @@ async def fetch_data(request: FetchRequest):
                     ))
                     
         elif platform == "telegram":
-            # TODO: Implement Telegram crawler
-            results.append(CleanItem(
-                title="Telegram Message Placeholder",
-                text=f"This is a placeholder for Telegram content based on config {config}",
-                markdown=f"### Telegram Message\n\nPlaceholder content.",
-                platform="Telegram",
-                sourceId=request.source_id,
-                sourceType="SOCIAL_MEDIA",
-                time=datetime.now()
-            ))
+            if not auth_data:
+                raise HTTPException(
+                    status_code=400,
+                    detail="auth_data is required for Telegram. Please provide valid cookies and localStorage."
+                )
+            
+            from clients.telegram_client import TelegramPlaywrightClient
+            
+            async with TelegramPlaywrightClient(auth_data=auth_data, headless=True) as client:
+                async for msg in client.fetch_data(config):
+                    # Build markdown content
+                    md_parts = []
+                    if msg.get('sender'):
+                        md_parts.append(f"**{msg.get('sender')}**")
+                    if msg.get('text'):
+                        md_parts.append(msg.get('text', ''))
+                    if msg.get('timestamp'):
+                        md_parts.append(f"\n_{msg.get('timestamp')}_")
+                    
+                    results.append(CleanItem(
+                        title=f"Telegram: {msg.get('sender', 'Message')}",
+                        text=msg.get("text", ""),
+                        markdown="\n".join(md_parts) if md_parts else "Telegram message",
+                        platform="Telegram",
+                        sourceId=request.source_id,
+                        sourceType="SOCIAL_MEDIA",
+                        time=datetime.now()
+                    ))
+                    
+        elif platform == "whatsapp":
+            # WhatsApp uses persistent context, no auth_data needed
+            from clients.whatsapp_client import WhatsAppPlaywrightClient
+            
+            async with WhatsAppPlaywrightClient(headless=True) as client:
+                async for msg in client.fetch_data(config):
+                    # Build markdown content
+                    md_parts = []
+                    if msg.get('text'):
+                        md_parts.append(msg.get('text', ''))
+                    if msg.get('direction'):
+                        direction = "→" if msg.get('direction') == 'outgoing' else "←"
+                        md_parts.insert(0, f"{direction} ")
+                    if msg.get('timestamp'):
+                        md_parts.append(f"\n_{msg.get('timestamp')}_")
+                    
+                    results.append(CleanItem(
+                        title=f"WhatsApp Message",
+                        text=msg.get("text", ""),
+                        markdown="".join(md_parts) if md_parts else "WhatsApp message",
+                        platform="WhatsApp",
+                        sourceId=request.source_id,
+                        sourceType="SOCIAL_MEDIA",
+                        time=datetime.now()
+                    ))
             
         else:
             # Fallback or generic logic

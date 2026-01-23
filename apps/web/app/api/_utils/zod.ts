@@ -123,7 +123,7 @@ export const SearchEngineKindEnum = z.enum([
   "SEARXNG",
   "CUSTOM",
 ]);
-export const SocialPlatformEnum = z.enum(["X", "TELEGRAM", "REDDIT", "XIAOHONGSHU", "DOUYIN", "TIKTOK", "WEIBO"]);
+export const SocialPlatformEnum = z.enum(["X", "TELEGRAM", "REDDIT", "XIAOHONGSHU", "DOUYIN", "TIKTOK", "WEIBO", "WHATSAPP"]);
 
 function parseJson(val: unknown) {
   if (val === "") return undefined;
@@ -188,15 +188,6 @@ export const SocialConfigByPlatform = z.discriminatedUnion("platform", [
     proxyId: cuidOpt,
   }),
   z.object({
-    platform: z.literal("TELEGRAM"),
-    config: z.object({
-      channel: z.string().min(1), // @xxx 或数字id
-      mode: z.enum(["history", "updates"]).optional(),
-    }),
-    credentialId: cuidOpt,
-    proxyId: cuidOpt,
-  }),
-  z.object({
     platform: z.literal("REDDIT"),
     config: z.object({
       subreddit: z.string().min(1),
@@ -257,6 +248,26 @@ export const SocialConfigByPlatform = z.discriminatedUnion("platform", [
       })
       .refine((v) => v.userId || v.query || v.hotTopics, {
         message: "Weibo: provide at least one of userId/query/hotTopics",
+      }),
+    credentialId: cuidOpt,
+    proxyId: cuidOpt,
+  }),
+  z.object({
+    platform: z.literal("TELEGRAM"),
+    config: z
+      .object({
+        chatId: z.string().optional(),
+        maxResults: z.number().optional(),
+      }),
+    credentialId: cuidOpt,
+    proxyId: cuidOpt,
+  }),
+  z.object({
+    platform: z.literal("WHATSAPP"),
+    config: z
+      .object({
+        contactName: z.string().optional(),
+        maxResults: z.number().optional(),
       }),
     credentialId: cuidOpt,
     proxyId: cuidOpt,

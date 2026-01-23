@@ -447,7 +447,8 @@ exports.SocialPlatform = exports.$Enums.SocialPlatform = {
   XIAOHONGSHU: 'XIAOHONGSHU',
   DOUYIN: 'DOUYIN',
   TIKTOK: 'TIKTOK',
-  WEIBO: 'WEIBO'
+  WEIBO: 'WEIBO',
+  WHATSAPP: 'WHATSAPP'
 };
 
 exports.QueryFrequency = exports.$Enums.QueryFrequency = {

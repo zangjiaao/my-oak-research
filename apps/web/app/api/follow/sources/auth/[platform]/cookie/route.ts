@@ -3,7 +3,7 @@ import prisma from "@/lib/prisma";
 import { z } from "zod";
 
 const UploadAuthSchema = z.object({
-  platform: z.enum(["X", "TELEGRAM", "REDDIT", "XIAOHONGSHU", "DOUYIN", "TIKTOK", "WEIBO"]),
+  platform: z.enum(["X", "TELEGRAM", "REDDIT", "XIAOHONGSHU", "DOUYIN", "TIKTOK", "WEIBO", "WHATSAPP"]),
   sourceId: z.string().cuid().optional(), // If provided, associate with existing source
   name: z.string().min(1, "Credential name is required").optional(),
   authData: z.object({
@@ -16,9 +16,18 @@ const UploadAuthSchema = z.object({
       httpOnly: z.boolean().optional(),
       sameSite: z.string().optional(),
       expires: z.number().optional(),
-    })),
-    origins: z.array(z.any()).optional(),
-  }),
+    })).optional().default([]),
+    origins: z.array(z.object({
+      origin: z.string(),
+      localStorage: z.array(z.object({
+        name: z.string(),
+        value: z.string(),
+      })).optional(),
+    })).optional().default([]),
+  }).refine(
+    (data) => (data.cookies && data.cookies.length > 0) || (data.origins && data.origins.length > 0),
+    { message: "Auth data must contain either cookies or origins with localStorage data" }
+  ),
 });
 
 const GATHER_SERVICE_URL = process.env.GATHER_SERVICE_URL || "http://localhost:8000";

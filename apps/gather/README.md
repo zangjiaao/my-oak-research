@@ -4,13 +4,14 @@
 
 ## 支持的平台
 
-- **X.com (Twitter)** - 需要 Cookie 认证
-- **小红书 (Xiaohongshu)** - 需要 Cookie 认证
-- **Reddit** - 需要 Cookie 认证
-- **抖音 (Douyin)** - 需要 Cookie 认证
-- **TikTok** - 需要 Cookie 认证
-- **微博 (Weibo)** - 需要 Cookie 认证
-- **Telegram** - 计划中
+- **X.com (Twitter)** - Cookie 认证
+- **小红书 (Xiaohongshu)** - Cookie 认证
+- **Reddit** - Cookie 认证
+- **抖音 (Douyin)** - Cookie 认证
+- **TikTok** - Cookie 认证
+- **微博 (Weibo)** - Cookie 认证
+- **Telegram** - Cookie + localStorage 认证
+- **WhatsApp** - 持久化浏览器配置文件（QR 码扫码登录）
 
 ## 快速开始
 
@@ -44,6 +45,12 @@ uv run export_chrome_cookies.py tiktok
 
 # 导出微博 cookies
 uv run export_chrome_cookies.py weibo
+
+# 导出 Telegram cookies + localStorage
+uv run export_chrome_cookies.py telegram
+
+# 导出 WhatsApp（启动浏览器，需要扫码登录）
+uv run export_chrome_cookies.py whatsapp
 ```
 
 **注意**：
@@ -170,6 +177,14 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 - `hotTopics`: 设为 true 获取热搜话题
 - `maxResults`: 最大结果数（默认 10）
 
+#### Telegram
+- `chatId`: 频道/群组 ID 或用户名（留空则获取最近聊天）
+- `maxResults`: 最大结果数（默认 20）
+
+#### WhatsApp
+- `contactName`: 联系人/群组名称（留空则获取最近聊天）
+- `maxResults`: 最大结果数（默认 20）
+
 ## 使用示例
 
 ### Python 调用
@@ -217,7 +232,7 @@ for item in response.json():
 ```
 apps/gather/
 ├── main.py                 # FastAPI 服务入口
-├── export_chrome_cookies.py # Chrome cookies 导出脚本
+├── export_chrome_cookies.py # 浏览器认证数据导出脚本
 ├── clients/
 │   ├── __init__.py
 │   ├── base_playwright.py  # Playwright 基类
@@ -226,7 +241,9 @@ apps/gather/
 │   ├── reddit_client.py    # Reddit 客户端
 │   ├── douyin_client.py    # 抖音客户端
 │   ├── tiktok_client.py    # TikTok 客户端
-│   └── weibo_client.py     # 微博客户端
+│   ├── weibo_client.py     # 微博客户端
+│   ├── telegram_client.py  # Telegram 客户端
+│   └── whatsapp_client.py  # WhatsApp 客户端
 ├── pyproject.toml          # Python 依赖
 └── README.md               # 本文档
 ```
