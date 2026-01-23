@@ -19,16 +19,18 @@ class WhatsAppPlaywrightClient:
     """
     
     BASE_URL = "https://web.whatsapp.com"
-    PROFILE_DIR = Path(__file__).parent.parent / ".auth" / "whatsapp_profile"
+    DEFAULT_PROFILE_DIR = Path(__file__).parent.parent / ".auth" / "whatsapp_profile"
     
-    def __init__(self, headless: bool = True):
+    def __init__(self, headless: bool = True, profile_path: Optional[Path] = None):
         """
         Initialize WhatsApp client.
         
         Args:
             headless: Whether to run browser in headless mode
+            profile_path: Custom profile directory path. If None, uses default.
         """
         self.headless = headless
+        self.profile_dir = Path(profile_path) if profile_path else self.DEFAULT_PROFILE_DIR
         self.context: Optional[BrowserContext] = None
         self.page = None
         self._playwright = None
@@ -38,11 +40,13 @@ class WhatsAppPlaywrightClient:
         self._playwright = await async_playwright().start()
         
         # Ensure profile directory exists
-        self.PROFILE_DIR.mkdir(parents=True, exist_ok=True)
+        self.profile_dir.mkdir(parents=True, exist_ok=True)
+        
+        print(f"[WhatsApp Client] Launching with profile directory: {self.profile_dir.absolute()}")
         
         # Launch persistent context
         self.context = await self._playwright.chromium.launch_persistent_context(
-            user_data_dir=str(self.PROFILE_DIR),
+            user_data_dir=str(self.profile_dir),
             headless=self.headless,
             viewport={"width": 1280, "height": 720},
             user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",

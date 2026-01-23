@@ -178,17 +178,27 @@ export const SocialMediaFields = ({
   const handleFileSelect = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      if (!file.name.endsWith('.json')) {
-        setAuthStatus({
-          status: "error",
-          message: "请选择 .json 格式的文件",
-        });
-        return;
+      if (socialPlatform === "WHATSAPP") {
+        if (!file.name.endsWith('.zip')) {
+          setAuthStatus({
+            status: "error",
+            message: "WhatsApp 认证请选择 .zip 格式的 profile 压缩包",
+          });
+          return;
+        }
+      } else {
+        if (!file.name.endsWith('.json')) {
+          setAuthStatus({
+            status: "error",
+            message: "请选择 .json 格式的文件",
+          });
+          return;
+        }
       }
       setSelectedFile(file);
       setAuthStatus({ status: "idle" });
     }
-  }, []);
+  }, [socialPlatform]);
 
   // Handle auth file upload and verification
   const handleUploadAndVerify = useCallback(async () => {
@@ -197,7 +207,57 @@ export const SocialMediaFields = ({
     setAuthStatus({ status: "uploading", message: "正在读取文件..." });
 
     try {
-      // Read file content
+      const platformName = socialPlatform === "X" ? "x" : socialPlatform.toLowerCase();
+
+      // Special handling for WhatsApp Profile (Multipart Upload)
+      if (socialPlatform === "WHATSAPP") {
+        setAuthStatus({ status: "uploading", message: "正在上传 Profile 压缩包..." });
+
+        const formData = new FormData();
+        formData.append("file", selectedFile);
+        formData.append("name", newCredentialName || "WHATSAPP_profile");
+
+        const response = await fetch(`/api/follow/sources/auth/${platformName}/cookie`, {
+          method: "POST",
+          body: formData,
+        });
+
+        const result = await response.json();
+
+        if (!response.ok || !result.verified) {
+          setAuthStatus({
+            status: "error",
+            message: result.message || "认证验证失败",
+          });
+          return;
+        }
+
+        setAuthStatus({
+          status: "success",
+          message: result.message || "认证验证成功！",
+          credentialId: result.credentialId,
+        });
+
+        // Update form with the new credential ID
+        if (setValue && result.credentialId) {
+          setValue("social.credentialId", result.credentialId);
+        }
+
+        // Refresh credentials list
+        const kind = PLATFORM_TO_KIND[socialPlatform];
+        const credResponse = await fetch(`/api/follow/credentials?kind=${kind}`);
+        if (credResponse.ok) {
+          const data = await credResponse.json();
+          setCredentials(data.credentials || []);
+        }
+
+        setShowUploadForm(false);
+        setSelectedFile(null);
+        setNewCredentialName("");
+        return;
+      }
+
+      // Read file content for JSON-based platforms
       const fileContent = await selectedFile.text();
       let authData;
 
@@ -224,9 +284,6 @@ export const SocialMediaFields = ({
       }
 
       setAuthStatus({ status: "verifying", message: "正在验证认证信息..." });
-
-      // Map platform name
-      const platformName = socialPlatform === "X" ? "x" : socialPlatform.toLowerCase();
 
       // Call API to verify and save
       const response = await fetch(`/api/follow/sources/auth/${platformName}/cookie`, {
@@ -474,24 +531,29 @@ export const SocialMediaFields = ({
                 </Button>
               </div>
 
-              <p className="text-sm text-muted-foreground">
-                {socialPlatform === "X"
-                  ? "请上传从 Chrome 导出的 X.com 认证文件 (x_auth.json)"
-                  : "请上传从 Chrome 导出的小红书认证文件 (xiaohongshu_auth.json)"}
-              </p>
+              <div className="text-sm text-muted-foreground">
+                {socialPlatform === "WHATSAPP" ? (
+                  <p>请上传运行脚本导出的 WhatsApp Profile 压缩包 (whatsapp_profile.zip)</p>
+                ) : (
+                  <p>请上传从 Chrome 导出的 {socialPlatform} 认证文件</p>
+                )}
+              </div>
 
               <div className="flex items-center gap-2 p-2 rounded-md border bg-yellow-50 dark:bg-yellow-950/20 border-yellow-200 dark:border-yellow-800">
                 <AlertCircle className="h-4 w-4 text-yellow-600 dark:text-yellow-500 flex-shrink-0" />
-                <p className="text-xs text-yellow-700 dark:text-yellow-400">
-                  首先在 Chrome 中登录 {socialPlatform === "X" ? "X.com" : "小红书"}，
-                  然后运行 <code className="px-1 py-0.5 rounded bg-yellow-100 dark:bg-yellow-900/50">
-                    python export_chrome_cookies.py {socialPlatform === "X" ? "x" : "xiaohongshu"}
-                  </code> 导出 cookies
-                </p>
+                <div className="text-xs text-yellow-700 dark:text-yellow-400">
+                  <p>首先在 Chrome 中登录 {socialPlatform}，然后运行脚本：</p>
+                  <code className="block mt-1 p-1 rounded bg-yellow-100 dark:bg-yellow-900/50">
+                    python export_chrome_cookies.py {socialPlatform?.toLowerCase()}
+                  </code>
+                  {socialPlatform === "WHATSAPP" && (
+                    <p className="mt-1 text-[10px] opacity-80">注意：WhatsApp 需要将 .auth/whatsapp_profile 目录压缩为 .zip 后上传</p>
+                  )}
+                </div>
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="credential-name" className="text-xs">凭证别名 (可选，系统默认会覆盖同名凭证)</Label>
+                <Label htmlFor="credential-name" className="text-xs">凭证别名 (可选)</Label>
                 <Input
                   id="credential-name"
                   placeholder="例如: 我的主账号, 备选账号..."
@@ -505,7 +567,7 @@ export const SocialMediaFields = ({
                 <div className="flex-1">
                   <Input
                     type="file"
-                    accept=".json"
+                    accept={socialPlatform === "WHATSAPP" ? ".zip" : ".json"}
                     onChange={handleFileSelect}
                     className="cursor-pointer"
                   />

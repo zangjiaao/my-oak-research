@@ -3,7 +3,12 @@ Oak Gather Service
 Social media data fetching service using Playwright with cookie-based authentication.
 """
 import os
-from fastapi import FastAPI, HTTPException
+import re
+import io
+import shutil
+import zipfile
+from pathlib import Path
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from pydantic import BaseModel
 from typing import List, Optional, Any, Dict
 from datetime import datetime
@@ -213,20 +218,26 @@ async def verify_auth(request: VerifyAuthRequest):
             # WhatsApp uses persistent context, not cookie-based auth
             from clients.whatsapp_client import WhatsAppPlaywrightClient
             
-            async with WhatsAppPlaywrightClient(headless=headless) as client:
+            # Check for specific profile directory in auth_data
+            profile_path = None
+            if auth_data and "profileName" in auth_data:
+                profile_path = AUTH_DIR / auth_data["profileName"]
+                print(f"[gather] Using custom WhatsApp profile: {profile_path}")
+            
+            async with WhatsAppPlaywrightClient(headless=headless, profile_path=profile_path) as client:
                 is_valid = await client.verify_auth()
                 
             if is_valid:
                 return VerifyAuthResponse(
                     valid=True,
                     message="WhatsApp authentication is valid",
-                    details={"platform": "WhatsApp", "auth_type": "persistent_profile"}
+                    details={"platform": "WhatsApp", "auth_type": "persistent_profile", "profile": auth_data.get("profileName") if auth_data else "default"}
                 )
             else:
                 return VerifyAuthResponse(
                     valid=False,
                     message="WhatsApp authentication is invalid or expired",
-                    details={"platform": "WhatsApp", "suggestion": "Please run: uv run export_chrome_cookies.py whatsapp"}
+                    details={"platform": "WhatsApp", "suggestion": "Please re-export and upload the profile zip"}
                 )
                 
         else:
@@ -471,10 +482,15 @@ async def fetch_data(request: FetchRequest):
                     ))
                     
         elif platform == "whatsapp":
-            # WhatsApp uses persistent context, no auth_data needed
             from clients.whatsapp_client import WhatsAppPlaywrightClient
             
-            async with WhatsAppPlaywrightClient(headless=True) as client:
+            # Check for specific profile directory in auth_data
+            profile_path = None
+            if request.auth_data and "profileName" in request.auth_data:
+                profile_path = AUTH_DIR / request.auth_data["profileName"]
+                print(f"[gather] Using custom WhatsApp profile for fetch: {profile_path}")
+                
+            async with WhatsAppPlaywrightClient(headless=True, profile_path=profile_path) as client:
                 async for msg in client.fetch_data(config):
                     # Build markdown content
                     md_parts = []
@@ -514,6 +530,211 @@ async def fetch_data(request: FetchRequest):
     except Exception as e:
         print(f"[gather] Error fetching {platform}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# Constants for profile upload security
+AUTH_DIR = Path(__file__).parent / ".auth"
+MAX_PROFILE_SIZE = 100 * 1024 * 1024  # 100MB
+PROFILE_NAME_PATTERN = re.compile(r'^[a-zA-Z0-9_-]{1,64}$')
+
+
+class UploadProfileResponse(BaseModel):
+    success: bool
+    message: str
+    profile_name: str
+    verified: bool = False
+    details: Optional[Dict[str, Any]] = None
+
+
+@app.post("/upload-profile", response_model=UploadProfileResponse)
+async def upload_profile(
+    file: UploadFile = File(...),
+    profile_name: str = Form(...),
+    platform: str = Form(default="whatsapp")
+):
+    """
+    Upload and verify a browser profile (e.g., WhatsApp).
+    
+    Security measures:
+    - Whitelist profile name format
+    - File size limit
+    - ZIP file validation
+    - Path traversal prevention
+    - Symlink blocking
+    """
+    platform = platform.lower()
+    
+    # Only WhatsApp uses profile-based auth for now
+    if platform != "whatsapp":
+        raise HTTPException(
+            status_code=400,
+            detail=f"Platform '{platform}' does not support profile-based authentication"
+        )
+    
+    # 1. Validate profile name format (whitelist)
+    if not PROFILE_NAME_PATTERN.match(profile_name):
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid profile name. Use only alphanumeric characters, underscores, and hyphens (1-64 chars)"
+        )
+    
+    # 2. Read and validate file size
+    content = await file.read()
+    if len(content) > MAX_PROFILE_SIZE:
+        raise HTTPException(
+            status_code=400,
+            detail=f"File too large. Maximum size is {MAX_PROFILE_SIZE // (1024*1024)}MB"
+        )
+    
+    # 3. Verify it's a valid ZIP file
+    if not zipfile.is_zipfile(io.BytesIO(content)):
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid file format. Please upload a ZIP file"
+        )
+    
+    # 4. Setup target directory with fixed path (no escaping)
+    AUTH_DIR.mkdir(exist_ok=True)
+    target_dir = AUTH_DIR / f"whatsapp_profile_{profile_name}"
+    target_dir_resolved = target_dir.resolve()
+    auth_dir_resolved = AUTH_DIR.resolve()
+    
+    # Ensure target is within AUTH_DIR
+    if not str(target_dir_resolved).startswith(str(auth_dir_resolved)):
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid profile path"
+        )
+    
+    # 5. Extract with security checks
+    try:
+        with zipfile.ZipFile(io.BytesIO(content)) as zf:
+            # Check each file before extraction
+            for info in zf.infolist():
+                # Skip directories
+                if info.is_dir():
+                    continue
+                
+                # Normalize the filename and check for path traversal
+                filename = info.filename
+                
+                # Block absolute paths
+                if filename.startswith('/') or filename.startswith('\\'):
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Absolute paths not allowed: {filename}"
+                    )
+                
+                # Block parent directory references
+                if '..' in filename:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Path traversal detected: {filename}"
+                    )
+                
+                # Check resolved path is within target
+                extracted_path = (target_dir / filename).resolve()
+                if not str(extracted_path).startswith(str(target_dir_resolved)):
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Path traversal detected: {filename}"
+                    )
+                
+                # Block symlinks (check file attributes)
+                # Unix symlink has external_attr with mode 0o120000
+                unix_mode = info.external_attr >> 16
+                if unix_mode != 0 and (unix_mode & 0o170000) == 0o120000:
+                    print(f"[gather] Skipping symbolic link (not allowed for security): {filename}")
+                    continue
+            
+            # Remove existing directory if it exists
+            if target_dir.exists():
+                shutil.rmtree(target_dir)
+            
+            # Create target directory
+            target_dir.mkdir(parents=True, exist_ok=True)
+            
+            # Extract all files
+            zf.extractall(target_dir)
+            
+            # --- Auto-flatten logic ---
+            # If the ZIP was created by compressing the folder rather than its contents,
+            # we'll have target_dir/folder_name/Default instead of target_dir/Default.
+            content_items = [p for p in target_dir.iterdir() if p.name != "__MACOSX"]
+            if len(content_items) == 1 and content_items[0].is_dir():
+                nested_dir = content_items[0]
+                print(f"[gather] Detected nested directory '{nested_dir.name}', flattening...")
+                for item in nested_dir.iterdir():
+                    # Move everything up one level
+                    shutil.move(str(item), str(target_dir))
+                # Remove the now empty nested directory
+                nested_dir.rmdir()
+            # ---------------------------
+            
+    except zipfile.BadZipFile:
+        raise HTTPException(
+            status_code=400,
+            detail="Corrupted ZIP file"
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to extract profile: {str(e)}"
+        )
+    
+    print(f"[gather] Profile extracted to: {target_dir.absolute()}")
+    
+    # Check for expected Chromium profile structure
+    if (target_dir / "Default").exists():
+        print("[gather] Found 'Default' directory in profile")
+    else:
+        print("[gather] Warning: 'Default' directory NOT found in profile. Is this a complete Chrome profile?")
+        # List files for debugging
+        files = list(target_dir.glob("*"))[:10]
+        print(f"[gather] First few files in profile: {[f.name for f in files]}")
+    
+    # 6. Verify the profile works
+    try:
+        from clients.whatsapp_client import WhatsAppPlaywrightClient
+        
+        print(f"[gather] Starting verification for: {profile_name}")
+        # Create client with specific profile path
+        async with WhatsAppPlaywrightClient(
+            headless=False,
+            profile_path=target_dir
+        ) as client:
+            is_valid = await client.verify_auth()
+        
+        print(f"[gather] Verification result for {profile_name}: {is_valid}")
+        
+        if is_valid:
+            return UploadProfileResponse(
+                success=True,
+                message="Profile uploaded and verified successfully",
+                profile_name=f"whatsapp_profile_{profile_name}",
+                verified=True,
+                details={"platform": "WhatsApp", "auth_type": "profile"}
+            )
+        else:
+            return UploadProfileResponse(
+                success=True,
+                message="Profile uploaded but authentication is invalid or expired",
+                profile_name=f"whatsapp_profile_{profile_name}",
+                verified=False,
+                details={"platform": "WhatsApp", "suggestion": "Please re-export the profile after logging in"}
+            )
+            
+    except Exception as e:
+        print(f"[gather] Profile verification error: {e}")
+        return UploadProfileResponse(
+            success=True,
+            message=f"Profile uploaded but verification failed: {str(e)}",
+            profile_name=f"whatsapp_profile_{profile_name}",
+            verified=False,
+            details={"error": str(e)}
+        )
 
 
 if __name__ == "__main__":

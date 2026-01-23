@@ -44,6 +44,117 @@ export async function POST(
 ) {
   try {
     const { platform } = await params;
+    const platformNormalized = platform.toLowerCase();
+    const contentType = req.headers.get("content-type") || "";
+
+    // Special handling for WhatsApp profile (multipart/form-data)
+    if (platformNormalized === "whatsapp" && contentType.includes("multipart/form-data")) {
+      console.log(`[auth] Handling WhatsApp profile upload...`);
+      const formData = await req.formData();
+      const file = formData.get("file") as File;
+      const name = formData.get("name") as string;
+      const sourceId = formData.get("sourceId") as string;
+
+      if (!file) {
+        return badRequest("Missing profile file");
+      }
+
+      // Forward to gather service
+      const gatherFormData = new FormData();
+      gatherFormData.append("file", file);
+      gatherFormData.append("profile_name", name || "default");
+      gatherFormData.append("platform", "whatsapp");
+
+      const verifyResponse = await fetch(`${GATHER_SERVICE_URL}/upload-profile`, {
+        method: "POST",
+        body: gatherFormData,
+      });
+
+      if (!verifyResponse.ok) {
+        const errorText = await verifyResponse.text();
+        console.error(`[auth] Gather service error: ${errorText}`);
+        return serverError(new Error(`Gather service error: ${errorText}`));
+      }
+
+      const verifyResult = await verifyResponse.json();
+
+      if (!verifyResult.success || !verifyResult.verified) {
+        return json({
+          success: false,
+          verified: verifyResult.verified,
+          message: verifyResult.message,
+          details: verifyResult.details,
+        }, 400);
+      }
+
+      // Create or update Credential for WhatsApp Profile
+      const credentialName = name || `WHATSAPP_profile_auth`;
+      const credentialKind = "whatsapp-profile";
+
+      const existingCredential = await prisma.credential.findFirst({
+        where: {
+          name: credentialName,
+          kind: credentialKind,
+        },
+      });
+
+      let credential;
+      const authData = {
+        profileName: verifyResult.profile_name,
+        authType: "profile"
+      };
+
+      if (existingCredential) {
+        credential = await prisma.credential.update({
+          where: { id: existingCredential.id },
+          data: {
+            data: authData as any,
+            updatedAt: new Date(),
+          },
+        });
+      } else {
+        credential = await prisma.credential.create({
+          data: {
+            name: credentialName,
+            kind: credentialKind,
+            data: authData as any,
+          },
+        });
+      }
+
+      // If sourceId is provided, associate this credential with the source
+      if (sourceId) {
+        const source = await prisma.source.findUnique({
+          where: { id: sourceId },
+          include: { social: true },
+        });
+
+        if (source) {
+          console.log(`[auth] Associating credential ${credential.id} with source ${sourceId}`);
+          await prisma.source.update({
+            where: { id: sourceId },
+            data: { credentialId: credential.id },
+          });
+
+          // Also update social config if exists
+          if (source.social) {
+            await prisma.socialMediaSourceConfig.update({
+              where: { sourceId: sourceId },
+              data: { credentialId: credential.id },
+            });
+          }
+        }
+      }
+
+      return json({
+        success: true,
+        verified: true,
+        message: "WhatsApp profile uploaded and verified successfully",
+        credentialId: credential.id,
+      });
+    }
+
+    // Standard JSON handling for other platforms (Cookies/LocalStorage)
     const body = await req.json();
 
     // Add platform to body for validation
@@ -61,7 +172,6 @@ export async function POST(
     }
 
     const { authData, sourceId, name: providedName } = parsed.data;
-    const platformNormalized = platform.toLowerCase();
 
     // Step 1: Verify auth with gather service
     console.log(`[auth] Verifying ${platform} auth with gather service...`);
