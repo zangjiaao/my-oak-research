@@ -123,7 +123,7 @@ export const SearchEngineKindEnum = z.enum([
   "SEARXNG",
   "CUSTOM",
 ]);
-export const SocialPlatformEnum = z.enum(["X", "TELEGRAM", "REDDIT", "XIAOHONGSHU", "DOUYIN", "TIKTOK", "WEIBO", "WHATSAPP"]);
+export const SocialPlatformEnum = z.enum(["X", "TELEGRAM", "REDDIT", "XIAOHONGSHU", "DOUYIN", "TIKTOK", "WEIBO", "WHATSAPP", "INSTAGRAM"]);
 
 function parseJson(val: unknown) {
   if (val === "") return undefined;
@@ -267,6 +267,18 @@ export const SocialConfigByPlatform = z.discriminatedUnion("platform", [
     config: z
       .object({
         contactName: z.string().optional(),
+        maxResults: z.number().optional(),
+      }),
+    credentialId: cuidOpt,
+    proxyId: cuidOpt,
+  }),
+  z.object({
+    platform: z.literal("INSTAGRAM"),
+    config: z
+      .object({
+        username: z.string().optional(),
+        postId: z.string().optional(),
+        query: z.string().optional(),
         maxResults: z.number().optional(),
       }),
     credentialId: cuidOpt,

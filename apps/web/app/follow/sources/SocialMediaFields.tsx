@@ -14,14 +14,15 @@ import { Button } from "@/components/ui/button";
 import { ErrorMessage } from "@/components/business";
 import SelectProxy from "./SelectProxy";
 import { Proxy } from "@/app/generated/prisma";
+import { SocialPlatform } from "@/app/generated/prisma";
 import {
-  SourceCreateSchema,
+  SocialPlatformEnum,
   SocialMediaSourceCreateSchema,
+  SourceCreateSchema,
 } from "@/app/api/_utils/zod";
 import { Controller } from "react-hook-form";
 import { ControlledSelect } from "@/components/ui/controlled-select";
 import { SelectItem } from "@/components/ui/select";
-import { SocialPlatform } from "@/app/generated/prisma";
 import {
   CheckCircle2,
   XCircle,
@@ -69,7 +70,7 @@ interface CredentialInfo {
 }
 
 // Platforms that require cookie-based authentication
-const COOKIE_AUTH_PLATFORMS = ["X", "XIAOHONGSHU", "REDDIT", "DOUYIN", "TIKTOK", "WEIBO", "TELEGRAM", "WHATSAPP"] as const;
+const COOKIE_AUTH_PLATFORMS = ["X", "XIAOHONGSHU", "REDDIT", "DOUYIN", "TIKTOK", "WEIBO", "TELEGRAM", "WHATSAPP", "INSTAGRAM"] as const;
 
 // Map platform to credential kind
 const PLATFORM_TO_KIND: Record<string, string> = {
@@ -81,6 +82,7 @@ const PLATFORM_TO_KIND: Record<string, string> = {
   "WEIBO": "weibo-cookie",
   "TELEGRAM": "telegram-cookie",
   "WHATSAPP": "whatsapp-profile",
+  "INSTAGRAM": "instagram-cookie",
 };
 
 export const SocialMediaFields = ({
@@ -401,7 +403,7 @@ export const SocialMediaFields = ({
               }}
               placeholder="Select a social media platform"
             >
-              {Object.values(SocialPlatform).map((platform) => (
+              {SocialPlatformEnum.options.map((platform) => (
                 <SelectItem key={platform} value={platform}>
                   {platform}
                 </SelectItem>
@@ -834,6 +836,38 @@ export const SocialMediaFields = ({
             <p className="text-xs text-muted-foreground">
               留空则获取最近聊天记录。WhatsApp 使用持久化浏览器配置文件认证，首次需要扫描 QR 码。
             </p>
+          </div>
+        </>
+      )}
+
+      {socialPlatform === "INSTAGRAM" && (
+        <>
+          <div className="grid gap-3">
+            <Label htmlFor="social.config.username">用户名</Label>
+            <Input
+              id="social.config.username"
+              placeholder="Instagram 用户名"
+              {...register("social.config.username")}
+            />
+            <ErrorMessage>{getConfigErrorMessage("username")}</ErrorMessage>
+          </div>
+          <div className="grid gap-3">
+            <Label htmlFor="social.config.query">搜索关键词</Label>
+            <Input
+              id="social.config.query"
+              placeholder="搜索关键词"
+              {...register("social.config.query")}
+            />
+            <ErrorMessage>{getConfigErrorMessage("query")}</ErrorMessage>
+          </div>
+          <div className="grid gap-3">
+            <Label htmlFor="social.config.postId">帖子 ID</Label>
+            <Input
+              id="social.config.postId"
+              placeholder="Instagram 帖子 ID"
+              {...register("social.config.postId")}
+            />
+            <ErrorMessage>{getConfigErrorMessage("postId")}</ErrorMessage>
           </div>
         </>
       )}

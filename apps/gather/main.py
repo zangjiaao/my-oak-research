@@ -240,11 +240,30 @@ async def verify_auth(request: VerifyAuthRequest):
                     details={"platform": "WhatsApp", "suggestion": "Please re-export and upload the profile zip"}
                 )
                 
+        elif platform == "instagram":
+            from clients.instagram_client import InstagramPlaywrightClient
+            
+            async with InstagramPlaywrightClient(auth_data=auth_data, headless=headless) as client:
+                is_valid = await client.verify_auth()
+                
+            if is_valid:
+                return VerifyAuthResponse(
+                    valid=True,
+                    message="Instagram authentication is valid",
+                    details={"platform": "Instagram", "cookies_count": len(auth_data.get("cookies", []))}
+                )
+            else:
+                return VerifyAuthResponse(
+                    valid=False,
+                    message="Instagram authentication is invalid or expired",
+                    details={"platform": "Instagram", "suggestion": "Please re-export cookies from Chrome"}
+                )
+                
         else:
             return VerifyAuthResponse(
                 valid=False,
                 message=f"Platform '{platform}' is not supported for auth verification",
-                details={"supported_platforms": ["x", "twitter", "xiaohongshu", "xhs", "reddit", "douyin", "tiktok", "weibo", "telegram", "whatsapp"]}
+                details={"supported_platforms": ["x", "twitter", "xiaohongshu", "xhs", "reddit", "douyin", "tiktok", "weibo", "telegram", "whatsapp", "instagram"]}
             )
             
     except ImportError as e:
@@ -507,6 +526,35 @@ async def fetch_data(request: FetchRequest):
                         text=msg.get("text", ""),
                         markdown="".join(md_parts) if md_parts else "WhatsApp message",
                         platform="WhatsApp",
+                        sourceId=request.source_id,
+                        sourceType="SOCIAL_MEDIA",
+                        time=datetime.now()
+                    ))
+            
+        elif platform == "instagram":
+            if not auth_data:
+                raise HTTPException(
+                    status_code=400,
+                    detail="auth_data is required for Instagram. Please provide valid cookies."
+                )
+            
+            from clients.instagram_client import InstagramPlaywrightClient
+            
+            async with InstagramPlaywrightClient(auth_data=auth_data, headless=True) as client:
+                async for post in client.fetch_data(config):
+                    # Build markdown content
+                    md_parts = []
+                    if post.get('text'):
+                        md_parts.append(post.get('text', ''))
+                    if post.get('author'):
+                        md_parts.insert(0, f"**@{post.get('author')}**\n")
+                    
+                    results.append(CleanItem(
+                        title=f"Instagram Post",
+                        text=post.get("text", ""),
+                        markdown="\n".join(md_parts) if md_parts else "Instagram post",
+                        platform="Instagram",
+                        url=post.get("url"),
                         sourceId=request.source_id,
                         sourceType="SOCIAL_MEDIA",
                         time=datetime.now()

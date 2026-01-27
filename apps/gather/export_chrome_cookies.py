@@ -107,6 +107,13 @@ PLATFORMS = {
         "auth_types": ["profile"],
         "profile_dir": "whatsapp_profile",
     },
+    "instagram": {
+        "domains": [".instagram.com"],
+        "url": "https://www.instagram.com",
+        "output_file": "instagram_auth.json",
+        "display_name": "Instagram",
+        "auth_types": ["cookie"],
+    },
 }
 
 

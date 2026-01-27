@@ -189,7 +189,8 @@ export const SocialPlatform: {
   DOUYIN: 'DOUYIN',
   TIKTOK: 'TIKTOK',
   WEIBO: 'WEIBO',
-  WHATSAPP: 'WHATSAPP'
+  WHATSAPP: 'WHATSAPP',
+  INSTAGRAM: 'INSTAGRAM'
 };
 
 export type SocialPlatform = (typeof SocialPlatform)[keyof typeof SocialPlatform]
