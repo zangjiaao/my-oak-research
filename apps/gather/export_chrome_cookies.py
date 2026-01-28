@@ -114,6 +114,13 @@ PLATFORMS = {
         "display_name": "Instagram",
         "auth_types": ["cookie"],
     },
+    "facebook": {
+        "domains": [".facebook.com"],
+        "url": "https://www.facebook.com",
+        "output_file": "facebook_auth.json",
+        "display_name": "Facebook",
+        "auth_types": ["cookie"],
+    },
 }
 
 

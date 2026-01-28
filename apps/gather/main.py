@@ -259,6 +259,25 @@ async def verify_auth(request: VerifyAuthRequest):
                     details={"platform": "Instagram", "suggestion": "Please re-export cookies from Chrome"}
                 )
                 
+        elif platform == "facebook":
+            from clients.facebook_client import FacebookPlaywrightClient
+            
+            async with FacebookPlaywrightClient(auth_data=auth_data, headless=headless) as client:
+                is_valid = await client.verify_auth()
+                
+            if is_valid:
+                return VerifyAuthResponse(
+                    valid=True,
+                    message="Facebook authentication is valid",
+                    details={"platform": "Facebook", "cookies_count": len(auth_data.get("cookies", []))}
+                )
+            else:
+                return VerifyAuthResponse(
+                    valid=False,
+                    message="Facebook authentication is invalid or expired",
+                    details={"platform": "Facebook", "suggestion": "Please re-export cookies from Chrome"}
+                )
+                
         else:
             return VerifyAuthResponse(
                 valid=False,
@@ -554,6 +573,35 @@ async def fetch_data(request: FetchRequest):
                         text=post.get("text", ""),
                         markdown="\n".join(md_parts) if md_parts else "Instagram post",
                         platform="Instagram",
+                        url=post.get("url"),
+                        sourceId=request.source_id,
+                        sourceType="SOCIAL_MEDIA",
+                        time=datetime.now()
+                    ))
+                    
+        elif platform == "facebook":
+            if not auth_data:
+                raise HTTPException(
+                    status_code=400,
+                    detail="auth_data is required for Facebook. Please provide valid cookies."
+                )
+            
+            from clients.facebook_client import FacebookPlaywrightClient
+            
+            async with FacebookPlaywrightClient(auth_data=auth_data, headless=True) as client:
+                async for post in client.fetch_data(config):
+                    # Build markdown content
+                    md_parts = []
+                    if post.get('text'):
+                        md_parts.append(post.get('text', ''))
+                    if post.get('author'):
+                        md_parts.insert(0, f"**{post.get('author')}**\n")
+                    
+                    results.append(CleanItem(
+                        title=f"Facebook Post",
+                        text=post.get("text", ""),
+                        markdown="\n".join(md_parts) if md_parts else "Facebook post",
+                        platform="Facebook",
                         url=post.get("url"),
                         sourceId=request.source_id,
                         sourceType="SOCIAL_MEDIA",

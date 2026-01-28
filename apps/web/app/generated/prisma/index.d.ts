@@ -190,7 +190,8 @@ export const SocialPlatform: {
   TIKTOK: 'TIKTOK',
   WEIBO: 'WEIBO',
   WHATSAPP: 'WHATSAPP',
-  INSTAGRAM: 'INSTAGRAM'
+  INSTAGRAM: 'INSTAGRAM',
+  FACEBOOK: 'FACEBOOK'
 };
 
 export type SocialPlatform = (typeof SocialPlatform)[keyof typeof SocialPlatform]

@@ -89,6 +89,7 @@ enum SocialPlatform {
   WEIBO
   WHATSAPP
   INSTAGRAM
+  FACEBOOK
 }
 
 model Proxy {

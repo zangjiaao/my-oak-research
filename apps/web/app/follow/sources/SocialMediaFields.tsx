@@ -70,7 +70,7 @@ interface CredentialInfo {
 }
 
 // Platforms that require cookie-based authentication
-const COOKIE_AUTH_PLATFORMS = ["X", "XIAOHONGSHU", "REDDIT", "DOUYIN", "TIKTOK", "WEIBO", "TELEGRAM", "WHATSAPP", "INSTAGRAM"] as const;
+const COOKIE_AUTH_PLATFORMS = ["X", "XIAOHONGSHU", "REDDIT", "DOUYIN", "TIKTOK", "WEIBO", "TELEGRAM", "WHATSAPP", "INSTAGRAM", "FACEBOOK"] as const;
 
 // Map platform to credential kind
 const PLATFORM_TO_KIND: Record<string, string> = {
@@ -83,6 +83,7 @@ const PLATFORM_TO_KIND: Record<string, string> = {
   "TELEGRAM": "telegram-cookie",
   "WHATSAPP": "whatsapp-profile",
   "INSTAGRAM": "instagram-cookie",
+  "FACEBOOK": "facebook-cookie",
 };
 
 export const SocialMediaFields = ({
@@ -865,6 +866,38 @@ export const SocialMediaFields = ({
             <Input
               id="social.config.postId"
               placeholder="Instagram 帖子 ID"
+              {...register("social.config.postId")}
+            />
+            <ErrorMessage>{getConfigErrorMessage("postId")}</ErrorMessage>
+          </div>
+        </>
+      )}
+
+      {socialPlatform === "FACEBOOK" && (
+        <>
+          <div className="grid gap-3">
+            <Label htmlFor="social.config.username">用户名 / 页面 ID</Label>
+            <Input
+              id="social.config.username"
+              placeholder="Facebook 用户名 或 页面 ID"
+              {...register("social.config.username")}
+            />
+            <ErrorMessage>{getConfigErrorMessage("username")}</ErrorMessage>
+          </div>
+          <div className="grid gap-3">
+            <Label htmlFor="social.config.query">搜索关键词</Label>
+            <Input
+              id="social.config.query"
+              placeholder="搜索关键词"
+              {...register("social.config.query")}
+            />
+            <ErrorMessage>{getConfigErrorMessage("query")}</ErrorMessage>
+          </div>
+          <div className="grid gap-3">
+            <Label htmlFor="social.config.postId">帖子 ID</Label>
+            <Input
+              id="social.config.postId"
+              placeholder="Facebook 帖子 ID"
               {...register("social.config.postId")}
             />
             <ErrorMessage>{getConfigErrorMessage("postId")}</ErrorMessage>
