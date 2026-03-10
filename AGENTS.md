@@ -38,8 +38,8 @@ docker compose -f docker-compose.dev.yml up -d
 ### Development
 
 ```bash
-npm --workspace web run dev
-npm --workspace worker run dev
+npm run dev:web
+npm run dev:worker
 ```
 
 Gather service (from `apps/gather`):
@@ -61,17 +61,19 @@ npm --workspace worker run check-types
 
 ## 3) Environment and Data Setup
 
-- Create `.env` files from `.env.example` in:
-  - `apps/web`
-  - `apps/worker`
-  - (optional) `apps/gather`
+- Use shared env directory via `OAK_ENV_DIR` (for example `D:\Coding\my-oak-research-env`).
+- Store app env files there:
+  - `.env.common`
+  - `.env.apps.web`
+  - `.env.apps.worker`
+  - (optional) `.env.apps.gather`
+- Runtime env loading is done by `dotenvx` through `scripts/run-with-dotenvx.mjs`.
 - Local DB/Redis/MinIO values should match `docker/local/docker-compose.dev.yml`.
-- Prisma operations should be run in `apps/web`:
+- Prisma operations should run from repo root:
 
 ```bash
-cd apps/web
-npx prisma migrate deploy
-npx prisma db seed
+npm run db:migrate
+npm run db:seed
 ```
 
 ## 4) Code Style Guidelines

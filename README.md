@@ -39,13 +39,14 @@ cd docker/local
 docker compose -f docker-compose.dev.yml up -d
 ```
 
-3) Create env files:
+3) Create a shared env directory (example: `D:\Coding\my-oak-research-env`) with:
 
-- `apps/web/.env` from `apps/web/.env.example`
-- `apps/worker/.env` from `apps/worker/.env.example`
-- Optional: `apps/gather/.env` from `apps/gather/.env.example`
+- `.env.common`
+- `.env.apps.web`
+- `.env.apps.worker`
+- Optional: `.env.apps.gather`
 
-For local Docker defaults, use:
+For local Docker defaults, use these values:
 
 ```env
 DIRECT_URL=postgresql://postgres:postgres@localhost:5432/oak_research
@@ -61,12 +62,25 @@ MINIO_BUCKET=oak-research
 GATHER_SERVICE_URL=http://localhost:8000
 ```
 
-4) Run DB migration/seed (from `apps/web`):
+4) Set `OAK_ENV_DIR` once per machine:
+
+PowerShell (current session):
+
+```powershell
+$env:OAK_ENV_DIR="D:\Coding\my-oak-research-env"
+```
+
+PowerShell (persist for next sessions):
+
+```powershell
+setx OAK_ENV_DIR "D:\Coding\my-oak-research-env"
+```
+
+5) Run DB migration/seed (repo root):
 
 ```bash
-cd apps/web
-npx prisma migrate deploy
-npx prisma db seed
+npm run db:migrate
+npm run db:seed
 ```
 
 ## Run Services
@@ -74,8 +88,8 @@ npx prisma db seed
 From repo root:
 
 ```bash
-npm --workspace web run dev
-npm --workspace worker run dev
+npm run dev:web
+npm run dev:worker
 ```
 
 Gather service:
@@ -104,12 +118,17 @@ npm --workspace web run test
 
 # Worker
 npm --workspace worker run check-types
+
+# DB (loads env via dotenvx)
+npm run db:migrate
+npm run db:seed
 ```
 
 ## Logging
 
 - Use centralized logger module: `apps/web/lib/logger.ts`
 - Do not write runtime logs to tracked files like `apps/web/error.log`
+- Shared envs are loaded with `dotenvx` via `scripts/run-with-dotenvx.mjs`
 - Configure by env:
   - `LOG_LEVEL` (`debug|info|warn|error`)
   - `LOG_APP_NAME` (service name)
@@ -117,4 +136,4 @@ npm --workspace worker run check-types
 ## Troubleshooting
 
 - If Prisma reports TLS/SSL issues against local PostgreSQL, confirm the URL uses `localhost`/`127.0.0.1` and local docker credentials.
-- If web startup fails due missing env values, re-check `apps/web/.env` and `apps/worker/.env`.
+- If startup fails with `Missing OAK_ENV_DIR`, set `OAK_ENV_DIR` and confirm `.env.apps.web` / `.env.apps.worker` exist in that folder.
