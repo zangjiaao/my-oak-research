@@ -83,3 +83,4 @@ ENV/
 # Auth files (contain sensitive cookie data)
 .auth/
 *_auth.json
+apps/web/error.log
