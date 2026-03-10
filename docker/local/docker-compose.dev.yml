@@ -20,6 +20,21 @@ services:
       timeout: 5s
       retries: 10
 
+  redis:
+    image: redis:7-alpine
+    container_name: oak-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - oak_redis_data:/data
+    command: ["redis-server", "--appendonly", "yes"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
   minio:
     image: minio/minio:latest
     container_name: oak-minio
@@ -41,4 +56,5 @@ services:
 
 volumes:
   oak_postgres_data:
+  oak_redis_data:
   oak_minio_data:
