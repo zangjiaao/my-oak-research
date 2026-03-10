@@ -4,11 +4,17 @@ import "dotenv/config";
 
 import { Pool } from "pg";
 
+const directUrl = process.env.DIRECT_URL ?? "";
+const isLocalDatabase =
+  directUrl.includes("localhost") || directUrl.includes("127.0.0.1");
+
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: {
-    rejectUnauthorized: false,
-  },
+  connectionString: directUrl,
+  ssl: isLocalDatabase
+    ? undefined
+    : {
+        rejectUnauthorized: false,
+      },
 });
 
 const adapter = new PrismaPg(pool);

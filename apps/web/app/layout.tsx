@@ -9,6 +9,7 @@ import Headbar from "./Headbar";
 import QueryClientProvider from "./QueryClientProvider";
 import { Toaster } from "sonner";
 import { BookmarkProvider } from "@/components/bookmarks/context";
+import VibeKanbanCompanion from "./VibeKanbanCompanion";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -65,6 +66,7 @@ export default async function RootLayout({
             </SidebarProvider>
           </BookmarkProvider>
         </QueryClientProvider>
+        <VibeKanbanCompanion />
       </body>
     </html>
   );
