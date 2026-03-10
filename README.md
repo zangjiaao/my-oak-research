@@ -39,12 +39,25 @@ cd docker/local
 docker compose -f docker-compose.dev.yml up -d
 ```
 
-3) Create a shared env directory (example: `D:\Coding\my-oak-research-env`) with:
+3) Canonical env examples are centralized in `config/env`:
+
+- `config/env/.env.common.example`
+- `config/env/.env.apps.web.example`
+- `config/env/.env.apps.worker.example`
+- `config/env/.env.apps.gather.example`
+
+Create your shared env directory (example: `D:\Coding\my-oak-research-env`) and initialize:
+
+```bash
+npm run env:init
+```
+
+This writes:
 
 - `.env.common`
 - `.env.apps.web`
 - `.env.apps.worker`
-- Optional: `.env.apps.gather`
+- Optional `.env.apps.gather` (if gather is used)
 
 For local Docker defaults, use these values:
 
@@ -122,6 +135,9 @@ npm --workspace worker run check-types
 # DB (loads env via dotenvx)
 npm run db:migrate
 npm run db:seed
+
+# Initialize shared env files from config/env examples
+npm run env:init
 ```
 
 ## Logging
