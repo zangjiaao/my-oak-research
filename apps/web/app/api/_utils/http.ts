@@ -1,3 +1,5 @@
+import { logger } from "@/lib/logger";
+
 export function json<T>(data: T, init: number | ResponseInit = 200) {
   const initObj: ResponseInit = typeof init === 'number' ? { status: init } : init
   return Response.json(data as unknown as unknown, initObj)
@@ -20,15 +22,8 @@ export function conflict(message = 'Conflict', details?: unknown) {
 
 
 export function serverError(e: unknown) {
-  console.error(e)
-  try {
-    const fs = require('fs');
-    const path = require('path');
-    const logPath = path.join(process.cwd(), 'error.log');
-    const msg = `[${new Date().toISOString()}] ${e instanceof Error ? e.stack : JSON.stringify(e)}\n`;
-    fs.appendFileSync(logPath, msg);
-  } catch (err) {
-    // Ignore log errors
-  }
+  logger.error("Unhandled API error", {
+    error: logger.normalizeError(e),
+  });
   return json({ error: 'Internal Server Error' }, 500)
 }

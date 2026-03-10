@@ -18,6 +18,7 @@ node_modules
 .env.test.local
 .env.production.local
 !**/.env.example
+!**/.env.*.example
 
 # Testing
 coverage
@@ -66,6 +67,8 @@ eggs/
 .eggs/
 lib/
 lib64/
+!apps/web/lib/
+!apps/web/lib/logger.ts
 parts/
 sdist/
 var/
@@ -79,6 +82,8 @@ wheels/
 venv/
 ENV/
 .python-version
+!config/env/
+!config/env/.env.*.example
 
 # Auth files (contain sensitive cookie data)
 .auth/

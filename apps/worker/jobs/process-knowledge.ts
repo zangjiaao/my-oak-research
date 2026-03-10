@@ -2,6 +2,7 @@ import crypto from "crypto";
 import { createKnowledgeWorker, publishTaskEvent } from "@/lib/queue";
 import prisma from "@/lib/prisma";
 import { downloadFile } from "@/lib/storage";
+import { logger } from "@/lib/logger";
 import { createEmbeddings } from "@oak/agents/embeddings";
 const { PDFParse } = require("pdf-parse");
 
@@ -9,9 +10,7 @@ export const knowledgeWorker = createKnowledgeWorker(async (job) => {
   const { knowledgeId, fileId, storageKey, vectorModel, chunkSize } = job.data;
 
   try {
-    console.log(
-      `[knowledge-worker] start job fileId=${fileId} knowledgeId=${knowledgeId}`
-    );
+    logger.info("knowledge job started", { fileId, knowledgeId });
 
     await publishTaskEvent(fileId, {
       type: "knowledge:enqueue",
@@ -36,9 +35,11 @@ export const knowledgeWorker = createKnowledgeWorker(async (job) => {
       where: { fileId },
     });
 
-    console.log(
-      `[knowledge-worker] file ${fileId} downloaded size=${knowledgeFile.size}`
-    );
+    logger.info("knowledge metadata loaded", {
+      fileId,
+      knowledgeId,
+      size: knowledgeFile.size,
+    });
 
     const buffer = await downloadFile(storageKey);
     const text = await extractText(buffer, knowledgeFile.mimeType, knowledgeFile.name);
@@ -52,7 +53,11 @@ export const knowledgeWorker = createKnowledgeWorker(async (job) => {
       type: "knowledge:chunk",
       message: `开始处理 ${chunks.length} 个切片...`,
     });
-    console.log(`[knowledge-worker] created ${chunks.length} chunks for fileId=${fileId}`);
+    logger.info("knowledge chunks created", {
+      fileId,
+      knowledgeId,
+      chunkCount: chunks.length,
+    });
 
     // Super Batch process: Embed -> Save -> Progress
     const WORK_BATCH_SIZE = 100;
@@ -106,7 +111,12 @@ export const knowledgeWorker = createKnowledgeWorker(async (job) => {
         `;
 
         await prisma.$executeRawUnsafe(sql, ...values).catch(err => {
-          console.error(`[knowledge-worker] Bulk insert failed for batch starting at ${k}:`, err);
+          logger.error("knowledge chunk bulk insert failed", {
+            fileId,
+            knowledgeId,
+            batchStartIndex: i + k,
+            error: logger.normalizeError(err),
+          });
           throw new Error(`数据库存入失败: ${err.message}`);
         });
       }
@@ -131,10 +141,14 @@ export const knowledgeWorker = createKnowledgeWorker(async (job) => {
       message: "知识库切片处理完成",
       chunkCount: chunks.length,
     });
-    console.log(`[knowledge-worker] job successful for fileId=${fileId}`);
+    logger.info("knowledge job completed", { fileId, knowledgeId });
 
   } catch (error: any) {
-    console.error(`[knowledge-worker] job error for fileId=${fileId}:`, error);
+    logger.error("knowledge job failed", {
+      fileId,
+      knowledgeId,
+      error: logger.normalizeError(error),
+    });
     await publishTaskEvent(fileId, {
       type: "knowledge:error",
       message: `处理失败: ${error.message || "未知错误"}`,
@@ -158,10 +172,17 @@ async function extractText(
       // pdf-parse v2 strictly requires Uint8Array and fails on Buffer
       const parser = new PDFParse(new Uint8Array(buffer));
       const data = await parser.getText();
-      console.log(`[knowledge-worker] PDF extracted: ${data.text?.length || 0} chars`);
+      logger.info("knowledge pdf extracted", {
+        fileName,
+        textLength: data.text?.length || 0,
+      });
       return (data.text || "").trim().replace(/\0/g, "");
     } catch (error: any) {
-      console.error("[knowledge-worker] PDF parsing failed:", error);
+      logger.error("knowledge pdf parsing failed", {
+        fileName,
+        mimeType,
+        error: logger.normalizeError(error),
+      });
       throw new Error(`PDF 解析失败: ${error.message || "未知错误"}`);
     }
   }
@@ -179,7 +200,10 @@ async function extractText(
   }
 
   // Unknown binary file - attempt UTF-8 conversion anyway
-  console.warn(`[knowledge-worker] Unknown file type: ${mimeType} (${fileName}), attempting UTF-8 conversion`);
+  logger.warn("knowledge unknown mime type, fallback to UTF-8", {
+    fileName,
+    mimeType,
+  });
   return buffer.toString("utf-8").trim().replace(/\0/g, "");
 }
 
