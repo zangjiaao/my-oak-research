@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 
 const args = process.argv.slice(2);
 const target = args[0];
@@ -35,16 +35,26 @@ if (existsSync(commonEnvPath)) {
 }
 dotenvxArgs.push("-f", appEnvPath, "--", "npm", ...npmArgs);
 
-const dotenvxBin = process.platform === "win32" ? "dotenvx.cmd" : "dotenvx";
-const child = spawn(dotenvxBin, dotenvxArgs, {
+const useShell = process.platform === "win32";
+const dotenvxProbe = spawnSync("dotenvx", ["--version"], {
+  stdio: "ignore",
+  shell: useShell,
+});
+
+const runner =
+  dotenvxProbe.status === 0
+    ? { command: "dotenvx", args: dotenvxArgs }
+    : { command: "npx", args: ["-y", "@dotenvx/dotenvx", ...dotenvxArgs] };
+
+const child = spawn(runner.command, runner.args, {
   stdio: "inherit",
-  shell: false,
+  shell: useShell,
 });
 
 child.on("error", (error) => {
   const message =
     error instanceof Error ? error.message : "unknown process error";
-  console.error(`Failed to run dotenvx: ${message}`);
+  console.error(`Failed to run env loader: ${message}`);
   console.error(
     "Install dotenvx first: https://dotenvx.com/docs/install or npm i -g @dotenvx/dotenvx"
   );
@@ -58,4 +68,3 @@ child.on("exit", (code, signal) => {
   }
   process.exit(code ?? 1);
 });
-
