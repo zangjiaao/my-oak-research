@@ -66,6 +66,8 @@ eggs/
 .eggs/
 lib/
 lib64/
+!apps/web/lib/
+!apps/web/lib/logger.ts
 parts/
 sdist/
 var/
@@ -83,4 +85,3 @@ ENV/
 # Auth files (contain sensitive cookie data)
 .auth/
 *_auth.json
-apps/web/error.log
