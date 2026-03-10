@@ -7,11 +7,17 @@ const globalForPrisma = global as unknown as {
   prisma: PrismaClient;
 };
 
+const databaseUrl = process.env.DATABASE_URL ?? "";
+const isLocalDatabase =
+  databaseUrl.includes("localhost") || databaseUrl.includes("127.0.0.1");
+
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: {
-    rejectUnauthorized: false,
-  },
+  connectionString: databaseUrl,
+  ssl: isLocalDatabase
+    ? undefined
+    : {
+        rejectUnauthorized: false,
+      },
 });
 
 const adapter = new PrismaPg(pool);
