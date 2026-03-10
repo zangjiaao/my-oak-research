@@ -3,8 +3,9 @@ import prisma from "@/lib/prisma";
 import { z } from "zod";
 
 const UploadAuthSchema = z.object({
-  platform: z.enum(["X", "TELEGRAM", "REDDIT", "XIAOHONGSHU", "DOUYIN"]),
+  platform: z.enum(["X", "TELEGRAM", "REDDIT", "XIAOHONGSHU", "DOUYIN", "TIKTOK", "WEIBO", "WHATSAPP", "INSTAGRAM", "FACEBOOK"]),
   sourceId: z.string().cuid().optional(), // If provided, associate with existing source
+  name: z.string().min(1, "Credential name is required").optional(),
   authData: z.object({
     cookies: z.array(z.object({
       name: z.string(),
@@ -15,9 +16,18 @@ const UploadAuthSchema = z.object({
       httpOnly: z.boolean().optional(),
       sameSite: z.string().optional(),
       expires: z.number().optional(),
-    })),
-    origins: z.array(z.any()).optional(),
-  }),
+    })).optional().default([]),
+    origins: z.array(z.object({
+      origin: z.string(),
+      localStorage: z.array(z.object({
+        name: z.string(),
+        value: z.string(),
+      })).optional(),
+    })).optional().default([]),
+  }).refine(
+    (data) => (data.cookies && data.cookies.length > 0) || (data.origins && data.origins.length > 0),
+    { message: "Auth data must contain either cookies or origins with localStorage data" }
+  ),
 });
 
 const GATHER_SERVICE_URL = process.env.GATHER_SERVICE_URL || "http://localhost:8000";
@@ -34,6 +44,117 @@ export async function POST(
 ) {
   try {
     const { platform } = await params;
+    const platformNormalized = platform.toLowerCase();
+    const contentType = req.headers.get("content-type") || "";
+
+    // Special handling for WhatsApp profile (multipart/form-data)
+    if (platformNormalized === "whatsapp" && contentType.includes("multipart/form-data")) {
+      console.log(`[auth] Handling WhatsApp profile upload...`);
+      const formData = await req.formData();
+      const file = formData.get("file") as File;
+      const name = formData.get("name") as string;
+      const sourceId = formData.get("sourceId") as string;
+
+      if (!file) {
+        return badRequest("Missing profile file");
+      }
+
+      // Forward to gather service
+      const gatherFormData = new FormData();
+      gatherFormData.append("file", file);
+      gatherFormData.append("profile_name", name || "default");
+      gatherFormData.append("platform", "whatsapp");
+
+      const verifyResponse = await fetch(`${GATHER_SERVICE_URL}/upload-profile`, {
+        method: "POST",
+        body: gatherFormData,
+      });
+
+      if (!verifyResponse.ok) {
+        const errorText = await verifyResponse.text();
+        console.error(`[auth] Gather service error: ${errorText}`);
+        return serverError(new Error(`Gather service error: ${errorText}`));
+      }
+
+      const verifyResult = await verifyResponse.json();
+
+      if (!verifyResult.success || !verifyResult.verified) {
+        return json({
+          success: false,
+          verified: verifyResult.verified,
+          message: verifyResult.message,
+          details: verifyResult.details,
+        }, 400);
+      }
+
+      // Create or update Credential for WhatsApp Profile
+      const credentialName = name || `WHATSAPP_profile_auth`;
+      const credentialKind = "whatsapp-profile";
+
+      const existingCredential = await prisma.credential.findFirst({
+        where: {
+          name: credentialName,
+          kind: credentialKind,
+        },
+      });
+
+      let credential;
+      const authData = {
+        profileName: verifyResult.profile_name,
+        authType: "profile"
+      };
+
+      if (existingCredential) {
+        credential = await prisma.credential.update({
+          where: { id: existingCredential.id },
+          data: {
+            data: authData as any,
+            updatedAt: new Date(),
+          },
+        });
+      } else {
+        credential = await prisma.credential.create({
+          data: {
+            name: credentialName,
+            kind: credentialKind,
+            data: authData as any,
+          },
+        });
+      }
+
+      // If sourceId is provided, associate this credential with the source
+      if (sourceId) {
+        const source = await prisma.source.findUnique({
+          where: { id: sourceId },
+          include: { social: true },
+        });
+
+        if (source) {
+          console.log(`[auth] Associating credential ${credential.id} with source ${sourceId}`);
+          await prisma.source.update({
+            where: { id: sourceId },
+            data: { credentialId: credential.id },
+          });
+
+          // Also update social config if exists
+          if (source.social) {
+            await prisma.socialMediaSourceConfig.update({
+              where: { sourceId: sourceId },
+              data: { credentialId: credential.id },
+            });
+          }
+        }
+      }
+
+      return json({
+        success: true,
+        verified: true,
+        message: "WhatsApp profile uploaded and verified successfully",
+        credentialId: credential.id,
+      });
+    }
+
+    // Standard JSON handling for other platforms (Cookies/LocalStorage)
     const body = await req.json();
 
     // Add platform to body for validation
@@ -50,8 +171,7 @@ export async function POST(
       });
     }
 
-    const { authData, sourceId } = parsed.data;
-    const platformNormalized = platform.toLowerCase();
+    const { authData, sourceId, name: providedName } = parsed.data;
 
     // Step 1: Verify auth with gather service
     console.log(`[auth] Verifying ${platform} auth with gather service...`);
@@ -84,8 +204,10 @@ export async function POST(
     }
 
     // Step 2: Create or update Credential
-    const credentialName = `${platform.toUpperCase()}_cookie_auth`;
+    const credentialName = providedName || `${platform.toUpperCase()}_cookie_auth`;
     const credentialKind = `${platformNormalized}-cookie`;
+
+    console.log(`[auth] Using credential name: "${credentialName}" for kind: "${credentialKind}"`);
 
     const existingCredential = await prisma.credential.findFirst({
       where: {
@@ -104,7 +226,7 @@ export async function POST(
           updatedAt: new Date(),
         },
       });
-      console.log(`[auth] Updated existing credential: ${credential.id}`);
+      console.log(`[auth] Updated existing credential: ${credential.id} (Name: ${credentialName})`);
     } else {
       // Create new credential
       credential = await prisma.credential.create({
@@ -114,7 +236,7 @@ export async function POST(
           data: authData as any,
         },
       });
-      console.log(`[auth] Created new credential: ${credential.id}`);
+      console.log(`[auth] Created new credential: ${credential.id} (Name: ${credentialName})`);
     }
 
     // Step 3: If sourceId provided, associate credential with source

@@ -123,7 +123,7 @@ export const SearchEngineKindEnum = z.enum([
   "SEARXNG",
   "CUSTOM",
 ]);
-export const SocialPlatformEnum = z.enum(["X", "TELEGRAM", "REDDIT", "XIAOHONGSHU", "DOUYIN"]);
+export const SocialPlatformEnum = z.enum(["X", "TELEGRAM", "REDDIT", "XIAOHONGSHU", "DOUYIN", "TIKTOK", "WEIBO", "WHATSAPP", "INSTAGRAM", "FACEBOOK"]);
 
 function parseJson(val: unknown) {
   if (val === "") return undefined;
@@ -188,15 +188,6 @@ export const SocialConfigByPlatform = z.discriminatedUnion("platform", [
     proxyId: cuidOpt,
   }),
   z.object({
-    platform: z.literal("TELEGRAM"),
-    config: z.object({
-      channel: z.string().min(1), // @xxx 或数字id
-      mode: z.enum(["history", "updates"]).optional(),
-    }),
-    credentialId: cuidOpt,
-    proxyId: cuidOpt,
-  }),
-  z.object({
     platform: z.literal("REDDIT"),
     config: z.object({
       subreddit: z.string().min(1),
@@ -229,6 +220,78 @@ export const SocialConfigByPlatform = z.discriminatedUnion("platform", [
       })
       .refine((v) => v.userId || v.videoId || v.query, {
         message: "Douyin: provide at least one of userId/videoId/query",
+      }),
+    credentialId: cuidOpt,
+    proxyId: cuidOpt,
+  }),
+  z.object({
+    platform: z.literal("TIKTOK"),
+    config: z
+      .object({
+        username: z.string().optional(),
+        videoId: z.string().optional(),
+        query: z.string().optional(),
+      })
+      .refine((v) => v.username || v.videoId || v.query, {
+        message: "TikTok: provide at least one of username/videoId/query",
+      }),
+    credentialId: cuidOpt,
+    proxyId: cuidOpt,
+  }),
+  z.object({
+    platform: z.literal("WEIBO"),
+    config: z
+      .object({
+        userId: z.string().optional(),
+        query: z.string().optional(),
+        hotTopics: z.boolean().optional(),
+      })
+      .refine((v) => v.userId || v.query || v.hotTopics, {
+        message: "Weibo: provide at least one of userId/query/hotTopics",
+      }),
+    credentialId: cuidOpt,
+    proxyId: cuidOpt,
+  }),
+  z.object({
+    platform: z.literal("TELEGRAM"),
+    config: z
+      .object({
+        chatId: z.string().optional(),
+        maxResults: z.number().optional(),
+      }),
+    credentialId: cuidOpt,
+    proxyId: cuidOpt,
+  }),
+  z.object({
+    platform: z.literal("WHATSAPP"),
+    config: z
+      .object({
+        contactName: z.string().optional(),
+        maxResults: z.number().optional(),
+      }),
+    credentialId: cuidOpt,
+    proxyId: cuidOpt,
+  }),
+  z.object({
+    platform: z.literal("INSTAGRAM"),
+    config: z
+      .object({
+        username: z.string().optional(),
+        postId: z.string().optional(),
+        query: z.string().optional(),
+        maxResults: z.number().optional(),
+      }),
+    credentialId: cuidOpt,
+    proxyId: cuidOpt,
+  }),
+  z.object({
+    platform: z.literal("FACEBOOK"),
+    config: z
+      .object({
+        username: z.string().optional(),
+        postId: z.string().optional(),
+        query: z.string().optional(),
+        maxResults: z.number().optional(),
       }),
     credentialId: cuidOpt,
     proxyId: cuidOpt,

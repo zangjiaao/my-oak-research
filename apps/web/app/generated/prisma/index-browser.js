@@ -445,7 +445,12 @@ exports.SocialPlatform = exports.$Enums.SocialPlatform = {
   TELEGRAM: 'TELEGRAM',
   REDDIT: 'REDDIT',
   XIAOHONGSHU: 'XIAOHONGSHU',
-  DOUYIN: 'DOUYIN'
+  DOUYIN: 'DOUYIN',
+  TIKTOK: 'TIKTOK',
+  WEIBO: 'WEIBO',
+  WHATSAPP: 'WHATSAPP',
+  INSTAGRAM: 'INSTAGRAM',
+  FACEBOOK: 'FACEBOOK'
 };
 
 exports.QueryFrequency = exports.$Enums.QueryFrequency = {

@@ -186,7 +186,12 @@ export const SocialPlatform: {
   TELEGRAM: 'TELEGRAM',
   REDDIT: 'REDDIT',
   XIAOHONGSHU: 'XIAOHONGSHU',
-  DOUYIN: 'DOUYIN'
+  DOUYIN: 'DOUYIN',
+  TIKTOK: 'TIKTOK',
+  WEIBO: 'WEIBO',
+  WHATSAPP: 'WHATSAPP',
+  INSTAGRAM: 'INSTAGRAM',
+  FACEBOOK: 'FACEBOOK'
 };
 
 export type SocialPlatform = (typeof SocialPlatform)[keyof typeof SocialPlatform]

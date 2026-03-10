@@ -1,7 +1,7 @@
 import prisma from "@/lib/prisma";
 import { json, badRequest, serverError, conflict } from "@/app/api/_utils/http";
 import { SourceCreateSchema, SourceQuerySchema } from "@/app/api/_utils/zod";
-import { Prisma } from "@/app/generated/prisma";
+import { Prisma, SocialPlatform } from "@/app/generated/prisma";
 import { z } from "zod";
 
 // 帮助函数：将 null 转换为 Prisma.JsonNull，undefined 保持不变
@@ -131,10 +131,12 @@ export async function POST(req: Request) {
           });
           break;
         case "SOCIAL_MEDIA":
+          console.log("[sources] Current platform:", data.social.platform);
+          console.log("[sources] Available platforms in SocialPlatform enum:", Object.keys(SocialPlatform));
           await tx.socialMediaSourceConfig.create({
             data: {
               sourceId: base.id,
-              platform: data.social.platform,
+              platform: data.social.platform as SocialPlatform,
               config: data.social.config,
               credentialId: data.social.credentialId ?? null,
               proxyId: data.social.proxyId ?? null,
@@ -158,6 +160,7 @@ export async function POST(req: Request) {
 
     return json(created, 201);
   } catch (error) {
+    console.error("[sources] POST error:", error);
     return serverError(error);
   }
 }

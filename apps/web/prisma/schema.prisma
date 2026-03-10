@@ -85,6 +85,11 @@ enum SocialPlatform {
   REDDIT
   XIAOHONGSHU
   DOUYIN
+  TIKTOK
+  WEIBO
+  WHATSAPP
+  INSTAGRAM
+  FACEBOOK
 }
 
 model Proxy {
