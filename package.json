@@ -7,7 +7,7 @@
     "dev:worker": "node scripts/run-with-dotenvx.mjs worker --workspace worker run dev",
     "start:web": "node scripts/run-with-dotenvx.mjs web --workspace web run start",
     "start:worker": "node scripts/run-with-dotenvx.mjs worker --workspace worker run start",
-    "env:init": "powershell -ExecutionPolicy Bypass -File scripts/init-shared-env.ps1",
+    "env:init": "node scripts/init-shared-env.mjs",
     "db:migrate": "node scripts/run-with-dotenvx.mjs web --workspace web exec prisma migrate deploy",
     "db:seed": "node scripts/run-with-dotenvx.mjs web --workspace web exec prisma db seed",
     "build": "turbo run build",

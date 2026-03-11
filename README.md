@@ -46,7 +46,10 @@ docker compose -f docker-compose.dev.yml up -d
 - `config/env/.env.apps.worker.example`
 - `config/env/.env.apps.gather.example`
 
-Create your shared env directory (example: `D:\Coding\my-oak-research-env`) and initialize:
+Create your shared env directory and initialize:
+
+- Windows example: `D:\Coding\my-oak-research-env`
+- macOS/Linux example: `$HOME/Coding/my-oak-research-env`
 
 ```bash
 npm run env:init
@@ -87,6 +90,19 @@ PowerShell (persist for next sessions):
 
 ```powershell
 setx OAK_ENV_DIR "D:\Coding\my-oak-research-env"
+```
+
+zsh/bash (current session):
+
+```bash
+export OAK_ENV_DIR="$HOME/Coding/my-oak-research-env"
+```
+
+zsh persist (`~/.zshrc`):
+
+```bash
+echo 'export OAK_ENV_DIR="$HOME/Coding/my-oak-research-env"' >> ~/.zshrc
+source ~/.zshrc
 ```
 
 5) Run DB migration/seed (repo root):
