@@ -1,41 +1,30 @@
 # GTH-003 Agent Browser ResponseBody PoC Report
 
-## 1) Reproducible Command
+## 1. Scope
+
+- Task: `GTH-003-agent-browser-responsebody-poc`
+- Runtime: `agent-browser + CDP (Network.getResponseBody)`
+- Generated at: 2026-03-12 09:50:10 UTC
+
+## 2. Reproducible Command
 
 ```bash
 cd apps/gather
-uv run python -m poc.agent_browser_responsebody_poc \
-  --profile-dir ".auth/whatsapp_profile" \
-  --target-url "https://example.com/app" \
-  --url-pattern "/api/v1/messages" \
-  --samples 10 \
-  --timeout-ms 8000
+uv run python -m poc.agent_browser_responsebody_poc --auth-state-file '.auth/x_auth.json' --target-url 'https://x.com/blackanger/status/2030396470554395015' --url-pattern '/i/api/graphql' --samples 10 --timeout-ms 8000
 ```
 
-## 2) Sample Statistics
+## 3. Sample Statistics
 
-- Sampling date: 2026-03-12
-- Total samples: 10
-- Success samples: 8
-- Success rate: 80.00%
-- Average capture latency (success samples): 612ms
+- Total samples: **10**
+- Success samples: **0**
+- Success rate: **0.00%**
 
-## 3) Failure Classification
+## 4. Failure Classification
 
-- `no_match`: 1 (request path did not match configured pattern)
-- `timeout`: 1 (`Network.getResponseBody` timed out before body became available)
+- `timeout`: 10
 
-## 4) Decision (Go/No-Go)
+## 5. Go/No-Go Recommendation
 
-- Recommendation: **Go**
-- Reason:
-  - Success rate reached 80% threshold for PoC.
-  - Failures are observable and classifiable (`no_match` / `timeout`).
-  - Next step can stay incremental without switching default `/fetch` driver.
-
-## 5) Boundary Check
-
-- Default driver remains unchanged for legacy `/fetch`: `playwright`
-- This PoC does not include WebSocket frame capture.
-- This PoC does not include concurrent stress testing.
-
+- Decision: **No-Go**
+- Rationale: 成功率低于 80%，建议继续优化匹配规则和超时策略后再评估。
+- Keep default gather driver unchanged (`playwright` remains default for `/fetch`).
