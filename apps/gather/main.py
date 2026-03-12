@@ -13,6 +13,8 @@ from pydantic import BaseModel
 from typing import List, Optional, Any, Dict
 from datetime import datetime
 from dotenv import load_dotenv
+from drivers.playwright_driver import PlaywrightDriver
+from drivers.registry import DriverRegistry, DriverNotFoundError
 
 # Load environment variables from .env file
 load_dotenv()
@@ -25,6 +27,10 @@ class FetchRequest(BaseModel):
     config: Dict[str, Any]
     source_id: str
     auth_data: Optional[Dict[str, Any]] = None  # Playwright storage_state format
+
+
+class FetchV2Request(FetchRequest):
+    driver: Optional[str] = None
 
 
 class VerifyAuthRequest(BaseModel):
@@ -56,8 +62,7 @@ async def root():
     return {"status": "ok", "service": "oak-gather"}
 
 
-@app.post("/verify-auth", response_model=VerifyAuthResponse)
-async def verify_auth(request: VerifyAuthRequest):
+async def _playwright_verify_auth(request: VerifyAuthRequest):
     """
     Verify if the provided authentication data (cookies) is valid for the specified platform.
     This endpoint is used when users upload auth.json files to check if they're still valid.
@@ -300,8 +305,7 @@ async def verify_auth(request: VerifyAuthRequest):
         )
 
 
-@app.post("/fetch", response_model=List[CleanItem])
-async def fetch_data(request: FetchRequest):
+async def _playwright_fetch_data(request: FetchRequest):
     """
     Unified entry point for social media data fetching.
     Uses Playwright with cookie-based authentication.
@@ -626,6 +630,44 @@ async def fetch_data(request: FetchRequest):
     except Exception as e:
         print(f"[gather] Error fetching {platform}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+driver_registry = DriverRegistry(default_driver="playwright")
+driver_registry.register(
+    "playwright",
+    PlaywrightDriver(
+        verify_auth_handler=_playwright_verify_auth,
+        fetch_handler=_playwright_fetch_data,
+    ),
+)
+
+
+def _to_driver_http_exception(error: DriverNotFoundError) -> HTTPException:
+    return HTTPException(status_code=400, detail=error.to_detail())
+
+
+@app.post("/verify-auth", response_model=VerifyAuthResponse)
+async def verify_auth(request: VerifyAuthRequest):
+    try:
+        return await driver_registry.verify_auth(request)
+    except DriverNotFoundError as error:
+        raise _to_driver_http_exception(error)
+
+
+@app.post("/fetch", response_model=List[CleanItem])
+async def fetch_data(request: FetchRequest):
+    try:
+        return await driver_registry.fetch(request)
+    except DriverNotFoundError as error:
+        raise _to_driver_http_exception(error)
+
+
+@app.post("/v2/fetch", response_model=List[CleanItem])
+async def fetch_data_v2(request: FetchV2Request):
+    try:
+        return await driver_registry.fetch(request, driver_name=request.driver)
+    except DriverNotFoundError as error:
+        raise _to_driver_http_exception(error)
 
 
 # Constants for profile upload security
