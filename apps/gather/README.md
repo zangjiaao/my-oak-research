@@ -163,6 +163,41 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
 `driver` 为可选扩展字段；未传时默认值为 `python-gather`。
 
+### Agent Browser 脚本化 PoC（`driver: "agent-browser"`）
+
+用于复杂交互场景（登录后页面、轮询点击、按脚本采集内容），通过 `agent-browser` CLI 执行步骤。
+
+```json
+{
+  "platform": "telegram",
+  "sourceId": "source_telegram_demo",
+  "driver": "agent-browser",
+  "config": {
+    "agentBrowser": {
+      "headed": true,
+      "profile": ".auth/telegram_profile",
+      "script": [
+        { "command": "open https://web.telegram.org/a/" },
+        { "command": "wait --load networkidle" },
+        { "command": "snapshot -i", "captureAs": "entry_snapshot" },
+        { "command": "click @e25", "repeat": 3, "intervalMs": 2000 },
+        { "command": "get text @e40", "captureAs": "messages" }
+      ]
+    }
+  }
+}
+```
+
+`agentBrowser` 常用参数：
+
+- `script`: 必填，步骤数组（每步至少包含 `command`）
+- `headed`: 可选，`true` 时可视化执行（等价于 `agent-browser --headed`）
+- `profile`: 可选，加载浏览器 profile（等价于 `--profile`）
+- `sessionName`: 可选，会话名（等价于 `--session-name`）
+- `stateFile`: 可选，加载 state 文件（等价于 `--state`）
+- `commandTimeoutMs`: 可选，单步超时，默认 30000
+- `closeOnComplete`: 可选，默认 `true`，完成后执行 `agent-browser close`
+
 ### v2 错误结构
 
 `/v2/fetch` 在参数错误或运行时错误时统一返回：

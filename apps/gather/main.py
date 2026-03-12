@@ -5,6 +5,8 @@ Social media data fetching service using Playwright with cookie-based authentica
 import os
 import re
 import io
+import json
+import asyncio
 import shutil
 import zipfile
 from pathlib import Path
@@ -14,6 +16,7 @@ from pydantic import AliasChoices, BaseModel, ConfigDict, Field, ValidationError
 from typing import List, Optional, Any, Dict
 from datetime import datetime
 from dotenv import load_dotenv
+from drivers.agent_browser_runner import AgentBrowserScriptError, execute_agent_browser_script
 from drivers.playwright_driver import PlaywrightDriver
 from drivers.registry import DriverRegistry, DriverNotFoundError
 
@@ -664,12 +667,108 @@ async def _playwright_fetch_data(request: FetchRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+def _truncate_text(value: str, max_length: int = 12000) -> str:
+    if len(value) <= max_length:
+        return value
+    return f"{value[:max_length]}..."
+
+
+def _agent_browser_results_to_clean_items(
+    request: FetchRequest,
+    script_result: Any,
+) -> list[CleanItem]:
+    now = datetime.now()
+    items: list[CleanItem] = []
+    captures = script_result.captures
+
+    if captures:
+        for capture_key, outputs in captures.items():
+            text = _truncate_text("\n".join(output for output in outputs if output))
+            if not text:
+                text = f"Capture '{capture_key}' completed with {len(outputs)} executions"
+            items.append(
+                CleanItem(
+                    title=f"agent-browser capture: {capture_key}",
+                    text=text,
+                    markdown=f"### {capture_key}\n\n```\n{text}\n```",
+                    platform=request.platform,
+                    sourceId=request.source_id,
+                    sourceType="SOCIAL_MEDIA",
+                    time=now,
+                    driver="agent-browser",
+                )
+            )
+
+    if items:
+        return items
+
+    step_summary = [
+        {
+            "step_index": result.step_index,
+            "attempt": result.attempt,
+            "command": result.command,
+            "stdout": _truncate_text(result.stdout.strip(), 2000),
+        }
+        for result in script_result.step_results
+    ]
+    summary_text = _truncate_text(json.dumps(step_summary, ensure_ascii=False))
+    return [
+        CleanItem(
+            title="agent-browser execution summary",
+            text=summary_text,
+            markdown=f"```json\n{summary_text}\n```",
+            platform=request.platform,
+            sourceId=request.source_id,
+            sourceType="SOCIAL_MEDIA",
+            time=now,
+            driver="agent-browser",
+        )
+    ]
+
+
+async def _agent_browser_verify_auth(_request: VerifyAuthRequest):
+    return VerifyAuthResponse(
+        valid=True,
+        message="agent-browser authentication is configured through fetch config (profile/session/state).",
+    )
+
+
+async def _agent_browser_fetch_data(request: FetchRequest):
+    try:
+        script_result = await asyncio.to_thread(execute_agent_browser_script, request.config)
+        items = _agent_browser_results_to_clean_items(request, script_result)
+        if not items:
+            raise HTTPException(
+                status_code=500,
+                detail={"message": "agent-browser script finished without output"},
+            )
+        return items
+    except AgentBrowserScriptError as error:
+        status_code = 400 if error.reason == "invalid_config" else 500
+        raise HTTPException(
+            status_code=status_code,
+            detail={
+                "message": error.message,
+                "reason": error.reason,
+                "step": error.step_index,
+                "command": error.command,
+            },
+        )
+
+
 driver_registry = DriverRegistry(default_driver="playwright")
 driver_registry.register(
     "playwright",
     PlaywrightDriver(
         verify_auth_handler=_playwright_verify_auth,
         fetch_handler=_playwright_fetch_data,
+    ),
+)
+driver_registry.register(
+    "agent-browser",
+    PlaywrightDriver(
+        verify_auth_handler=_agent_browser_verify_auth,
+        fetch_handler=_agent_browser_fetch_data,
     ),
 )
 
