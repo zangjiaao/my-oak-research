@@ -14,6 +14,8 @@ from pydantic import AliasChoices, BaseModel, ConfigDict, Field, ValidationError
 from typing import List, Optional, Any, Dict
 from datetime import datetime
 from dotenv import load_dotenv
+from drivers.playwright_driver import PlaywrightDriver
+from drivers.registry import DriverRegistry, DriverNotFoundError
 
 # Load environment variables from .env file
 load_dotenv()
@@ -92,8 +94,7 @@ async def root():
     return {"status": "ok", "service": "oak-gather"}
 
 
-@app.post("/verify-auth", response_model=VerifyAuthResponse)
-async def verify_auth(request: VerifyAuthRequest):
+async def _playwright_verify_auth(request: VerifyAuthRequest):
     """
     Verify if the provided authentication data (cookies) is valid for the specified platform.
     This endpoint is used when users upload auth.json files to check if they're still valid.
@@ -336,8 +337,7 @@ async def verify_auth(request: VerifyAuthRequest):
         )
 
 
-@app.post("/fetch", response_model=List[CleanItem])
-async def fetch_data(request: FetchRequest):
+async def _playwright_fetch_data(request: FetchRequest):
     """
     Unified entry point for social media data fetching.
     Uses Playwright with cookie-based authentication.
@@ -664,6 +664,46 @@ async def fetch_data(request: FetchRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+driver_registry = DriverRegistry(default_driver="playwright")
+driver_registry.register(
+    "playwright",
+    PlaywrightDriver(
+        verify_auth_handler=_playwright_verify_auth,
+        fetch_handler=_playwright_fetch_data,
+    ),
+)
+
+
+def _to_driver_http_exception(error: DriverNotFoundError) -> HTTPException:
+    return HTTPException(status_code=400, detail=error.to_detail())
+
+
+def _to_driver_error_response(error: DriverNotFoundError) -> JSONResponse:
+    detail = error.to_detail()
+    return build_error_response(
+        status_code=400,
+        code=detail["code"],
+        message=detail["message"],
+        retryable=False,
+    )
+
+
+@app.post("/verify-auth", response_model=VerifyAuthResponse)
+async def verify_auth(request: VerifyAuthRequest):
+    try:
+        return await driver_registry.verify_auth(request)
+    except DriverNotFoundError as error:
+        raise _to_driver_http_exception(error)
+
+
+@app.post("/fetch", response_model=List[CleanItem])
+async def fetch_data(request: FetchRequest):
+    try:
+        return await driver_registry.fetch(request)
+    except DriverNotFoundError as error:
+        raise _to_driver_http_exception(error)
+
+
 @app.post(
     "/v2/fetch",
     response_model=List[CleanItem],
@@ -697,14 +737,19 @@ async def fetch_data_v2(payload: Dict[str, Any]):
     )
 
     try:
-        results = await fetch_data(v1_request)
+        results = await driver_registry.fetch(v1_request, driver_name=request.driver)
         if request.driver:
             for item in results:
                 item.driver = request.driver
         return results
+    except DriverNotFoundError as error:
+        return _to_driver_error_response(error)
     except HTTPException as e:
         status_code = e.status_code
-        message = str(e.detail) if e.detail else "Request failed"
+        if isinstance(e.detail, dict):
+            message = str(e.detail.get("message", e.detail))
+        else:
+            message = str(e.detail) if e.detail else "Request failed"
         code = "FETCH_BAD_REQUEST" if status_code < 500 else "FETCH_INTERNAL_ERROR"
         retryable = status_code >= 500
         return build_error_response(
