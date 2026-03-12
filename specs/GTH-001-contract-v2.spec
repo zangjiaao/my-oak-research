@@ -35,7 +35,7 @@ tags: [gather, contract, p0]
     过滤: test_fetch_v2_happy_path
   假设 请求体满足 v2 schema
   当 调用 `/v2/fetch`
-  那么 返回 `List[CleanItem]` 且字段完整
+  那么 返回状态码 `200`，响应为数组，且每个元素至少包含 `text/platform/sourceId/sourceType` 字段
 
 场景: 参数错误返回统一错误结构
   测试:
@@ -51,7 +51,7 @@ tags: [gather, contract, p0]
     过滤: test_fetch_v1_backward_compat
   假设 旧版 `/fetch` 请求
   当 调用 `/fetch`
-  那么 行为与原有契约保持兼容
+  那么 返回状态码 `200` 且响应仍为数组结构（每项包含 `text/platform/sourceId/sourceType`）
 
 ## 排除范围
 
