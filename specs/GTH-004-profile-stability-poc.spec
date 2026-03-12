@@ -50,6 +50,25 @@ tags: [gather, profile, poc, p0]
   当 查看报告
   那么 给出单实例/多实例建议与风险
 
+场景: 输出稳定性指标与失败分布
+  测试:
+    包: apps/gather
+    过滤: test_profile_stability_metrics_and_failure_distribution
+  假设 稳定性脚本执行完成并产生结果
+  当 读取统计输出（stdout 或 JSON 结果）
+  那么 包含 `total_runs/valid_runs/invalid_runs/failure_reasons` 且 `failure_reasons` 为非空分类映射
+
+场景: 报告落盘到固定路径
+  测试:
+    包: specs
+    过滤: test_gth004_report_output_path
+    Level: integration
+    Test Double: filesystem sandbox temp dir
+    Targets: report artifact path and non-empty content
+  假设 稳定性任务执行完成
+  当 检查产物文件
+  那么 `specs/reports/GTH-004-report.md` 存在且文件大小大于 0
+
 ## 排除范围
 
 - 不验证 response body 捕获。
