@@ -1,0 +1,50 @@
+[
+  {
+    "spec_name": "GTH-001-contract-v2",
+    "scenario_name": "v2 正常请求返回结构化数据",
+    "steps": [
+      "请求体满足 v2 schema",
+      "调用 `/v2/fetch`",
+      "返回状态码 `200`，响应为数组，且每个元素至少包含 `text/platform/sourceId/sourceType` 字段"
+    ],
+    "code_paths": [
+      "."
+    ],
+    "contract_intent": "为 `apps/gather` 建立稳定的 v2 API 契约，确保后续 driver 和 PoC 可以并行开发且不反复改接口。",
+    "contract_constraints": [],
+    "change_paths": [],
+    "prior_evidence": []
+  },
+  {
+    "spec_name": "GTH-001-contract-v2",
+    "scenario_name": "参数错误返回统一错误结构",
+    "steps": [
+      "请求缺失必填字段",
+      "调用 `/v2/fetch`",
+      "返回统一 `error.code/error.message/error.retryable`"
+    ],
+    "code_paths": [
+      "."
+    ],
+    "contract_intent": "为 `apps/gather` 建立稳定的 v2 API 契约，确保后续 driver 和 PoC 可以并行开发且不反复改接口。",
+    "contract_constraints": [],
+    "change_paths": [],
+    "prior_evidence": []
+  },
+  {
+    "spec_name": "GTH-001-contract-v2",
+    "scenario_name": "兼容接口行为不回归",
+    "steps": [
+      "旧版 `/fetch` 请求",
+      "调用 `/fetch`",
+      "返回状态码 `200` 且响应仍为数组结构（每项包含 `text/platform/sourceId/sourceType`）"
+    ],
+    "code_paths": [
+      "."
+    ],
+    "contract_intent": "为 `apps/gather` 建立稳定的 v2 API 契约，确保后续 driver 和 PoC 可以并行开发且不反复改接口。",
+    "contract_constraints": [],
+    "change_paths": [],
+    "prior_evidence": []
+  }
+]
