@@ -1,6 +1,5 @@
 spec: task
 name: "GTH-001-contract-v2"
-inherits: project
 tags: [gather, contract, p0]
 ---
 

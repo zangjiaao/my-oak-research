@@ -1,6 +1,5 @@
 spec: task
 name: "GTH-003-agent-browser-responsebody-poc"
-inherits: project
 tags: [gather, agent-browser, cdp, poc, p0]
 ---
 

@@ -1,6 +1,5 @@
 spec: task
 name: "GTH-004-profile-stability-poc"
-inherits: project
 tags: [gather, profile, poc, p0]
 ---
 

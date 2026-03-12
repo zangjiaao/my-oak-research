@@ -1,6 +1,5 @@
 spec: task
 name: "GTH-002-driver-abstraction"
-inherits: project
 tags: [gather, driver, p0]
 ---
 

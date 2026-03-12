@@ -1,6 +1,5 @@
 spec: task
 name: "GTH-005-worker-auth-plumbing"
-inherits: project
 tags: [worker, gather, auth, p0]
 ---
 
