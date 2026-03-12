@@ -118,7 +118,7 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 }
 ```
 
-### 获取数据 (POST /fetch)
+### 获取数据 v1（兼容）(POST /fetch)
 
 使用认证获取社交媒体数据。
 
@@ -134,6 +134,45 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
   "config": {
     "query": "AI",
     "maxResults": 10
+  }
+}
+```
+
+> `/fetch` 为兼容入口，继续使用 `source_id/auth_data`（snake_case）请求字段。
+
+### 获取数据 v2（推荐）(POST /v2/fetch)
+
+`/v2/fetch` 是稳定契约入口，返回结构与 `/fetch` 一致（数组 `CleanItem`）。
+
+**请求体**：
+```json
+{
+  "platform": "x",
+  "sourceId": "source_123",
+  "authData": {
+    "cookies": [...],
+    "origins": []
+  },
+  "config": {
+    "query": "AI",
+    "maxResults": 10
+  },
+  "driver": "python-gather"
+}
+```
+
+`driver` 为可选扩展字段；未传时默认值为 `python-gather`。
+
+### v2 错误结构
+
+`/v2/fetch` 在参数错误或运行时错误时统一返回：
+
+```json
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "platform: Field required",
+    "retryable": false
   }
 }
 ```
