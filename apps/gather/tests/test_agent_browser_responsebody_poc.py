@@ -2,6 +2,7 @@ import asyncio
 import sys
 from pathlib import Path
 
+import pytest
 from fastapi.testclient import TestClient
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
@@ -15,6 +16,7 @@ from poc.agent_browser_responsebody_poc import (
     PocRunConfig,
     build_report_markdown,
     capture_response_body,
+    parse_args,
     summarize_attempts,
     write_report,
 )
@@ -172,3 +174,43 @@ def test_gth003_report_output_path(tmp_path):
     assert written_path.exists()
     assert written_path.stat().st_size > 0
 
+
+def test_parse_args_supports_auth_state_file(tmp_path):
+    auth_state_file = tmp_path / "telegram_auth.json"
+    auth_state_file.write_text("{}", encoding="utf-8")
+
+    config = parse_args(
+        [
+            "--auth-state-file",
+            str(auth_state_file),
+            "--target-url",
+            "https://example.com",
+            "--url-pattern",
+            "/api/feed",
+        ]
+    )
+
+    assert config.profile_dir is None
+    assert config.auth_state_file == auth_state_file
+
+
+def test_parse_args_requires_exactly_one_auth_source(tmp_path):
+    auth_state_file = tmp_path / "telegram_auth.json"
+    auth_state_file.write_text("{}", encoding="utf-8")
+
+    with pytest.raises(SystemExit):
+        parse_args(["--target-url", "https://example.com", "--url-pattern", "/api/feed"])
+
+    with pytest.raises(SystemExit):
+        parse_args(
+            [
+                "--profile-dir",
+                str(tmp_path / "profile"),
+                "--auth-state-file",
+                str(auth_state_file),
+                "--target-url",
+                "https://example.com",
+                "--url-pattern",
+                "/api/feed",
+            ]
+        )

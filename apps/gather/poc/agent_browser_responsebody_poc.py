@@ -38,9 +38,10 @@ class CaptureAttemptResult:
 
 @dataclass(slots=True)
 class PocRunConfig:
-    profile_dir: Path
     target_url: str
     url_pattern: str
+    profile_dir: Path | None = None
+    auth_state_file: Path | None = None
     samples: int = 5
     timeout_ms: int = 8000
     expect_json: bool = True
@@ -246,10 +247,17 @@ async def run_poc(config: PocRunConfig) -> PocSummary:
 
     attempts: list[CaptureAttemptResult] = []
     async with async_playwright() as playwright:
-        context = await playwright.chromium.launch_persistent_context(
-            user_data_dir=str(config.profile_dir),
-            headless=config.headless,
-        )
+        browser = None
+        if config.profile_dir:
+            context = await playwright.chromium.launch_persistent_context(
+                user_data_dir=str(config.profile_dir),
+                headless=config.headless,
+            )
+        else:
+            if not config.auth_state_file:
+                raise ValueError("Either profile_dir or auth_state_file must be provided")
+            browser = await playwright.chromium.launch(headless=config.headless)
+            context = await browser.new_context(storage_state=str(config.auth_state_file))
         try:
             page = context.pages[0] if context.pages else await context.new_page()
             for _ in range(config.samples):
@@ -270,14 +278,21 @@ async def run_poc(config: PocRunConfig) -> PocSummary:
                     await cdp_session.detach()
         finally:
             await context.close()
+            if browser:
+                await browser.close()
     return summarize_attempts(attempts)
 
 
 def _build_repro_command(config: PocRunConfig) -> str:
+    auth_arg = (
+        f"--profile-dir '{config.profile_dir}'"
+        if config.profile_dir
+        else f"--auth-state-file '{config.auth_state_file}'"
+    )
     return (
         "cd apps/gather\n"
         "uv run python -m poc.agent_browser_responsebody_poc "
-        f"--profile-dir '{config.profile_dir}' "
+        f"{auth_arg} "
         f"--target-url '{config.target_url}' "
         f"--url-pattern '{config.url_pattern}' "
         f"--samples {config.samples} "
@@ -348,7 +363,8 @@ def _build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Run GTH-003 agent-browser CDP response body PoC and generate markdown report."
     )
-    parser.add_argument("--profile-dir", type=Path, required=True)
+    parser.add_argument("--profile-dir", type=Path)
+    parser.add_argument("--auth-state-file", type=Path)
     parser.add_argument("--target-url", required=True)
     parser.add_argument("--url-pattern", required=True)
     parser.add_argument("--samples", type=int, default=5)
@@ -362,8 +378,15 @@ def _build_arg_parser() -> argparse.ArgumentParser:
 def parse_args(argv: list[str] | None = None) -> PocRunConfig:
     parser = _build_arg_parser()
     args = parser.parse_args(argv)
+    has_profile = args.profile_dir is not None
+    has_auth_state = args.auth_state_file is not None
+    if has_profile == has_auth_state:
+        parser.error("Specify exactly one of --profile-dir or --auth-state-file")
+    if args.auth_state_file and not args.auth_state_file.exists():
+        parser.error(f"Auth state file not found: {args.auth_state_file}")
     return PocRunConfig(
         profile_dir=args.profile_dir,
+        auth_state_file=args.auth_state_file,
         target_url=args.target_url,
         url_pattern=args.url_pattern,
         samples=args.samples,
@@ -398,4 +421,3 @@ def main(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
