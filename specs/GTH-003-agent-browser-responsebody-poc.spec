@@ -38,6 +38,9 @@ tags: [gather, agent-browser, cdp, poc, p0]
   测试:
     包: apps/gather
     过滤: test_agent_browser_responsebody_timeout
+    Level: integration
+    Test Double: none
+    Targets: CDP Network.getResponseBody timeout and unmatched URL path
   假设 pattern 不匹配或请求未触发
   当 执行 PoC runner
   那么 返回明确错误原因（超时/无命中）
@@ -49,6 +52,28 @@ tags: [gather, agent-browser, cdp, poc, p0]
   假设 完成样本采集
   当 查看报告
   那么 包含成功率、失败分类、Go/No-Go 建议
+
+场景: PoC 不切换默认 driver
+  测试:
+    包: apps/gather
+    过滤: test_poc_does_not_change_default_driver
+    Level: integration
+    Test Double: none
+    Targets: legacy /fetch path without explicit driver
+  假设 未显式指定 `driver`
+  当 执行原有 `/fetch` 路径
+  那么 默认 driver 仍保持现有配置且不强制切换为 `agent-browser`
+
+场景: 报告落盘到固定路径
+  测试:
+    包: specs
+    过滤: test_gth003_report_output_path
+    Level: integration
+    Test Double: filesystem sandbox temp dir
+    Targets: report artifact path and non-empty content
+  假设 PoC runner 执行完成
+  当 检查产物文件
+  那么 `specs/reports/GTH-003-report.md` 存在且文件大小大于 0
 
 ## 排除范围
 
