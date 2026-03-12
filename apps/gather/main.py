@@ -9,7 +9,8 @@ import shutil
 import zipfile
 from pathlib import Path
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form
-from pydantic import BaseModel
+from fastapi.responses import JSONResponse
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, ValidationError
 from typing import List, Optional, Any, Dict
 from datetime import datetime
 from dotenv import load_dotenv
@@ -29,7 +30,16 @@ class FetchRequest(BaseModel):
     auth_data: Optional[Dict[str, Any]] = None  # Playwright storage_state format
 
 
-class FetchV2Request(FetchRequest):
+class FetchV2Request(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    platform: str
+    config: Dict[str, Any]
+    source_id: str = Field(validation_alias=AliasChoices("sourceId", "source_id"))
+    auth_data: Optional[Dict[str, Any]] = Field(
+        default=None,
+        validation_alias=AliasChoices("authData", "auth_data")
+    )
     driver: Optional[str] = None
 
 
@@ -55,6 +65,28 @@ class CleanItem(BaseModel):
     sourceId: str
     sourceType: str
     driver: Optional[str] = "python-gather"
+
+
+class ErrorDetail(BaseModel):
+    code: str
+    message: str
+    retryable: bool
+
+
+class ErrorResponse(BaseModel):
+    error: ErrorDetail
+
+
+def build_error_response(
+    status_code: int,
+    code: str,
+    message: str,
+    retryable: bool
+) -> JSONResponse:
+    return JSONResponse(
+        status_code=status_code,
+        content={"error": {"code": code, "message": message, "retryable": retryable}}
+    )
 
 
 @app.get("/")
@@ -646,6 +678,16 @@ def _to_driver_http_exception(error: DriverNotFoundError) -> HTTPException:
     return HTTPException(status_code=400, detail=error.to_detail())
 
 
+def _to_driver_error_response(error: DriverNotFoundError) -> JSONResponse:
+    detail = error.to_detail()
+    return build_error_response(
+        status_code=400,
+        code=detail["code"],
+        message=detail["message"],
+        retryable=False,
+    )
+
+
 @app.post("/verify-auth", response_model=VerifyAuthResponse)
 async def verify_auth(request: VerifyAuthRequest):
     try:
@@ -662,12 +704,67 @@ async def fetch_data(request: FetchRequest):
         raise _to_driver_http_exception(error)
 
 
-@app.post("/v2/fetch", response_model=List[CleanItem])
-async def fetch_data_v2(request: FetchV2Request):
+@app.post(
+    "/v2/fetch",
+    response_model=List[CleanItem],
+    responses={
+        400: {"model": ErrorResponse},
+        422: {"model": ErrorResponse},
+        500: {"model": ErrorResponse},
+    },
+)
+async def fetch_data_v2(payload: Dict[str, Any]):
     try:
-        return await driver_registry.fetch(request, driver_name=request.driver)
+        request = FetchV2Request.model_validate(payload)
+    except ValidationError as e:
+        first_error = e.errors()[0] if e.errors() else {}
+        location = ".".join(str(part) for part in first_error.get("loc", []))
+        message = first_error.get("msg", "Invalid request payload")
+        if location:
+            message = f"{location}: {message}"
+        return build_error_response(
+            status_code=422,
+            code="VALIDATION_ERROR",
+            message=message,
+            retryable=False,
+        )
+
+    v1_request = FetchRequest(
+        platform=request.platform,
+        config=request.config,
+        source_id=request.source_id,
+        auth_data=request.auth_data,
+    )
+
+    try:
+        results = await driver_registry.fetch(v1_request, driver_name=request.driver)
+        if request.driver:
+            for item in results:
+                item.driver = request.driver
+        return results
     except DriverNotFoundError as error:
-        raise _to_driver_http_exception(error)
+        return _to_driver_error_response(error)
+    except HTTPException as e:
+        status_code = e.status_code
+        if isinstance(e.detail, dict):
+            message = str(e.detail.get("message", e.detail))
+        else:
+            message = str(e.detail) if e.detail else "Request failed"
+        code = "FETCH_BAD_REQUEST" if status_code < 500 else "FETCH_INTERNAL_ERROR"
+        retryable = status_code >= 500
+        return build_error_response(
+            status_code=status_code,
+            code=code,
+            message=message,
+            retryable=retryable,
+        )
+    except Exception:
+        return build_error_response(
+            status_code=500,
+            code="FETCH_INTERNAL_ERROR",
+            message="Internal server error",
+            retryable=True,
+        )
 
 
 # Constants for profile upload security
