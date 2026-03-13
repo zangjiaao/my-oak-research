@@ -14,6 +14,10 @@ class AgentBrowserScriptError(Exception):
     message: str
     step_index: int | None = None
     command: str | None = None
+    return_code: int | None = None
+    stdout: str | None = None
+    stderr: str | None = None
+    debug_context: dict[str, Any] | None = None
 
     def __str__(self) -> str:
         return self.message
@@ -32,6 +36,17 @@ class AgentBrowserStepResult:
 class AgentBrowserScriptResult:
     step_results: list[AgentBrowserStepResult]
     captures: dict[str, list[str]]
+
+
+def _emit_log(enabled: bool, message: str) -> None:
+    if enabled:
+        print(f"[agent-browser-runner] {message}")
+
+
+def _truncate_text(value: str, max_length: int = 3000) -> str:
+    if len(value) <= max_length:
+        return value
+    return f"{value[:max_length]}..."
 
 
 def _read_int(raw_value: Any, *, field_name: str, minimum: int = 0) -> int:
@@ -86,6 +101,7 @@ def execute_agent_browser_script(config: dict[str, Any]) -> AgentBrowserScriptRe
 
     command_timeout_ms = _read_int(options.get("commandTimeoutMs", 30000), field_name="commandTimeoutMs", minimum=1)
     close_on_complete = bool(options.get("closeOnComplete", True))
+    verbose = bool(options.get("verbose", True))
 
     command_prefix = ["agent-browser"]
     if bool(options.get("headed", False)):
@@ -111,6 +127,25 @@ def execute_agent_browser_script(config: dict[str, Any]) -> AgentBrowserScriptRe
 
     step_results: list[AgentBrowserStepResult] = []
     captures: dict[str, list[str]] = {}
+    debug_steps: list[dict[str, Any]] = []
+
+    _emit_log(
+        verbose,
+        f"start script steps={len(steps)} headed={bool(options.get('headed', False))} "
+        f"profile={profile or '-'} session={session_name or '-'} state={state_file or '-'}",
+    )
+
+    try:
+        _emit_log(verbose, "preflight close daemon")
+        subprocess.run(
+            ["agent-browser", "close"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+            check=False,
+        )
+    except Exception as error:
+        _emit_log(verbose, f"preflight close skipped: {error}")
 
     try:
         for step_index, step in enumerate(steps, start=1):
@@ -145,7 +180,13 @@ def execute_agent_browser_script(config: dict[str, Any]) -> AgentBrowserScriptRe
 
             command_parts = shlex.split(command)
             for attempt in range(1, repeat + 1):
-                args = command_prefix + command_parts
+                is_close_command = bool(command_parts) and command_parts[0] == "close"
+                args = ["agent-browser", "close"] if is_close_command else command_prefix + command_parts
+                started_at = time.monotonic()
+                _emit_log(
+                    verbose,
+                    f"step={step_index}/{len(steps)} attempt={attempt}/{repeat} command={command}",
+                )
                 try:
                     completed = subprocess.run(
                         args,
@@ -160,6 +201,7 @@ def execute_agent_browser_script(config: dict[str, Any]) -> AgentBrowserScriptRe
                         message="agent-browser command not found in PATH",
                         step_index=step_index,
                         command=command,
+                        debug_context={"steps": debug_steps},
                     ) from error
                 except subprocess.TimeoutExpired as error:
                     raise AgentBrowserScriptError(
@@ -167,17 +209,41 @@ def execute_agent_browser_script(config: dict[str, Any]) -> AgentBrowserScriptRe
                         message=f"Command timed out after {command_timeout_ms}ms",
                         step_index=step_index,
                         command=command,
+                        debug_context={"steps": debug_steps},
                     ) from error
 
                 stdout = completed.stdout or ""
                 stderr = completed.stderr or ""
+                elapsed_ms = int((time.monotonic() - started_at) * 1000)
+                debug_step = {
+                    "step_index": step_index,
+                    "attempt": attempt,
+                    "command": command,
+                    "elapsed_ms": elapsed_ms,
+                    "return_code": completed.returncode,
+                    "stdout": _truncate_text(stdout.strip()),
+                    "stderr": _truncate_text(stderr.strip()),
+                }
+                debug_steps.append(debug_step)
+                _emit_log(
+                    verbose,
+                    f"step={step_index} attempt={attempt} exit={completed.returncode} elapsed={elapsed_ms}ms",
+                )
                 if completed.returncode != 0:
                     detail = stderr.strip() or stdout.strip() or f"exit code {completed.returncode}"
+                    _emit_log(
+                        verbose,
+                        f"step failed step={step_index} command={command} detail={_truncate_text(detail)}",
+                    )
                     raise AgentBrowserScriptError(
                         reason="command_failed",
                         message=f"agent-browser command failed: {detail}",
                         step_index=step_index,
                         command=command,
+                        return_code=completed.returncode,
+                        stdout=_truncate_text(stdout.strip()),
+                        stderr=_truncate_text(stderr.strip()),
+                        debug_context={"steps": debug_steps},
                     )
 
                 step_results.append(
@@ -193,12 +259,14 @@ def execute_agent_browser_script(config: dict[str, Any]) -> AgentBrowserScriptRe
                     captures.setdefault(capture_as, []).append(stdout.strip())
 
                 if interval_ms > 0 and attempt < repeat:
+                    _emit_log(verbose, f"sleep interval {interval_ms}ms before next repeat")
                     time.sleep(interval_ms / 1000)
     finally:
         if close_on_complete:
             try:
+                _emit_log(verbose, "close daemon on complete")
                 subprocess.run(
-                    command_prefix + ["close"],
+                    ["agent-browser", "close"],
                     capture_output=True,
                     text=True,
                     timeout=10,
@@ -207,5 +275,5 @@ def execute_agent_browser_script(config: dict[str, Any]) -> AgentBrowserScriptRe
             except Exception:
                 pass
 
+    _emit_log(verbose, f"script completed steps_executed={len(step_results)}")
     return AgentBrowserScriptResult(step_results=step_results, captures=captures)
-

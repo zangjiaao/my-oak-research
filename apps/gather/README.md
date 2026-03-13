@@ -197,6 +197,7 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 - `stateFile`: 可选，加载 state 文件（等价于 `--state`）
 - `commandTimeoutMs`: 可选，单步超时，默认 30000
 - `closeOnComplete`: 可选，默认 `true`，完成后执行 `agent-browser close`
+- `verbose`: 可选，默认 `true`，在 gather 服务日志中输出逐步执行信息（定位卡点时建议开启）
 
 ### v2 错误结构
 

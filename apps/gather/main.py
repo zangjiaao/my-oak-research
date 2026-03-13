@@ -745,13 +745,29 @@ async def _agent_browser_fetch_data(request: FetchRequest):
         return items
     except AgentBrowserScriptError as error:
         status_code = 400 if error.reason == "invalid_config" else 500
+        debug_parts = [f"reason={error.reason}"]
+        if error.step_index is not None:
+            debug_parts.append(f"step={error.step_index}")
+        if error.command:
+            debug_parts.append(f"command={error.command}")
+        if error.return_code is not None:
+            debug_parts.append(f"returnCode={error.return_code}")
+        if error.stderr:
+            debug_parts.append(f"stderr={_truncate_text(error.stderr, 1000)}")
+        elif error.stdout:
+            debug_parts.append(f"stdout={_truncate_text(error.stdout, 1000)}")
+        enriched_message = f"{error.message} | {'; '.join(debug_parts)}"
         raise HTTPException(
             status_code=status_code,
             detail={
-                "message": error.message,
+                "message": enriched_message,
                 "reason": error.reason,
                 "step": error.step_index,
                 "command": error.command,
+                "returnCode": error.return_code,
+                "stdout": error.stdout,
+                "stderr": error.stderr,
+                "debug": error.debug_context,
             },
         )
 

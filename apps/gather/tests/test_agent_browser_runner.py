@@ -46,7 +46,8 @@ def test_execute_agent_browser_script_supports_repeat_and_capture(monkeypatch, t
     assert result.captures["poll_click"] == ["ran:click @e1", "ran:click @e1"]
     assert any(call[-1] == "close" for call in calls)
     assert sleep_calls == [0.005]
-    assert calls[0][:8] == [
+    assert calls[0] == ["agent-browser", "close"]
+    assert calls[1][:8] == [
         "agent-browser",
         "--headed",
         "--profile",
@@ -68,4 +69,3 @@ def test_execute_agent_browser_script_raises_for_missing_binary(monkeypatch):
         execute_agent_browser_script({"script": [{"command": "open https://example.com"}]})
 
     assert error.value.reason == "binary_not_found"
-
