@@ -243,7 +243,7 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
         ],
         "breakWhen": {
           "captureKey": "page_snapshot",
-          "textIncludes": "目标关键词"
+          "textIncludes": ["目标关键词", "备选关键词"]
         }
       },
       "captureFilter": {
@@ -251,7 +251,7 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
         "perLine": true,
         "minChars": 20,
         "dedupe": true,
-        "normalizeRefSuffix": true,
+        "normalizeRefTags": true,
         "startsWith": ["- article", "- text"]
       }
     }
@@ -264,7 +264,7 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 - `maxIterations`: 最大循环次数（必填）
 - `intervalMs`: 每轮循环间隔（可选）
 - `steps`: 每轮要执行的步骤数组（必填）
-- `breakWhen.captureKey + breakWhen.textIncludes`: 当指定 capture 的最新输出包含文本时停止循环
+- `breakWhen.captureKey + breakWhen.textIncludes`: 当指定 capture 的最新输出包含目标文本时停止循环（`textIncludes` 支持字符串或字符串数组）
 
 `captureFilter` 参数说明（可选）：
 
@@ -272,10 +272,17 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 - `perLine`: `true` 时按行拆分输出（适合 `snapshot` 粗提取）
 - `minChars`: 最小字符长度过滤（例如 `20`）
 - `dedupe`: 是否去重（同一 capture key 下按字符串精确去重）
-- `normalizeRefSuffix`: 仅用于去重 key 归一化，去掉形如 `[ref=e120]`（含行尾 ` [ref=e120]:`）的引用标签（保留原始输出文本）
+- `normalizeRefTags`: 仅用于去重 key 归一化，去掉形如 `[ref=e120]`（含行尾 ` [ref=e120]:`）的引用标签（保留原始输出文本，兼容旧别名 `normalizeRefSuffix`）
 - `startsWith`: 白名单前缀，只有以这些前缀开头的行才保留（支持别名 `star_with`）
 - `excludes`: 黑名单前缀，以这些前缀开头的行会被过滤（支持别名 `ext`）
 - `startsWith` 与 `excludes` 互斥，不能同时传
+
+命名关联说明（`captureAs` / `captureKey` / `captureFilter.keys`）：
+
+- `captureAs`: 在某一步里给输出命名，例如 `snapshot` 步骤写成 `"captureAs": "page_snapshot"`
+- `captureKey`: `breakWhen` 里指定要检查哪个命名输出
+- `captureFilter.keys`: 指定过滤规则只作用于哪些命名输出
+- `page_snapshot` 只是示例名，可以改成任意字符串，只要三处对得上
 
 ### Agent Browser 心跳接口 (POST /v2/agent-browser/heartbeat)
 

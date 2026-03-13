@@ -241,6 +241,45 @@ def test_execute_agent_browser_script_loop_breaks_on_capture_condition(monkeypat
     ]
 
 
+def test_execute_agent_browser_script_loop_breaks_on_capture_condition_with_multiple_keywords(monkeypatch):
+    calls = []
+    snapshot_outputs = iter(["no target", "contains SECONDARY keyword"])
+
+    def fake_run(args, capture_output, text, timeout, check):  # noqa: ARG001
+        calls.append(args)
+        if args[1] == "snapshot":
+            return subprocess.CompletedProcess(args, 0, stdout=next(snapshot_outputs), stderr="")
+        if args[-1] == "close":
+            return subprocess.CompletedProcess(args, 0, stdout="", stderr="")
+        return subprocess.CompletedProcess(args, 0, stdout="ok", stderr="")
+
+    monkeypatch.setattr("drivers.agent_browser_runner.subprocess.run", fake_run)
+
+    result = execute_agent_browser_script(
+        {
+            "agentBrowser": {
+                "script": [{"command": "open https://example.com"}],
+                "loop": {
+                    "maxIterations": 5,
+                    "steps": [{"command": "snapshot", "captureAs": "page"}],
+                    "breakWhen": {
+                        "captureKey": "page",
+                        "textIncludes": ["PRIMARY", "SECONDARY"],
+                    },
+                },
+            }
+        }
+    )
+
+    assert result.captures["page"] == ["no target", "contains SECONDARY keyword"]
+    executed = [" ".join(call[1:]) for call in calls if len(call) >= 2 and call[1] != "close"]
+    assert executed == [
+        "open https://example.com",
+        "snapshot",
+        "snapshot",
+    ]
+
+
 def test_execute_agent_browser_script_capture_filter_supports_min_chars_and_dedupe(monkeypatch):
     calls = []
     snapshot_outputs = iter(
@@ -396,7 +435,7 @@ def test_execute_agent_browser_script_capture_filter_dedupes_with_normalized_ref
                     "keys": ["page_snapshot"],
                     "perLine": True,
                     "dedupe": True,
-                    "normalizeRefSuffix": True,
+                    "normalizeRefTags": True,
                 },
             }
         }
@@ -431,10 +470,45 @@ def test_execute_agent_browser_script_capture_filter_dedupes_with_inline_ref_tag
                     "keys": ["page_snapshot"],
                     "perLine": True,
                     "dedupe": True,
-                    "normalizeRefSuffix": True,
+                    "normalizeRefTags": True,
                 },
             }
         }
     )
 
     assert result.captures["page_snapshot"] == ['- article "alpha [ref=e93]beta same"']
+
+
+def test_execute_agent_browser_script_capture_filter_normalize_ref_suffix_alias_works(monkeypatch):
+    snapshot_outputs = iter(
+        [
+            '- article "same content [ref=e120]"',
+            '- article "same content [ref=e121]"',
+        ]
+    )
+
+    def fake_run(args, capture_output, text, timeout, check):  # noqa: ARG001
+        if args[-1] == "close":
+            return subprocess.CompletedProcess(args, 0, stdout="", stderr="")
+        if args[1] == "snapshot":
+            return subprocess.CompletedProcess(args, 0, stdout=next(snapshot_outputs), stderr="")
+        return subprocess.CompletedProcess(args, 0, stdout="ok", stderr="")
+
+    monkeypatch.setattr("drivers.agent_browser_runner.subprocess.run", fake_run)
+
+    result = execute_agent_browser_script(
+        {
+            "agentBrowser": {
+                "script": [{"command": "snapshot", "captureAs": "page_snapshot"}],
+                "loop": {"maxIterations": 2, "steps": [{"command": "snapshot", "captureAs": "page_snapshot"}]},
+                "captureFilter": {
+                    "keys": ["page_snapshot"],
+                    "perLine": True,
+                    "dedupe": True,
+                    "normalizeRefSuffix": True,
+                },
+            }
+        }
+    )
+
+    assert result.captures["page_snapshot"] == ['- article "same content [ref=e120]"']

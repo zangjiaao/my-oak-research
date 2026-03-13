@@ -222,16 +222,42 @@ def _extract_loop_config(options: dict[str, Any]) -> dict[str, Any] | None:
                 reason="invalid_config",
                 message="loop.breakWhen.captureKey must be a non-empty string",
             )
-        if text_includes is not None and (not isinstance(text_includes, str) or not text_includes):
-            raise AgentBrowserScriptError(
-                reason="invalid_config",
-                message="loop.breakWhen.textIncludes must be a non-empty string",
-            )
+        text_includes_values: list[str] | None = None
+        if text_includes is not None:
+            if isinstance(text_includes, str):
+                if not text_includes:
+                    raise AgentBrowserScriptError(
+                        reason="invalid_config",
+                        message="loop.breakWhen.textIncludes must be a non-empty string or array",
+                    )
+                text_includes_values = [text_includes]
+            elif isinstance(text_includes, list) and text_includes:
+                values: list[str] = []
+                for value in text_includes:
+                    if not isinstance(value, str) or not value:
+                        raise AgentBrowserScriptError(
+                            reason="invalid_config",
+                            message=(
+                                "loop.breakWhen.textIncludes list must contain non-empty strings"
+                            ),
+                        )
+                    values.append(value)
+                text_includes_values = values
+            else:
+                raise AgentBrowserScriptError(
+                    reason="invalid_config",
+                    message="loop.breakWhen.textIncludes must be a non-empty string or array",
+                )
         if (capture_key is None) != (text_includes is None):
             raise AgentBrowserScriptError(
                 reason="invalid_config",
                 message="loop.breakWhen requires both captureKey and textIncludes",
             )
+        if break_when is not None and text_includes_values is not None:
+            break_when = {
+                **break_when,
+                "_text_includes_values": text_includes_values,
+            }
     return {
         "steps": raw_steps,
         "max_iterations": max_iterations,
@@ -259,7 +285,7 @@ def _extract_capture_filter_config(options: dict[str, Any]) -> dict[str, Any]:
     dedupe = bool(raw_filter.get("dedupe", False))
     per_line = bool(raw_filter.get("perLine", False))
     min_chars = _read_int(raw_filter.get("minChars", 0), field_name="captureFilter.minChars", minimum=0)
-    normalize_ref_suffix = bool(raw_filter.get("normalizeRefSuffix", False))
+    normalize_ref_tags = bool(raw_filter.get("normalizeRefTags", raw_filter.get("normalizeRefSuffix", False)))
     def _read_string_list(raw_value: Any, field_name: str) -> list[str] | None:
         if raw_value is None:
             return None
@@ -300,7 +326,7 @@ def _extract_capture_filter_config(options: dict[str, Any]) -> dict[str, Any]:
         "keys": keys,
         "starts_with": starts_with,
         "excludes": excludes,
-        "normalize_ref_suffix": normalize_ref_suffix,
+        "normalize_ref_tags": normalize_ref_tags,
     }
 
 
@@ -308,14 +334,14 @@ def _should_break_loop(captures: dict[str, list[str]], break_when: dict[str, Any
     if not break_when:
         return False
     capture_key = break_when.get("captureKey")
-    text_includes = break_when.get("textIncludes")
-    if not capture_key or text_includes is None:
+    text_includes_values = break_when.get("_text_includes_values")
+    if not capture_key or not text_includes_values:
         return False
     values = captures.get(capture_key, [])
     if not values:
         return False
     latest = values[-1]
-    return text_includes in latest
+    return any(keyword in latest for keyword in text_includes_values)
 
 
 def _append_capture_values(
@@ -338,12 +364,12 @@ def _append_capture_values(
     dedupe = capture_filter["dedupe"]
     starts_with = capture_filter["starts_with"]
     excludes = capture_filter["excludes"]
-    normalize_ref_suffix = capture_filter["normalize_ref_suffix"]
+    normalize_ref_tags = capture_filter["normalize_ref_tags"]
     existing = captures.setdefault(capture_key, [])
     dedupe_seen: set[str] = set()
 
     def _normalize_for_dedupe(raw: str) -> str:
-        if not normalize_ref_suffix:
+        if not normalize_ref_tags:
             return raw
         normalized = _REF_INLINE_PATTERN.sub("", raw)
         normalized = _REF_SUFFIX_PATTERN.sub("", normalized)
