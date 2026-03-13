@@ -50,6 +50,9 @@ class AgentBrowserInstanceState:
     command_prefix: list[str]
     command_prefix_with_state: list[str]
     state_applied: bool
+    owner_id: str | None
+    session_key: str | None
+    ttl_seconds: int
     created_at: float
     last_used_at: float
 
@@ -85,7 +88,7 @@ def _read_int(raw_value: Any, *, field_name: str, minimum: int = 0) -> int:
     return value
 
 
-def _extract_script_steps(config: dict[str, Any]) -> list[dict[str, Any]]:
+def _extract_script_steps(config: dict[str, Any], *, allow_empty: bool = False) -> list[dict[str, Any]]:
     container = config.get("agentBrowser")
     if container is None:
         container = config
@@ -95,7 +98,12 @@ def _extract_script_steps(config: dict[str, Any]) -> list[dict[str, Any]]:
             message="config.agentBrowser must be an object",
         )
     steps = container.get("script")
-    if not isinstance(steps, list) or not steps:
+    if not isinstance(steps, list):
+        raise AgentBrowserScriptError(
+            reason="invalid_config",
+            message="config.agentBrowser.script must be a non-empty array",
+        )
+    if not steps and not allow_empty:
         raise AgentBrowserScriptError(
             reason="invalid_config",
             message="config.agentBrowser.script must be a non-empty array",
@@ -146,14 +154,45 @@ def _build_command_prefixes(options: dict[str, Any]) -> tuple[list[str], list[st
     return command_prefix, command_prefix_with_state
 
 
+def _safe_close_daemon(verbose: bool) -> None:
+    _emit_log(verbose, "close daemon")
+    try:
+        subprocess.run(
+            ["agent-browser", "close"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+            check=False,
+        )
+    except Exception as error:
+        _emit_log(verbose, f"close daemon skipped: {error}")
+
+
+def _normalize_optional_str(raw_value: Any, field_name: str) -> str | None:
+    if raw_value is None:
+        return None
+    if not isinstance(raw_value, str) or not raw_value.strip():
+        raise AgentBrowserScriptError(
+            reason="invalid_config",
+            message=f"{field_name} must be a non-empty string",
+        )
+    return raw_value.strip()
+
+
 def _create_instance(options: dict[str, Any], *, verbose: bool) -> AgentBrowserInstanceState:
     command_prefix, command_prefix_with_state = _build_command_prefixes(options)
+    owner_id = _normalize_optional_str(options.get("ownerId"), "ownerId")
+    session_key = _normalize_optional_str(options.get("sessionKey"), "sessionKey")
+    ttl_seconds = _read_int(options.get("instanceTtlSeconds", 900), field_name="instanceTtlSeconds", minimum=1)
     instance = AgentBrowserInstanceState(
         instance_id=f"ab-{uuid4().hex[:10]}",
         tab_id=f"tab-{uuid4().hex[:8]}",
         command_prefix=command_prefix,
         command_prefix_with_state=command_prefix_with_state,
         state_applied=False,
+        owner_id=owner_id,
+        session_key=session_key,
+        ttl_seconds=ttl_seconds,
         created_at=time.time(),
         last_used_at=time.time(),
     )
@@ -166,6 +205,8 @@ def _create_instance(options: dict[str, Any], *, verbose: bool) -> AgentBrowserI
 
 def _resolve_instance(options: dict[str, Any], *, verbose: bool) -> tuple[AgentBrowserInstanceState, bool]:
     instance_id = options.get("instanceId")
+    request_owner_id = _normalize_optional_str(options.get("ownerId"), "ownerId")
+    request_session_key = _normalize_optional_str(options.get("sessionKey"), "sessionKey")
     if instance_id:
         with _INSTANCE_LOCK:
             instance = _INSTANCES.get(str(instance_id))
@@ -173,6 +214,29 @@ def _resolve_instance(options: dict[str, Any], *, verbose: bool) -> tuple[AgentB
             raise AgentBrowserScriptError(
                 reason="invalid_config",
                 message=f"instanceId not found or already closed: {instance_id}",
+            )
+        now = time.time()
+        idle_seconds = now - instance.last_used_at
+        if idle_seconds > instance.ttl_seconds:
+            with _INSTANCE_LOCK:
+                _INSTANCES.pop(instance.instance_id, None)
+            _safe_close_daemon(verbose)
+            raise AgentBrowserScriptError(
+                reason="instance_expired",
+                message=(
+                    f"instanceId expired after {int(idle_seconds)}s idle "
+                    f"(ttl={instance.ttl_seconds}s): {instance_id}"
+                ),
+            )
+        if instance.owner_id and request_owner_id != instance.owner_id:
+            raise AgentBrowserScriptError(
+                reason="forbidden_instance_owner",
+                message="instanceId owner mismatch",
+            )
+        if instance.session_key and request_session_key != instance.session_key:
+            raise AgentBrowserScriptError(
+                reason="forbidden_instance_session",
+                message="instanceId session mismatch",
             )
         instance.last_used_at = time.time()
         _emit_log(verbose, f"reuse instance instanceId={instance.instance_id} tabId={instance.tab_id}")
@@ -185,8 +249,14 @@ def _resolve_instance(options: dict[str, Any], *, verbose: bool) -> tuple[AgentB
 
 
 def execute_agent_browser_script(config: dict[str, Any]) -> AgentBrowserScriptResult:
-    steps = _extract_script_steps(config)
     options = _extract_runtime_options(config)
+    heartbeat = bool(options.get("heartbeat", False))
+    if heartbeat and not options.get("instanceId"):
+        raise AgentBrowserScriptError(
+            reason="invalid_config",
+            message="heartbeat requires instanceId",
+        )
+    steps = _extract_script_steps(config, allow_empty=heartbeat)
 
     command_timeout_ms = _read_int(options.get("commandTimeoutMs", 30000), field_name="commandTimeoutMs", minimum=1)
     close_on_complete = bool(options.get("closeOnComplete", False))
@@ -202,21 +272,24 @@ def execute_agent_browser_script(config: dict[str, Any]) -> AgentBrowserScriptRe
     _emit_log(
         verbose,
         f"start script instanceId={instance.instance_id} tabId={instance.tab_id} "
-        f"steps={len(steps)} state={state_file or '-'}",
+        f"steps={len(steps)} heartbeat={heartbeat} state={state_file or '-'}",
     )
 
     if created_new_instance:
         _emit_log(verbose, "preflight close daemon")
-        try:
-            subprocess.run(
-                ["agent-browser", "close"],
-                capture_output=True,
-                text=True,
-                timeout=10,
-                check=False,
-            )
-        except Exception as error:
-            _emit_log(verbose, f"preflight close skipped: {error}")
+        _safe_close_daemon(verbose)
+
+    if heartbeat and not steps:
+        _emit_log(verbose, "heartbeat only request acknowledged")
+        with _INSTANCE_LOCK:
+            is_active = instance.instance_id in _INSTANCES
+        return AgentBrowserScriptResult(
+            step_results=[],
+            captures={},
+            instance_id=instance.instance_id,
+            tab_id=instance.tab_id,
+            instance_active=is_active,
+        )
 
     try:
         for step_index, step in enumerate(steps, start=1):
@@ -349,13 +422,7 @@ def execute_agent_browser_script(config: dict[str, Any]) -> AgentBrowserScriptRe
         if should_close_instance:
             try:
                 _emit_log(verbose, "close daemon on complete")
-                subprocess.run(
-                    ["agent-browser", "close"],
-                    capture_output=True,
-                    text=True,
-                    timeout=10,
-                    check=False,
-                )
+                _safe_close_daemon(verbose)
             except Exception:
                 pass
             with _INSTANCE_LOCK:

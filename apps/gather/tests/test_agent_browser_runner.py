@@ -84,6 +84,7 @@ def test_execute_agent_browser_script_reuses_instance_and_close_by_command(monke
         {
             "agentBrowser": {
                 "instanceId": first.instance_id,
+                "ownerId": "user-a",
                 "script": [{"command": "snapshot -i"}, {"command": "close"}],
             }
         }
@@ -105,3 +106,68 @@ def test_execute_agent_browser_script_raises_for_missing_binary(monkeypatch):
         execute_agent_browser_script({"script": [{"command": "open https://example.com"}]})
 
     assert error.value.reason == "binary_not_found"
+
+
+def test_execute_agent_browser_script_rejects_owner_mismatch(monkeypatch):
+    def fake_run(args, capture_output, text, timeout, check):  # noqa: ARG001
+        return subprocess.CompletedProcess(args, 0, stdout="ok", stderr="")
+
+    monkeypatch.setattr("drivers.agent_browser_runner.subprocess.run", fake_run)
+
+    first = execute_agent_browser_script(
+        {
+            "agentBrowser": {
+                "ownerId": "user-a",
+                "script": [{"command": "open https://example.com"}],
+            }
+        }
+    )
+
+    with pytest.raises(AgentBrowserScriptError) as error:
+        execute_agent_browser_script(
+            {
+                "agentBrowser": {
+                    "instanceId": first.instance_id,
+                    "ownerId": "user-b",
+                    "script": [{"command": "snapshot -i"}],
+                }
+            }
+        )
+
+    assert error.value.reason == "forbidden_instance_owner"
+
+
+def test_execute_agent_browser_script_supports_heartbeat_without_steps(monkeypatch):
+    calls = []
+
+    def fake_run(args, capture_output, text, timeout, check):  # noqa: ARG001
+        calls.append(args)
+        return subprocess.CompletedProcess(args, 0, stdout="ok", stderr="")
+
+    monkeypatch.setattr("drivers.agent_browser_runner.subprocess.run", fake_run)
+
+    first = execute_agent_browser_script(
+        {
+            "agentBrowser": {
+                "ownerId": "user-a",
+                "script": [{"command": "open https://example.com"}],
+            }
+        }
+    )
+
+    heartbeat = execute_agent_browser_script(
+        {
+            "agentBrowser": {
+                "instanceId": first.instance_id,
+                "ownerId": "user-a",
+                "heartbeat": True,
+                "script": [],
+            }
+        }
+    )
+
+    assert heartbeat.instance_id == first.instance_id
+    assert heartbeat.instance_active is True
+    assert heartbeat.step_results == []
+    assert heartbeat.captures == {}
+    assert calls == [["agent-browser", "close"], ["agent-browser", "open", "https://example.com"]]

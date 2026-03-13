@@ -197,6 +197,10 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 - `stateFile`: 可选，加载 state 文件（等价于 `--state`）
 - `commandTimeoutMs`: 可选，单步超时，默认 30000
 - `instanceId`: 可选，复用上一次返回的实例 ID（不传则创建新实例）
+- `ownerId`: 可选，实例归属标识；复用实例时会校验归属
+- `sessionKey`: 可选，会话隔离键；复用实例时会校验
+- `instanceTtlSeconds`: 可选，实例空闲 TTL（默认 900 秒）
+- `heartbeat`: 可选，`true` 时可发送空脚本续租实例（需配合 `instanceId`）
 - `closeOnComplete`: 可选，默认 `false`，为 `true` 时任务结束自动关闭实例
 - `verbose`: 可选，默认 `true`，在 gather 服务日志中输出逐步执行信息（定位卡点时建议开启）
 

@@ -87,3 +87,29 @@ def test_v2_fetch_agent_browser_driver_surfaces_config_error(monkeypatch):
     assert payload["error"]["code"] == "FETCH_BAD_REQUEST"
     assert payload["error"]["retryable"] is False
     assert "non-empty array" in payload["error"]["message"]
+
+
+def test_v2_fetch_agent_browser_driver_maps_owner_mismatch_to_403(monkeypatch):
+    def fake_execute_agent_browser_script(_config):
+        raise AgentBrowserScriptError(
+            reason="forbidden_instance_owner",
+            message="instanceId owner mismatch",
+        )
+
+    monkeypatch.setattr(main, "execute_agent_browser_script", fake_execute_agent_browser_script)
+
+    client = TestClient(main.app)
+    response = client.post(
+        "/v2/fetch",
+        json={
+            "platform": "telegram",
+            "sourceId": "source-telegram-3",
+            "driver": "agent-browser",
+            "config": {"agentBrowser": {"instanceId": "ab-test", "ownerId": "user-b", "script": []}},
+        },
+    )
+
+    assert response.status_code == 403
+    payload = response.json()
+    assert payload["error"]["code"] == "FETCH_BAD_REQUEST"
+    assert payload["error"]["retryable"] is False

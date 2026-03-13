@@ -753,7 +753,13 @@ async def _agent_browser_fetch_data(request: FetchRequest):
             )
         return items
     except AgentBrowserScriptError as error:
-        status_code = 400 if error.reason == "invalid_config" else 500
+        status_code_map = {
+            "invalid_config": 400,
+            "forbidden_instance_owner": 403,
+            "forbidden_instance_session": 403,
+            "instance_expired": 410,
+        }
+        status_code = status_code_map.get(error.reason, 500)
         debug_parts = [f"reason={error.reason}"]
         if error.step_index is not None:
             debug_parts.append(f"step={error.step_index}")
