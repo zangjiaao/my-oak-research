@@ -5,15 +5,22 @@ Social media data fetching service using Playwright with cookie-based authentica
 import os
 import re
 import io
+import json
+import asyncio
 import shutil
 import zipfile
 from pathlib import Path
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from fastapi.responses import JSONResponse
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field, ValidationError
-from typing import List, Optional, Any, Dict
-from datetime import datetime
+from typing import List, Optional, Any, Dict, Literal
+from datetime import datetime, timezone
 from dotenv import load_dotenv
+from drivers.agent_browser_runner import (
+    AgentBrowserScriptError,
+    execute_agent_browser_script,
+    heartbeat_agent_browser_instance,
+)
 from drivers.playwright_driver import PlaywrightDriver
 from drivers.registry import DriverRegistry, DriverNotFoundError
 
@@ -28,6 +35,7 @@ class FetchRequest(BaseModel):
     config: Dict[str, Any]
     source_id: str
     auth_data: Optional[Dict[str, Any]] = None  # Playwright storage_state format
+    response_formats: Optional[List[Literal["text", "markdown"]]] = None
 
 
 class FetchV2Request(BaseModel):
@@ -41,6 +49,10 @@ class FetchV2Request(BaseModel):
         validation_alias=AliasChoices("authData", "auth_data")
     )
     driver: Optional[str] = None
+    response_formats: Optional[List[Literal["text", "markdown"]]] = Field(
+        default=None,
+        validation_alias=AliasChoices("responseFormats", "response_formats"),
+    )
 
 
 class VerifyAuthRequest(BaseModel):
@@ -57,14 +69,17 @@ class VerifyAuthResponse(BaseModel):
 
 class CleanItem(BaseModel):
     title: Optional[str] = None
-    text: str
-    markdown: str
+    text: Optional[str] = None
+    markdown: Optional[str] = None
     platform: str
     url: Optional[str] = None
     time: Optional[datetime] = None
     sourceId: str
     sourceType: str
     driver: Optional[str] = "python-gather"
+    instanceId: Optional[str] = None
+    tabId: Optional[str] = None
+    instanceActive: Optional[bool] = None
 
 
 class ErrorDetail(BaseModel):
@@ -75,6 +90,23 @@ class ErrorDetail(BaseModel):
 
 class ErrorResponse(BaseModel):
     error: ErrorDetail
+
+
+class AgentBrowserHeartbeatRequest(BaseModel):
+    platform: str
+    source_id: str = Field(validation_alias=AliasChoices("sourceId", "source_id"))
+    owner_id: Optional[str] = Field(default=None, validation_alias=AliasChoices("ownerId", "owner_id"))
+    session_key: Optional[str] = Field(default=None, validation_alias=AliasChoices("sessionKey", "session_key"))
+    instance_id: str = Field(validation_alias=AliasChoices("instanceId", "instance_id"))
+    verbose: bool = True
+
+
+class AgentBrowserHeartbeatResponse(BaseModel):
+    instanceId: str
+    tabId: str
+    instanceActive: bool
+    ttlSeconds: int
+    expiresAt: datetime
 
 
 def build_error_response(
@@ -664,12 +696,152 @@ async def _playwright_fetch_data(request: FetchRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+def _truncate_text(value: str, max_length: int = 12000) -> str:
+    if len(value) <= max_length:
+        return value
+    return f"{value[:max_length]}..."
+
+
+def _agent_browser_results_to_clean_items(
+    request: FetchRequest,
+    script_result: Any,
+) -> list[CleanItem]:
+    now = datetime.now()
+    items: list[CleanItem] = []
+    captures = script_result.captures
+
+    if captures:
+        for capture_key, outputs in captures.items():
+            text = _truncate_text("\n".join(output for output in outputs if output))
+            if not text:
+                text = f"Capture '{capture_key}' completed with {len(outputs)} executions"
+            items.append(
+                CleanItem(
+                    title=f"agent-browser capture: {capture_key}",
+                    text=text,
+                    markdown=f"### {capture_key}\n\n```\n{text}\n```",
+                    platform=request.platform,
+                    sourceId=request.source_id,
+                    sourceType="SOCIAL_MEDIA",
+                    time=now,
+                    driver="agent-browser",
+                    instanceId=script_result.instance_id,
+                    tabId=script_result.tab_id,
+                    instanceActive=script_result.instance_active,
+                )
+            )
+
+    if items:
+        return items
+
+    step_summary = [
+        {
+            "step_index": result.step_index,
+            "attempt": result.attempt,
+            "command": result.command,
+            "stdout": _truncate_text(result.stdout.strip(), 2000),
+        }
+        for result in script_result.step_results
+    ]
+    summary_text = _truncate_text(json.dumps(step_summary, ensure_ascii=False))
+    return [
+        CleanItem(
+            title="agent-browser execution summary",
+            text=summary_text,
+            markdown=f"```json\n{summary_text}\n```",
+            platform=request.platform,
+            sourceId=request.source_id,
+            sourceType="SOCIAL_MEDIA",
+            time=now,
+            driver="agent-browser",
+            instanceId=script_result.instance_id,
+            tabId=script_result.tab_id,
+            instanceActive=script_result.instance_active,
+        )
+    ]
+
+
+async def _agent_browser_verify_auth(_request: VerifyAuthRequest):
+    return VerifyAuthResponse(
+        valid=True,
+        message="agent-browser authentication is configured through fetch config (profile/session/state).",
+    )
+
+
+def _apply_response_formats(items: list[CleanItem], response_formats: Optional[List[str]]) -> list[CleanItem]:
+    if not response_formats:
+        return items
+
+    allowed = set(response_formats)
+    include_text = "text" in allowed
+    include_markdown = "markdown" in allowed
+
+    for item in items:
+        if not include_text:
+            item.text = None
+        if not include_markdown:
+            item.markdown = None
+    return items
+
+
+async def _agent_browser_fetch_data(request: FetchRequest):
+    try:
+        script_result = await asyncio.to_thread(execute_agent_browser_script, request.config)
+        items = _agent_browser_results_to_clean_items(request, script_result)
+        if not items:
+            raise HTTPException(
+                status_code=500,
+                detail={"message": "agent-browser script finished without output"},
+            )
+        return items
+    except AgentBrowserScriptError as error:
+        status_code_map = {
+            "invalid_config": 400,
+            "forbidden_instance_owner": 403,
+            "forbidden_instance_session": 403,
+            "instance_expired": 410,
+        }
+        status_code = status_code_map.get(error.reason, 500)
+        debug_parts = [f"reason={error.reason}"]
+        if error.step_index is not None:
+            debug_parts.append(f"step={error.step_index}")
+        if error.command:
+            debug_parts.append(f"command={error.command}")
+        if error.return_code is not None:
+            debug_parts.append(f"returnCode={error.return_code}")
+        if error.stderr:
+            debug_parts.append(f"stderr={_truncate_text(error.stderr, 1000)}")
+        elif error.stdout:
+            debug_parts.append(f"stdout={_truncate_text(error.stdout, 1000)}")
+        enriched_message = f"{error.message} | {'; '.join(debug_parts)}"
+        raise HTTPException(
+            status_code=status_code,
+            detail={
+                "message": enriched_message,
+                "reason": error.reason,
+                "step": error.step_index,
+                "command": error.command,
+                "returnCode": error.return_code,
+                "stdout": error.stdout,
+                "stderr": error.stderr,
+                "debug": error.debug_context,
+            },
+        )
+
+
 driver_registry = DriverRegistry(default_driver="playwright")
 driver_registry.register(
     "playwright",
     PlaywrightDriver(
         verify_auth_handler=_playwright_verify_auth,
         fetch_handler=_playwright_fetch_data,
+    ),
+)
+driver_registry.register(
+    "agent-browser",
+    PlaywrightDriver(
+        verify_auth_handler=_agent_browser_verify_auth,
+        fetch_handler=_agent_browser_fetch_data,
     ),
 )
 
@@ -696,10 +868,11 @@ async def verify_auth(request: VerifyAuthRequest):
         raise _to_driver_http_exception(error)
 
 
-@app.post("/fetch", response_model=List[CleanItem])
+@app.post("/fetch", response_model=List[CleanItem], response_model_exclude_none=True)
 async def fetch_data(request: FetchRequest):
     try:
-        return await driver_registry.fetch(request)
+        results = await driver_registry.fetch(request)
+        return _apply_response_formats(results, request.response_formats)
     except DriverNotFoundError as error:
         raise _to_driver_http_exception(error)
 
@@ -707,6 +880,7 @@ async def fetch_data(request: FetchRequest):
 @app.post(
     "/v2/fetch",
     response_model=List[CleanItem],
+    response_model_exclude_none=True,
     responses={
         400: {"model": ErrorResponse},
         422: {"model": ErrorResponse},
@@ -734,6 +908,7 @@ async def fetch_data_v2(payload: Dict[str, Any]):
         config=request.config,
         source_id=request.source_id,
         auth_data=request.auth_data,
+        response_formats=request.response_formats,
     )
 
     try:
@@ -741,7 +916,7 @@ async def fetch_data_v2(payload: Dict[str, Any]):
         if request.driver:
             for item in results:
                 item.driver = request.driver
-        return results
+        return _apply_response_formats(results, request.response_formats)
     except DriverNotFoundError as error:
         return _to_driver_error_response(error)
     except HTTPException as e:
@@ -765,6 +940,78 @@ async def fetch_data_v2(payload: Dict[str, Any]):
             message="Internal server error",
             retryable=True,
         )
+
+
+@app.post(
+    "/v2/agent-browser/heartbeat",
+    response_model=AgentBrowserHeartbeatResponse,
+    responses={
+        400: {"model": ErrorResponse},
+        403: {"model": ErrorResponse},
+        410: {"model": ErrorResponse},
+        422: {"model": ErrorResponse},
+        500: {"model": ErrorResponse},
+    },
+)
+async def agent_browser_heartbeat(payload: Dict[str, Any]):
+    try:
+        request = AgentBrowserHeartbeatRequest.model_validate(payload)
+    except ValidationError as e:
+        first_error = e.errors()[0] if e.errors() else {}
+        location = ".".join(str(part) for part in first_error.get("loc", []))
+        message = first_error.get("msg", "Invalid request payload")
+        if location:
+            message = f"{location}: {message}"
+        return build_error_response(
+            status_code=422,
+            code="VALIDATION_ERROR",
+            message=message,
+            retryable=False,
+        )
+
+    heartbeat_config: dict[str, Any] = {
+        "agentBrowser": {
+            "instanceId": request.instance_id,
+            "verbose": request.verbose,
+            "heartbeat": True,
+        }
+    }
+    if request.owner_id:
+        heartbeat_config["agentBrowser"]["ownerId"] = request.owner_id
+    if request.session_key:
+        heartbeat_config["agentBrowser"]["sessionKey"] = request.session_key
+
+    try:
+        result = await asyncio.to_thread(heartbeat_agent_browser_instance, heartbeat_config)
+    except AgentBrowserScriptError as error:
+        status_code_map = {
+            "invalid_config": 400,
+            "forbidden_instance_owner": 403,
+            "forbidden_instance_session": 403,
+            "instance_expired": 410,
+        }
+        status_code = status_code_map.get(error.reason, 500)
+        return build_error_response(
+            status_code=status_code,
+            code="HEARTBEAT_BAD_REQUEST" if status_code < 500 else "HEARTBEAT_INTERNAL_ERROR",
+            message=error.message,
+            retryable=False,
+        )
+    except Exception:
+        return build_error_response(
+            status_code=500,
+            code="HEARTBEAT_INTERNAL_ERROR",
+            message="Internal server error",
+            retryable=True,
+        )
+
+    return AgentBrowserHeartbeatResponse(
+        instanceId=result.instance_id,
+        tabId=result.tab_id,
+        instanceActive=result.instance_active,
+        ttlSeconds=result.ttl_seconds,
+        expiresAt=datetime.fromtimestamp(result.expires_at_epoch, tz=timezone.utc),
+    )
 
 
 # Constants for profile upload security

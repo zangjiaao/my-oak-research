@@ -149,6 +149,7 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 {
   "platform": "x",
   "sourceId": "source_123",
+  "responseFormats": ["text", "markdown"],
   "authData": {
     "cookies": [...],
     "origins": []
@@ -162,6 +163,153 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
 `driver` 为可选扩展字段；未传时默认值为 `python-gather`。
+`responseFormats` 为可选字段，可选值：`"text"`、`"markdown"`：
+
+- `["text"]`：仅返回 `text`
+- `["markdown"]`：仅返回 `markdown`
+- `["text", "markdown"]`：同时返回两种（默认行为）
+
+`/fetch` 兼容入口使用 `response_formats`（snake_case）。
+
+### Agent Browser 脚本化 PoC（`driver: "agent-browser"`）
+
+用于复杂交互场景（登录后页面、轮询点击、按脚本采集内容），通过 `agent-browser` CLI 执行步骤。
+
+```json
+{
+  "platform": "telegram",
+  "sourceId": "source_telegram_demo",
+  "driver": "agent-browser",
+  "config": {
+    "agentBrowser": {
+      "headed": true,
+      "profile": ".auth/telegram_profile",
+      "script": [
+        { "command": "open https://web.telegram.org/a/" },
+        { "command": "wait --load networkidle" },
+        { "command": "snapshot -i", "captureAs": "entry_snapshot" },
+        { "command": "click @e25", "repeat": 3, "intervalMs": 2000 },
+        { "command": "get text @e40", "captureAs": "messages" }
+      ]
+    }
+  }
+}
+```
+
+`agentBrowser` 常用参数：
+
+- `script`: 必填，步骤数组（每步至少包含 `command`）
+- `headed`: 可选，`true` 时可视化执行（等价于 `agent-browser --headed`）
+- `profile`: 可选，加载浏览器 profile（等价于 `--profile`）
+- `sessionName`: 可选，会话名（等价于 `--session-name`）
+- `stateFile`: 可选，加载 state 文件（等价于 `--state`）
+- `commandTimeoutMs`: 可选，单步超时，默认 30000
+- `instanceId`: 可选，复用上一次返回的实例 ID（不传则创建新实例）
+- `ownerId`: 可选，实例归属标识；复用实例时会校验归属
+- `sessionKey`: 可选，会话隔离键；复用实例时会校验
+- `instanceTtlSeconds`: 可选，实例空闲 TTL（默认 900 秒）
+- `heartbeat`: 可选，`true` 时可发送空脚本续租实例（需配合 `instanceId`）
+- `closeOnComplete`: 可选，默认 `false`，为 `true` 时任务结束自动关闭实例
+- `verbose`: 可选，默认 `true`，在 gather 服务日志中输出逐步执行信息（定位卡点时建议开启）
+
+`driver: "agent-browser"` 的返回项会附带：
+
+- `instanceId`: 浏览器实例 ID（用于下一次请求复用）
+- `tabId`: 当前 tab 的逻辑 ID
+- `instanceActive`: 当前请求结束后实例是否仍存活
+
+### 循环操作（滚动 + 检查直到命中）
+
+支持在一次请求内执行循环步骤，直到命中条件或达到上限：
+
+```json
+{
+  "platform": "x",
+  "sourceId": "loop_demo_001",
+  "driver": "agent-browser",
+  "config": {
+    "agentBrowser": {
+      "instanceId": "ab-1234567890",
+      "ownerId": "user-1001",
+      "script": [
+        { "command": "open https://x.com/some-post" }
+      ],
+      "loop": {
+        "maxIterations": 20,
+        "intervalMs": 1000,
+        "steps": [
+          { "command": "scroll down 900" },
+          { "command": "snapshot", "captureAs": "page_snapshot" }
+        ],
+        "breakWhen": {
+          "captureKey": "page_snapshot",
+          "textIncludes": ["目标关键词", "备选关键词"]
+        }
+      },
+      "captureFilter": {
+        "keys": ["page_snapshot"],
+        "perLine": true,
+        "minChars": 20,
+        "dedupe": true,
+        "normalizeRefTags": true,
+        "startsWith": ["- article", "- text"]
+      }
+    }
+  }
+}
+```
+
+`loop` 参数说明：
+
+- `maxIterations`: 最大循环次数（必填）
+- `intervalMs`: 每轮循环间隔（可选）
+- `steps`: 每轮要执行的步骤数组（必填）
+- `breakWhen.captureKey + breakWhen.textIncludes`: 当指定 capture 的最新输出包含目标文本时停止循环（`textIncludes` 支持字符串或字符串数组）
+
+`captureFilter` 参数说明（可选）：
+
+- `keys`: 仅对指定 capture key 生效（例如 `["page_snapshot"]`）
+- `perLine`: `true` 时按行拆分输出（适合 `snapshot` 粗提取）
+- `minChars`: 最小字符长度过滤（例如 `20`）
+- `dedupe`: 是否去重（同一 capture key 下按字符串精确去重）
+- `normalizeRefTags`: 仅用于去重 key 归一化，去掉形如 `[ref=e120]`（含行尾 ` [ref=e120]:`）的引用标签（保留原始输出文本，兼容旧别名 `normalizeRefSuffix`）
+- `startsWith`: 白名单前缀，只有以这些前缀开头的行才保留（支持别名 `star_with`）
+- `excludes`: 黑名单前缀，以这些前缀开头的行会被过滤（支持别名 `ext`）
+- `startsWith` 与 `excludes` 互斥，不能同时传
+
+命名关联说明（`captureAs` / `captureKey` / `captureFilter.keys`）：
+
+- `captureAs`: 在某一步里给输出命名，例如 `snapshot` 步骤写成 `"captureAs": "page_snapshot"`
+- `captureKey`: `breakWhen` 里指定要检查哪个命名输出
+- `captureFilter.keys`: 指定过滤规则只作用于哪些命名输出
+- `page_snapshot` 只是示例名，可以改成任意字符串，只要三处对得上
+
+### Agent Browser 心跳接口 (POST /v2/agent-browser/heartbeat)
+
+用于续租已存在实例的 TTL，不执行任何页面操作。
+
+```json
+{
+  "platform": "x",
+  "sourceId": "heartbeat_001",
+  "instanceId": "ab-1234567890",
+  "ownerId": "user-1001",
+  "sessionKey": "tenant-a",
+  "verbose": true
+}
+```
+
+响应示例：
+
+```json
+{
+  "instanceId": "ab-1234567890",
+  "tabId": "tab-1a2b3c4d",
+  "instanceActive": true,
+  "ttlSeconds": 900,
+  "expiresAt": "2026-03-13T10:15:00+00:00"
+}
+```
 
 ### v2 错误结构
 
