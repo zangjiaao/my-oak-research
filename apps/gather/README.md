@@ -242,7 +242,8 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
         "keys": ["page_snapshot"],
         "perLine": true,
         "minChars": 20,
-        "dedupe": true
+        "dedupe": true,
+        "startsWith": ["- article", "- text"]
       }
     }
   }
@@ -262,6 +263,9 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 - `perLine`: `true` 时按行拆分输出（适合 `snapshot` 粗提取）
 - `minChars`: 最小字符长度过滤（例如 `20`）
 - `dedupe`: 是否去重（同一 capture key 下按字符串精确去重）
+- `startsWith`: 白名单前缀，只有以这些前缀开头的行才保留（支持别名 `star_with`）
+- `excludes`: 黑名单前缀，以这些前缀开头的行会被过滤（支持别名 `ext`）
+- `startsWith` 与 `excludes` 互斥，不能同时传
 
 ### Agent Browser 心跳接口 (POST /v2/agent-browser/heartbeat)
 

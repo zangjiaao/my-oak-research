@@ -256,23 +256,37 @@ def _extract_capture_filter_config(options: dict[str, Any]) -> dict[str, Any]:
     dedupe = bool(raw_filter.get("dedupe", False))
     per_line = bool(raw_filter.get("perLine", False))
     min_chars = _read_int(raw_filter.get("minChars", 0), field_name="captureFilter.minChars", minimum=0)
+    def _read_string_list(raw_value: Any, field_name: str) -> list[str] | None:
+        if raw_value is None:
+            return None
+        if not isinstance(raw_value, list) or not raw_value:
+            raise AgentBrowserScriptError(
+                reason="invalid_config",
+                message=f"{field_name} must be a non-empty string array",
+            )
+        values: list[str] = []
+        for value in raw_value:
+            if not isinstance(value, str) or not value.strip():
+                raise AgentBrowserScriptError(
+                    reason="invalid_config",
+                    message=f"{field_name} must contain non-empty strings",
+                )
+            values.append(value.strip())
+        return values
+
     raw_keys = raw_filter.get("keys")
     keys: set[str] | None = None
     if raw_keys is not None:
-        if not isinstance(raw_keys, list) or not raw_keys:
-            raise AgentBrowserScriptError(
-                reason="invalid_config",
-                message="captureFilter.keys must be a non-empty string array",
-            )
-        normalized_keys: set[str] = set()
-        for key in raw_keys:
-            if not isinstance(key, str) or not key.strip():
-                raise AgentBrowserScriptError(
-                    reason="invalid_config",
-                    message="captureFilter.keys must contain non-empty strings",
-                )
-            normalized_keys.add(key.strip())
+        normalized_keys: set[str] = set(_read_string_list(raw_keys, "captureFilter.keys"))
         keys = normalized_keys
+
+    starts_with = _read_string_list(raw_filter.get("startsWith") or raw_filter.get("star_with"), "captureFilter.startsWith")
+    excludes = _read_string_list(raw_filter.get("excludes") or raw_filter.get("ext"), "captureFilter.excludes")
+    if starts_with and excludes:
+        raise AgentBrowserScriptError(
+            reason="invalid_config",
+            message="captureFilter.startsWith and captureFilter.excludes are mutually exclusive",
+        )
 
     return {
         "enabled": True,
@@ -280,6 +294,8 @@ def _extract_capture_filter_config(options: dict[str, Any]) -> dict[str, Any]:
         "min_chars": min_chars,
         "per_line": per_line,
         "keys": keys,
+        "starts_with": starts_with,
+        "excludes": excludes,
     }
 
 
@@ -315,6 +331,8 @@ def _append_capture_values(
     raw_items = stdout.splitlines() if capture_filter["per_line"] else [stdout]
     min_chars = capture_filter["min_chars"]
     dedupe = capture_filter["dedupe"]
+    starts_with = capture_filter["starts_with"]
+    excludes = capture_filter["excludes"]
     existing = captures.setdefault(capture_key, [])
 
     for item in raw_items:
@@ -322,6 +340,10 @@ def _append_capture_values(
         if not value:
             continue
         if len(value) < min_chars:
+            continue
+        if starts_with and not any(value.startswith(prefix) for prefix in starts_with):
+            continue
+        if excludes and any(value.startswith(prefix) for prefix in excludes):
             continue
         if dedupe and value in existing:
             continue

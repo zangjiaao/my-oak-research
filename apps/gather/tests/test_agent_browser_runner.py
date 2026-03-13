@@ -288,3 +288,85 @@ def test_execute_agent_browser_script_capture_filter_supports_min_chars_and_dedu
         "snapshot",
         "snapshot",
     ]
+
+
+def test_execute_agent_browser_script_capture_filter_supports_starts_with(monkeypatch):
+    snapshot_outputs = iter(
+        [
+            "- article headline one\n- text body one\n- link ignore me",
+        ]
+    )
+
+    def fake_run(args, capture_output, text, timeout, check):  # noqa: ARG001
+        if args[-1] == "close":
+            return subprocess.CompletedProcess(args, 0, stdout="", stderr="")
+        if args[1] == "snapshot":
+            return subprocess.CompletedProcess(args, 0, stdout=next(snapshot_outputs), stderr="")
+        return subprocess.CompletedProcess(args, 0, stdout="ok", stderr="")
+
+    monkeypatch.setattr("drivers.agent_browser_runner.subprocess.run", fake_run)
+
+    result = execute_agent_browser_script(
+        {
+            "agentBrowser": {
+                "script": [{"command": "snapshot", "captureAs": "page_snapshot"}],
+                "captureFilter": {
+                    "keys": ["page_snapshot"],
+                    "perLine": True,
+                    "startsWith": ["- article", "- text"],
+                },
+            }
+        }
+    )
+
+    assert result.captures["page_snapshot"] == ["- article headline one", "- text body one"]
+
+
+def test_execute_agent_browser_script_capture_filter_supports_excludes(monkeypatch):
+    snapshot_outputs = iter(
+        [
+            "- article headline one\n- text body one\n- link ignore me",
+        ]
+    )
+
+    def fake_run(args, capture_output, text, timeout, check):  # noqa: ARG001
+        if args[-1] == "close":
+            return subprocess.CompletedProcess(args, 0, stdout="", stderr="")
+        if args[1] == "snapshot":
+            return subprocess.CompletedProcess(args, 0, stdout=next(snapshot_outputs), stderr="")
+        return subprocess.CompletedProcess(args, 0, stdout="ok", stderr="")
+
+    monkeypatch.setattr("drivers.agent_browser_runner.subprocess.run", fake_run)
+
+    result = execute_agent_browser_script(
+        {
+            "agentBrowser": {
+                "script": [{"command": "snapshot", "captureAs": "page_snapshot"}],
+                "captureFilter": {
+                    "keys": ["page_snapshot"],
+                    "perLine": True,
+                    "ext": ["- link "],
+                },
+            }
+        }
+    )
+
+    assert result.captures["page_snapshot"] == ["- article headline one", "- text body one"]
+
+
+def test_execute_agent_browser_script_capture_filter_rejects_starts_with_and_excludes_together():
+    with pytest.raises(AgentBrowserScriptError) as error:
+        execute_agent_browser_script(
+            {
+                "agentBrowser": {
+                    "script": [{"command": "snapshot", "captureAs": "page_snapshot"}],
+                    "captureFilter": {
+                        "startsWith": ["- article"],
+                        "excludes": ["- link "],
+                    },
+                }
+            }
+        )
+
+    assert error.value.reason == "invalid_config"
+    assert "mutually exclusive" in error.value.message
