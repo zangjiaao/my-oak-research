@@ -272,7 +272,7 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 - `perLine`: `true` 时按行拆分输出（适合 `snapshot` 粗提取）
 - `minChars`: 最小字符长度过滤（例如 `20`）
 - `dedupe`: 是否去重（同一 capture key 下按字符串精确去重）
-- `normalizeRefSuffix`: 仅用于去重 key 归一化，去掉形如 ` [ref=e120]:` 的行尾后缀（保留原始输出文本）
+- `normalizeRefSuffix`: 仅用于去重 key 归一化，去掉形如 `[ref=e120]`（含行尾 ` [ref=e120]:`）的引用标签（保留原始输出文本）
 - `startsWith`: 白名单前缀，只有以这些前缀开头的行才保留（支持别名 `star_with`）
 - `excludes`: 黑名单前缀，以这些前缀开头的行会被过滤（支持别名 `ext`）
 - `startsWith` 与 `excludes` 互斥，不能同时传

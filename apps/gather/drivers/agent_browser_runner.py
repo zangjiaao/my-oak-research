@@ -63,6 +63,7 @@ class AgentBrowserInstanceState:
 _INSTANCE_LOCK = threading.Lock()
 _INSTANCES: dict[str, AgentBrowserInstanceState] = {}
 _REF_SUFFIX_PATTERN = re.compile(r"\s*\[ref=[^\]]+\]:\s*$")
+_REF_INLINE_PATTERN = re.compile(r"\s*\[ref=[^\]]+\]")
 
 
 def _emit_log(enabled: bool, message: str) -> None:
@@ -340,9 +341,17 @@ def _append_capture_values(
     normalize_ref_suffix = capture_filter["normalize_ref_suffix"]
     existing = captures.setdefault(capture_key, [])
     dedupe_seen: set[str] = set()
+
+    def _normalize_for_dedupe(raw: str) -> str:
+        if not normalize_ref_suffix:
+            return raw
+        normalized = _REF_INLINE_PATTERN.sub("", raw)
+        normalized = _REF_SUFFIX_PATTERN.sub("", normalized)
+        return " ".join(normalized.split())
+
     if dedupe:
         for value in existing:
-            normalized_value = _REF_SUFFIX_PATTERN.sub("", value).strip() if normalize_ref_suffix else value
+            normalized_value = _normalize_for_dedupe(value)
             dedupe_seen.add(normalized_value)
 
     for item in raw_items:
@@ -355,7 +364,7 @@ def _append_capture_values(
             continue
         if excludes and any(value.startswith(prefix) for prefix in excludes):
             continue
-        dedupe_key = _REF_SUFFIX_PATTERN.sub("", value).strip() if normalize_ref_suffix else value
+        dedupe_key = _normalize_for_dedupe(value)
         if dedupe and dedupe_key in dedupe_seen:
             continue
         existing.append(value)

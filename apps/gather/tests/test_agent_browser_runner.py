@@ -403,3 +403,38 @@ def test_execute_agent_browser_script_capture_filter_dedupes_with_normalized_ref
     )
 
     assert result.captures["page_snapshot"] == ['- article "same content" [ref=e120]:']
+
+
+def test_execute_agent_browser_script_capture_filter_dedupes_with_inline_ref_tags(monkeypatch):
+    snapshot_outputs = iter(
+        [
+            '- article "alpha [ref=e93]beta same"',
+            '- article "alpha [ref=e74]beta same"',
+        ]
+    )
+
+    def fake_run(args, capture_output, text, timeout, check):  # noqa: ARG001
+        if args[-1] == "close":
+            return subprocess.CompletedProcess(args, 0, stdout="", stderr="")
+        if args[1] == "snapshot":
+            return subprocess.CompletedProcess(args, 0, stdout=next(snapshot_outputs), stderr="")
+        return subprocess.CompletedProcess(args, 0, stdout="ok", stderr="")
+
+    monkeypatch.setattr("drivers.agent_browser_runner.subprocess.run", fake_run)
+
+    result = execute_agent_browser_script(
+        {
+            "agentBrowser": {
+                "script": [{"command": "snapshot", "captureAs": "page_snapshot"}],
+                "loop": {"maxIterations": 2, "steps": [{"command": "snapshot", "captureAs": "page_snapshot"}]},
+                "captureFilter": {
+                    "keys": ["page_snapshot"],
+                    "perLine": True,
+                    "dedupe": True,
+                    "normalizeRefSuffix": True,
+                },
+            }
+        }
+    )
+
+    assert result.captures["page_snapshot"] == ['- article "alpha [ref=e93]beta same"']
