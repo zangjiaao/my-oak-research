@@ -149,6 +149,7 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 {
   "platform": "x",
   "sourceId": "source_123",
+  "responseFormats": ["text", "markdown"],
   "authData": {
     "cookies": [...],
     "origins": []
@@ -162,6 +163,13 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
 `driver` 为可选扩展字段；未传时默认值为 `python-gather`。
+`responseFormats` 为可选字段，可选值：`"text"`、`"markdown"`：
+
+- `["text"]`：仅返回 `text`
+- `["markdown"]`：仅返回 `markdown`
+- `["text", "markdown"]`：同时返回两种（默认行为）
+
+`/fetch` 兼容入口使用 `response_formats`（snake_case）。
 
 ### Agent Browser 脚本化 PoC（`driver: "agent-browser"`）
 

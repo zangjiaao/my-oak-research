@@ -13,7 +13,7 @@ from pathlib import Path
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from fastapi.responses import JSONResponse
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field, ValidationError
-from typing import List, Optional, Any, Dict
+from typing import List, Optional, Any, Dict, Literal
 from datetime import datetime, timezone
 from dotenv import load_dotenv
 from drivers.agent_browser_runner import (
@@ -35,6 +35,7 @@ class FetchRequest(BaseModel):
     config: Dict[str, Any]
     source_id: str
     auth_data: Optional[Dict[str, Any]] = None  # Playwright storage_state format
+    response_formats: Optional[List[Literal["text", "markdown"]]] = None
 
 
 class FetchV2Request(BaseModel):
@@ -48,6 +49,10 @@ class FetchV2Request(BaseModel):
         validation_alias=AliasChoices("authData", "auth_data")
     )
     driver: Optional[str] = None
+    response_formats: Optional[List[Literal["text", "markdown"]]] = Field(
+        default=None,
+        validation_alias=AliasChoices("responseFormats", "response_formats"),
+    )
 
 
 class VerifyAuthRequest(BaseModel):
@@ -64,8 +69,8 @@ class VerifyAuthResponse(BaseModel):
 
 class CleanItem(BaseModel):
     title: Optional[str] = None
-    text: str
-    markdown: str
+    text: Optional[str] = None
+    markdown: Optional[str] = None
     platform: str
     url: Optional[str] = None
     time: Optional[datetime] = None
@@ -763,6 +768,22 @@ async def _agent_browser_verify_auth(_request: VerifyAuthRequest):
     )
 
 
+def _apply_response_formats(items: list[CleanItem], response_formats: Optional[List[str]]) -> list[CleanItem]:
+    if not response_formats:
+        return items
+
+    allowed = set(response_formats)
+    include_text = "text" in allowed
+    include_markdown = "markdown" in allowed
+
+    for item in items:
+        if not include_text:
+            item.text = None
+        if not include_markdown:
+            item.markdown = None
+    return items
+
+
 async def _agent_browser_fetch_data(request: FetchRequest):
     try:
         script_result = await asyncio.to_thread(execute_agent_browser_script, request.config)
@@ -847,10 +868,11 @@ async def verify_auth(request: VerifyAuthRequest):
         raise _to_driver_http_exception(error)
 
 
-@app.post("/fetch", response_model=List[CleanItem])
+@app.post("/fetch", response_model=List[CleanItem], response_model_exclude_none=True)
 async def fetch_data(request: FetchRequest):
     try:
-        return await driver_registry.fetch(request)
+        results = await driver_registry.fetch(request)
+        return _apply_response_formats(results, request.response_formats)
     except DriverNotFoundError as error:
         raise _to_driver_http_exception(error)
 
@@ -858,6 +880,7 @@ async def fetch_data(request: FetchRequest):
 @app.post(
     "/v2/fetch",
     response_model=List[CleanItem],
+    response_model_exclude_none=True,
     responses={
         400: {"model": ErrorResponse},
         422: {"model": ErrorResponse},
@@ -885,6 +908,7 @@ async def fetch_data_v2(payload: Dict[str, Any]):
         config=request.config,
         source_id=request.source_id,
         auth_data=request.auth_data,
+        response_formats=request.response_formats,
     )
 
     try:
@@ -892,7 +916,7 @@ async def fetch_data_v2(payload: Dict[str, Any]):
         if request.driver:
             for item in results:
                 item.driver = request.driver
-        return results
+        return _apply_response_formats(results, request.response_formats)
     except DriverNotFoundError as error:
         return _to_driver_error_response(error)
     except HTTPException as e:
