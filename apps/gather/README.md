@@ -237,6 +237,12 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
           "captureKey": "page_snapshot",
           "textIncludes": "目标关键词"
         }
+      },
+      "captureFilter": {
+        "keys": ["page_snapshot"],
+        "perLine": true,
+        "minChars": 20,
+        "dedupe": true
       }
     }
   }
@@ -249,6 +255,13 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 - `intervalMs`: 每轮循环间隔（可选）
 - `steps`: 每轮要执行的步骤数组（必填）
 - `breakWhen.captureKey + breakWhen.textIncludes`: 当指定 capture 的最新输出包含文本时停止循环
+
+`captureFilter` 参数说明（可选）：
+
+- `keys`: 仅对指定 capture key 生效（例如 `["page_snapshot"]`）
+- `perLine`: `true` 时按行拆分输出（适合 `snapshot` 粗提取）
+- `minChars`: 最小字符长度过滤（例如 `20`）
+- `dedupe`: 是否去重（同一 capture key 下按字符串精确去重）
 
 ### Agent Browser 心跳接口 (POST /v2/agent-browser/heartbeat)
 

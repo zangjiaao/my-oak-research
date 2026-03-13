@@ -237,6 +237,52 @@ def _extract_loop_config(options: dict[str, Any]) -> dict[str, Any] | None:
     }
 
 
+def _extract_capture_filter_config(options: dict[str, Any]) -> dict[str, Any]:
+    raw_filter = options.get("captureFilter")
+    if raw_filter is None:
+        return {
+            "enabled": False,
+            "dedupe": False,
+            "min_chars": 0,
+            "per_line": False,
+            "keys": None,
+        }
+    if not isinstance(raw_filter, dict):
+        raise AgentBrowserScriptError(
+            reason="invalid_config",
+            message="captureFilter must be an object",
+        )
+
+    dedupe = bool(raw_filter.get("dedupe", False))
+    per_line = bool(raw_filter.get("perLine", False))
+    min_chars = _read_int(raw_filter.get("minChars", 0), field_name="captureFilter.minChars", minimum=0)
+    raw_keys = raw_filter.get("keys")
+    keys: set[str] | None = None
+    if raw_keys is not None:
+        if not isinstance(raw_keys, list) or not raw_keys:
+            raise AgentBrowserScriptError(
+                reason="invalid_config",
+                message="captureFilter.keys must be a non-empty string array",
+            )
+        normalized_keys: set[str] = set()
+        for key in raw_keys:
+            if not isinstance(key, str) or not key.strip():
+                raise AgentBrowserScriptError(
+                    reason="invalid_config",
+                    message="captureFilter.keys must contain non-empty strings",
+                )
+            normalized_keys.add(key.strip())
+        keys = normalized_keys
+
+    return {
+        "enabled": True,
+        "dedupe": dedupe,
+        "min_chars": min_chars,
+        "per_line": per_line,
+        "keys": keys,
+    }
+
+
 def _should_break_loop(captures: dict[str, list[str]], break_when: dict[str, Any] | None) -> bool:
     if not break_when:
         return False
@@ -251,6 +297,37 @@ def _should_break_loop(captures: dict[str, list[str]], break_when: dict[str, Any
     return text_includes in latest
 
 
+def _append_capture_values(
+    captures: dict[str, list[str]],
+    capture_key: str,
+    stdout: str,
+    capture_filter: dict[str, Any],
+) -> None:
+    if not capture_filter["enabled"]:
+        captures.setdefault(capture_key, []).append(stdout)
+        return
+
+    keys = capture_filter["keys"]
+    if keys is not None and capture_key not in keys:
+        captures.setdefault(capture_key, []).append(stdout)
+        return
+
+    raw_items = stdout.splitlines() if capture_filter["per_line"] else [stdout]
+    min_chars = capture_filter["min_chars"]
+    dedupe = capture_filter["dedupe"]
+    existing = captures.setdefault(capture_key, [])
+
+    for item in raw_items:
+        value = item.strip()
+        if not value:
+            continue
+        if len(value) < min_chars:
+            continue
+        if dedupe and value in existing:
+            continue
+        existing.append(value)
+
+
 def _execute_steps_batch(
     *,
     steps: list[dict[str, Any]],
@@ -258,6 +335,7 @@ def _execute_steps_batch(
     captures: dict[str, list[str]],
     debug_steps: list[dict[str, Any]],
     step_results: list[AgentBrowserStepResult],
+    capture_filter: dict[str, Any],
     command_timeout_ms: int,
     verbose: bool,
     batch_label: str,
@@ -384,7 +462,12 @@ def _execute_steps_batch(
                 )
             )
             if capture_as:
-                captures.setdefault(capture_as, []).append(stdout.strip())
+                _append_capture_values(
+                    captures,
+                    capture_as,
+                    stdout,
+                    capture_filter,
+                )
 
             if interval_ms > 0 and attempt < repeat:
                 _emit_log(verbose, f"{batch_label} sleep interval {interval_ms}ms before next repeat")
@@ -470,6 +553,7 @@ def execute_agent_browser_script(config: dict[str, Any]) -> AgentBrowserScriptRe
             message="heartbeat requires instanceId",
         )
     loop_config = _extract_loop_config(options)
+    capture_filter = _extract_capture_filter_config(options)
     steps = _extract_script_steps(
         config,
         allow_empty=heartbeat or loop_config is not None,
@@ -519,6 +603,7 @@ def execute_agent_browser_script(config: dict[str, Any]) -> AgentBrowserScriptRe
                 captures=captures,
                 debug_steps=debug_steps,
                 step_results=step_results,
+                capture_filter=capture_filter,
                 command_timeout_ms=command_timeout_ms,
                 verbose=verbose,
                 batch_label="script",
@@ -537,6 +622,7 @@ def execute_agent_browser_script(config: dict[str, Any]) -> AgentBrowserScriptRe
                     captures=captures,
                     debug_steps=debug_steps,
                     step_results=step_results,
+                    capture_filter=capture_filter,
                     command_timeout_ms=command_timeout_ms,
                     verbose=verbose,
                     batch_label=f"loop[{iteration}]",

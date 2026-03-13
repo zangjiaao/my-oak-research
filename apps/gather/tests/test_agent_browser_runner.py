@@ -239,3 +239,52 @@ def test_execute_agent_browser_script_loop_breaks_on_capture_condition(monkeypat
         "scroll down 800",
         "snapshot",
     ]
+
+
+def test_execute_agent_browser_script_capture_filter_supports_min_chars_and_dedupe(monkeypatch):
+    calls = []
+    snapshot_outputs = iter(
+        [
+            "@e1 short\n@e2 this is a very long content line",
+            "@e2 this is a very long content line\n@e3 another meaningful content line",
+        ]
+    )
+
+    def fake_run(args, capture_output, text, timeout, check):  # noqa: ARG001
+        calls.append(args)
+        if args[-1] == "close":
+            return subprocess.CompletedProcess(args, 0, stdout="", stderr="")
+        if args[1] == "snapshot":
+            return subprocess.CompletedProcess(args, 0, stdout=next(snapshot_outputs), stderr="")
+        return subprocess.CompletedProcess(args, 0, stdout="ok", stderr="")
+
+    monkeypatch.setattr("drivers.agent_browser_runner.subprocess.run", fake_run)
+
+    result = execute_agent_browser_script(
+        {
+            "agentBrowser": {
+                "script": [{"command": "open https://example.com"}],
+                "loop": {
+                    "maxIterations": 2,
+                    "steps": [{"command": "snapshot", "captureAs": "page_snapshot"}],
+                },
+                "captureFilter": {
+                    "keys": ["page_snapshot"],
+                    "perLine": True,
+                    "minChars": 20,
+                    "dedupe": True,
+                },
+            }
+        }
+    )
+
+    assert result.captures["page_snapshot"] == [
+        "@e2 this is a very long content line",
+        "@e3 another meaningful content line",
+    ]
+    executed = [" ".join(call[1:]) for call in calls if len(call) >= 2 and call[1] != "close"]
+    assert executed == [
+        "open https://example.com",
+        "snapshot",
+        "snapshot",
+    ]
