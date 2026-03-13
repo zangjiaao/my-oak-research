@@ -57,6 +57,7 @@ def test_execute_agent_browser_script_supports_repeat_and_capture(monkeypatch, t
         "--state",
         str(state_file),
     ]
+    assert "--state" not in calls[2]
 
 
 def test_execute_agent_browser_script_raises_for_missing_binary(monkeypatch):

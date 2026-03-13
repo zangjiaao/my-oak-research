@@ -115,6 +115,7 @@ def execute_agent_browser_script(config: dict[str, Any]) -> AgentBrowserScriptRe
     if session_name:
         command_prefix.extend(["--session-name", str(session_name)])
 
+    state_path: Path | None = None
     state_file = options.get("stateFile")
     if state_file:
         state_path = Path(str(state_file))
@@ -123,7 +124,11 @@ def execute_agent_browser_script(config: dict[str, Any]) -> AgentBrowserScriptRe
                 reason="invalid_config",
                 message=f"stateFile does not exist: {state_file}",
             )
-        command_prefix.extend(["--state", str(state_path)])
+    command_prefix_with_state = (
+        command_prefix + ["--state", str(state_path)]
+        if state_path
+        else command_prefix
+    )
 
     step_results: list[AgentBrowserStepResult] = []
     captures: dict[str, list[str]] = {}
@@ -146,6 +151,8 @@ def execute_agent_browser_script(config: dict[str, Any]) -> AgentBrowserScriptRe
         )
     except Exception as error:
         _emit_log(verbose, f"preflight close skipped: {error}")
+
+    state_applied = False
 
     try:
         for step_index, step in enumerate(steps, start=1):
@@ -181,7 +188,13 @@ def execute_agent_browser_script(config: dict[str, Any]) -> AgentBrowserScriptRe
             command_parts = shlex.split(command)
             for attempt in range(1, repeat + 1):
                 is_close_command = bool(command_parts) and command_parts[0] == "close"
-                args = ["agent-browser", "close"] if is_close_command else command_prefix + command_parts
+                if is_close_command:
+                    args = ["agent-browser", "close"]
+                else:
+                    active_prefix = command_prefix_with_state if (state_path and not state_applied) else command_prefix
+                    args = active_prefix + command_parts
+                    if state_path and not state_applied:
+                        state_applied = True
                 started_at = time.monotonic()
                 _emit_log(
                     verbose,
