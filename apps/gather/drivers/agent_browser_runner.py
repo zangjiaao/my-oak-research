@@ -4,6 +4,7 @@ import shlex
 import subprocess
 import threading
 import time
+import re
 from uuid import uuid4
 from dataclasses import dataclass
 from pathlib import Path
@@ -61,6 +62,7 @@ class AgentBrowserInstanceState:
 
 _INSTANCE_LOCK = threading.Lock()
 _INSTANCES: dict[str, AgentBrowserInstanceState] = {}
+_REF_SUFFIX_PATTERN = re.compile(r"\s*\[ref=[^\]]+\]:\s*$")
 
 
 def _emit_log(enabled: bool, message: str) -> None:
@@ -256,6 +258,7 @@ def _extract_capture_filter_config(options: dict[str, Any]) -> dict[str, Any]:
     dedupe = bool(raw_filter.get("dedupe", False))
     per_line = bool(raw_filter.get("perLine", False))
     min_chars = _read_int(raw_filter.get("minChars", 0), field_name="captureFilter.minChars", minimum=0)
+    normalize_ref_suffix = bool(raw_filter.get("normalizeRefSuffix", False))
     def _read_string_list(raw_value: Any, field_name: str) -> list[str] | None:
         if raw_value is None:
             return None
@@ -296,6 +299,7 @@ def _extract_capture_filter_config(options: dict[str, Any]) -> dict[str, Any]:
         "keys": keys,
         "starts_with": starts_with,
         "excludes": excludes,
+        "normalize_ref_suffix": normalize_ref_suffix,
     }
 
 
@@ -333,7 +337,13 @@ def _append_capture_values(
     dedupe = capture_filter["dedupe"]
     starts_with = capture_filter["starts_with"]
     excludes = capture_filter["excludes"]
+    normalize_ref_suffix = capture_filter["normalize_ref_suffix"]
     existing = captures.setdefault(capture_key, [])
+    dedupe_seen: set[str] = set()
+    if dedupe:
+        for value in existing:
+            normalized_value = _REF_SUFFIX_PATTERN.sub("", value).strip() if normalize_ref_suffix else value
+            dedupe_seen.add(normalized_value)
 
     for item in raw_items:
         value = item.strip()
@@ -345,9 +355,12 @@ def _append_capture_values(
             continue
         if excludes and any(value.startswith(prefix) for prefix in excludes):
             continue
-        if dedupe and value in existing:
+        dedupe_key = _REF_SUFFIX_PATTERN.sub("", value).strip() if normalize_ref_suffix else value
+        if dedupe and dedupe_key in dedupe_seen:
             continue
         existing.append(value)
+        if dedupe:
+            dedupe_seen.add(dedupe_key)
 
 
 def _execute_steps_batch(
