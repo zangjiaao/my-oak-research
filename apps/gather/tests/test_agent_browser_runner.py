@@ -194,3 +194,48 @@ def test_heartbeat_agent_browser_instance_returns_instance_state(monkeypatch):
     assert heartbeat.instance_id == created.instance_id
     assert heartbeat.instance_active is True
     assert heartbeat.ttl_seconds == created.ttl_seconds
+
+
+def test_execute_agent_browser_script_loop_breaks_on_capture_condition(monkeypatch):
+    calls = []
+    snapshot_outputs = iter(["no target", "found TARGET element"])
+
+    def fake_run(args, capture_output, text, timeout, check):  # noqa: ARG001
+        calls.append(args)
+        if args[1] == "snapshot":
+            return subprocess.CompletedProcess(args, 0, stdout=next(snapshot_outputs), stderr="")
+        if args[-1] == "close":
+            return subprocess.CompletedProcess(args, 0, stdout="", stderr="")
+        return subprocess.CompletedProcess(args, 0, stdout="ok", stderr="")
+
+    monkeypatch.setattr("drivers.agent_browser_runner.subprocess.run", fake_run)
+
+    result = execute_agent_browser_script(
+        {
+            "agentBrowser": {
+                "script": [{"command": "open https://example.com"}],
+                "loop": {
+                    "maxIterations": 5,
+                    "steps": [
+                        {"command": "scroll down 800"},
+                        {"command": "snapshot", "captureAs": "page"},
+                    ],
+                    "breakWhen": {
+                        "captureKey": "page",
+                        "textIncludes": "TARGET",
+                    },
+                },
+            }
+        }
+    )
+
+    assert result.instance_active is True
+    assert result.captures["page"] == ["no target", "found TARGET element"]
+    executed = [" ".join(call[1:]) for call in calls if len(call) >= 2 and call[1] != "close"]
+    assert executed == [
+        "open https://example.com",
+        "scroll down 800",
+        "snapshot",
+        "scroll down 800",
+        "snapshot",
+    ]

@@ -210,6 +210,46 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 - `tabId`: 当前 tab 的逻辑 ID
 - `instanceActive`: 当前请求结束后实例是否仍存活
 
+### 循环操作（滚动 + 检查直到命中）
+
+支持在一次请求内执行循环步骤，直到命中条件或达到上限：
+
+```json
+{
+  "platform": "x",
+  "sourceId": "loop_demo_001",
+  "driver": "agent-browser",
+  "config": {
+    "agentBrowser": {
+      "instanceId": "ab-1234567890",
+      "ownerId": "user-1001",
+      "script": [
+        { "command": "open https://x.com/some-post" }
+      ],
+      "loop": {
+        "maxIterations": 20,
+        "intervalMs": 1000,
+        "steps": [
+          { "command": "scroll down 900" },
+          { "command": "snapshot", "captureAs": "page_snapshot" }
+        ],
+        "breakWhen": {
+          "captureKey": "page_snapshot",
+          "textIncludes": "目标关键词"
+        }
+      }
+    }
+  }
+}
+```
+
+`loop` 参数说明：
+
+- `maxIterations`: 最大循环次数（必填）
+- `intervalMs`: 每轮循环间隔（可选）
+- `steps`: 每轮要执行的步骤数组（必填）
+- `breakWhen.captureKey + breakWhen.textIncludes`: 当指定 capture 的最新输出包含文本时停止循环
+
 ### Agent Browser 心跳接口 (POST /v2/agent-browser/heartbeat)
 
 用于续租已存在实例的 TTL，不执行任何页面操作。
