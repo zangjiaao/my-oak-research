@@ -68,6 +68,9 @@ class CleanItem(BaseModel):
     sourceId: str
     sourceType: str
     driver: Optional[str] = "python-gather"
+    instanceId: Optional[str] = None
+    tabId: Optional[str] = None
+    instanceActive: Optional[bool] = None
 
 
 class ErrorDetail(BaseModel):
@@ -696,6 +699,9 @@ def _agent_browser_results_to_clean_items(
                     sourceType="SOCIAL_MEDIA",
                     time=now,
                     driver="agent-browser",
+                    instanceId=script_result.instance_id,
+                    tabId=script_result.tab_id,
+                    instanceActive=script_result.instance_active,
                 )
             )
 
@@ -722,6 +728,9 @@ def _agent_browser_results_to_clean_items(
             sourceType="SOCIAL_MEDIA",
             time=now,
             driver="agent-browser",
+            instanceId=script_result.instance_id,
+            tabId=script_result.tab_id,
+            instanceActive=script_result.instance_active,
         )
     ]
 

@@ -58,6 +58,41 @@ def test_execute_agent_browser_script_supports_repeat_and_capture(monkeypatch, t
         str(state_file),
     ]
     assert "--state" not in calls[2]
+    assert result.instance_id.startswith("ab-")
+    assert result.tab_id.startswith("tab-")
+    assert result.instance_active is True
+
+
+def test_execute_agent_browser_script_reuses_instance_and_close_by_command(monkeypatch):
+    calls = []
+
+    def fake_run(args, capture_output, text, timeout, check):  # noqa: ARG001
+        calls.append(args)
+        return subprocess.CompletedProcess(args, 0, stdout="ok", stderr="")
+
+    monkeypatch.setattr("drivers.agent_browser_runner.subprocess.run", fake_run)
+
+    first = execute_agent_browser_script(
+        {
+            "agentBrowser": {
+                "script": [{"command": "open https://example.com"}],
+            }
+        }
+    )
+
+    second = execute_agent_browser_script(
+        {
+            "agentBrowser": {
+                "instanceId": first.instance_id,
+                "script": [{"command": "snapshot -i"}, {"command": "close"}],
+            }
+        }
+    )
+
+    assert second.instance_id == first.instance_id
+    assert second.instance_active is False
+    assert calls[0] == ["agent-browser", "close"]  # first request preflight
+    assert calls[-1] == ["agent-browser", "close"]  # explicit close step
 
 
 def test_execute_agent_browser_script_raises_for_missing_binary(monkeypatch):

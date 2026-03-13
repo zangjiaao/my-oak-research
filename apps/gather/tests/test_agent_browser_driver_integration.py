@@ -28,6 +28,9 @@ def test_v2_fetch_agent_browser_driver_returns_captures(monkeypatch):
                 )
             ],
             captures={"messages": ["hello world", "hello again"]},
+            instance_id="ab-demo123",
+            tab_id="tab-main01",
+            instance_active=True,
         )
 
     monkeypatch.setattr(main, "execute_agent_browser_script", fake_execute_agent_browser_script)
@@ -54,6 +57,9 @@ def test_v2_fetch_agent_browser_driver_returns_captures(monkeypatch):
     assert payload[0]["driver"] == "agent-browser"
     assert payload[0]["title"] == "agent-browser capture: messages"
     assert "hello world" in payload[0]["text"]
+    assert payload[0]["instanceId"] == "ab-demo123"
+    assert payload[0]["tabId"] == "tab-main01"
+    assert payload[0]["instanceActive"] is True
 
 
 def test_v2_fetch_agent_browser_driver_surfaces_config_error(monkeypatch):
@@ -81,4 +87,3 @@ def test_v2_fetch_agent_browser_driver_surfaces_config_error(monkeypatch):
     assert payload["error"]["code"] == "FETCH_BAD_REQUEST"
     assert payload["error"]["retryable"] is False
     assert "non-empty array" in payload["error"]["message"]
-

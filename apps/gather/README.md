@@ -196,8 +196,15 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 - `sessionName`: 可选，会话名（等价于 `--session-name`）
 - `stateFile`: 可选，加载 state 文件（等价于 `--state`）
 - `commandTimeoutMs`: 可选，单步超时，默认 30000
-- `closeOnComplete`: 可选，默认 `true`，完成后执行 `agent-browser close`
+- `instanceId`: 可选，复用上一次返回的实例 ID（不传则创建新实例）
+- `closeOnComplete`: 可选，默认 `false`，为 `true` 时任务结束自动关闭实例
 - `verbose`: 可选，默认 `true`，在 gather 服务日志中输出逐步执行信息（定位卡点时建议开启）
+
+`driver: "agent-browser"` 的返回项会附带：
+
+- `instanceId`: 浏览器实例 ID（用于下一次请求复用）
+- `tabId`: 当前 tab 的逻辑 ID
+- `instanceActive`: 当前请求结束后实例是否仍存活
 
 ### v2 错误结构
 

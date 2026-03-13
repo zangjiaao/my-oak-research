@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import shlex
 import subprocess
+import threading
 import time
+from uuid import uuid4
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -36,6 +38,24 @@ class AgentBrowserStepResult:
 class AgentBrowserScriptResult:
     step_results: list[AgentBrowserStepResult]
     captures: dict[str, list[str]]
+    instance_id: str
+    tab_id: str
+    instance_active: bool
+
+
+@dataclass(slots=True)
+class AgentBrowserInstanceState:
+    instance_id: str
+    tab_id: str
+    command_prefix: list[str]
+    command_prefix_with_state: list[str]
+    state_applied: bool
+    created_at: float
+    last_used_at: float
+
+
+_INSTANCE_LOCK = threading.Lock()
+_INSTANCES: dict[str, AgentBrowserInstanceState] = {}
 
 
 def _emit_log(enabled: bool, message: str) -> None:
@@ -95,14 +115,7 @@ def _extract_runtime_options(config: dict[str, Any]) -> dict[str, Any]:
     return container
 
 
-def execute_agent_browser_script(config: dict[str, Any]) -> AgentBrowserScriptResult:
-    steps = _extract_script_steps(config)
-    options = _extract_runtime_options(config)
-
-    command_timeout_ms = _read_int(options.get("commandTimeoutMs", 30000), field_name="commandTimeoutMs", minimum=1)
-    close_on_complete = bool(options.get("closeOnComplete", True))
-    verbose = bool(options.get("verbose", True))
-
+def _build_command_prefixes(options: dict[str, Any]) -> tuple[list[str], list[str]]:
     command_prefix = ["agent-browser"]
     if bool(options.get("headed", False)):
         command_prefix.append("--headed")
@@ -124,11 +137,63 @@ def execute_agent_browser_script(config: dict[str, Any]) -> AgentBrowserScriptRe
                 reason="invalid_config",
                 message=f"stateFile does not exist: {state_file}",
             )
+
     command_prefix_with_state = (
         command_prefix + ["--state", str(state_path)]
         if state_path
         else command_prefix
     )
+    return command_prefix, command_prefix_with_state
+
+
+def _create_instance(options: dict[str, Any], *, verbose: bool) -> AgentBrowserInstanceState:
+    command_prefix, command_prefix_with_state = _build_command_prefixes(options)
+    instance = AgentBrowserInstanceState(
+        instance_id=f"ab-{uuid4().hex[:10]}",
+        tab_id=f"tab-{uuid4().hex[:8]}",
+        command_prefix=command_prefix,
+        command_prefix_with_state=command_prefix_with_state,
+        state_applied=False,
+        created_at=time.time(),
+        last_used_at=time.time(),
+    )
+    _emit_log(
+        verbose,
+        f"created instance instanceId={instance.instance_id} tabId={instance.tab_id}",
+    )
+    return instance
+
+
+def _resolve_instance(options: dict[str, Any], *, verbose: bool) -> tuple[AgentBrowserInstanceState, bool]:
+    instance_id = options.get("instanceId")
+    if instance_id:
+        with _INSTANCE_LOCK:
+            instance = _INSTANCES.get(str(instance_id))
+        if not instance:
+            raise AgentBrowserScriptError(
+                reason="invalid_config",
+                message=f"instanceId not found or already closed: {instance_id}",
+            )
+        instance.last_used_at = time.time()
+        _emit_log(verbose, f"reuse instance instanceId={instance.instance_id} tabId={instance.tab_id}")
+        return instance, False
+
+    instance = _create_instance(options, verbose=verbose)
+    with _INSTANCE_LOCK:
+        _INSTANCES[instance.instance_id] = instance
+    return instance, True
+
+
+def execute_agent_browser_script(config: dict[str, Any]) -> AgentBrowserScriptResult:
+    steps = _extract_script_steps(config)
+    options = _extract_runtime_options(config)
+
+    command_timeout_ms = _read_int(options.get("commandTimeoutMs", 30000), field_name="commandTimeoutMs", minimum=1)
+    close_on_complete = bool(options.get("closeOnComplete", False))
+    verbose = bool(options.get("verbose", True))
+    instance, created_new_instance = _resolve_instance(options, verbose=verbose)
+    state_file = options.get("stateFile")
+    should_close_by_step = False
 
     step_results: list[AgentBrowserStepResult] = []
     captures: dict[str, list[str]] = {}
@@ -136,23 +201,22 @@ def execute_agent_browser_script(config: dict[str, Any]) -> AgentBrowserScriptRe
 
     _emit_log(
         verbose,
-        f"start script steps={len(steps)} headed={bool(options.get('headed', False))} "
-        f"profile={profile or '-'} session={session_name or '-'} state={state_file or '-'}",
+        f"start script instanceId={instance.instance_id} tabId={instance.tab_id} "
+        f"steps={len(steps)} state={state_file or '-'}",
     )
 
-    try:
+    if created_new_instance:
         _emit_log(verbose, "preflight close daemon")
-        subprocess.run(
-            ["agent-browser", "close"],
-            capture_output=True,
-            text=True,
-            timeout=10,
-            check=False,
-        )
-    except Exception as error:
-        _emit_log(verbose, f"preflight close skipped: {error}")
-
-    state_applied = False
+        try:
+            subprocess.run(
+                ["agent-browser", "close"],
+                capture_output=True,
+                text=True,
+                timeout=10,
+                check=False,
+            )
+        except Exception as error:
+            _emit_log(verbose, f"preflight close skipped: {error}")
 
     try:
         for step_index, step in enumerate(steps, start=1):
@@ -190,11 +254,16 @@ def execute_agent_browser_script(config: dict[str, Any]) -> AgentBrowserScriptRe
                 is_close_command = bool(command_parts) and command_parts[0] == "close"
                 if is_close_command:
                     args = ["agent-browser", "close"]
+                    should_close_by_step = True
                 else:
-                    active_prefix = command_prefix_with_state if (state_path and not state_applied) else command_prefix
+                    active_prefix = (
+                        instance.command_prefix_with_state
+                        if (instance.command_prefix_with_state != instance.command_prefix and not instance.state_applied)
+                        else instance.command_prefix
+                    )
                     args = active_prefix + command_parts
-                    if state_path and not state_applied:
-                        state_applied = True
+                    if instance.command_prefix_with_state != instance.command_prefix and not instance.state_applied:
+                        instance.state_applied = True
                 started_at = time.monotonic()
                 _emit_log(
                     verbose,
@@ -275,7 +344,9 @@ def execute_agent_browser_script(config: dict[str, Any]) -> AgentBrowserScriptRe
                     _emit_log(verbose, f"sleep interval {interval_ms}ms before next repeat")
                     time.sleep(interval_ms / 1000)
     finally:
-        if close_on_complete:
+        instance.last_used_at = time.time()
+        should_close_instance = close_on_complete or should_close_by_step
+        if should_close_instance:
             try:
                 _emit_log(verbose, "close daemon on complete")
                 subprocess.run(
@@ -287,6 +358,16 @@ def execute_agent_browser_script(config: dict[str, Any]) -> AgentBrowserScriptRe
                 )
             except Exception:
                 pass
+            with _INSTANCE_LOCK:
+                _INSTANCES.pop(instance.instance_id, None)
 
     _emit_log(verbose, f"script completed steps_executed={len(step_results)}")
-    return AgentBrowserScriptResult(step_results=step_results, captures=captures)
+    with _INSTANCE_LOCK:
+        is_active = instance.instance_id in _INSTANCES
+    return AgentBrowserScriptResult(
+        step_results=step_results,
+        captures=captures,
+        instance_id=instance.instance_id,
+        tab_id=instance.tab_id,
+        instance_active=is_active,
+    )
