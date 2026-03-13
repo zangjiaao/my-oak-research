@@ -41,6 +41,8 @@ class AgentBrowserScriptResult:
     instance_id: str
     tab_id: str
     instance_active: bool
+    ttl_seconds: int
+    expires_at_epoch: float
 
 
 @dataclass(slots=True)
@@ -289,6 +291,8 @@ def execute_agent_browser_script(config: dict[str, Any]) -> AgentBrowserScriptRe
             instance_id=instance.instance_id,
             tab_id=instance.tab_id,
             instance_active=is_active,
+            ttl_seconds=instance.ttl_seconds,
+            expires_at_epoch=instance.last_used_at + instance.ttl_seconds,
         )
 
     try:
@@ -437,4 +441,23 @@ def execute_agent_browser_script(config: dict[str, Any]) -> AgentBrowserScriptRe
         instance_id=instance.instance_id,
         tab_id=instance.tab_id,
         instance_active=is_active,
+        ttl_seconds=instance.ttl_seconds,
+        expires_at_epoch=instance.last_used_at + instance.ttl_seconds,
+    )
+
+
+def heartbeat_agent_browser_instance(config: dict[str, Any]) -> AgentBrowserScriptResult:
+    options = _extract_runtime_options(config)
+    verbose = bool(options.get("verbose", True))
+    instance, _ = _resolve_instance(options, verbose=verbose)
+    with _INSTANCE_LOCK:
+        is_active = instance.instance_id in _INSTANCES
+    return AgentBrowserScriptResult(
+        step_results=[],
+        captures={},
+        instance_id=instance.instance_id,
+        tab_id=instance.tab_id,
+        instance_active=is_active,
+        ttl_seconds=instance.ttl_seconds,
+        expires_at_epoch=instance.last_used_at + instance.ttl_seconds,
     )

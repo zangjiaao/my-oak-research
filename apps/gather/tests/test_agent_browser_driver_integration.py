@@ -31,6 +31,8 @@ def test_v2_fetch_agent_browser_driver_returns_captures(monkeypatch):
             instance_id="ab-demo123",
             tab_id="tab-main01",
             instance_active=True,
+            ttl_seconds=900,
+            expires_at_epoch=1700000000.0,
         )
 
     monkeypatch.setattr(main, "execute_agent_browser_script", fake_execute_agent_browser_script)
@@ -112,4 +114,60 @@ def test_v2_fetch_agent_browser_driver_maps_owner_mismatch_to_403(monkeypatch):
     assert response.status_code == 403
     payload = response.json()
     assert payload["error"]["code"] == "FETCH_BAD_REQUEST"
+    assert payload["error"]["retryable"] is False
+
+
+def test_agent_browser_heartbeat_endpoint(monkeypatch):
+    def fake_heartbeat(_config):
+        return AgentBrowserScriptResult(
+            step_results=[],
+            captures={},
+            instance_id="ab-heartbeat1",
+            tab_id="tab-heart01",
+            instance_active=True,
+            ttl_seconds=900,
+            expires_at_epoch=1700000100.0,
+        )
+
+    monkeypatch.setattr(main, "heartbeat_agent_browser_instance", fake_heartbeat)
+
+    client = TestClient(main.app)
+    response = client.post(
+        "/v2/agent-browser/heartbeat",
+        json={
+            "platform": "x",
+            "sourceId": "source-heartbeat-1",
+            "instanceId": "ab-heartbeat1",
+            "ownerId": "user-a",
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["instanceId"] == "ab-heartbeat1"
+    assert payload["tabId"] == "tab-heart01"
+    assert payload["instanceActive"] is True
+    assert payload["ttlSeconds"] == 900
+
+
+def test_agent_browser_heartbeat_endpoint_maps_expired_to_410(monkeypatch):
+    def fake_heartbeat(_config):
+        raise AgentBrowserScriptError(reason="instance_expired", message="expired")
+
+    monkeypatch.setattr(main, "heartbeat_agent_browser_instance", fake_heartbeat)
+
+    client = TestClient(main.app)
+    response = client.post(
+        "/v2/agent-browser/heartbeat",
+        json={
+            "platform": "x",
+            "sourceId": "source-heartbeat-2",
+            "instanceId": "ab-expired",
+            "ownerId": "user-a",
+        },
+    )
+
+    assert response.status_code == 410
+    payload = response.json()
+    assert payload["error"]["code"] == "HEARTBEAT_BAD_REQUEST"
     assert payload["error"]["retryable"] is False

@@ -210,6 +210,33 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 - `tabId`: 当前 tab 的逻辑 ID
 - `instanceActive`: 当前请求结束后实例是否仍存活
 
+### Agent Browser 心跳接口 (POST /v2/agent-browser/heartbeat)
+
+用于续租已存在实例的 TTL，不执行任何页面操作。
+
+```json
+{
+  "platform": "x",
+  "sourceId": "heartbeat_001",
+  "instanceId": "ab-1234567890",
+  "ownerId": "user-1001",
+  "sessionKey": "tenant-a",
+  "verbose": true
+}
+```
+
+响应示例：
+
+```json
+{
+  "instanceId": "ab-1234567890",
+  "tabId": "tab-1a2b3c4d",
+  "instanceActive": true,
+  "ttlSeconds": 900,
+  "expiresAt": "2026-03-13T10:15:00+00:00"
+}
+```
+
 ### v2 错误结构
 
 `/v2/fetch` 在参数错误或运行时错误时统一返回：

@@ -8,7 +8,11 @@ ROOT_DIR = Path(__file__).resolve().parents[1]
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
-from drivers.agent_browser_runner import AgentBrowserScriptError, execute_agent_browser_script
+from drivers.agent_browser_runner import (
+    AgentBrowserScriptError,
+    execute_agent_browser_script,
+    heartbeat_agent_browser_instance,
+)
 
 
 def test_execute_agent_browser_script_supports_repeat_and_capture(monkeypatch, tmp_path):
@@ -171,3 +175,22 @@ def test_execute_agent_browser_script_supports_heartbeat_without_steps(monkeypat
     assert heartbeat.step_results == []
     assert heartbeat.captures == {}
     assert calls == [["agent-browser", "close"], ["agent-browser", "open", "https://example.com"]]
+
+
+def test_heartbeat_agent_browser_instance_returns_instance_state(monkeypatch):
+    def fake_run(args, capture_output, text, timeout, check):  # noqa: ARG001
+        return subprocess.CompletedProcess(args, 0, stdout="ok", stderr="")
+
+    monkeypatch.setattr("drivers.agent_browser_runner.subprocess.run", fake_run)
+
+    created = execute_agent_browser_script(
+        {"agentBrowser": {"ownerId": "user-a", "script": [{"command": "open https://example.com"}]}}
+    )
+
+    heartbeat = heartbeat_agent_browser_instance(
+        {"agentBrowser": {"instanceId": created.instance_id, "ownerId": "user-a"}}
+    )
+
+    assert heartbeat.instance_id == created.instance_id
+    assert heartbeat.instance_active is True
+    assert heartbeat.ttl_seconds == created.ttl_seconds

@@ -14,9 +14,13 @@ from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from fastapi.responses import JSONResponse
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field, ValidationError
 from typing import List, Optional, Any, Dict
-from datetime import datetime
+from datetime import datetime, timezone
 from dotenv import load_dotenv
-from drivers.agent_browser_runner import AgentBrowserScriptError, execute_agent_browser_script
+from drivers.agent_browser_runner import (
+    AgentBrowserScriptError,
+    execute_agent_browser_script,
+    heartbeat_agent_browser_instance,
+)
 from drivers.playwright_driver import PlaywrightDriver
 from drivers.registry import DriverRegistry, DriverNotFoundError
 
@@ -81,6 +85,23 @@ class ErrorDetail(BaseModel):
 
 class ErrorResponse(BaseModel):
     error: ErrorDetail
+
+
+class AgentBrowserHeartbeatRequest(BaseModel):
+    platform: str
+    source_id: str = Field(validation_alias=AliasChoices("sourceId", "source_id"))
+    owner_id: Optional[str] = Field(default=None, validation_alias=AliasChoices("ownerId", "owner_id"))
+    session_key: Optional[str] = Field(default=None, validation_alias=AliasChoices("sessionKey", "session_key"))
+    instance_id: str = Field(validation_alias=AliasChoices("instanceId", "instance_id"))
+    verbose: bool = True
+
+
+class AgentBrowserHeartbeatResponse(BaseModel):
+    instanceId: str
+    tabId: str
+    instanceActive: bool
+    ttlSeconds: int
+    expiresAt: datetime
 
 
 def build_error_response(
@@ -895,6 +916,78 @@ async def fetch_data_v2(payload: Dict[str, Any]):
             message="Internal server error",
             retryable=True,
         )
+
+
+@app.post(
+    "/v2/agent-browser/heartbeat",
+    response_model=AgentBrowserHeartbeatResponse,
+    responses={
+        400: {"model": ErrorResponse},
+        403: {"model": ErrorResponse},
+        410: {"model": ErrorResponse},
+        422: {"model": ErrorResponse},
+        500: {"model": ErrorResponse},
+    },
+)
+async def agent_browser_heartbeat(payload: Dict[str, Any]):
+    try:
+        request = AgentBrowserHeartbeatRequest.model_validate(payload)
+    except ValidationError as e:
+        first_error = e.errors()[0] if e.errors() else {}
+        location = ".".join(str(part) for part in first_error.get("loc", []))
+        message = first_error.get("msg", "Invalid request payload")
+        if location:
+            message = f"{location}: {message}"
+        return build_error_response(
+            status_code=422,
+            code="VALIDATION_ERROR",
+            message=message,
+            retryable=False,
+        )
+
+    heartbeat_config: dict[str, Any] = {
+        "agentBrowser": {
+            "instanceId": request.instance_id,
+            "verbose": request.verbose,
+            "heartbeat": True,
+        }
+    }
+    if request.owner_id:
+        heartbeat_config["agentBrowser"]["ownerId"] = request.owner_id
+    if request.session_key:
+        heartbeat_config["agentBrowser"]["sessionKey"] = request.session_key
+
+    try:
+        result = await asyncio.to_thread(heartbeat_agent_browser_instance, heartbeat_config)
+    except AgentBrowserScriptError as error:
+        status_code_map = {
+            "invalid_config": 400,
+            "forbidden_instance_owner": 403,
+            "forbidden_instance_session": 403,
+            "instance_expired": 410,
+        }
+        status_code = status_code_map.get(error.reason, 500)
+        return build_error_response(
+            status_code=status_code,
+            code="HEARTBEAT_BAD_REQUEST" if status_code < 500 else "HEARTBEAT_INTERNAL_ERROR",
+            message=error.message,
+            retryable=False,
+        )
+    except Exception:
+        return build_error_response(
+            status_code=500,
+            code="HEARTBEAT_INTERNAL_ERROR",
+            message="Internal server error",
+            retryable=True,
+        )
+
+    return AgentBrowserHeartbeatResponse(
+        instanceId=result.instance_id,
+        tabId=result.tab_id,
+        instanceActive=result.instance_active,
+        ttlSeconds=result.ttl_seconds,
+        expiresAt=datetime.fromtimestamp(result.expires_at_epoch, tz=timezone.utc),
+    )
 
 
 # Constants for profile upload security
