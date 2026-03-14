@@ -807,6 +807,32 @@ def _extract_keyword_filter_keywords(config: Dict[str, Any]) -> Optional[List[st
     return unique_keywords
 
 
+def _extract_keyword_filter_options(config: Dict[str, Any]) -> dict[str, Any]:
+    raw_filter = config.get("keywordFilter")
+    if raw_filter is None:
+        return {"match_scope": "item", "split_mode": "auto"}
+    if not isinstance(raw_filter, dict):
+        raise KeywordFilterConfigError("config.keywordFilter must be an object")
+
+    raw_scope = raw_filter.get("matchScope", raw_filter.get("scope", "item"))
+    if raw_scope not in {"item", "segment"}:
+        raise KeywordFilterConfigError("keyword filter matchScope must be item or segment")
+
+    raw_split_mode = raw_filter.get("splitMode", raw_filter.get("segmentSplit", "auto"))
+    if raw_split_mode not in {"auto", "line", "paragraph"}:
+        raise KeywordFilterConfigError("keyword filter splitMode must be auto, line, or paragraph")
+
+    min_segment_chars = raw_filter.get("minSegmentChars", 1)
+    if not isinstance(min_segment_chars, int) or min_segment_chars < 1:
+        raise KeywordFilterConfigError("keyword filter minSegmentChars must be a positive integer")
+
+    return {
+        "match_scope": raw_scope,
+        "split_mode": raw_split_mode,
+        "min_segment_chars": min_segment_chars,
+    }
+
+
 def _keyword_filter_text(item: CleanItem) -> str:
     parts = [
         item.title or "",
@@ -817,9 +843,59 @@ def _keyword_filter_text(item: CleanItem) -> str:
     return " ".join(part for part in parts if part).lower()
 
 
+def _split_text_segments(text: str, split_mode: str, min_segment_chars: int) -> list[str]:
+    if split_mode == "line":
+        raw_segments = text.splitlines()
+    elif split_mode == "paragraph":
+        raw_segments = re.split(r"\n\s*\n+", text)
+    else:
+        if "\n\n" in text:
+            raw_segments = re.split(r"\n\s*\n+", text)
+        else:
+            raw_segments = text.splitlines()
+
+    segments: list[str] = []
+    for segment in raw_segments:
+        normalized = segment.strip()
+        if len(normalized) >= min_segment_chars:
+            segments.append(normalized)
+    return segments
+
+
+def _apply_keyword_segment_filter(item: CleanItem, keywords: list[str], options: dict[str, Any]) -> list[CleanItem]:
+    segments = _split_text_segments(
+        item.text or item.markdown or "",
+        split_mode=options["split_mode"],
+        min_segment_chars=options["min_segment_chars"],
+    )
+    if not segments:
+        return []
+
+    matched_items: list[CleanItem] = []
+    for index, segment in enumerate(segments, start=1):
+        haystack = segment.lower()
+        matched = [keyword for keyword in keywords if keyword in haystack]
+        if not matched:
+            continue
+
+        matched_items.append(
+            item.model_copy(
+                update={
+                    "title": f"{item.title or item.platform} [segment {index}]",
+                    "text": segment,
+                    "markdown": segment,
+                    "matchedKeywords": matched,
+                    "keywordMatchScore": round(len(matched) / len(keywords), 4),
+                }
+            )
+        )
+    return matched_items
+
+
 def _apply_keyword_hard_filter(request: FetchRequest, items: List[CleanItem]) -> List[CleanItem]:
     try:
         keywords = _extract_keyword_filter_keywords(request.config)
+        options = _extract_keyword_filter_options(request.config)
     except KeywordFilterConfigError as error:
         print(
             f"[gather][keyword-filter][error] "
@@ -836,14 +912,21 @@ def _apply_keyword_hard_filter(request: FetchRequest, items: List[CleanItem]) ->
     fetched = len(items)
 
     for item in items:
-        haystack = _keyword_filter_text(item)
-        matched = [keyword for keyword in keywords if keyword in haystack]
-        if matched:
-            item.matchedKeywords = matched
-            item.keywordMatchScore = round(len(matched) / len(keywords), 4)
-            filtered.append(item)
-            hit += 1
-            continue
+        if options["match_scope"] == "segment":
+            segment_hits = _apply_keyword_segment_filter(item, keywords, options)
+            if segment_hits:
+                filtered.extend(segment_hits)
+                hit += 1
+                continue
+        else:
+            haystack = _keyword_filter_text(item)
+            matched = [keyword for keyword in keywords if keyword in haystack]
+            if matched:
+                item.matchedKeywords = matched
+                item.keywordMatchScore = round(len(matched) / len(keywords), 4)
+                filtered.append(item)
+                hit += 1
+                continue
 
         miss += 1
         print(
@@ -853,7 +936,7 @@ def _apply_keyword_hard_filter(request: FetchRequest, items: List[CleanItem]) ->
 
     print(
         f"[gather][keyword-filter][metrics] "
-        f"{json.dumps({'sourceId': request.source_id, 'platform': request.platform, 'fetched': fetched, 'hit': hit, 'miss': miss, 'persisted': len(filtered)}, ensure_ascii=False)}"
+        f"{json.dumps({'sourceId': request.source_id, 'platform': request.platform, 'fetched': fetched, 'hit': hit, 'miss': miss, 'persisted': len(filtered), 'matchScope': options['match_scope']}, ensure_ascii=False)}"
     )
 
     return filtered

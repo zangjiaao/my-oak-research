@@ -40,6 +40,24 @@ class StubKeywordDriver(BaseDriver):
                     sourceType="SOCIAL_MEDIA",
                 )
             ]
+        if request.platform == "chat-batch":
+            return [
+                CleanItem(
+                    title="Chat batch",
+                    text="\n".join(
+                        [
+                            "[10:00] Alice: hello everyone",
+                            "[10:01] Bob: random message",
+                            "[10:02] Carol: alpha launch is live",
+                            "[10:03] Dave: nothing useful",
+                        ]
+                    ),
+                    markdown="chat batch markdown",
+                    platform="Telegram",
+                    sourceId=request.source_id,
+                    sourceType="SOCIAL_MEDIA",
+                )
+            ]
         return [
             CleanItem(
                 title="AI signal",
@@ -157,3 +175,52 @@ def test_keyword_filter_invalid_config_fails_closed(monkeypatch, capsys):
     assert payload["error"]["code"] == "FETCH_BAD_REQUEST"
     assert "keyword filter invalid config" in payload["error"]["message"]
     assert "error" in capsys.readouterr().out
+
+
+def test_keyword_segment_scope_keeps_only_matched_segments(monkeypatch):
+    client = _client_with_stub_driver(monkeypatch)
+    response = client.post(
+        "/v2/fetch",
+        json={
+            "platform": "chat-batch",
+            "sourceId": "source-chat-segment",
+            "config": {
+                "keywordFilter": {
+                    "keywords": ["alpha"],
+                    "matchScope": "segment",
+                    "splitMode": "line",
+                }
+            },
+        },
+    )
+
+    assert response.status_code == 200
+    items = response.json()
+    assert len(items) == 1
+    assert "alpha launch is live" in items[0]["text"]
+    assert items[0]["matchedKeywords"] == ["alpha"]
+    assert items[0]["title"].endswith("[segment 3]")
+
+
+def test_keyword_segment_scope_supports_min_segment_chars(monkeypatch):
+    client = _client_with_stub_driver(monkeypatch)
+    response = client.post(
+        "/v2/fetch",
+        json={
+            "platform": "chat-batch",
+            "sourceId": "source-chat-min-chars",
+            "config": {
+                "keywordFilter": {
+                    "keywords": ["alpha"],
+                    "matchScope": "segment",
+                    "splitMode": "line",
+                    "minSegmentChars": 30,
+                }
+            },
+        },
+    )
+
+    assert response.status_code == 200
+    items = response.json()
+    assert len(items) == 1
+    assert "alpha launch is live" in items[0]["text"]
