@@ -80,6 +80,8 @@ class CleanItem(BaseModel):
     instanceId: Optional[str] = None
     tabId: Optional[str] = None
     instanceActive: Optional[bool] = None
+    matchedKeywords: Optional[List[str]] = None
+    keywordMatchScore: Optional[float] = None
 
 
 class ErrorDetail(BaseModel):
@@ -107,6 +109,10 @@ class AgentBrowserHeartbeatResponse(BaseModel):
     instanceActive: bool
     ttlSeconds: int
     expiresAt: datetime
+
+
+class KeywordFilterConfigError(ValueError):
+    pass
 
 
 def build_error_response(
@@ -768,6 +774,91 @@ async def _agent_browser_verify_auth(_request: VerifyAuthRequest):
     )
 
 
+def _extract_keyword_filter_keywords(config: Dict[str, Any]) -> Optional[List[str]]:
+    raw_filter = config.get("keywordFilter")
+    raw_keywords: Any = None
+
+    if raw_filter is None:
+        raw_keywords = config.get("keywords")
+        if raw_keywords is None:
+            return None
+    elif isinstance(raw_filter, dict):
+        if raw_filter.get("enabled", True) is False:
+            return None
+        raw_keywords = raw_filter.get("keywords", raw_filter.get("terms"))
+    else:
+        raise KeywordFilterConfigError("config.keywordFilter must be an object")
+
+    if not isinstance(raw_keywords, list):
+        raise KeywordFilterConfigError("keyword filter keywords must be a string array")
+
+    normalized: list[str] = []
+    for index, value in enumerate(raw_keywords):
+        if not isinstance(value, str):
+            raise KeywordFilterConfigError(f"keyword filter keywords[{index}] must be string")
+        keyword = value.strip()
+        if not keyword:
+            raise KeywordFilterConfigError(f"keyword filter keywords[{index}] must not be empty")
+        normalized.append(keyword.lower())
+
+    unique_keywords = list(dict.fromkeys(normalized))
+    if not unique_keywords:
+        raise KeywordFilterConfigError("keyword filter keywords must not be empty")
+    return unique_keywords
+
+
+def _keyword_filter_text(item: CleanItem) -> str:
+    parts = [
+        item.title or "",
+        item.text or "",
+        item.markdown or "",
+        item.url or "",
+    ]
+    return " ".join(part for part in parts if part).lower()
+
+
+def _apply_keyword_hard_filter(request: FetchRequest, items: List[CleanItem]) -> List[CleanItem]:
+    try:
+        keywords = _extract_keyword_filter_keywords(request.config)
+    except KeywordFilterConfigError as error:
+        print(
+            f"[gather][keyword-filter][error] "
+            f"{json.dumps({'sourceId': request.source_id, 'platform': request.platform, 'error': str(error)}, ensure_ascii=False)}"
+        )
+        raise HTTPException(status_code=400, detail=f"keyword filter invalid config: {error}") from error
+
+    if not keywords:
+        return items
+
+    filtered: list[CleanItem] = []
+    hit = 0
+    miss = 0
+    fetched = len(items)
+
+    for item in items:
+        haystack = _keyword_filter_text(item)
+        matched = [keyword for keyword in keywords if keyword in haystack]
+        if matched:
+            item.matchedKeywords = matched
+            item.keywordMatchScore = round(len(matched) / len(keywords), 4)
+            filtered.append(item)
+            hit += 1
+            continue
+
+        miss += 1
+        print(
+            f"[gather][keyword-filter][audit] "
+            f"{json.dumps({'sourceId': item.sourceId, 'platform': item.platform, 'url': item.url, 'reason': 'keyword_miss'}, ensure_ascii=False)}"
+        )
+
+    print(
+        f"[gather][keyword-filter][metrics] "
+        f"{json.dumps({'sourceId': request.source_id, 'platform': request.platform, 'fetched': fetched, 'hit': hit, 'miss': miss, 'persisted': len(filtered)}, ensure_ascii=False)}"
+    )
+
+    return filtered
+
+
 def _apply_response_formats(items: list[CleanItem], response_formats: Optional[List[str]]) -> list[CleanItem]:
     if not response_formats:
         return items
@@ -872,6 +963,7 @@ async def verify_auth(request: VerifyAuthRequest):
 async def fetch_data(request: FetchRequest):
     try:
         results = await driver_registry.fetch(request)
+        results = _apply_keyword_hard_filter(request, results)
         return _apply_response_formats(results, request.response_formats)
     except DriverNotFoundError as error:
         raise _to_driver_http_exception(error)
@@ -913,6 +1005,7 @@ async def fetch_data_v2(payload: Dict[str, Any]):
 
     try:
         results = await driver_registry.fetch(v1_request, driver_name=request.driver)
+        results = _apply_keyword_hard_filter(v1_request, results)
         if request.driver:
             for item in results:
                 item.driver = request.driver

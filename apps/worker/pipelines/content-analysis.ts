@@ -32,6 +32,8 @@ type CleanItem = {
   normalizedText?: string;
   fingerprint?: string;
   driver?: string;
+  matchedKeywords?: string[];
+  keywordMatchScore?: number;
 };
 
 function isWebSource(source: SourceWithRelations): source is WebSource {
@@ -88,7 +90,8 @@ export async function runFocusCollector(runId: string, queryId: string) {
         break;
     }
   });
-  const rawItems = await fetchBySources(normalizedSources, runId);
+  const keywordFilterTerms = buildKeywordFilterTerms(query.keywords);
+  const rawItems = await fetchBySources(normalizedSources, runId, keywordFilterTerms);
   const cleaned = await cleanAndDedup(rawItems, runId);
 
   if (!cleaned.length) {
@@ -135,6 +138,8 @@ export async function runFocusCollector(runId: string, queryId: string) {
         meta: {
           sourceFingerprint: item.fingerprint,
           driver: item.driver,
+          matchedKeywords: item.matchedKeywords ?? [],
+          keywordMatchScore: item.keywordMatchScore ?? null,
           keywords: expandedKeywords,
           summaryRelevance: summary.relevance,
           sourceId: item.sourceId,
@@ -190,6 +195,25 @@ function mapContentType(sourceType: SourceType): ContentType {
   }
 }
 
+function buildKeywordFilterTerms(
+  keywords: Array<{
+    name: string;
+    includes: string[];
+    synonyms: string[];
+    enableAiExpand: boolean;
+  }>
+): string[] {
+  const terms: string[] = [];
+  for (const keyword of keywords) {
+    terms.push(keyword.name);
+    terms.push(...keyword.includes);
+    if (keyword.enableAiExpand) {
+      terms.push(...keyword.synonyms);
+    }
+  }
+  return Array.from(new Set(terms.map((term) => term.trim().toLowerCase()).filter(Boolean)));
+}
+
 async function cleanAndDedup(
   items: CleanItem[],
   runId: string
@@ -217,7 +241,8 @@ async function cleanAndDedup(
 
 async function fetchBySources(
   sources: SourceWithRelations[],
-  runId: string
+  runId: string,
+  keywordFilterTerms: string[]
 ): Promise<CleanItem[]> {
   const results: CleanItem[] = [];
   for (const source of sources) {
@@ -232,7 +257,7 @@ async function fetchBySources(
       driver,
     });
     try {
-      const fetched = await executeFetchDriver(source, driver);
+      const fetched = await executeFetchDriver(source, driver, keywordFilterTerms);
       console.log(
         `[collector] fetched ${fetched.length} items from ${source.name}`
       );
@@ -282,7 +307,8 @@ function resolveFetchDriver(
 
 async function executeFetchDriver(
   source: SourceWithRelations,
-  driver: "fetch" | "playwright" | "ai"
+  driver: "fetch" | "playwright" | "ai",
+  keywordFilterTerms: string[]
 ): Promise<CleanItem[]> {
   switch (driver) {
     case "playwright":
@@ -294,14 +320,15 @@ async function executeFetchDriver(
       }
       return [];
     case "ai":
-      return fetchAICrawlerSource(source);
+      return fetchAICrawlerSource(source, keywordFilterTerms);
     default:
-      return fetchWithDefaultSource(source);
+      return fetchWithDefaultSource(source, keywordFilterTerms);
   }
 }
 
 async function fetchWithDefaultSource(
-  source: SourceWithRelations
+  source: SourceWithRelations,
+  keywordFilterTerms: string[]
 ): Promise<CleanItem[]> {
   console.log(
     `[collector] fetchWithDefaultSource ${source.name} (${source.type})`
@@ -314,7 +341,7 @@ async function fetchWithDefaultSource(
     case SourceType.SEARCH_ENGINE:
       return fetchSearchSource(source as SearchEngineSource);
     case SourceType.SOCIAL_MEDIA:
-      return fetchSocialSource(source as SocialMediaSource);
+      return fetchSocialSource(source as SocialMediaSource, keywordFilterTerms);
     default:
       return [];
   }
@@ -370,7 +397,8 @@ async function fetchBrowserSource(
 }
 
 async function fetchAICrawlerSource(
-  source: SourceWithRelations
+  source: SourceWithRelations,
+  keywordFilterTerms: string[]
 ): Promise<CleanItem[]> {
   if (isWebSource(source) || isDarknetSource(source)) {
     console.log(
@@ -387,7 +415,7 @@ async function fetchAICrawlerSource(
   console.log(
     `[collector] fetchAICrawlerSource -> fetchSocialSource ${source.name}`
   );
-  return fetchSocialSource(source as SocialMediaSource);
+  return fetchSocialSource(source as SocialMediaSource, keywordFilterTerms);
 }
 
 function normalizeCleanItem(item: CleanItem): CleanItem {
@@ -497,12 +525,23 @@ async function fetchSearchSource(
 }
 
 async function fetchSocialSource(
-  source: SocialMediaSource
+  source: SocialMediaSource,
+  keywordFilterTerms: string[]
 ): Promise<CleanItem[]> {
   console.log(`[collector] fetchSocialSource ${source.name} via Python Gather`);
 
   const gatherUrl = process.env.GATHER_SERVICE_URL || "http://localhost:8000";
-  const config = source.social?.config || {};
+  const sourceConfig = source.social?.config || {};
+  const config =
+    keywordFilterTerms.length > 0
+      ? {
+          ...sourceConfig,
+          keywordFilter: {
+            ...((sourceConfig as Record<string, unknown>).keywordFilter as Record<string, unknown> | undefined),
+            keywords: keywordFilterTerms,
+          },
+        }
+      : sourceConfig;
 
   try {
     const response = await fetch(`${gatherUrl}/fetch`, {
