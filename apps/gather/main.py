@@ -82,6 +82,9 @@ class CleanItem(BaseModel):
     instanceActive: Optional[bool] = None
     matchedKeywords: Optional[List[str]] = None
     keywordMatchScore: Optional[float] = None
+    recordId: Optional[str] = None
+    recordType: Optional[str] = None
+    recordIndex: Optional[int] = None
 
 
 class ErrorDetail(BaseModel):
@@ -408,7 +411,9 @@ async def _playwright_fetch_data(request: FetchRequest):
                         url=tweet.get("url"),
                         sourceId=request.source_id,
                         sourceType="SOCIAL_MEDIA",
-                        time=datetime.fromisoformat(tweet["timestamp"]) if tweet.get("timestamp") else datetime.now()
+                        time=datetime.fromisoformat(tweet["timestamp"]) if tweet.get("timestamp") else datetime.now(),
+                        recordId=_extract_x_status_id(tweet.get("url")),
+                        recordType="tweet",
                     ))
                     
         elif platform == "xiaohongshu" or platform == "xhs":
@@ -430,7 +435,9 @@ async def _playwright_fetch_data(request: FetchRequest):
                         url=note.get("url"),
                         sourceId=request.source_id,
                         sourceType="SOCIAL_MEDIA",
-                        time=datetime.now()
+                        time=datetime.now(),
+                        recordId=note.get("id"),
+                        recordType="note",
                     ))
         
         elif platform == "reddit":
@@ -708,6 +715,111 @@ def _truncate_text(value: str, max_length: int = 12000) -> str:
     return f"{value[:max_length]}..."
 
 
+def _extract_x_status_id(url: Optional[str]) -> Optional[str]:
+    if not url:
+        return None
+    matched = re.search(r"/status/(\d+)", url)
+    return matched.group(1) if matched else None
+
+
+def _normalize_capture_text(value: str) -> str:
+    normalized = value.strip()
+    if normalized.startswith('"""') and normalized.endswith('"""'):
+        normalized = normalized[3:-3]
+    elif normalized.startswith('"') and normalized.endswith('"'):
+        normalized = normalized[1:-1]
+    normalized = normalized.replace("\\r\\n", "\n").replace("\\n", "\n")
+    return normalized.strip()
+
+
+def _extract_structured_records(text: str) -> list[dict[str, Any]]:
+    pattern = re.compile(
+        r"(?:(?<=\n)|^)(?P<record_id>[a-zA-Z][\w-]*-\d+):\s*(?P<body>.*?)(?=(?:\n[a-zA-Z][\w-]*-\d+:)|\Z)",
+        re.S,
+    )
+    records = []
+    for index, matched in enumerate(pattern.finditer(text), start=1):
+        body = matched.group("body").strip()
+        if not body:
+            continue
+        records.append(
+            {
+                "record_id": matched.group("record_id"),
+                "body": body,
+                "record_index": index,
+            }
+        )
+    return records
+
+
+def _capture_outputs_to_clean_items(
+    request: FetchRequest,
+    script_result: Any,
+    capture_key: str,
+    outputs: list[str],
+    now: datetime,
+) -> list[CleanItem]:
+    text = _truncate_text("\n".join(output for output in outputs if output))
+    if not text:
+        text = f"Capture '{capture_key}' completed with {len(outputs)} executions"
+        return [
+            CleanItem(
+                title=f"agent-browser capture: {capture_key}",
+                text=text,
+                markdown=f"### {capture_key}\n\n```\n{text}\n```",
+                platform=request.platform,
+                sourceId=request.source_id,
+                sourceType="SOCIAL_MEDIA",
+                time=now,
+                driver="agent-browser",
+                instanceId=script_result.instance_id,
+                tabId=script_result.tab_id,
+                instanceActive=script_result.instance_active,
+                recordType="capture",
+            )
+        ]
+
+    normalized = _normalize_capture_text(text)
+    records = _extract_structured_records(normalized)
+    if not records:
+        return [
+            CleanItem(
+                title=f"agent-browser capture: {capture_key}",
+                text=text,
+                markdown=f"### {capture_key}\n\n```\n{text}\n```",
+                platform=request.platform,
+                sourceId=request.source_id,
+                sourceType="SOCIAL_MEDIA",
+                time=now,
+                driver="agent-browser",
+                instanceId=script_result.instance_id,
+                tabId=script_result.tab_id,
+                instanceActive=script_result.instance_active,
+                recordType="capture",
+            )
+        ]
+
+    return [
+        CleanItem(
+            title=f"agent-browser {capture_key}: {record['record_id']}",
+            text=record["body"],
+            markdown=f"### {record['record_id']}\n\n{record['body']}",
+            platform=request.platform,
+            sourceId=request.source_id,
+            sourceType="SOCIAL_MEDIA",
+            time=now,
+            driver="agent-browser",
+            instanceId=script_result.instance_id,
+            tabId=script_result.tab_id,
+            instanceActive=script_result.instance_active,
+            recordId=record["record_id"],
+            recordType="message",
+            recordIndex=record["record_index"],
+        )
+        for record in records
+    ]
+
+
 def _agent_browser_results_to_clean_items(
     request: FetchRequest,
     script_result: Any,
@@ -718,22 +830,13 @@ def _agent_browser_results_to_clean_items(
 
     if captures:
         for capture_key, outputs in captures.items():
-            text = _truncate_text("\n".join(output for output in outputs if output))
-            if not text:
-                text = f"Capture '{capture_key}' completed with {len(outputs)} executions"
-            items.append(
-                CleanItem(
-                    title=f"agent-browser capture: {capture_key}",
-                    text=text,
-                    markdown=f"### {capture_key}\n\n```\n{text}\n```",
-                    platform=request.platform,
-                    sourceId=request.source_id,
-                    sourceType="SOCIAL_MEDIA",
-                    time=now,
-                    driver="agent-browser",
-                    instanceId=script_result.instance_id,
-                    tabId=script_result.tab_id,
-                    instanceActive=script_result.instance_active,
+            items.extend(
+                _capture_outputs_to_clean_items(
+                    request=request,
+                    script_result=script_result,
+                    capture_key=capture_key,
+                    outputs=outputs,
+                    now=now,
                 )
             )
 

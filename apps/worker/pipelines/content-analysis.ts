@@ -34,6 +34,9 @@ type CleanItem = {
   driver?: string;
   matchedKeywords?: string[];
   keywordMatchScore?: number;
+  recordId?: string;
+  recordType?: string;
+  recordIndex?: number;
 };
 
 function isWebSource(source: SourceWithRelations): source is WebSource {
@@ -140,6 +143,9 @@ export async function runFocusCollector(runId: string, queryId: string) {
           driver: item.driver,
           matchedKeywords: item.matchedKeywords ?? [],
           keywordMatchScore: item.keywordMatchScore ?? null,
+          recordId: item.recordId ?? null,
+          recordType: item.recordType ?? null,
+          recordIndex: item.recordIndex ?? null,
           keywords: expandedKeywords,
           summaryRelevance: summary.relevance,
           sourceId: item.sourceId,
