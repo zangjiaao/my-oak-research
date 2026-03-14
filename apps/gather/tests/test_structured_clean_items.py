@@ -66,6 +66,23 @@ def test_agent_browser_capture_parses_jsonl_records():
     assert items[1].recordId == "message-11"
 
 
+def test_agent_browser_capture_parses_double_escaped_jsonl_string():
+    request = FetchRequest(platform="telegram", config={}, source_id="source-1")
+    result = _script_result(
+        {
+            "messages_text": [
+                "\"{\\\"recordId\\\":\\\"message-1\\\",\\\"recordType\\\":\\\"telegram\\\",\\\"text\\\":\\\"联合国谴责伊朗攻击\\\",\\\"time\\\":\\\"2026-03-14T10:00:00Z\\\",\\\"url\\\":\\\"https://t.me/c/1/1\\\"}\\\\n{\\\"recordId\\\":\\\"message-2\\\",\\\"recordType\\\":\\\"telegram\\\",\\\"text\\\":\\\"今天吃了很好吃的拉面\\\"}\""
+            ]
+        }
+    )
+
+    items = _agent_browser_results_to_clean_items(request, result)
+    assert len(items) == 2
+    assert items[0].recordId == "message-1"
+    assert items[0].recordType == "telegram"
+    assert items[1].recordId == "message-2"
+
+
 def test_agent_browser_capture_parses_tagged_records_with_custom_schema():
     request = FetchRequest(
         platform="telegram",

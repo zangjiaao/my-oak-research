@@ -726,8 +726,17 @@ def _normalize_capture_text(value: str) -> str:
     normalized = value.strip()
     if normalized.startswith('"""') and normalized.endswith('"""'):
         normalized = normalized[3:-3]
-    elif normalized.startswith('"') and normalized.endswith('"'):
-        normalized = normalized[1:-1]
+    for _ in range(2):
+        if normalized.startswith('"') and normalized.endswith('"'):
+            try:
+                decoded = json.loads(normalized)
+            except json.JSONDecodeError:
+                normalized = normalized[1:-1]
+                break
+            if isinstance(decoded, str):
+                normalized = decoded.strip()
+                continue
+        break
     normalized = normalized.replace("\\r\\n", "\n").replace("\\n", "\n")
     return normalized.strip()
 
@@ -771,37 +780,44 @@ def _resolve_record_schema(config: Dict[str, Any]) -> dict[str, Any]:
 
 
 def _extract_jsonl_records(text: str) -> list[dict[str, Any]]:
-    records: list[dict[str, Any]] = []
-    for line in text.splitlines():
-        raw = line.strip()
-        if not raw:
-            continue
-        if not (raw.startswith("{") and raw.endswith("}")):
-            continue
-        try:
-            payload = json.loads(raw)
-        except json.JSONDecodeError:
-            continue
-        if not isinstance(payload, dict):
-            continue
-        body = payload.get("text", payload.get("content", ""))
-        if not isinstance(body, str) or not body.strip():
-            continue
-        record_id = payload.get("recordId", payload.get("id"))
-        record_type = payload.get("recordType", payload.get("type", "message"))
-        records.append(
-            {
-                "record_id": str(record_id).strip() if record_id else None,
-                "record_type": str(record_type).strip() if record_type else "message",
-                "record_index": len(records) + 1,
-                "body": body.strip(),
-                "url": str(payload["url"]).strip() if isinstance(payload.get("url"), str) else None,
-                "time": str(payload["time"]).strip() if isinstance(payload.get("time"), str) else None,
-                "meta": str(payload["meta"]).strip() if isinstance(payload.get("meta"), str) else None,
-                "author": str(payload["author"]).strip() if isinstance(payload.get("author"), str) else None,
-            }
-        )
-    return records
+    candidates = [text]
+    if '\\"' in text:
+        candidates.append(text.replace('\\"', '"'))
+
+    for candidate in candidates:
+        records: list[dict[str, Any]] = []
+        for line in candidate.splitlines():
+            raw = line.strip()
+            if not raw:
+                continue
+            if not (raw.startswith("{") and raw.endswith("}")):
+                continue
+            try:
+                payload = json.loads(raw)
+            except json.JSONDecodeError:
+                continue
+            if not isinstance(payload, dict):
+                continue
+            body = payload.get("text", payload.get("content", ""))
+            if not isinstance(body, str) or not body.strip():
+                continue
+            record_id = payload.get("recordId", payload.get("id"))
+            record_type = payload.get("recordType", payload.get("type", "message"))
+            records.append(
+                {
+                    "record_id": str(record_id).strip() if record_id else None,
+                    "record_type": str(record_type).strip() if record_type else "message",
+                    "record_index": len(records) + 1,
+                    "body": body.strip(),
+                    "url": str(payload["url"]).strip() if isinstance(payload.get("url"), str) else None,
+                    "time": str(payload["time"]).strip() if isinstance(payload.get("time"), str) else None,
+                    "meta": str(payload["meta"]).strip() if isinstance(payload.get("meta"), str) else None,
+                    "author": str(payload["author"]).strip() if isinstance(payload.get("author"), str) else None,
+                }
+            )
+        if records:
+            return records
+    return []
 
 
 def _extract_tagged_records(text: str, schema: dict[str, Any]) -> list[dict[str, Any]]:
