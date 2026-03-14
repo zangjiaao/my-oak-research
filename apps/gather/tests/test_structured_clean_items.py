@@ -117,3 +117,21 @@ def test_agent_browser_capture_parses_tagged_records_with_custom_schema():
     assert items[0].recordType == "telegram"
     assert "hello alpha" in (items[0].text or "")
     assert items[1].recordId == "message-22"
+
+
+def test_agent_browser_capture_parses_quoted_jsonl_lines_from_per_line_capture():
+    request = FetchRequest(platform="x", config={}, source_id="source-1")
+    result = _script_result(
+        {
+            "tweets_jsonl": [
+                "\"{\\\"recordId\\\":\\\"2031\\\",\\\"recordType\\\":\\\"tweet\\\",\\\"text\\\":\\\"first\\\",\\\"url\\\":\\\"https://x.com/a/status/2031\\\"}\"",
+                "\"{\\\"recordId\\\":\\\"2032\\\",\\\"recordType\\\":\\\"tweet\\\",\\\"text\\\":\\\"second\\\"}\\\\n{\\\"recordId\\\":\\\"2033\\\",\\\"recordType\\\":\\\"tweet\\\",\\\"text\\\":\\\"third\\\"}\"",
+                "\"\"",
+            ]
+        }
+    )
+
+    items = _agent_browser_results_to_clean_items(request, result)
+    assert len(items) == 3
+    assert sorted(item.recordId for item in items) == ["2031", "2032", "2033"]
+    assert all(item.recordType == "tweet" for item in items)
