@@ -5,7 +5,7 @@ tags: [gather, keyword, filter, p0]
 
 ## 意图
 
-在 `apps/gather` 侧落地关键词硬过滤，确保未命中内容不进入主内容库，控制抓取规模与后续处理成本。
+在 `apps/gather` 侧落地关键词硬过滤，确保未命中内容不进入主内容库，控制抓取规模与后续解析成本。
 
 ## 已定决策
 
@@ -43,6 +43,16 @@ tags: [gather, keyword, filter, p0]
   当 执行 gather 流程
   那么 内容不入主库且生成轻量审计记录
 
+场景: 命中与未命中内容严格分流
+  测试:
+    包: apps/gather
+    过滤: test_keyword_hit_miss_split_persistence_and_audit
+    Level: integration
+    Targets: only hit items persisted to main store; miss items only in audit log
+  假设 同一批次同时包含命中与未命中内容
+  当 执行 gather 流程
+  那么 仅命中内容入主库，未命中内容只写轻量审计日志
+
 场景: 过滤过程具备可观测性
   测试:
     包: apps/gather
@@ -50,6 +60,17 @@ tags: [gather, keyword, filter, p0]
   假设 一次抓取批次包含命中与未命中内容
   当 执行 gather 流程
   那么 输出 `fetched/hit/miss/persisted` 指标
+
+场景: 关键词配置非法时流程失败并阻止入库
+  测试:
+    包: apps/gather
+    过滤: test_keyword_filter_invalid_config_fails_closed
+    Level: integration
+    Test Double: malformed keyword config fixture
+    Targets: fail closed; no main-store write; error log emitted
+  假设 关键词配置为空或包含非法值导致过滤器不可用
+  当 执行 gather 流程
+  那么 返回可观测错误且本批次不写入主库
 
 ## 排除范围
 
