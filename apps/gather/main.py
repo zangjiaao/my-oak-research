@@ -732,6 +732,118 @@ def _normalize_capture_text(value: str) -> str:
     return normalized.strip()
 
 
+def _resolve_record_schema(config: Dict[str, Any]) -> dict[str, Any]:
+    default_schema = {
+        "format": "auto",
+        "record_separator": "\n",
+        "pair_separator": "｜",
+        "field_map": {
+            "id": "MSGID",
+            "text": "MSG",
+            "url": "LINK",
+            "time": "DATE",
+            "meta": "META",
+            "author": "AUTH",
+            "type": "TYPE",
+        },
+    }
+    raw = config.get("recordSchema")
+    if raw is None and isinstance(config.get("agentBrowser"), dict):
+        raw = config["agentBrowser"].get("recordSchema")
+    if not isinstance(raw, dict):
+        return default_schema
+
+    schema = dict(default_schema)
+    schema["format"] = str(raw.get("format", schema["format"])).lower()
+    if isinstance(raw.get("recordSeparator"), str) and raw["recordSeparator"]:
+        schema["record_separator"] = raw["recordSeparator"]
+    if isinstance(raw.get("pairSeparator"), str) and raw["pairSeparator"]:
+        schema["pair_separator"] = raw["pairSeparator"]
+    field_map = raw.get("fieldMap")
+    if isinstance(field_map, dict):
+        normalized_map: dict[str, str] = {}
+        for key, value in field_map.items():
+            if isinstance(key, str) and isinstance(value, str) and key and value:
+                normalized_map[key.lower()] = value.upper()
+        if normalized_map:
+            schema["field_map"] = {**schema["field_map"], **normalized_map}
+    return schema
+
+
+def _extract_jsonl_records(text: str) -> list[dict[str, Any]]:
+    records: list[dict[str, Any]] = []
+    for line in text.splitlines():
+        raw = line.strip()
+        if not raw:
+            continue
+        if not (raw.startswith("{") and raw.endswith("}")):
+            continue
+        try:
+            payload = json.loads(raw)
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(payload, dict):
+            continue
+        body = payload.get("text", payload.get("content", ""))
+        if not isinstance(body, str) or not body.strip():
+            continue
+        record_id = payload.get("recordId", payload.get("id"))
+        record_type = payload.get("recordType", payload.get("type", "message"))
+        records.append(
+            {
+                "record_id": str(record_id).strip() if record_id else None,
+                "record_type": str(record_type).strip() if record_type else "message",
+                "record_index": len(records) + 1,
+                "body": body.strip(),
+                "url": str(payload["url"]).strip() if isinstance(payload.get("url"), str) else None,
+                "time": str(payload["time"]).strip() if isinstance(payload.get("time"), str) else None,
+                "meta": str(payload["meta"]).strip() if isinstance(payload.get("meta"), str) else None,
+                "author": str(payload["author"]).strip() if isinstance(payload.get("author"), str) else None,
+            }
+        )
+    return records
+
+
+def _extract_tagged_records(text: str, schema: dict[str, Any]) -> list[dict[str, Any]]:
+    field_map = schema["field_map"]
+    id_key = field_map.get("id", "MSGID")
+    text_key = field_map.get("text", "MSG")
+    url_key = field_map.get("url", "LINK")
+    time_key = field_map.get("time", "DATE")
+    meta_key = field_map.get("meta", "META")
+    type_key = field_map.get("type", "TYPE")
+    author_key = field_map.get("author", "AUTH")
+    pair_separator = schema["pair_separator"]
+    lines = [part.strip() for part in text.split(schema["record_separator"]) if part.strip()]
+    records: list[dict[str, Any]] = []
+
+    for line in lines:
+        fields: dict[str, str] = {}
+        chunks = [chunk.strip() for chunk in line.split(pair_separator) if chunk.strip()]
+        for chunk in chunks:
+            for delimiter in ("：", ":"):
+                if delimiter in chunk:
+                    key, value = chunk.split(delimiter, 1)
+                    fields[key.strip().upper()] = value.strip()
+                    break
+        body = fields.get(text_key, "")
+        if not body:
+            continue
+        records.append(
+            {
+                "record_id": fields.get(id_key),
+                "record_type": fields.get(type_key, "message"),
+                "record_index": len(records) + 1,
+                "body": body,
+                "url": fields.get(url_key),
+                "time": fields.get(time_key),
+                "meta": fields.get(meta_key),
+                "author": fields.get(author_key),
+            }
+        )
+    return records
+
+
 def _extract_structured_records(text: str) -> list[dict[str, Any]]:
     pattern = re.compile(
         r"(?:(?<=\n)|^)(?P<record_id>[a-zA-Z][\w-]*-\d+):\s*(?P<body>.*?)(?=(?:\n[a-zA-Z][\w-]*-\d+:)|\Z)",
@@ -747,6 +859,11 @@ def _extract_structured_records(text: str) -> list[dict[str, Any]]:
                 "record_id": matched.group("record_id"),
                 "body": body,
                 "record_index": index,
+                "record_type": "message",
+                "url": None,
+                "time": None,
+                "meta": None,
+                "author": None,
             }
         )
     return records
@@ -780,7 +897,15 @@ def _capture_outputs_to_clean_items(
         ]
 
     normalized = _normalize_capture_text(text)
-    records = _extract_structured_records(normalized)
+    schema = _resolve_record_schema(request.config)
+    records: list[dict[str, Any]] = []
+    if schema["format"] in {"auto", "jsonl"}:
+        records = _extract_jsonl_records(normalized)
+    if not records and schema["format"] in {"auto", "tagged"}:
+        records = _extract_tagged_records(normalized, schema)
+    if not records and schema["format"] in {"auto", "legacy"}:
+        records = _extract_structured_records(normalized)
+
     if not records:
         return [
             CleanItem(
@@ -799,25 +924,45 @@ def _capture_outputs_to_clean_items(
             )
         ]
 
-    return [
-        CleanItem(
-            title=f"agent-browser {capture_key}: {record['record_id']}",
-            text=record["body"],
-            markdown=f"### {record['record_id']}\n\n{record['body']}",
-            platform=request.platform,
-            sourceId=request.source_id,
-            sourceType="SOCIAL_MEDIA",
-            time=now,
-            driver="agent-browser",
-            instanceId=script_result.instance_id,
-            tabId=script_result.tab_id,
-            instanceActive=script_result.instance_active,
-            recordId=record["record_id"],
-            recordType="message",
-            recordIndex=record["record_index"],
+    items: list[CleanItem] = []
+    for record in records:
+        record_title = record["record_id"] or f"{capture_key} #{record['record_index']}"
+        markdown = f"### {record_title}\n\n{record['body']}"
+        if record.get("meta"):
+            markdown = f"{markdown}\n\n> meta: {record['meta']}"
+        record_time = now
+        raw_time = record.get("time")
+        if isinstance(raw_time, str):
+            parsed_time = None
+            for candidate in (raw_time, raw_time.replace("Z", "+00:00")):
+                try:
+                    parsed_time = datetime.fromisoformat(candidate)
+                    break
+                except ValueError:
+                    continue
+            if parsed_time is not None:
+                record_time = parsed_time
+
+        items.append(
+            CleanItem(
+                title=f"agent-browser {capture_key}: {record_title}",
+                text=record["body"],
+                markdown=markdown,
+                platform=request.platform,
+                url=record.get("url"),
+                sourceId=request.source_id,
+                sourceType="SOCIAL_MEDIA",
+                time=record_time,
+                driver="agent-browser",
+                instanceId=script_result.instance_id,
+                tabId=script_result.tab_id,
+                instanceActive=script_result.instance_active,
+                recordId=record["record_id"],
+                recordType=record.get("record_type", "message"),
+                recordIndex=record["record_index"],
+            )
         )
-        for record in records
-    ]
+    return items
 
 
 def _agent_browser_results_to_clean_items(
