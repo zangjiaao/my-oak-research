@@ -43,15 +43,15 @@ tags: [gather, keyword, filter, p0]
   当 执行 gather 流程
   那么 内容不入主库且生成轻量审计记录
 
-场景: 命中与未命中内容严格分流
+场景: 只对命中内容入主库；未命中内容只写轻量审计日志
   测试:
     包: apps/gather
-    过滤: test_keyword_hit_miss_split_persistence_and_audit
+    过滤: test_keyword_hit_only_persisted_miss_audit_only
     Level: integration
-    Targets: only hit items persisted to main store; miss items only in audit log
+    Targets: verify decision "hit -> main store, miss -> audit only"
   假设 同一批次同时包含命中与未命中内容
   当 执行 gather 流程
-  那么 仅命中内容入主库，未命中内容只写轻量审计日志
+  那么 只对命中内容入主库；未命中内容只写轻量审计日志
 
 场景: 过滤过程具备可观测性
   测试:
