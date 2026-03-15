@@ -668,10 +668,6 @@ function normalizeGatherSocialConfig(
 
   const playwright = asObject(config.playwright);
   const args = asObject(playwright.args);
-  const screenName =
-    typeof args.screen_name === "string" && args.screen_name.trim()
-      ? args.screen_name.trim()
-      : "";
   const authKey =
     resolveSourceCredentialId(source, playwright) ||
     "anonymous-auth";
@@ -696,7 +692,7 @@ function normalizeGatherSocialConfig(
     userId:
       typeof playwright.userId === "string" && playwright.userId.trim()
         ? playwright.userId
-        : screenName,
+        : "",
     sessionId:
       typeof playwright.sessionId === "string" && playwright.sessionId.trim()
         ? playwright.sessionId
