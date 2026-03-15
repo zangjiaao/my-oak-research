@@ -4,7 +4,6 @@ import { llmGateway } from "@oak/agents/llm-gateway";
 import { stripPromptLike, redact } from "@/lib/security";
 import { ReportGenerateSchema, ReportLLMOutputSchema } from "../schemas";
 import { renderTemplate } from "@/lib/template";
-import { findTopicRelatedContentIds } from "@/lib/topic";
 
 const respond = (data: unknown) => NextResponse.json({ success: true, data });
 
@@ -26,7 +25,6 @@ export async function POST(req: NextRequest) {
     const {
       prompt: userPrompt,
       instruction: baseInstruction,
-      topicId,
       reportId,
       sessionId: inputSessionId,
       templateId,
@@ -102,51 +100,6 @@ ${existingReportData.markdown || "N/A"}
 `
       : "No existing report content.";
 
-    let topicContext = "No topic selected.";
-    if (topicId) {
-      let topicData;
-      try {
-        topicData = await findTopicRelatedContentIds(topicId, {
-          limit: 20,
-        });
-      } catch (error) {
-        return fail(
-          `Topic not found: ${topicId}`,
-          404,
-          error instanceof Error ? error.message : String(error)
-        );
-      }
-
-      const { query: topic, contentIds } = topicData;
-      const contents = contentIds.length
-        ? await prisma.content.findMany({
-            where: { id: { in: contentIds } },
-            orderBy: { time: "desc" },
-            take: 20,
-            select: {
-              id: true,
-              title: true,
-              summary: true,
-              platform: true,
-              time: true,
-              url: true,
-            },
-          })
-        : [];
-      topicContext = [
-        `Topic: ${topic.name}`,
-        topic.description ? `Description: ${topic.description}` : null,
-        `Keywords: ${topic.keywords.map((k) => k.name).join(", ") || "N/A"}`,
-        `Related Contents (${contents.length}):`,
-        ...contents.map(
-          (item, idx) =>
-            `${idx + 1}. ${item.title} | ${item.platform} | ${item.time.toISOString()} | ${item.url || "no-url"}\n${item.summary}`
-        ),
-      ]
-        .filter(Boolean)
-        .join("\n");
-    }
-
     // Build the instruction for the LLM
     const systemPrompt = [
       "You are a professional report writing assistant.",
@@ -168,7 +121,6 @@ ${existingReportData.markdown || "N/A"}
       template ? `Current Template: ${template.name}` : "No template selected",
       template?.markdown ? `Template content:\n${template.markdown}` : null,
       `Reference Materials:\n${materialOverview}`,
-      `Topic Context:\n${topicContext}`,
       `Current Request from User: ${stripPromptLike(userPrompt)}`,
       `Output Schema:\n${JSON.stringify(
         {

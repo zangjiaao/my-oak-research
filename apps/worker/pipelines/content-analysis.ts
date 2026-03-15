@@ -12,9 +12,8 @@ import {
   DarknetSource,
 } from "@/lib/types";
 import { llmGateway, browserAgent } from "@oak/agents";
-import { publishTaskEvent } from "@/lib/queue";
+import { publishTaskEvent, publishContentEvent } from "@/lib/queue";
 import { redact, stripPromptLike } from "@/lib/security";
-import { saveTopicAssociation } from "@/lib/topic";
 
 const SummarySchema = z.object({
   summary: z.string().min(30).max(400),
@@ -123,8 +122,6 @@ export async function runFocusCollector(runId: string, queryId: string) {
   });
 
   const keywordsStr = expandedKeywords.join("; ") || "无关键词";
-  const createdContentIds: string[] = [];
-
   for (let i = 0; i < cleaned.length; i++) {
     const item = cleaned[i];
     await send({ type: "summary", message: `第 ${i + 1} 条内容生成摘要` });
@@ -174,7 +171,14 @@ export async function runFocusCollector(runId: string, queryId: string) {
         skipDuplicates: true,
       });
     }
-    createdContentIds.push(content.id);
+    await publishContentEvent({
+      type: "content:created",
+      contentId: content.id,
+      queryId,
+      runId,
+      platform: content.platform,
+      time: content.time.toISOString(),
+    });
 
     const progress = Math.min(
       100,
@@ -196,12 +200,6 @@ export async function runFocusCollector(runId: string, queryId: string) {
       meta: { summaryCount: cleaned.length },
     },
   });
-
-  if (createdContentIds.length) {
-    await saveTopicAssociation(queryId, createdContentIds, {
-      latestRunId: runId,
-    });
-  }
 
   await send({
     type: "done",

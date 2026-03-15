@@ -1,5 +1,6 @@
 import prisma from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { scheduleQueryCollect } from "@/lib/queue";
 
 type QueryRow = Awaited<ReturnType<typeof prisma.query.findMany>> extends Array<
   infer R
@@ -115,6 +116,13 @@ export async function POST(req: Request) {
         connect: sourceIds?.map((id: string) => ({ id })) || [],
       },
     },
+  });
+
+  await scheduleQueryCollect({
+    queryId: query.id,
+    frequency: query.frequency,
+    cronSchedule: query.cronSchedule,
+    enabled: query.enabled,
   });
 
   return NextResponse.json(query);

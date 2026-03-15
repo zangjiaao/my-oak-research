@@ -9,6 +9,7 @@ import React, {
   useState,
 } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 
 export type ContentItem = {
   id: string;
@@ -130,6 +131,7 @@ export const FollowContentProvider = ({
   const [selectedContentId, setSelectedContentId] = useState<string | null>(
     null
   );
+  const queryClient = useQueryClient();
 
   const { from, to } = useMemo(
     () => buildDateRange(year, month, day),
@@ -146,6 +148,34 @@ export const FollowContentProvider = ({
     queryFn: () => fetchContents(queryFilters),
     placeholderData: (prev) => prev,
   });
+
+  useEffect(() => {
+    const es = new EventSource("/api/focus-bulletin/content/stream");
+    const refresh = () => {
+      queryClient.invalidateQueries({
+        queryKey: ["follow-content"],
+      });
+    };
+
+    es.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data?.type === "content:created") {
+          refresh();
+        }
+      } catch {
+        // ignore invalid payload
+      }
+    };
+
+    es.onerror = () => {
+      // browser auto-reconnects
+    };
+
+    return () => {
+      es.close();
+    };
+  }, [queryClient]);
 
   const contents: ContentItem[] = useMemo(
     () => data?.items ?? [],

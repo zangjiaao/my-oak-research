@@ -1,5 +1,6 @@
 import prisma from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { scheduleQueryCollect, unscheduleQueryCollect } from "@/lib/queue";
 
 export async function GET(
   req: Request,
@@ -95,6 +96,13 @@ export async function PATCH(
     },
   });
 
+  await scheduleQueryCollect({
+    queryId: query.id,
+    frequency: query.frequency,
+    cronSchedule: query.cronSchedule,
+    enabled: query.enabled,
+  });
+
   return NextResponse.json(query);
 }
 
@@ -103,6 +111,7 @@ export async function DELETE(
   { params: paramsPromise }: { params: Promise<{ id: string }> }
 ) {
   const params = await paramsPromise;
+  await unscheduleQueryCollect(params.id);
   await prisma.query.delete({
     where: { id: params.id },
   });

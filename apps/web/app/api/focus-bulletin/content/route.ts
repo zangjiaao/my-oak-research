@@ -2,14 +2,12 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import prisma from "@/lib/prisma";
 import type { Prisma, Content } from "@/app/generated/prisma";
-import { readTopicAssociation } from "@/lib/topic";
 
 const contentTypeSchema = z.enum(["Web", "Client", "Darknet"]);
 const ContentQuerySchema = z.object({
   platform: z.string().trim().min(1).optional(),
   type: contentTypeSchema.optional(),
   search: z.string().trim().min(1).optional(),
-  queryId: z.string().cuid().optional(),
   from: z.string().datetime().optional(),
   to: z.string().datetime().optional(),
   cursor: z.string().optional(),
@@ -53,7 +51,6 @@ export async function GET(request: Request) {
     platform,
     type: contentType,
     search,
-    queryId,
     from,
     to,
     cursor,
@@ -75,37 +72,6 @@ export async function GET(request: Request) {
       { title: { contains: search, mode: "insensitive" } },
       { summary: { contains: search, mode: "insensitive" } },
     ];
-  }
-
-  if (queryId) {
-    const query = await prisma.query.findUnique({
-      where: { id: queryId },
-      include: { keywords: { select: { id: true } } },
-    });
-
-    if (!query) {
-      return NextResponse.json(
-        { error: "Query not found" },
-        { status: 404 }
-      );
-    }
-
-    const association = readTopicAssociation(query.rules);
-    const associatedIds = association?.contentIds ?? [];
-    if (associatedIds.length > 0) {
-      where.id = { in: associatedIds };
-    } else if (query.keywords.length > 0) {
-      where.keywords = {
-        some: {
-          keywordId: { in: query.keywords.map((keyword) => keyword.id) },
-        },
-      };
-    } else {
-      return NextResponse.json({
-        items: [],
-        nextCursor: null,
-      });
-    }
   }
 
   if (from || to) {

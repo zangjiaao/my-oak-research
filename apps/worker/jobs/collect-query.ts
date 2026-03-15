@@ -6,8 +6,24 @@ import { logger } from "@/lib/logger";
 
 // In-process worker; in production consider running as a separate process
 export const collectWorker = createCollectWorker(async (job) => {
-  const { runId, queryId } = job.data;
-  logger.info("collect-query job started", { runId, queryId });
+  const { runId: inputRunId, queryId, trigger } = job.data;
+  let runId = inputRunId;
+  if (!runId) {
+    const run = await prisma.queryRun.create({
+      data: {
+        queryId,
+        status: "PENDING",
+        progress: 0,
+      },
+      select: { id: true },
+    });
+    runId = run.id;
+  }
+  if (!runId) {
+    throw new Error("Failed to initialize query run id");
+  }
+
+  logger.info("collect-query job started", { runId, queryId, trigger });
   try {
     await publishTaskEvent(runId, { type: "enqueue", message: "已入队" });
     await runFocusCollector(runId, queryId);
