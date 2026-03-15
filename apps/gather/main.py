@@ -12,7 +12,7 @@ import shutil
 import zipfile
 from pathlib import Path
 from urllib.parse import quote, urlparse, urlunparse
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from fastapi.responses import JSONResponse
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field, ValidationError
@@ -172,6 +172,9 @@ class _PlaywrightBrowserPoolEntry:
     browser: Any
     last_used_at: float
     idle_timeout_ms: int
+    context: Any | None = None
+    page: Any | None = None
+    lock: asyncio.Lock = field(default_factory=asyncio.Lock)
 
 
 _PLAYWRIGHT_BROWSER_POOL: dict[str, _PlaywrightBrowserPoolEntry] = {}
@@ -1250,6 +1253,7 @@ def _build_playwright_pool_key(request: FetchRequest, options: dict[str, Any], s
     user_id = str(options.get("pool_user_id") or "")
     session_id = str(options.get("pool_session_id") or "")
     driver = str(options.get("pool_driver") or "playwright")
+    target_fingerprint = _stable_hash(options.get("target_url") or "")
     proxy_fingerprint = _stable_hash(options.get("proxy") or {})
     auth_fingerprint = _stable_hash(storage_state or {})
     return "|".join(
@@ -1258,6 +1262,7 @@ def _build_playwright_pool_key(request: FetchRequest, options: dict[str, Any], s
             driver,
             user_id,
             session_id,
+            target_fingerprint,
             "1" if options["headless"] else "0",
             proxy_fingerprint,
             auth_fingerprint,
@@ -1266,20 +1271,32 @@ def _build_playwright_pool_key(request: FetchRequest, options: dict[str, Any], s
 
 
 async def _sweep_idle_playwright_browsers(now: float) -> None:
-    to_close: list[Any] = []
+    to_close: list[_PlaywrightBrowserPoolEntry] = []
     for key, entry in list(_PLAYWRIGHT_BROWSER_POOL.items()):
         idle_for_ms = int((now - entry.last_used_at) * 1000)
         if idle_for_ms >= entry.idle_timeout_ms:
             _PLAYWRIGHT_BROWSER_POOL.pop(key, None)
-            to_close.append(entry.browser)
-    for browser in to_close:
+            to_close.append(entry)
+    for entry in to_close:
         try:
-            await browser.close()
+            if entry.page is not None and not entry.page.is_closed():
+                await entry.page.close()
+        except Exception:
+            pass
+        try:
+            if entry.context is not None:
+                await entry.context.close()
+        except Exception:
+            pass
+        try:
+            await entry.browser.close()
         except Exception:
             pass
 
 
-async def _acquire_pooled_playwright_browser(playwright: Any, options: dict[str, Any], request: FetchRequest) -> Any:
+async def _acquire_pooled_playwright_entry(
+    playwright: Any, options: dict[str, Any], request: FetchRequest
+) -> tuple[str, _PlaywrightBrowserPoolEntry]:
     storage_state = request.auth_data if request.auth_data else options["storage_state"]
     pool_key = _build_playwright_pool_key(request, options, storage_state)
     now = asyncio.get_running_loop().time()
@@ -1292,18 +1309,51 @@ async def _acquire_pooled_playwright_browser(playwright: Any, options: dict[str,
                 _PLAYWRIGHT_BROWSER_POOL.pop(pool_key, None)
             else:
                 entry.last_used_at = now
-                return entry.browser
+                return pool_key, entry
 
         launch_options: dict[str, Any] = {"headless": options["headless"]}
         if options["proxy"] is not None:
             launch_options["proxy"] = options["proxy"]
         browser = await playwright.chromium.launch(**launch_options)
-        _PLAYWRIGHT_BROWSER_POOL[pool_key] = _PlaywrightBrowserPoolEntry(
+        entry = _PlaywrightBrowserPoolEntry(
             browser=browser,
             last_used_at=now,
             idle_timeout_ms=options["pool_idle_timeout_ms"],
         )
-        return browser
+        _PLAYWRIGHT_BROWSER_POOL[pool_key] = entry
+        return pool_key, entry
+
+
+async def _ensure_pooled_playwright_page(
+    entry: _PlaywrightBrowserPoolEntry, options: dict[str, Any], request: FetchRequest
+) -> Any:
+    if entry.context is None:
+        context_options: dict[str, Any] = {}
+        if request.auth_data:
+            context_options["storage_state"] = request.auth_data
+        elif options["storage_state"]:
+            context_options["storage_state"] = options["storage_state"]
+        entry.context = await entry.browser.new_context(**context_options)
+
+    if entry.page is None or entry.page.is_closed():
+        entry.page = await entry.context.new_page()
+
+    if options["target_url"]:
+        current_url = (entry.page.url or "").strip()
+        if not current_url or current_url == "about:blank":
+            await entry.page.goto(
+                options["target_url"],
+                wait_until=options["wait_until"],
+                timeout=options["navigation_timeout_ms"],
+            )
+            if options["wait_selector"]:
+                await entry.page.wait_for_selector(
+                    options["wait_selector"], timeout=options["navigation_timeout_ms"]
+                )
+            if options["post_navigation_wait_ms"] > 0:
+                await entry.page.wait_for_timeout(options["post_navigation_wait_ms"])
+
+    return entry.page
 
 
 async def _get_playwright_runtime() -> Any:
@@ -1420,64 +1470,91 @@ async def _run_playwright_eval_script(request: FetchRequest) -> list[CleanItem]:
 
     try:
         playwright = await _get_playwright_runtime()
-        pooled_browser = None
+        pooled_entry: _PlaywrightBrowserPoolEntry | None = None
+        pool_key: str | None = None
         should_close_browser = True
         if options["pool_enabled"]:
-            browser = await _acquire_pooled_playwright_browser(playwright, options, request)
-            pooled_browser = browser
+            pool_key, pooled_entry = await _acquire_pooled_playwright_entry(
+                playwright, options, request
+            )
             should_close_browser = False
+            browser = pooled_entry.browser
         else:
             launch_options: dict[str, Any] = {"headless": options["headless"]}
             if options["proxy"] is not None:
                 launch_options["proxy"] = options["proxy"]
             browser = await playwright.chromium.launch(**launch_options)
-        context_options: dict[str, Any] = {}
-        if request.auth_data:
-            context_options["storage_state"] = request.auth_data
-        elif options["storage_state"]:
-            context_options["storage_state"] = options["storage_state"]
-        context = await browser.new_context(**context_options)
+
+        context = None
+        page = None
         try:
-            page = await context.new_page()
-            if options["target_url"]:
-                await page.goto(
-                    options["target_url"],
-                    wait_until=options["wait_until"],
-                    timeout=options["navigation_timeout_ms"],
-                )
-                if options["wait_selector"]:
-                    await page.wait_for_selector(options["wait_selector"], timeout=options["navigation_timeout_ms"])
-                if options["post_navigation_wait_ms"] > 0:
-                    await page.wait_for_timeout(options["post_navigation_wait_ms"])
-            try:
-                eval_result = await page.evaluate(script_to_run)
-            except Exception as error:
-                fallback_target_url = _resolve_default_target_url(request.platform)
-                if (
-                    not options["target_url"]
-                    and fallback_target_url
-                    and _looks_like_origin_security_error(error)
-                ):
+            if pooled_entry is not None:
+                async with pooled_entry.lock:
+                    page = await _ensure_pooled_playwright_page(pooled_entry, options, request)
+                    try:
+                        eval_result = await page.evaluate(script_to_run)
+                    except Exception as error:
+                        fallback_target_url = _resolve_default_target_url(request.platform)
+                        if (
+                            not options["target_url"]
+                            and fallback_target_url
+                            and _looks_like_origin_security_error(error)
+                        ):
+                            await page.goto(
+                                fallback_target_url,
+                                wait_until=options["wait_until"],
+                                timeout=options["navigation_timeout_ms"],
+                            )
+                            if options["post_navigation_wait_ms"] > 0:
+                                await page.wait_for_timeout(options["post_navigation_wait_ms"])
+                            eval_result = await page.evaluate(script_to_run)
+                        else:
+                            raise
+            else:
+                context_options: dict[str, Any] = {}
+                if request.auth_data:
+                    context_options["storage_state"] = request.auth_data
+                elif options["storage_state"]:
+                    context_options["storage_state"] = options["storage_state"]
+                context = await browser.new_context(**context_options)
+                page = await context.new_page()
+                if options["target_url"]:
                     await page.goto(
-                        fallback_target_url,
+                        options["target_url"],
                         wait_until=options["wait_until"],
                         timeout=options["navigation_timeout_ms"],
                     )
+                    if options["wait_selector"]:
+                        await page.wait_for_selector(
+                            options["wait_selector"], timeout=options["navigation_timeout_ms"]
+                        )
                     if options["post_navigation_wait_ms"] > 0:
                         await page.wait_for_timeout(options["post_navigation_wait_ms"])
+                try:
                     eval_result = await page.evaluate(script_to_run)
-                else:
-                    raise
+                except Exception as error:
+                    fallback_target_url = _resolve_default_target_url(request.platform)
+                    if (
+                        not options["target_url"]
+                        and fallback_target_url
+                        and _looks_like_origin_security_error(error)
+                    ):
+                        await page.goto(
+                            fallback_target_url,
+                            wait_until=options["wait_until"],
+                            timeout=options["navigation_timeout_ms"],
+                        )
+                        if options["post_navigation_wait_ms"] > 0:
+                            await page.wait_for_timeout(options["post_navigation_wait_ms"])
+                        eval_result = await page.evaluate(script_to_run)
+                    else:
+                        raise
         finally:
-            await context.close()
-            if pooled_browser is not None:
+            if context is not None:
+                await context.close()
+            if pooled_entry is not None and pool_key is not None:
                 async with _PLAYWRIGHT_POOL_LOCK:
                     now = asyncio.get_running_loop().time()
-                    pool_key = _build_playwright_pool_key(
-                        request,
-                        options,
-                        request.auth_data if request.auth_data else options["storage_state"],
-                    )
                     entry = _PLAYWRIGHT_BROWSER_POOL.get(pool_key)
                     if entry is not None:
                         entry.last_used_at = now
