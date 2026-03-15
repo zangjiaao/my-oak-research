@@ -14,6 +14,7 @@ import {
 import { llmGateway, browserAgent } from "@oak/agents";
 import { publishTaskEvent } from "@/lib/queue";
 import { redact, stripPromptLike } from "@/lib/security";
+import { saveTopicAssociation } from "@/lib/topic";
 
 const SummarySchema = z.object({
   summary: z.string().min(30).max(400),
@@ -64,8 +65,15 @@ export async function runFocusCollector(runId: string, queryId: string) {
         include: {
           web: true,
           search: true,
-          social: true,
+          social: {
+            include: {
+              credential: true,
+              proxy: true,
+            },
+          },
           darknet: true,
+          credential: true,
+          proxy: true,
         },
       },
     },
@@ -115,6 +123,7 @@ export async function runFocusCollector(runId: string, queryId: string) {
   });
 
   const keywordsStr = expandedKeywords.join("; ") || "无关键词";
+  const createdContentIds: string[] = [];
 
   for (let i = 0; i < cleaned.length; i++) {
     const item = cleaned[i];
@@ -139,6 +148,8 @@ export async function runFocusCollector(runId: string, queryId: string) {
         time: item.time ?? new Date(),
         url: item.url,
         meta: {
+          queryId,
+          runId,
           sourceFingerprint: item.fingerprint,
           driver: item.driver,
           matchedKeywords: item.matchedKeywords ?? [],
@@ -163,6 +174,7 @@ export async function runFocusCollector(runId: string, queryId: string) {
         skipDuplicates: true,
       });
     }
+    createdContentIds.push(content.id);
 
     const progress = Math.min(
       100,
@@ -184,6 +196,13 @@ export async function runFocusCollector(runId: string, queryId: string) {
       meta: { summaryCount: cleaned.length },
     },
   });
+
+  if (createdContentIds.length) {
+    await saveTopicAssociation(queryId, createdContentIds, {
+      latestRunId: runId,
+    });
+  }
+
   await send({
     type: "done",
     message: "任务完成",
@@ -537,26 +556,48 @@ async function fetchSocialSource(
   console.log(`[collector] fetchSocialSource ${source.name} via Python Gather`);
 
   const gatherUrl = process.env.GATHER_SERVICE_URL || "http://localhost:8000";
+  const gatherPlatform = mapGatherPlatform(source.social?.platform);
   const sourceConfig = source.social?.config || {};
+  const sourceConfigObj = asObject(sourceConfig);
+  const authData = resolveGatherAuthData(source);
+  const proxyUrl =
+    source.social?.proxy?.url ??
+    source.proxy?.url ??
+    null;
+  const baseConfig =
+    proxyUrl
+      ? {
+          ...sourceConfigObj,
+          network: {
+            ...asObject(sourceConfigObj.network),
+            proxy: {
+              url: proxyUrl,
+            },
+          },
+        }
+      : sourceConfigObj;
   const config =
     keywordFilterTerms.length > 0
       ? {
-          ...sourceConfig,
+          ...baseConfig,
           keywordFilter: {
-            ...((sourceConfig as Record<string, unknown>).keywordFilter as Record<string, unknown> | undefined),
+            ...asObject((baseConfig as Record<string, unknown>).keywordFilter),
             keywords: keywordFilterTerms,
           },
         }
-      : sourceConfig;
+      : baseConfig;
 
   try {
-    const response = await fetch(`${gatherUrl}/fetch`, {
+    const response = await fetch(`${gatherUrl}/v2/fetch`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        platform: source.social?.platform || "unknown",
+        platform: gatherPlatform,
         config: config,
-        source_id: source.id,
+        sourceId: source.id,
+        authData,
+        responseFormats: ["text", "markdown"],
+        driver: "playwright",
       }),
     });
 
@@ -566,7 +607,7 @@ async function fetchSocialSource(
     }
 
     const data = await response.json();
-    return data as CleanItem[];
+    return normalizeGatherItems(data, source);
   } catch (error) {
     console.error(`[collector] fetchSocialSource error:`, error);
     // Fallback to basic info if gather service is down
@@ -582,6 +623,86 @@ async function fetchSocialSource(
       },
     ];
   }
+}
+
+function mapGatherPlatform(platform?: string | null): string {
+  if (!platform) return "unknown";
+  return platform.toLowerCase();
+}
+
+function asObject(value: unknown): Record<string, unknown> {
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    return value as Record<string, unknown>;
+  }
+  return {};
+}
+
+function resolveGatherAuthData(source: SocialMediaSource): Record<string, unknown> | null {
+  const socialCredential = source.social?.credential?.data;
+  if (socialCredential && typeof socialCredential === "object" && !Array.isArray(socialCredential)) {
+    return socialCredential as Record<string, unknown>;
+  }
+  const sourceCredential = source.credential?.data;
+  if (sourceCredential && typeof sourceCredential === "object" && !Array.isArray(sourceCredential)) {
+    return sourceCredential as Record<string, unknown>;
+  }
+  return null;
+}
+
+function normalizeGatherItems(payload: unknown, source: SocialMediaSource): CleanItem[] {
+  if (!Array.isArray(payload)) {
+    return [];
+  }
+  const normalized: CleanItem[] = [];
+  for (const item of payload) {
+    if (!item || typeof item !== "object") continue;
+    const row = item as Record<string, unknown>;
+    const text =
+      typeof row.text === "string"
+        ? row.text
+        : typeof row.markdown === "string"
+          ? row.markdown
+          : "";
+    if (!text) continue;
+
+    const markdown =
+      typeof row.markdown === "string" && row.markdown.trim()
+        ? row.markdown
+        : text;
+    const parsedTime =
+      typeof row.time === "string" || row.time instanceof Date
+        ? new Date(row.time)
+        : null;
+
+    normalized.push({
+      title: typeof row.title === "string" ? row.title : undefined,
+      text,
+      markdown,
+      platform:
+        typeof row.platform === "string" && row.platform.trim()
+          ? row.platform
+          : source.name,
+      url: typeof row.url === "string" ? row.url : undefined,
+      time:
+        parsedTime && !Number.isNaN(parsedTime.getTime())
+          ? parsedTime
+          : new Date(),
+      sourceId: source.id,
+      sourceType: source.type,
+      driver: typeof row.driver === "string" ? row.driver : "python-gather",
+      matchedKeywords: Array.isArray(row.matchedKeywords)
+        ? row.matchedKeywords.filter((entry): entry is string => typeof entry === "string")
+        : [],
+      keywordMatchScore:
+        typeof row.keywordMatchScore === "number"
+          ? row.keywordMatchScore
+          : undefined,
+      recordId: typeof row.recordId === "string" ? row.recordId : undefined,
+      recordType: typeof row.recordType === "string" ? row.recordType : undefined,
+      recordIndex: typeof row.recordIndex === "number" ? row.recordIndex : undefined,
+    });
+  }
+  return normalized;
 }
 
 async function summarizeWithRetry(

@@ -7,6 +7,7 @@ import {
   SocialMediaSourceConfig,
   SearchEngineSourceConfig,
   Proxy,
+  Credential,
   QueryRun,
   TaskStatus,
 } from "@/app/generated/prisma";
@@ -24,18 +25,28 @@ export type QueryWithAggregations = Query & {
   latestRun?: QueryRunSummary;
 };
 
-export type WebSource = Source & { web: WebSourceConfig; proxy?: Proxy | null };
+export type WebSource = Source & {
+  web: WebSourceConfig;
+  proxy?: Proxy | null;
+  credential?: Credential | null;
+};
 export type DarknetSource = Source & {
   darknet: DarknetSourceConfig;
   proxy?: Proxy | null;
+  credential?: Credential | null;
 };
 export type SocialMediaSource = Source & {
-  social: SocialMediaSourceConfig;
+  social: SocialMediaSourceConfig & {
+    proxy?: Proxy | null;
+    credential?: Credential | null;
+  };
   proxy?: Proxy | null;
+  credential?: Credential | null;
 };
 export type SearchEngineSource = Source & {
   search: SearchEngineSourceConfig;
   proxy?: Proxy | null;
+  credential?: Credential | null;
 };
 
 export type SourceWithRelations =
