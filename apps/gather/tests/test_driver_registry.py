@@ -86,3 +86,7 @@ def test_fetch_v2_driver_selected(monkeypatch):
     assert selected_driver.fetch_calls == 1
     assert default_driver.fetch_calls == 0
     assert response.json()[0]["platform"] == "stub-driver"
+
+
+def test_main_driver_registry_contains_three_drivers():
+    assert set(main.driver_registry.available_drivers) == {"agent-browser", "playwright", "xhttp"}
