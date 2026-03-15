@@ -119,6 +119,25 @@ class KeywordFilterConfigError(ValueError):
     pass
 
 
+_BB_SITE_PLATFORM_ALIAS = {
+    "x": "twitter",
+    "twitter": "twitter",
+    "xhs": "xiaohongshu",
+}
+
+_BB_SITE_TARGET_URL = {
+    "twitter": "https://x.com",
+    "xiaohongshu": "https://www.xiaohongshu.com",
+    "reddit": "https://www.reddit.com",
+    "douyin": "https://www.douyin.com",
+    "tiktok": "https://www.tiktok.com",
+    "weibo": "https://weibo.com",
+    "telegram": "https://web.telegram.org",
+    "instagram": "https://www.instagram.com",
+    "facebook": "https://www.facebook.com",
+}
+
+
 def build_error_response(
     status_code: int,
     code: str,
@@ -136,7 +155,131 @@ async def root():
     return {"status": "ok", "service": "oak-gather"}
 
 
-async def _playwright_verify_auth(request: VerifyAuthRequest):
+def _resolve_bb_site_verify_script(platform: str) -> Path | None:
+    normalized = _BB_SITE_PLATFORM_ALIAS.get(platform.lower(), platform.lower())
+    script_dir_candidates: list[Path] = []
+    configured_dir = os.getenv("BB_SITES_DIR")
+    if configured_dir:
+        script_dir_candidates.append(Path(configured_dir).expanduser())
+    script_dir_candidates.extend(
+        [
+            Path("~/.bb-browser/bb-sites").expanduser(),
+            Path("~/Reference/bb-sites").expanduser(),
+        ]
+    )
+
+    for base_dir in script_dir_candidates:
+        for suffix in ("user.js", "user.ts"):
+            candidate = base_dir / normalized / suffix
+            if candidate.exists():
+                return candidate
+    return None
+
+
+async def _verify_auth_with_bb_site_script(request: VerifyAuthRequest) -> VerifyAuthResponse | None:
+    platform = request.platform.lower()
+    normalized = _BB_SITE_PLATFORM_ALIAS.get(platform, platform)
+    target_url = _BB_SITE_TARGET_URL.get(normalized)
+    if not target_url:
+        return None
+
+    script_path = _resolve_bb_site_verify_script(platform)
+    if not script_path:
+        return None
+
+    script_body = _strip_playwright_meta_block(script_path.read_text(encoding="utf-8"))
+    if not script_body:
+        return None
+
+    from playwright.async_api import TimeoutError as PlaywrightTimeoutError
+    from playwright.async_api import async_playwright
+
+    try:
+        async with async_playwright() as playwright:
+            browser = await playwright.chromium.launch(headless=request.headless)
+            context = await browser.new_context(storage_state=request.auth_data)
+            page = await context.new_page()
+            try:
+                await page.goto(target_url, wait_until="domcontentloaded", timeout=30000)
+                await page.wait_for_timeout(1200)
+                result = await page.evaluate(f"({script_body})({{}})")
+            finally:
+                await context.close()
+                await browser.close()
+    except PlaywrightTimeoutError as error:
+        print(f"[gather] bb-site verify timeout for {platform}, fallback to legacy verify: {error}")
+        return None
+    except Exception as error:
+        print(f"[gather] bb-site verify failed for {platform}, fallback to legacy verify: {error}")
+        return None
+
+    if isinstance(result, dict):
+        error_message = result.get("error")
+        if error_message:
+            return VerifyAuthResponse(
+                valid=False,
+                message=str(error_message),
+                details={
+                    "platform": platform,
+                    "hint": result.get("hint"),
+                    "verifyMethod": "bb-site-script",
+                    "scriptPath": str(script_path),
+                },
+            )
+        user = {
+            key: result.get(key)
+            for key in ("id", "user_id", "uid", "screen_name", "username", "name")
+            if result.get(key) is not None
+        }
+        if user:
+            return VerifyAuthResponse(
+                valid=True,
+                message=f"{request.platform} authentication is valid",
+                details={
+                    "platform": request.platform,
+                    "verifyMethod": "bb-site-script",
+                    "scriptPath": str(script_path),
+                    "user": user,
+                },
+            )
+
+    if isinstance(result, list) and result:
+        return VerifyAuthResponse(
+            valid=True,
+            message=f"{request.platform} authentication is valid",
+            details={
+                "platform": request.platform,
+                "verifyMethod": "bb-site-script",
+                "scriptPath": str(script_path),
+                "resultCount": len(result),
+            },
+        )
+
+    if result is True:
+        return VerifyAuthResponse(
+            valid=True,
+            message=f"{request.platform} authentication is valid",
+            details={
+                "platform": request.platform,
+                "verifyMethod": "bb-site-script",
+                "scriptPath": str(script_path),
+            },
+        )
+
+    if result is False:
+        return VerifyAuthResponse(
+            valid=False,
+            message=f"{request.platform} authentication is invalid or expired",
+            details={
+                "platform": request.platform,
+                "verifyMethod": "bb-site-script",
+                "scriptPath": str(script_path),
+            },
+        )
+    return None
+
+
+async def _playwright_verify_auth_legacy(request: VerifyAuthRequest):
     """
     Verify if the provided authentication data (cookies) is valid for the specified platform.
     This endpoint is used when users upload auth.json files to check if they're still valid.
@@ -377,6 +520,13 @@ async def _playwright_verify_auth(request: VerifyAuthRequest):
             message=f"Error during verification: {str(e)}",
             details={"error": str(e)}
         )
+
+
+async def _playwright_verify_auth(request: VerifyAuthRequest):
+    scripted_result = await _verify_auth_with_bb_site_script(request)
+    if scripted_result is not None:
+        return scripted_result
+    return await _playwright_verify_auth_legacy(request)
 
 
 async def _playwright_fetch_data(request: FetchRequest):

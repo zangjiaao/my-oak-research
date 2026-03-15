@@ -95,6 +95,8 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
 验证 cookies 是否有效。
 
+默认会优先尝试 bb-site 脚本校验（例如 `twitter/user.js` 或 `twitter/user.ts`），若未找到脚本或脚本执行失败，会回退到 gather 内置平台 client 校验。可通过 `BB_SITES_DIR` 指定 bb-site 根目录（默认按 `~/.bb-browser/bb-sites`、`~/Reference/bb-sites` 依次查找）。
+
 **请求体**：
 ```json
 {
