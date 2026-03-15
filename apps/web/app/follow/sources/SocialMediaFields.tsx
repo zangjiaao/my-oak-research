@@ -628,36 +628,8 @@ export const SocialMediaFields = ({
 
       {socialPlatform === "X" && (
         <>
-          <div className="grid gap-3">
-            <Label htmlFor="social.config.user">User</Label>
-            <Input
-              id="social.config.user"
-              placeholder="X User (e.g., @username)"
-              {...register("social.config.user")}
-            />
-            <ErrorMessage>{getConfigErrorMessage("user")}</ErrorMessage>
-          </div>
-          <div className="grid gap-3">
-            <Label htmlFor="social.config.listId">List ID</Label>
-            <Input
-              id="social.config.listId"
-              placeholder="X List ID"
-              {...register("social.config.listId")}
-            />
-            <ErrorMessage>{getConfigErrorMessage("listId")}</ErrorMessage>
-          </div>
-          <div className="grid gap-3">
-            <Label htmlFor="social.config.query">Query</Label>
-            <Input
-              id="social.config.query"
-              placeholder="Search query"
-              {...register("social.config.query")}
-            />
-            <ErrorMessage>{getConfigErrorMessage("query")}</ErrorMessage>
-          </div>
-
           <div className="grid gap-3 p-4 border rounded-lg bg-muted/30">
-            <Label className="text-base font-medium">Playwright Task Params</Label>
+            <Label className="text-base font-medium">Playwright Task Params (Required)</Label>
 
             <div className="grid gap-3">
               <Label htmlFor="social.config.playwright.mode">Mode</Label>
@@ -731,6 +703,7 @@ export const SocialMediaFields = ({
                 placeholder="akokoi1"
                 {...register("social.config.playwright.args.screen_name")}
               />
+              <ErrorMessage>{getConfigErrorMessage("playwright.args.screen_name")}</ErrorMessage>
             </div>
 
             <div className="grid gap-3">

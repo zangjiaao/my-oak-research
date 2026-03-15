@@ -177,35 +177,20 @@ export const SocialConfigByPlatform = z.discriminatedUnion("platform", [
     platform: z.literal("X"),
     config: z
       .object({
-        user: z.string().optional(),
-        listId: z.string().optional(),
-        query: z.string().optional(),
-        playwright: z
-          .object({
-            mode: z.enum(["eval-js"]).optional(),
-            headless: z.boolean().optional(),
-            targetUrl: z.string().url().optional(),
-            scriptPath: z.string().min(1).optional(),
-            stateFile: z.string().min(1).optional(),
-            args: z
-              .object({
-                screen_name: z.string().optional(),
-                count: z.string().optional(),
-              })
-              .optional(),
-          })
-          .optional(),
+        playwright: z.object({
+          mode: z.enum(["eval-js"]).default("eval-js"),
+          headless: z.boolean().default(false),
+          targetUrl: z.string().url().default("https://x.com"),
+          scriptPath: z.string().min(1),
+          stateFile: z.string().min(1),
+          args: z.object({
+            screen_name: z.string().min(1),
+            count: z.string().optional(),
+          }),
+        }),
       })
-      .refine((v) => {
-        const hasLegacy = Boolean(v.user || v.listId || v.query);
-        const hasPlaywright = Boolean(
-          v.playwright?.scriptPath ||
-            v.playwright?.args?.screen_name ||
-            v.playwright?.args?.count
-        );
-        return hasLegacy || hasPlaywright;
-      }, {
-        message: "X: provide user/listId/query or playwright params",
+      .refine((v) => Boolean(v.playwright.scriptPath && v.playwright.stateFile), {
+        message: "X: playwright scriptPath/stateFile are required",
       }),
     credentialId: cuidOpt,
     proxyId: cuidOpt,
