@@ -178,11 +178,13 @@ const getDefaultValues = (
       }
       const defaultSocial: SocialFormValues["social"] = {
         platform: "X",
-        config: {} as {
-          user?: string;
-          listId?: string;
-          query?: string;
-        },
+        config: {
+          playwright: {
+            mode: "eval-js",
+            headless: false,
+            targetUrl: "https://x.com",
+          },
+        } as any,
         credentialId: null,
         proxyId: null,
       };

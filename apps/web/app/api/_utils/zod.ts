@@ -180,9 +180,32 @@ export const SocialConfigByPlatform = z.discriminatedUnion("platform", [
         user: z.string().optional(),
         listId: z.string().optional(),
         query: z.string().optional(),
+        playwright: z
+          .object({
+            mode: z.enum(["eval-js"]).optional(),
+            headless: z.boolean().optional(),
+            targetUrl: z.string().url().optional(),
+            scriptPath: z.string().min(1).optional(),
+            stateFile: z.string().min(1).optional(),
+            args: z
+              .object({
+                screen_name: z.string().optional(),
+                count: z.string().optional(),
+              })
+              .optional(),
+          })
+          .optional(),
       })
-      .refine((v) => v.user || v.listId || v.query, {
-        message: "X: provide at least one of user/listId/query",
+      .refine((v) => {
+        const hasLegacy = Boolean(v.user || v.listId || v.query);
+        const hasPlaywright = Boolean(
+          v.playwright?.scriptPath ||
+            v.playwright?.args?.screen_name ||
+            v.playwright?.args?.count
+        );
+        return hasLegacy || hasPlaywright;
+      }, {
+        message: "X: provide user/listId/query or playwright params",
       }),
     credentialId: cuidOpt,
     proxyId: cuidOpt,
@@ -469,4 +492,3 @@ export const QueryUpdateSchema = QueryCreateSchema.partial().superRefine((data, 
     });
   }
 });
-

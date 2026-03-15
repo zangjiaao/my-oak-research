@@ -135,7 +135,12 @@ export const SocialMediaFields = ({
   };
 
   const getConfigErrorMessage = (key: string) => {
-    const value = socialConfigErrors?.[key];
+    const value = key
+      .split(".")
+      .reduce<unknown>((acc, part) => {
+        if (!acc || typeof acc !== "object") return undefined;
+        return (acc as Record<string, unknown>)[part];
+      }, socialConfigErrors as unknown);
     if (!value) return undefined;
     if (
       typeof value === "object" &&
@@ -400,6 +405,11 @@ export const SocialMediaFields = ({
                 setShowUploadForm(false);
                 if (setValue) {
                   setValue("social.credentialId", null);
+                  if (value === "X") {
+                    setValue("social.config.playwright.mode", "eval-js");
+                    setValue("social.config.playwright.headless", false);
+                    setValue("social.config.playwright.targetUrl", "https://x.com");
+                  }
                 }
               }}
               placeholder="Select a social media platform"
@@ -644,6 +654,93 @@ export const SocialMediaFields = ({
               {...register("social.config.query")}
             />
             <ErrorMessage>{getConfigErrorMessage("query")}</ErrorMessage>
+          </div>
+
+          <div className="grid gap-3 p-4 border rounded-lg bg-muted/30">
+            <Label className="text-base font-medium">Playwright Task Params</Label>
+
+            <div className="grid gap-3">
+              <Label htmlFor="social.config.playwright.mode">Mode</Label>
+              <Controller
+                name="social.config.playwright.mode"
+                control={control}
+                render={({ field }) => (
+                  <ControlledSelect
+                    value={(field.value as string) || "eval-js"}
+                    onValueChange={field.onChange}
+                    placeholder="Select mode"
+                  >
+                    <SelectItem value="eval-js">eval-js</SelectItem>
+                  </ControlledSelect>
+                )}
+              />
+            </div>
+
+            <div className="flex items-center gap-3">
+              <Controller
+                name="social.config.playwright.headless"
+                control={control}
+                render={({ field }) => (
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(field.value)}
+                      onChange={(e) => field.onChange(e.target.checked)}
+                      className="rounded border-gray-300"
+                    />
+                    <span className="text-sm">Headless</span>
+                  </label>
+                )}
+              />
+            </div>
+
+            <div className="grid gap-3">
+              <Label htmlFor="social.config.playwright.targetUrl">Target URL</Label>
+              <Input
+                id="social.config.playwright.targetUrl"
+                placeholder="https://x.com"
+                {...register("social.config.playwright.targetUrl")}
+              />
+              <ErrorMessage>{getConfigErrorMessage("playwright.targetUrl")}</ErrorMessage>
+            </div>
+
+            <div className="grid gap-3">
+              <Label htmlFor="social.config.playwright.scriptPath">Script Path</Label>
+              <Input
+                id="social.config.playwright.scriptPath"
+                placeholder="/Users/xxx/Reference/bb-sites/twitter/tweets.js"
+                {...register("social.config.playwright.scriptPath")}
+              />
+              <ErrorMessage>{getConfigErrorMessage("playwright.scriptPath")}</ErrorMessage>
+            </div>
+
+            <div className="grid gap-3">
+              <Label htmlFor="social.config.playwright.stateFile">State File</Label>
+              <Input
+                id="social.config.playwright.stateFile"
+                placeholder=".auth/x_auth.json"
+                {...register("social.config.playwright.stateFile")}
+              />
+              <ErrorMessage>{getConfigErrorMessage("playwright.stateFile")}</ErrorMessage>
+            </div>
+
+            <div className="grid gap-3">
+              <Label htmlFor="social.config.playwright.args.screen_name">Args.screen_name</Label>
+              <Input
+                id="social.config.playwright.args.screen_name"
+                placeholder="akokoi1"
+                {...register("social.config.playwright.args.screen_name")}
+              />
+            </div>
+
+            <div className="grid gap-3">
+              <Label htmlFor="social.config.playwright.args.count">Args.count</Label>
+              <Input
+                id="social.config.playwright.args.count"
+                placeholder="20"
+                {...register("social.config.playwright.args.count")}
+              />
+            </div>
           </div>
         </>
       )}
