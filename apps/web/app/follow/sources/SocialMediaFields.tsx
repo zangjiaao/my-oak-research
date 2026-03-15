@@ -895,7 +895,7 @@ export const SocialMediaFields = ({
               </div>
 
               <div className="grid gap-3 md:col-span-2">
-                <Label htmlFor="social.config.playwright.scriptPath">Script Path</Label>
+                <Label htmlFor="social.config.playwright.scriptPath">Script Template</Label>
                 <Controller
                   name="social.config.playwright.scriptPath"
                   control={control}
@@ -922,6 +922,16 @@ export const SocialMediaFields = ({
                 <p className="text-xs text-muted-foreground">
                   {selectedXScript.description}
                 </p>
+                <div className="grid gap-2">
+                  <Label htmlFor="social.config.playwright.scriptPath-input">
+                    Script Path (Editable)
+                  </Label>
+                  <Input
+                    id="social.config.playwright.scriptPath-input"
+                    placeholder="/Users/zangjiaao/Reference/bb-sites/twitter/tweets.js"
+                    {...register("social.config.playwright.scriptPath")}
+                  />
+                </div>
               </div>
             </div>
 
