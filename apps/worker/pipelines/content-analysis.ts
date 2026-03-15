@@ -126,6 +126,28 @@ export async function runFocusCollector(runId: string, queryId: string) {
   const keywordsStr = expandedKeywords.join("; ") || "无关键词";
   for (let i = 0; i < cleaned.length; i++) {
     const item = cleaned[i];
+    const existingContent = await findExistingContentBySourceRecord(item);
+    if (existingContent) {
+      const progress = Math.min(
+        100,
+        Math.floor(((i + 1) / cleaned.length) * 100)
+      );
+      await prisma.queryRun.update({
+        where: { id: runId },
+        data: { progress },
+      });
+      await send({
+        type: "dedup-skip",
+        message: "重复内容已跳过",
+        progress,
+        contentId: existingContent.id,
+        sourceId: item.sourceId,
+        recordId: item.recordId,
+        fingerprint: item.fingerprint,
+      });
+      continue;
+    }
+
     let summary: { summary: string; relevance: boolean };
     if (SKIP_AI_SUMMARY) {
       await send({
@@ -808,6 +830,57 @@ async function summarizeWithRetry(
     }
   }
   throw new Error("摘要失败");
+}
+
+async function findExistingContentBySourceRecord(
+  item: CleanItem
+): Promise<{ id: string } | null> {
+  if (item.recordId) {
+    const existingByRecordId = await prisma.content.findFirst({
+      where: {
+        AND: [
+          {
+            meta: {
+              path: ["sourceId"],
+              equals: item.sourceId,
+            },
+          },
+          {
+            meta: {
+              path: ["recordId"],
+              equals: item.recordId,
+            },
+          },
+        ],
+      },
+      select: { id: true },
+    });
+    if (existingByRecordId) return existingByRecordId;
+  }
+
+  if (item.fingerprint) {
+    return prisma.content.findFirst({
+      where: {
+        AND: [
+          {
+            meta: {
+              path: ["sourceId"],
+              equals: item.sourceId,
+            },
+          },
+          {
+            meta: {
+              path: ["sourceFingerprint"],
+              equals: item.fingerprint,
+            },
+          },
+        ],
+      },
+      select: { id: true },
+    });
+  }
+
+  return null;
 }
 
 function buildFallbackSummary(item: CleanItem): string {
