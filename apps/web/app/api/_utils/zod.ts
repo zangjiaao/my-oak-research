@@ -182,15 +182,21 @@ export const SocialConfigByPlatform = z.discriminatedUnion("platform", [
           headless: z.boolean().default(false),
           targetUrl: z.string().url().default("https://x.com"),
           scriptPath: z.string().min(1),
-          stateFile: z.string().min(1),
-          args: z.object({
-            screen_name: z.string().min(1),
-            count: z.string().optional(),
-          }),
+          args: z.preprocess((val) => {
+            const parsed = parseJson(val);
+            if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+              return {};
+            }
+            return Object.fromEntries(
+              Object.entries(parsed as Record<string, unknown>).map(
+                ([key, value]) => [key, value == null ? "" : String(value)]
+              )
+            );
+          }, z.record(z.string().min(1), z.string()).default({})),
         }),
       })
-      .refine((v) => Boolean(v.playwright.scriptPath && v.playwright.stateFile), {
-        message: "X: playwright scriptPath/stateFile are required",
+      .refine((v) => Boolean(v.playwright.scriptPath), {
+        message: "X: playwright scriptPath is required",
       }),
     credentialId: cuidOpt,
     proxyId: cuidOpt,

@@ -86,6 +86,25 @@ const PLATFORM_TO_KIND: Record<string, string> = {
   "FACEBOOK": "facebook-cookie",
 };
 
+const X_SCRIPT_PATH_OPTIONS = [
+  {
+    label: "Twitter Tweets Script",
+    value: "/Users/zangjiaao/Reference/bb-sites/twitter/tweets.js",
+  },
+] as const;
+
+type PlaywrightArgRow = {
+  id: string;
+  key: string;
+  value: string;
+};
+
+const createEmptyArgRow = (): PlaywrightArgRow => ({
+  id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+  key: "",
+  value: "",
+});
+
 export const SocialMediaFields = ({
   register,
   control,
@@ -109,6 +128,9 @@ export const SocialMediaFields = ({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [showUploadForm, setShowUploadForm] = useState(false);
   const [newCredentialName, setNewCredentialName] = useState("");
+  const [xArgRows, setXArgRows] = useState<PlaywrightArgRow[]>([
+    createEmptyArgRow(),
+  ]);
 
   // Credentials list
   const [credentials, setCredentials] = useState<CredentialInfo[]>([]);
@@ -181,6 +203,77 @@ export const SocialMediaFields = ({
 
     fetchCredentials();
   }, [socialPlatform, needsCookieAuth]);
+
+  useEffect(() => {
+    if (socialPlatform !== "X" || !setValue) return;
+
+    const scriptPath = watch("social.config.playwright.scriptPath");
+    if (!scriptPath) {
+      setValue("social.config.playwright.scriptPath", X_SCRIPT_PATH_OPTIONS[0].value, {
+        shouldDirty: false,
+      });
+    }
+
+    const rawArgs = watch("social.config.playwright.args");
+    const args =
+      rawArgs && typeof rawArgs === "object" && !Array.isArray(rawArgs)
+        ? (rawArgs as Record<string, unknown>)
+        : {};
+    const normalizedArgs = Object.fromEntries(
+      Object.entries(args).map(([key, value]) => [key, value == null ? "" : String(value)])
+    );
+    setValue("social.config.playwright.args", normalizedArgs, { shouldDirty: false });
+
+    const rows = Object.entries(normalizedArgs).map(([key, value]) => ({
+      id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+      key,
+      value,
+    }));
+    setXArgRows(rows.length > 0 ? rows : [createEmptyArgRow()]);
+  }, [socialPlatform, setValue, watch]);
+
+  const syncArgsToForm = useCallback(
+    (rows: PlaywrightArgRow[]) => {
+      if (!setValue) return;
+      const args = rows.reduce<Record<string, string>>((acc, row) => {
+        const key = row.key.trim();
+        if (!key) return acc;
+        acc[key] = row.value;
+        return acc;
+      }, {});
+      setValue("social.config.playwright.args", args, { shouldDirty: true });
+    },
+    [setValue]
+  );
+
+  const updateArgRow = useCallback(
+    (id: string, field: "key" | "value", nextValue: string) => {
+      setXArgRows((prev) => {
+        const nextRows = prev.map((row) =>
+          row.id === id ? { ...row, [field]: nextValue } : row
+        );
+        syncArgsToForm(nextRows);
+        return nextRows;
+      });
+    },
+    [syncArgsToForm]
+  );
+
+  const addArgRow = useCallback(() => {
+    setXArgRows((prev) => [...prev, createEmptyArgRow()]);
+  }, []);
+
+  const removeArgRow = useCallback(
+    (id: string) => {
+      setXArgRows((prev) => {
+        const nextRows = prev.filter((row) => row.id !== id);
+        const safeRows = nextRows.length > 0 ? nextRows : [createEmptyArgRow()];
+        syncArgsToForm(safeRows);
+        return safeRows;
+      });
+    },
+    [syncArgsToForm]
+  );
 
   // Handle file selection
   const handleFileSelect = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
@@ -409,6 +502,11 @@ export const SocialMediaFields = ({
                     setValue("social.config.playwright.mode", "eval-js");
                     setValue("social.config.playwright.headless", false);
                     setValue("social.config.playwright.targetUrl", "https://x.com");
+                    setValue(
+                      "social.config.playwright.scriptPath",
+                      X_SCRIPT_PATH_OPTIONS[0].value
+                    );
+                    setValue("social.config.playwright.args", {});
                   }
                 }
               }}
@@ -679,42 +777,64 @@ export const SocialMediaFields = ({
 
               <div className="grid gap-3">
                 <Label htmlFor="social.config.playwright.scriptPath">Script Path</Label>
-                <Input
-                  id="social.config.playwright.scriptPath"
-                  placeholder="/Users/xxx/Reference/bb-sites/twitter/tweets.js"
-                  {...register("social.config.playwright.scriptPath")}
+                <Controller
+                  name="social.config.playwright.scriptPath"
+                  control={control}
+                  render={({ field }) => (
+                    <ControlledSelect
+                      value={(field.value as string) || X_SCRIPT_PATH_OPTIONS[0].value}
+                      onValueChange={field.onChange}
+                      placeholder="Select script path"
+                    >
+                      {X_SCRIPT_PATH_OPTIONS.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </ControlledSelect>
+                  )}
                 />
                 <ErrorMessage>{getConfigErrorMessage("playwright.scriptPath")}</ErrorMessage>
               </div>
+            </div>
 
-              <div className="grid gap-3">
-                <Label htmlFor="social.config.playwright.stateFile">State File</Label>
-                <Input
-                  id="social.config.playwright.stateFile"
-                  placeholder=".auth/x_auth.json"
-                  {...register("social.config.playwright.stateFile")}
-                />
-                <ErrorMessage>{getConfigErrorMessage("playwright.stateFile")}</ErrorMessage>
+            <div className="grid gap-3 border rounded-md p-3 bg-background">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-medium">Args (key:value)</Label>
+                <Button type="button" variant="outline" size="sm" onClick={addArgRow}>
+                  <Plus className="h-3.5 w-3.5 mr-1" />
+                  Add
+                </Button>
               </div>
-
-              <div className="grid gap-3">
-                <Label htmlFor="social.config.playwright.args.screen_name">Args.screen_name</Label>
-                <Input
-                  id="social.config.playwright.args.screen_name"
-                  placeholder="akokoi1"
-                  {...register("social.config.playwright.args.screen_name")}
-                />
-                <ErrorMessage>{getConfigErrorMessage("playwright.args.screen_name")}</ErrorMessage>
+              <div className="grid gap-2 max-h-56 overflow-y-auto pr-1">
+                {xArgRows.map((row) => (
+                  <div key={row.id} className="grid grid-cols-[1fr_1fr_auto] gap-2 items-center">
+                    <Input
+                      value={row.key}
+                      onChange={(e) => updateArgRow(row.id, "key", e.target.value)}
+                      placeholder="key (e.g. screen_name)"
+                    />
+                    <Input
+                      value={row.value}
+                      onChange={(e) => updateArgRow(row.id, "value", e.target.value)}
+                      placeholder="value (e.g. akokoi1)"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => removeArgRow(row.id)}
+                      aria-label="Remove arg row"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
               </div>
-
-              <div className="grid gap-3">
-                <Label htmlFor="social.config.playwright.args.count">Args.count</Label>
-                <Input
-                  id="social.config.playwright.args.count"
-                  placeholder="20"
-                  {...register("social.config.playwright.args.count")}
-                />
-              </div>
+              <p className="text-xs text-muted-foreground">
+                空 key 不会保存，重复 key 以后输入的值为准。
+              </p>
+              <ErrorMessage>{getConfigErrorMessage("playwright.args")}</ErrorMessage>
             </div>
           </div>
         </>
