@@ -160,7 +160,7 @@ export const FollowContentProvider = ({
     es.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
-        if (data?.type === "content:created") {
+        if (data?.type === "content:created" || data?.type === "content:deleted") {
           refresh();
         }
       } catch {

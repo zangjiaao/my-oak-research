@@ -1,15 +1,30 @@
 "use client";
 
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { NewsDetailCard } from "@/components/business";
 import { useFollowContent } from "@/components/follow-content/context";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToggleFavorite, useFavorites } from "@/hooks/useFavorites";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 
 const FollowContent = () => {
   const { selectedContent, error } = useFollowContent();
   const toggleFavorite = useToggleFavorite();
+  const queryClient = useQueryClient();
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   // 获取所有收藏的内容 ID，用于判断是否已收藏
   const { data: favoritesData } = useFavorites({ limit: 50 });
@@ -19,6 +34,29 @@ const FollowContent = () => {
   );
 
   const isBookmarked = (id: string) => favoriteIds.has(id);
+
+  const handleDelete = async () => {
+    if (!selectedContent?.id || deleting) return;
+    setDeleting(true);
+    try {
+      const response = await fetch(`/api/focus-bulletin/content/${selectedContent.id}`, {
+        method: "DELETE",
+      });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error || "Failed to delete content");
+      }
+      toast.success("内容已删除");
+      setDeleteOpen(false);
+      await queryClient.invalidateQueries({ queryKey: ["follow-content"] });
+      await queryClient.invalidateQueries({ queryKey: ["favorites"] });
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "删除失败";
+      toast.error(message);
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   if (error) {
     return (
@@ -81,7 +119,32 @@ const FollowContent = () => {
             isFavorite: !currentlyBookmarked,
           });
         }}
+        onDeleteClick={() => setDeleteOpen(true)}
+        deleting={deleting}
       />
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>确认删除内容？</AlertDialogTitle>
+            <AlertDialogDescription>
+              删除后无法恢复，关联的收藏也会一并移除。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>取消</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deleting}
+              onClick={(event) => {
+                event.preventDefault();
+                void handleDelete();
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? "删除中..." : "确认删除"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

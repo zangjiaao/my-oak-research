@@ -1,6 +1,6 @@
 import React from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Bookmark } from "lucide-react";
+import { Bookmark, Trash2 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,8 @@ const NewsDetailCard = ({
   className,
   bookmarked,
   onBookmarkToggle,
+  onDeleteClick,
+  deleting,
 }: {
   title?: string;
   summary?: string;
@@ -19,6 +21,8 @@ const NewsDetailCard = ({
   className?: string;
   bookmarked?: boolean;
   onBookmarkToggle?: () => void;
+  onDeleteClick?: () => void;
+  deleting?: boolean;
 }) => {
   return (
     <Card
@@ -29,6 +33,20 @@ const NewsDetailCard = ({
           <div className="flex items-center gap-2 justify-between">
             <p className="text-4xl font-bold">{title ? title : "News Title"}</p>
             <div className="flex items-center gap-2">
+              {onDeleteClick && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-10 w-10 p-0 text-destructive"
+                  disabled={Boolean(deleting)}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onDeleteClick();
+                  }}
+                >
+                  <Trash2 className="size-7" />
+                </Button>
+              )}
               <Button
                 variant="ghost"
                 size="icon"
