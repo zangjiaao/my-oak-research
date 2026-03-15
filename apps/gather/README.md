@@ -95,16 +95,33 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
 验证 cookies 是否有效。
 
+默认会优先尝试脚本校验：先查找 gather 内置脚本 `apps/gather/site_scripts/<platform>/me.ts`，再查找外部 bb-site（优先 `me.ts` / `me.js`，兼容回退 `user.ts` / `user.js`）。若脚本不可用才回退到 gather 内置平台 client 校验。可通过 `BB_SITES_DIR` 指定外部 bb-site 根目录（默认按 `~/.bb-browser/bb-sites`、`~/Reference/bb-sites` 依次查找）。  
+`whatsapp` 平台优先使用 `agent-browser` 方式做登录态探测（更贴合其 persistent profile 场景）。
+
 **请求体**：
 ```json
 {
   "platform": "x",
+  "stateFile": ".auth/x_auth.json",
+  "verifyScriptPath": "/Users/me/Reference/bb-sites/twitter/me.ts",
+  "verifyArgs": { "screen_name": "openai" },
+  "verifyTargetUrl": "https://x.com",
+  "verifyTimeoutMs": 90000,
+  "verifyPostWaitMs": 5000,
   "auth_data": {
     "cookies": [...],
     "origins": []
   }
 }
 ```
+
+`auth_data` 与 `stateFile` 二选一即可（`stateFile` 为 gather 服务本机可访问路径）。
+可选覆盖字段：
+- `verifyScriptPath`: 指定本次校验使用的脚本路径（不传则按平台自动查找 `me.ts/me.js/user.ts/user.js`）
+- `verifyArgs`: 透传给校验脚本的参数对象
+- `verifyTargetUrl`: 指定校验跳转地址（不传则按平台默认地址）
+- `verifyTimeoutMs`: Playwright 导航超时（毫秒，默认 `60000`）
+- `verifyPostWaitMs`: 导航后额外等待时间（毫秒，默认 `3000`，单页应用建议适当调大）
 
 **响应**：
 ```json
@@ -118,7 +135,7 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 }
 ```
 
-### 获取数据 (POST /fetch)
+### 获取数据 v1（兼容）(POST /fetch)
 
 使用认证获取社交媒体数据。
 
@@ -134,6 +151,271 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
   "config": {
     "query": "AI",
     "maxResults": 10
+  }
+}
+```
+
+> `/fetch` 为兼容入口，继续使用 `source_id/auth_data`（snake_case）请求字段。
+
+### 获取数据 v2（推荐）(POST /v2/fetch)
+
+`/v2/fetch` 是稳定契约入口，返回结构与 `/fetch` 一致（数组 `CleanItem`）。
+
+**请求体**：
+```json
+{
+  "platform": "x",
+  "sourceId": "source_123",
+  "responseFormats": ["text", "markdown"],
+  "authData": {
+    "cookies": [...],
+    "origins": []
+  },
+  "config": {
+    "query": "AI",
+    "maxResults": 10
+  },
+  "driver": "playwright"
+}
+```
+
+`driver` 为可选扩展字段；可选值为 `xhttp`、`playwright`、`agent-browser`。未传时默认走 `playwright`。
+`responseFormats` 为可选字段，可选值：`"text"`、`"markdown"`：
+
+- `["text"]`：仅返回 `text`
+- `["markdown"]`：仅返回 `markdown`
+- `["text", "markdown"]`：同时返回两种（默认行为）
+
+`/fetch` 兼容入口使用 `response_formats`（snake_case）。
+
+### 通用网络代理配置（支持 HTTP/SOCKS/Tor）
+
+三个 driver（`xhttp` / `playwright` / `agent-browser`）都支持在 `config.network.proxy` 下统一配置代理：
+
+```json
+{
+  "config": {
+    "network": {
+      "proxy": {
+        "url": "socks5h://127.0.0.1:9050",
+        "username": "optional-user",
+        "password": "optional-pass",
+        "bypass": "localhost,127.0.0.1"
+      }
+    }
+  }
+}
+```
+
+- `url`: 必填，支持 `http://`、`https://`、`socks5://`、`socks5h://`
+- `username/password`: 可选，未写入 URL 时会自动注入
+- `bypass`: 可选，主要用于浏览器类 driver（Playwright / agent-browser）
+- Tor 推荐使用 `socks5h://127.0.0.1:9050`（DNS 也走 Tor）
+
+### xhttp 驱动（`driver: "xhttp"`）
+
+适用于直接调用搜索 API 或普通 HTTP 页面，不依赖浏览器环境。
+
+```json
+{
+  "platform": "search",
+  "sourceId": "source_search_demo",
+  "driver": "xhttp",
+  "config": {
+    "url": "https://api.example.com/search",
+    "method": "POST",
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "params": {
+      "q": "openai"
+    },
+    "json": {
+      "query": "openai",
+      "count": 20
+    },
+    "signature": {
+      "secretEnv": "SEARCH_API_SECRET",
+      "source": "query",
+      "timestampField": "ts",
+      "nonceField": "nonce",
+      "fields": ["q", "ts", "nonce"],
+      "algorithm": "hmac-sha256",
+      "digest": "hex",
+      "target": "header",
+      "header": "X-Signature"
+    },
+    "timeoutSeconds": 20,
+    "maxChars": 50000
+  }
+}
+```
+
+`xhttp` 常用参数：
+
+- `url` / `urls`: 必填，目标地址（支持 `http/https`）
+- `method`: 可选，默认 `GET`，支持 `GET/POST/PUT/PATCH/DELETE/HEAD/OPTIONS`
+- `headers`: 可选，请求头对象
+- `params`: 可选，Query 参数对象
+- `json` / `form` / `body`: 可选，请求体（只能传一种）
+- `signature`: 可选，按字段生成签名并写回 query/body/header（支持 `secret` 或 `secretEnv`）
+- `timeoutSeconds`: 可选，超时时间，默认 `15`
+- `maxChars`: 可选，返回 `text/markdown` 最大长度，默认 `20000`
+
+### Agent Browser 脚本化 PoC（`driver: "agent-browser"`）
+
+用于复杂交互场景（登录后页面、轮询点击、按脚本采集内容），通过 `agent-browser` CLI 执行步骤。
+
+```json
+{
+  "platform": "telegram",
+  "sourceId": "source_telegram_demo",
+  "driver": "agent-browser",
+  "config": {
+    "agentBrowser": {
+      "headed": true,
+      "profile": ".auth/telegram_profile",
+      "script": [
+        { "command": "open https://web.telegram.org/a/" },
+        { "command": "wait --load networkidle" },
+        { "command": "snapshot -i", "captureAs": "entry_snapshot" },
+        { "command": "click @e25", "repeat": 3, "intervalMs": 2000 },
+        { "command": "get text @e40", "captureAs": "messages" }
+      ]
+    }
+  }
+}
+```
+
+`agentBrowser` 常用参数：
+
+- `script`: 必填，步骤数组（每步至少包含 `command`）
+- `headed`: 可选，`true` 时可视化执行（等价于 `agent-browser --headed`）
+- `profile`: 可选，加载浏览器 profile（等价于 `--profile`）
+- `sessionName`: 可选，会话名（等价于 `--session-name`）
+- `stateFile`: 可选，加载 state 文件（等价于 `--state`）
+- `commandTimeoutMs`: 可选，单步超时，默认 30000
+- `instanceId`: 可选，复用上一次返回的实例 ID（不传则创建新实例）
+- `ownerId`: 可选，实例归属标识；复用实例时会校验归属
+- `sessionKey`: 可选，会话隔离键；复用实例时会校验
+- `instanceTtlSeconds`: 可选，实例空闲 TTL（默认 900 秒）；超过后会在后续请求中被自动清理
+- `heartbeat`: 可选，`true` 时可发送空脚本续租实例（需配合 `instanceId`）
+- `closeOnComplete`: 可选，默认 `false`，为 `true` 时任务结束自动关闭实例
+- `verbose`: 可选，默认 `true`，在 gather 服务日志中输出逐步执行信息（定位卡点时建议开启）
+
+> 并发建议：需要多实例并行时，不要在脚本中显式执行 `close`，由 worker 在任务结束时关闭；同时依赖空闲 TTL 做兜底回收。
+
+`driver: "agent-browser"` 的返回项会附带：
+
+- `instanceId`: 浏览器实例 ID（用于下一次请求复用）
+- `tabId`: 当前 tab 的逻辑 ID
+- `instanceActive`: 当前请求结束后实例是否仍存活
+
+### 循环操作（滚动 + 检查直到命中）
+
+支持在一次请求内执行循环步骤，直到命中条件或达到上限：
+
+```json
+{
+  "platform": "x",
+  "sourceId": "loop_demo_001",
+  "driver": "agent-browser",
+  "config": {
+    "agentBrowser": {
+      "instanceId": "ab-1234567890",
+      "ownerId": "user-1001",
+      "script": [
+        { "command": "open https://x.com/some-post" },
+        {
+          "loop": {
+            "maxIterations": 20,
+            "intervalMs": 1000,
+            "steps": [
+              { "command": "scroll down 900" },
+              { "command": "snapshot", "captureAs": "page_snapshot" }
+            ],
+            "breakWhen": {
+              "captureKey": "page_snapshot",
+              "textIncludes": ["目标关键词", "备选关键词"]
+            }
+          }
+        }
+      ],
+      "captureFilter": {
+        "keys": ["page_snapshot"],
+        "perLine": true,
+        "minChars": 20,
+        "dedupe": true,
+        "normalizeRefTags": true,
+        "startsWith": ["- article", "- text"]
+      }
+    }
+  }
+}
+```
+
+`loop` 参数说明（作为 `script` 中的一个步骤对象传入，不再支持 `config.agentBrowser.loop` 顶层写法）：
+
+- `maxIterations`: 最大循环次数（必填）
+- `intervalMs`: 每轮循环间隔（可选）
+- `steps`: 每轮要执行的步骤数组（必填）
+- `breakWhen.captureKey + breakWhen.textIncludes`: 当指定 capture 的最新输出包含目标文本时停止循环（`textIncludes` 支持字符串或字符串数组）
+
+`captureFilter` 参数说明（可选）：
+
+- `keys`: 仅对指定 capture key 生效（例如 `["page_snapshot"]`）
+- `perLine`: `true` 时按行拆分输出（适合 `snapshot` 粗提取）
+- `minChars`: 最小字符长度过滤（例如 `20`）
+- `dedupe`: 是否去重（同一 capture key 下按字符串精确去重）
+- `normalizeRefTags`: 仅用于去重 key 归一化，去掉形如 `[ref=e120]`（含行尾 ` [ref=e120]:`）的引用标签（保留原始输出文本，兼容旧别名 `normalizeRefSuffix`）
+- `startsWith`: 白名单前缀，只有以这些前缀开头的行才保留（支持别名 `star_with`）
+- `excludes`: 黑名单前缀，以这些前缀开头的行会被过滤（支持别名 `ext`）
+- `startsWith` 与 `excludes` 互斥，不能同时传
+
+命名关联说明（`captureAs` / `captureKey` / `captureFilter.keys`）：
+
+- `captureAs`: 在某一步里给输出命名，例如 `snapshot` 步骤写成 `"captureAs": "page_snapshot"`
+- `captureKey`: `breakWhen` 里指定要检查哪个命名输出
+- `captureFilter.keys`: 指定过滤规则只作用于哪些命名输出
+- `page_snapshot` 只是示例名，可以改成任意字符串，只要三处对得上
+
+### Agent Browser 心跳接口 (POST /v2/agent-browser/heartbeat)
+
+用于续租已存在实例的 TTL，不执行任何页面操作。
+
+```json
+{
+  "platform": "x",
+  "sourceId": "heartbeat_001",
+  "instanceId": "ab-1234567890",
+  "ownerId": "user-1001",
+  "sessionKey": "tenant-a",
+  "verbose": true
+}
+```
+
+响应示例：
+
+```json
+{
+  "instanceId": "ab-1234567890",
+  "tabId": "tab-1a2b3c4d",
+  "instanceActive": true,
+  "ttlSeconds": 900,
+  "expiresAt": "2026-03-13T10:15:00+00:00"
+}
+```
+
+### v2 错误结构
+
+`/v2/fetch` 在参数错误或运行时错误时统一返回：
+
+```json
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "platform: Field required",
+    "retryable": false
   }
 }
 ```
@@ -186,6 +468,29 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 - `maxResults`: 最大结果数（默认 20）
 
 ## 使用示例
+
+### Worker 对接建议（推荐）
+
+Worker 侧建议统一调用 `/v2/fetch`，并显式传 `driver`，避免默认驱动变化导致行为不一致：
+
+```json
+{
+  "platform": "x",
+  "sourceId": "source-x-001",
+  "driver": "xhttp",
+  "config": {
+    "url": "https://api.example.com/search",
+    "method": "POST",
+    "json": { "query": "openai" }
+  }
+}
+```
+
+对于社媒抓取可按 source 配置切换：
+
+- API 直连：`driver: "xhttp"`
+- 登录态接口/脚本：`driver: "playwright"`
+- 复杂交互兜底：`driver: "agent-browser"`
 
 ### Python 调用
 

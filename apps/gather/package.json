@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "uv run main.py",
-    "start": "uv run main.py"
+    "start": "uv run main.py",
+    "poc:gth003": "uv run python -m poc.agent_browser_responsebody_poc"
   }
 }
