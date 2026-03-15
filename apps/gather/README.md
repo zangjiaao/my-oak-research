@@ -101,12 +101,15 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 ```json
 {
   "platform": "x",
+  "stateFile": ".auth/x_auth.json",
   "auth_data": {
     "cookies": [...],
     "origins": []
   }
 }
 ```
+
+`auth_data` 与 `stateFile` 二选一即可（`stateFile` 为 gather 服务本机可访问路径）。
 
 **响应**：
 ```json

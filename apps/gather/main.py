@@ -58,7 +58,11 @@ class FetchV2Request(BaseModel):
 
 class VerifyAuthRequest(BaseModel):
     platform: str
-    auth_data: Dict[str, Any]  # Playwright storage_state format (cookies + origins)
+    auth_data: Optional[Dict[str, Any]] = None  # Playwright storage_state format (cookies + origins)
+    state_file: Optional[str] = Field(
+        default=None,
+        validation_alias=AliasChoices("stateFile", "state_file"),
+    )
     headless: bool = False  # Set to False for debugging, True for production
 
 
@@ -277,6 +281,44 @@ async def _verify_auth_with_bb_site_script(request: VerifyAuthRequest) -> Verify
             },
         )
     return None
+
+
+def _resolve_verify_auth_data(request: VerifyAuthRequest) -> tuple[dict[str, Any] | None, VerifyAuthResponse | None]:
+    if isinstance(request.auth_data, dict):
+        return request.auth_data, None
+
+    if request.state_file:
+        path = Path(request.state_file).expanduser()
+        if not path.exists():
+            return None, VerifyAuthResponse(
+                valid=False,
+                message=f"stateFile does not exist: {request.state_file}",
+                details={"error": "invalid_state_file"},
+            )
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as error:
+            return None, VerifyAuthResponse(
+                valid=False,
+                message=f"stateFile is not valid JSON: {request.state_file}",
+                details={"error": str(error)},
+            )
+        if not isinstance(payload, dict):
+            return None, VerifyAuthResponse(
+                valid=False,
+                message=f"stateFile must contain a JSON object: {request.state_file}",
+                details={"error": "invalid_state_payload"},
+            )
+        return payload, None
+
+    if request.platform.lower() == "whatsapp":
+        return {}, None
+
+    return None, VerifyAuthResponse(
+        valid=False,
+        message="auth_data or stateFile is required",
+        details={"error": "missing_auth_data"},
+    )
 
 
 async def _playwright_verify_auth_legacy(request: VerifyAuthRequest):
@@ -523,10 +565,15 @@ async def _playwright_verify_auth_legacy(request: VerifyAuthRequest):
 
 
 async def _playwright_verify_auth(request: VerifyAuthRequest):
-    scripted_result = await _verify_auth_with_bb_site_script(request)
+    auth_data, error_response = _resolve_verify_auth_data(request)
+    if error_response is not None:
+        return error_response
+
+    normalized_request = request.model_copy(update={"auth_data": auth_data or {}})
+    scripted_result = await _verify_auth_with_bb_site_script(normalized_request)
     if scripted_result is not None:
         return scripted_result
-    return await _playwright_verify_auth_legacy(request)
+    return await _playwright_verify_auth_legacy(normalized_request)
 
 
 async def _playwright_fetch_data(request: FetchRequest):
