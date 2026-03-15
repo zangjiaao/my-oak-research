@@ -769,6 +769,24 @@ def _extract_playwright_eval_options(config: Dict[str, Any]) -> dict[str, Any]:
     except TypeError as error:
         raise HTTPException(status_code=400, detail=f"config.playwright.args is not JSON serializable: {error}") from error
 
+    storage_state: Dict[str, Any] | None = None
+    state_file = raw.get("stateFile", raw.get("authFile"))
+    if state_file is not None:
+        if not isinstance(state_file, str) or not state_file.strip():
+            raise HTTPException(status_code=400, detail="config.playwright.stateFile must be a non-empty string")
+        state_path = Path(state_file).expanduser()
+        if not state_path.is_absolute():
+            state_path = (Path(__file__).resolve().parent / state_path).resolve()
+        if not state_path.exists() or not state_path.is_file():
+            raise HTTPException(status_code=400, detail=f"stateFile does not exist: {state_file}")
+        try:
+            raw_state = json.loads(state_path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as error:
+            raise HTTPException(status_code=400, detail=f"stateFile is not valid JSON: {error}") from error
+        if not isinstance(raw_state, dict):
+            raise HTTPException(status_code=400, detail="stateFile JSON must be an object")
+        storage_state = raw_state
+
     return {
         "target_url": target_url.strip(),
         "script_body": _strip_playwright_meta_block(script_body or ""),
@@ -778,6 +796,7 @@ def _extract_playwright_eval_options(config: Dict[str, Any]) -> dict[str, Any]:
         "wait_selector": wait_selector.strip() if isinstance(wait_selector, str) else None,
         "args_json": args_json,
         "headless": bool(raw.get("headless", True)),
+        "storage_state": storage_state,
     }
 
 
@@ -859,6 +878,8 @@ async def _run_playwright_eval_script(request: FetchRequest) -> list[CleanItem]:
             context_options: dict[str, Any] = {}
             if request.auth_data:
                 context_options["storage_state"] = request.auth_data
+            elif options["storage_state"]:
+                context_options["storage_state"] = options["storage_state"]
             context = await browser.new_context(**context_options)
             try:
                 page = await context.new_page()

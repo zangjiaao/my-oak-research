@@ -76,3 +76,22 @@ def test_fetch_v2_playwright_eval_mode_requires_target_url():
     payload = response.json()
     assert payload["error"]["code"] == "FETCH_BAD_REQUEST"
     assert "targetUrl" in payload["error"]["message"]
+
+
+def test_extract_playwright_eval_options_supports_state_file(tmp_path):
+    state_file = tmp_path / "x.auth.json"
+    state_file.write_text('{"cookies":[{"name":"ct0","value":"abc"}],"origins":[]}', encoding="utf-8")
+
+    options = main._extract_playwright_eval_options(
+        {
+            "playwright": {
+                "mode": "eval-js",
+                "targetUrl": "https://x.com",
+                "scriptBody": "(args) => ({ text: 'ok' })",
+                "stateFile": str(state_file),
+            }
+        }
+    )
+
+    assert options["storage_state"] is not None
+    assert options["storage_state"]["cookies"][0]["name"] == "ct0"
