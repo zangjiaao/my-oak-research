@@ -20,6 +20,8 @@ const SummarySchema = z.object({
   relevance: z.boolean(),
 });
 
+const SKIP_AI_SUMMARY = process.env.COLLECTOR_SKIP_AI_SUMMARY !== "false";
+
 type CleanItem = {
   title?: string;
   text: string;
@@ -124,13 +126,25 @@ export async function runFocusCollector(runId: string, queryId: string) {
   const keywordsStr = expandedKeywords.join("; ") || "无关键词";
   for (let i = 0; i < cleaned.length; i++) {
     const item = cleaned[i];
-    await send({ type: "summary", message: `第 ${i + 1} 条内容生成摘要` });
-    const summary = await summarizeWithRetry(
-      item,
-      keywordsStr,
-      queryId,
-      runId
-    );
+    let summary: { summary: string; relevance: boolean };
+    if (SKIP_AI_SUMMARY) {
+      await send({
+        type: "summary-skip",
+        message: `第 ${i + 1} 条内容跳过 AI 摘要，直接入库`,
+      });
+      summary = {
+        summary: buildFallbackSummary(item),
+        relevance: true,
+      };
+    } else {
+      await send({ type: "summary", message: `第 ${i + 1} 条内容生成摘要` });
+      summary = await summarizeWithRetry(
+        item,
+        keywordsStr,
+        queryId,
+        runId
+      );
+    }
 
     const content = await prisma.content.create({
       data: {
@@ -748,6 +762,13 @@ async function summarizeWithRetry(
     }
   }
   throw new Error("摘要失败");
+}
+
+function buildFallbackSummary(item: CleanItem): string {
+  const source = item.text?.trim() || item.markdown?.trim() || "";
+  if (!source) return "采集成功，暂无可用正文。";
+  const normalized = source.replace(/\s+/g, " ");
+  return normalized.slice(0, 180);
 }
 
 async function fetchWithTimeout(
