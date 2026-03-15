@@ -363,37 +363,31 @@ export const SocialMediaFields = ({
 
   const updateArgRow = useCallback(
     (id: string, field: "key" | "value", nextValue: string) => {
-      setXArgRows((prev) => {
-        const nextRows = prev.map((row) =>
-          row.id === id ? { ...row, [field]: nextValue } : row
-        );
-        syncArgsToForm(nextRows);
-        return nextRows;
-      });
+      const nextRows = xArgRows.map((row) =>
+        row.id === id ? { ...row, [field]: nextValue } : row
+      );
+      setXArgRows(nextRows);
+      syncArgsToForm(nextRows);
     },
-    [syncArgsToForm]
+    [syncArgsToForm, xArgRows]
   );
 
   const addArgRow = useCallback(() => {
-    setXArgRows((prev) => {
-      const nextRows = [...prev, createEmptyArgRow()];
-      syncArgsToForm(nextRows);
-      return nextRows;
-    });
-  }, [syncArgsToForm]);
+    const nextRows = [...xArgRows, createEmptyArgRow()];
+    setXArgRows(nextRows);
+    syncArgsToForm(nextRows);
+  }, [syncArgsToForm, xArgRows]);
 
   const removeArgRow = useCallback(
     (id: string) => {
-      setXArgRows((prev) => {
-        const rowToRemove = prev.find((row) => row.id === id);
-        if (rowToRemove?.required) return prev;
-        const nextRows = prev.filter((row) => row.id !== id);
-        const safeRows = nextRows.length > 0 ? nextRows : [createEmptyArgRow()];
-        syncArgsToForm(safeRows);
-        return safeRows;
-      });
+      const rowToRemove = xArgRows.find((row) => row.id === id);
+      if (rowToRemove?.required) return;
+      const nextRows = xArgRows.filter((row) => row.id !== id);
+      const safeRows = nextRows.length > 0 ? nextRows : [createEmptyArgRow()];
+      setXArgRows(safeRows);
+      syncArgsToForm(safeRows);
     },
-    [syncArgsToForm]
+    [syncArgsToForm, xArgRows]
   );
 
   // Handle file selection
