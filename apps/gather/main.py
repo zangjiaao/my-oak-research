@@ -10,6 +10,7 @@ import asyncio
 import shutil
 import zipfile
 from pathlib import Path
+from urllib.parse import quote, urlparse, urlunparse
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from fastapi.responses import JSONResponse
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field, ValidationError
@@ -1066,6 +1067,68 @@ def _strip_playwright_meta_block(script: str) -> str:
     return re.sub(r"/\*\s*@meta[\s\S]*?\*/", "", script, count=1).strip()
 
 
+def _inject_proxy_credentials(proxy_url: str, username: str | None, password: str | None) -> str:
+    parsed = urlparse(proxy_url)
+    if parsed.username:
+        return proxy_url
+    if username is None:
+        return proxy_url
+    encoded_user = quote(username, safe="")
+    encoded_password = quote(password or "", safe="")
+    netloc = f"{encoded_user}:{encoded_password}@{parsed.hostname or ''}"
+    if parsed.port:
+        netloc = f"{netloc}:{parsed.port}"
+    return urlunparse((parsed.scheme, netloc, parsed.path, parsed.params, parsed.query, parsed.fragment))
+
+
+def _extract_proxy_settings(config: Dict[str, Any], playwright_options: Dict[str, Any]) -> dict[str, str] | None:
+    raw_proxy: Any | None = playwright_options.get("proxy")
+    if raw_proxy is None:
+        network = config.get("network")
+        if isinstance(network, dict):
+            raw_proxy = network.get("proxy")
+        elif network is not None:
+            raise HTTPException(status_code=400, detail="config.network must be an object")
+
+    if raw_proxy is None:
+        return None
+
+    if isinstance(raw_proxy, str):
+        proxy_url = raw_proxy.strip()
+        username = None
+        password = None
+        bypass = None
+    elif isinstance(raw_proxy, dict):
+        raw_url = raw_proxy.get("url", raw_proxy.get("server"))
+        if not isinstance(raw_url, str) or not raw_url.strip():
+            raise HTTPException(status_code=400, detail="config.network.proxy.url is required")
+        proxy_url = raw_url.strip()
+        username = raw_proxy.get("username")
+        password = raw_proxy.get("password")
+        bypass = raw_proxy.get("bypass")
+        if username is not None and not isinstance(username, str):
+            raise HTTPException(status_code=400, detail="config.network.proxy.username must be a string")
+        if password is not None and not isinstance(password, str):
+            raise HTTPException(status_code=400, detail="config.network.proxy.password must be a string")
+        if bypass is not None and not isinstance(bypass, str):
+            raise HTTPException(status_code=400, detail="config.network.proxy.bypass must be a string")
+    else:
+        raise HTTPException(status_code=400, detail="config.network.proxy must be a string or object")
+
+    parsed = urlparse(proxy_url)
+    if parsed.scheme.lower() not in {"http", "https", "socks5", "socks5h"}:
+        raise HTTPException(status_code=400, detail="config.network.proxy must use http/https/socks5/socks5h")
+    if not parsed.hostname:
+        raise HTTPException(status_code=400, detail="config.network.proxy.url is invalid")
+
+    resolved = {
+        "server": _inject_proxy_credentials(proxy_url, username, password),
+    }
+    if bypass:
+        resolved["bypass"] = bypass
+    return resolved
+
+
 def _extract_playwright_eval_options(config: Dict[str, Any]) -> dict[str, Any]:
     raw = config.get("playwright")
     if not isinstance(raw, dict):
@@ -1143,6 +1206,7 @@ def _extract_playwright_eval_options(config: Dict[str, Any]) -> dict[str, Any]:
         "args_json": args_json,
         "headless": bool(raw.get("headless", True)),
         "storage_state": storage_state,
+        "proxy": _extract_proxy_settings(config, raw),
     }
 
 
@@ -1234,7 +1298,10 @@ async def _run_playwright_eval_script(request: FetchRequest) -> list[CleanItem]:
 
     try:
         async with async_playwright() as playwright:
-            browser = await playwright.chromium.launch(headless=options["headless"])
+            launch_options: dict[str, Any] = {"headless": options["headless"]}
+            if options["proxy"] is not None:
+                launch_options["proxy"] = options["proxy"]
+            browser = await playwright.chromium.launch(**launch_options)
             context_options: dict[str, Any] = {}
             if request.auth_data:
                 context_options["storage_state"] = request.auth_data

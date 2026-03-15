@@ -545,3 +545,38 @@ def test_execute_agent_browser_script_rejects_top_level_loop_config():
 
     assert error.value.reason == "invalid_config"
     assert "script[].loop" in error.value.message
+
+
+def test_execute_agent_browser_script_supports_network_proxy(monkeypatch):
+    calls = []
+
+    def fake_run(args, capture_output, text, timeout, check):  # noqa: ARG001
+        calls.append(args)
+        if args[-1] == "close":
+            return subprocess.CompletedProcess(args, 0, stdout="", stderr="")
+        return subprocess.CompletedProcess(args, 0, stdout="ok", stderr="")
+
+    monkeypatch.setattr("drivers.agent_browser_runner.subprocess.run", fake_run)
+
+    execute_agent_browser_script(
+        {
+            "network": {
+                "proxy": {
+                    "url": "socks5://127.0.0.1:9050",
+                    "bypass": "localhost,127.0.0.1",
+                }
+            },
+            "agentBrowser": {
+                "script": [{"command": "open https://example.com"}],
+            },
+        }
+    )
+
+    assert calls[0] == ["agent-browser", "close"]
+    assert calls[1][:5] == [
+        "agent-browser",
+        "--proxy",
+        "socks5://127.0.0.1:9050",
+        "--proxy-bypass",
+        "localhost,127.0.0.1",
+    ]

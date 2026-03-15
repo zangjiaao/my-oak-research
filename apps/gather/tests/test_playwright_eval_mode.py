@@ -135,3 +135,22 @@ def test_normalize_playwright_eval_result_raises_bad_request_on_error_payload():
         )
     assert error.value.status_code == 400
     assert "No ct0 cookie" in str(error.value.detail)
+
+
+def test_extract_playwright_eval_options_supports_network_proxy():
+    options = main._extract_playwright_eval_options(
+        {
+            "network": {
+                "proxy": {
+                    "url": "socks5h://127.0.0.1:9050",
+                }
+            },
+            "playwright": {
+                "mode": "eval-js",
+                "targetUrl": "https://x.com",
+                "scriptBody": "(args) => ({ text: 'ok' })",
+            },
+        }
+    )
+
+    assert options["proxy"] == {"server": "socks5h://127.0.0.1:9050"}
