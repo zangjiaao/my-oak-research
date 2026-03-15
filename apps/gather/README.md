@@ -95,7 +95,7 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
 验证 cookies 是否有效。
 
-默认会优先尝试 bb-site 脚本校验（优先 `me.ts` / `me.js`，兼容回退 `user.ts` / `user.js`），若未找到脚本或脚本执行失败，会回退到 gather 内置平台 client 校验。可通过 `BB_SITES_DIR` 指定 bb-site 根目录（默认按 `~/.bb-browser/bb-sites`、`~/Reference/bb-sites` 依次查找）。  
+默认会优先尝试脚本校验：先查找 gather 内置脚本 `apps/gather/site_scripts/<platform>/me.ts`，再查找外部 bb-site（优先 `me.ts` / `me.js`，兼容回退 `user.ts` / `user.js`）。若脚本不可用才回退到 gather 内置平台 client 校验。可通过 `BB_SITES_DIR` 指定外部 bb-site 根目录（默认按 `~/.bb-browser/bb-sites`、`~/Reference/bb-sites` 依次查找）。  
 `whatsapp` 平台优先使用 `agent-browser` 方式做登录态探测（更贴合其 persistent profile 场景）。
 
 **请求体**：

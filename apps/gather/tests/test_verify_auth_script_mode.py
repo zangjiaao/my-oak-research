@@ -113,6 +113,7 @@ def test_resolve_bb_site_verify_script_prefers_me(monkeypatch, tmp_path):
     (platform_dir / "user.js").write_text("async function(){return {ok:true}}", encoding="utf-8")
     (platform_dir / "me.ts").write_text("async function(){return {ok:true}}", encoding="utf-8")
 
+    monkeypatch.setattr(main, "_GATHER_VERIFY_SCRIPT_ROOT", tmp_path / "missing")
     monkeypatch.setenv("BB_SITES_DIR", str(base))
 
     resolved = main._resolve_bb_site_verify_script("x")

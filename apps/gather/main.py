@@ -153,6 +153,8 @@ _BB_SITE_TARGET_URL = {
     "facebook": "https://www.facebook.com",
 }
 
+_GATHER_VERIFY_SCRIPT_ROOT = Path(__file__).resolve().parent / "site_scripts"
+
 
 def build_error_response(
     status_code: int,
@@ -174,6 +176,8 @@ async def root():
 def _resolve_bb_site_verify_script(platform: str) -> Path | None:
     normalized = _BB_SITE_PLATFORM_ALIAS.get(platform.lower(), platform.lower())
     script_dir_candidates: list[Path] = []
+    if _GATHER_VERIFY_SCRIPT_ROOT.exists():
+        script_dir_candidates.append(_GATHER_VERIFY_SCRIPT_ROOT)
     configured_dir = os.getenv("BB_SITES_DIR")
     if configured_dir:
         script_dir_candidates.append(Path(configured_dir).expanduser())
@@ -333,6 +337,30 @@ async def _verify_auth_with_bb_site_script(request: VerifyAuthRequest) -> Verify
                     "hint": result.get("hint"),
                     "verifyMethod": "bb-site-script",
                     "scriptPath": str(script_path),
+                },
+            )
+        ok_flag = result.get("ok")
+        if ok_flag is True:
+            return VerifyAuthResponse(
+                valid=True,
+                message=f"{request.platform} authentication is valid",
+                details={
+                    "platform": request.platform,
+                    "verifyMethod": "bb-site-script",
+                    "scriptPath": str(script_path),
+                    "result": result,
+                },
+            )
+        if ok_flag is False:
+            return VerifyAuthResponse(
+                valid=False,
+                message=f"{request.platform} authentication is invalid or expired",
+                details={
+                    "platform": request.platform,
+                    "hint": result.get("hint"),
+                    "verifyMethod": "bb-site-script",
+                    "scriptPath": str(script_path),
+                    "result": result,
                 },
             )
         user = {
