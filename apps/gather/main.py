@@ -75,6 +75,14 @@ class VerifyAuthRequest(BaseModel):
         default=None,
         validation_alias=AliasChoices("verifyTargetUrl", "verify_target_url"),
     )
+    verify_timeout_ms: int = Field(
+        default=60000,
+        validation_alias=AliasChoices("verifyTimeoutMs", "verify_timeout_ms"),
+    )
+    verify_post_wait_ms: int = Field(
+        default=3000,
+        validation_alias=AliasChoices("verifyPostWaitMs", "verify_post_wait_ms"),
+    )
     headless: bool = False  # Set to False for debugging, True for production
 
 
@@ -313,8 +321,12 @@ async def _verify_auth_with_bb_site_script(request: VerifyAuthRequest) -> Verify
             context = await browser.new_context(storage_state=request.auth_data)
             page = await context.new_page()
             try:
-                await page.goto(target_url, wait_until="domcontentloaded", timeout=30000)
-                await page.wait_for_timeout(1200)
+                await page.goto(
+                    target_url,
+                    wait_until="domcontentloaded",
+                    timeout=max(1000, int(request.verify_timeout_ms)),
+                )
+                await page.wait_for_timeout(max(0, int(request.verify_post_wait_ms)))
                 result = await page.evaluate(f"({script_body})({json.dumps(script_args, ensure_ascii=False)})")
             finally:
                 await context.close()

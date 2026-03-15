@@ -106,6 +106,8 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
   "verifyScriptPath": "/Users/me/Reference/bb-sites/twitter/me.ts",
   "verifyArgs": { "screen_name": "openai" },
   "verifyTargetUrl": "https://x.com",
+  "verifyTimeoutMs": 90000,
+  "verifyPostWaitMs": 5000,
   "auth_data": {
     "cookies": [...],
     "origins": []
@@ -118,6 +120,8 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 - `verifyScriptPath`: 指定本次校验使用的脚本路径（不传则按平台自动查找 `me.ts/me.js/user.ts/user.js`）
 - `verifyArgs`: 透传给校验脚本的参数对象
 - `verifyTargetUrl`: 指定校验跳转地址（不传则按平台默认地址）
+- `verifyTimeoutMs`: Playwright 导航超时（毫秒，默认 `60000`）
+- `verifyPostWaitMs`: 导航后额外等待时间（毫秒，默认 `3000`，单页应用建议适当调大）
 
 **响应**：
 ```json
