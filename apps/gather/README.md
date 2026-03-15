@@ -158,11 +158,11 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
     "query": "AI",
     "maxResults": 10
   },
-  "driver": "python-gather"
+  "driver": "playwright"
 }
 ```
 
-`driver` 为可选扩展字段；未传时默认值为 `python-gather`。
+`driver` 为可选扩展字段；可选值为 `xhttp`、`playwright`、`agent-browser`。未传时默认走 `playwright`。
 `responseFormats` 为可选字段，可选值：`"text"`、`"markdown"`：
 
 - `["text"]`：仅返回 `text`
@@ -170,6 +170,56 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 - `["text", "markdown"]`：同时返回两种（默认行为）
 
 `/fetch` 兼容入口使用 `response_formats`（snake_case）。
+
+### xhttp 驱动（`driver: "xhttp"`）
+
+适用于直接调用搜索 API 或普通 HTTP 页面，不依赖浏览器环境。
+
+```json
+{
+  "platform": "search",
+  "sourceId": "source_search_demo",
+  "driver": "xhttp",
+  "config": {
+    "url": "https://api.example.com/search",
+    "method": "POST",
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "params": {
+      "q": "openai"
+    },
+    "json": {
+      "query": "openai",
+      "count": 20
+    },
+    "signature": {
+      "secretEnv": "SEARCH_API_SECRET",
+      "source": "query",
+      "timestampField": "ts",
+      "nonceField": "nonce",
+      "fields": ["q", "ts", "nonce"],
+      "algorithm": "hmac-sha256",
+      "digest": "hex",
+      "target": "header",
+      "header": "X-Signature"
+    },
+    "timeoutSeconds": 20,
+    "maxChars": 50000
+  }
+}
+```
+
+`xhttp` 常用参数：
+
+- `url` / `urls`: 必填，目标地址（支持 `http/https`）
+- `method`: 可选，默认 `GET`，支持 `GET/POST/PUT/PATCH/DELETE/HEAD/OPTIONS`
+- `headers`: 可选，请求头对象
+- `params`: 可选，Query 参数对象
+- `json` / `form` / `body`: 可选，请求体（只能传一种）
+- `signature`: 可选，按字段生成签名并写回 query/body/header（支持 `secret` 或 `secretEnv`）
+- `timeoutSeconds`: 可选，超时时间，默认 `15`
+- `maxChars`: 可选，返回 `text/markdown` 最大长度，默认 `20000`
 
 ### Agent Browser 脚本化 PoC（`driver: "agent-browser"`）
 
@@ -232,20 +282,22 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
       "instanceId": "ab-1234567890",
       "ownerId": "user-1001",
       "script": [
-        { "command": "open https://x.com/some-post" }
-      ],
-      "loop": {
-        "maxIterations": 20,
-        "intervalMs": 1000,
-        "steps": [
-          { "command": "scroll down 900" },
-          { "command": "snapshot", "captureAs": "page_snapshot" }
-        ],
-        "breakWhen": {
-          "captureKey": "page_snapshot",
-          "textIncludes": ["目标关键词", "备选关键词"]
+        { "command": "open https://x.com/some-post" },
+        {
+          "loop": {
+            "maxIterations": 20,
+            "intervalMs": 1000,
+            "steps": [
+              { "command": "scroll down 900" },
+              { "command": "snapshot", "captureAs": "page_snapshot" }
+            ],
+            "breakWhen": {
+              "captureKey": "page_snapshot",
+              "textIncludes": ["目标关键词", "备选关键词"]
+            }
+          }
         }
-      },
+      ],
       "captureFilter": {
         "keys": ["page_snapshot"],
         "perLine": true,
@@ -259,7 +311,7 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 }
 ```
 
-`loop` 参数说明：
+`loop` 参数说明（作为 `script` 中的一个步骤对象传入，不再支持 `config.agentBrowser.loop` 顶层写法）：
 
 - `maxIterations`: 最大循环次数（必填）
 - `intervalMs`: 每轮循环间隔（可选）
@@ -373,6 +425,29 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 - `maxResults`: 最大结果数（默认 20）
 
 ## 使用示例
+
+### Worker 对接建议（推荐）
+
+Worker 侧建议统一调用 `/v2/fetch`，并显式传 `driver`，避免默认驱动变化导致行为不一致：
+
+```json
+{
+  "platform": "x",
+  "sourceId": "source-x-001",
+  "driver": "xhttp",
+  "config": {
+    "url": "https://api.example.com/search",
+    "method": "POST",
+    "json": { "query": "openai" }
+  }
+}
+```
+
+对于社媒抓取可按 source 配置切换：
+
+- API 直连：`driver: "xhttp"`
+- 登录态接口/脚本：`driver: "playwright"`
+- 复杂交互兜底：`driver: "agent-browser"`
 
 ### Python 调用
 
