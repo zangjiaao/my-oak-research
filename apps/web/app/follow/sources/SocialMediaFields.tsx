@@ -620,7 +620,7 @@ export const SocialMediaFields = ({
                   if (value === "X") {
                     setValue("social.config.playwright.mode", "eval-js");
                     setValue("social.config.playwright.headless", false);
-                    setValue("social.config.playwright.targetUrl", "https://x.com");
+                    setValue("social.config.playwright.targetUrl", "");
                     setValue(
                       "social.config.playwright.scriptPath",
                       DEFAULT_X_SCRIPT.scriptPath
@@ -885,10 +885,10 @@ export const SocialMediaFields = ({
               </div>
 
               <div className="grid gap-3">
-                <Label htmlFor="social.config.playwright.targetUrl">Target URL</Label>
+                <Label htmlFor="social.config.playwright.targetUrl">Target URL (Optional)</Label>
                 <Input
                   id="social.config.playwright.targetUrl"
-                  placeholder="https://x.com"
+                  placeholder="留空则不执行 page.goto()"
                   {...register("social.config.playwright.targetUrl")}
                 />
                 <ErrorMessage>{getConfigErrorMessage("playwright.targetUrl")}</ErrorMessage>

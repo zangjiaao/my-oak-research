@@ -1149,9 +1149,13 @@ def _extract_playwright_eval_options(config: Dict[str, Any]) -> dict[str, Any]:
     if not isinstance(raw, dict):
         raise HTTPException(status_code=400, detail="config.playwright must be an object")
 
-    target_url = raw.get("targetUrl")
-    if not isinstance(target_url, str) or not target_url.strip():
-        raise HTTPException(status_code=400, detail="config.playwright.targetUrl is required for eval-js mode")
+    raw_target_url = raw.get("targetUrl")
+    target_url: str | None = None
+    if raw_target_url is not None:
+        if not isinstance(raw_target_url, str):
+            raise HTTPException(status_code=400, detail="config.playwright.targetUrl must be a string")
+        if raw_target_url.strip():
+            target_url = raw_target_url.strip()
 
     script_body = raw.get("scriptBody") or raw.get("jsBody")
     script_path = raw.get("scriptPath")
@@ -1186,6 +1190,8 @@ def _extract_playwright_eval_options(config: Dict[str, Any]) -> dict[str, Any]:
     wait_selector = raw.get("waitForSelector")
     if wait_selector is not None and (not isinstance(wait_selector, str) or not wait_selector.strip()):
         raise HTTPException(status_code=400, detail="config.playwright.waitForSelector must be a non-empty string")
+    if wait_selector and not target_url:
+        raise HTTPException(status_code=400, detail="config.playwright.waitForSelector requires targetUrl")
 
     pool_idle_timeout_ms = raw.get("poolIdleTimeoutMs", 120000)
     if not isinstance(pool_idle_timeout_ms, int) or pool_idle_timeout_ms < 1000:
@@ -1216,7 +1222,7 @@ def _extract_playwright_eval_options(config: Dict[str, Any]) -> dict[str, Any]:
         storage_state = raw_state
 
     return {
-        "target_url": target_url.strip(),
+        "target_url": target_url,
         "script_body": _strip_playwright_meta_block(script_body or ""),
         "wait_until": wait_until,
         "navigation_timeout_ms": navigation_timeout_ms,
@@ -1313,7 +1319,7 @@ async def _get_playwright_runtime() -> Any:
     return _PLAYWRIGHT_RUNTIME
 
 
-def _to_clean_item_from_eval_value(value: Any, request: FetchRequest, target_url: str, index: int) -> CleanItem:
+def _to_clean_item_from_eval_value(value: Any, request: FetchRequest, target_url: str | None, index: int) -> CleanItem:
     if isinstance(value, dict):
         raw_time = value.get("time", value.get("created_at"))
         parsed_time: datetime | None = None
@@ -1367,7 +1373,7 @@ def _to_clean_item_from_eval_value(value: Any, request: FetchRequest, target_url
     )
 
 
-def _normalize_playwright_eval_result(result: Any, request: FetchRequest, target_url: str) -> list[CleanItem]:
+def _normalize_playwright_eval_result(result: Any, request: FetchRequest, target_url: str | None) -> list[CleanItem]:
     candidate = result
     if isinstance(candidate, dict):
         raw_error = candidate.get("error")
@@ -1419,15 +1425,16 @@ async def _run_playwright_eval_script(request: FetchRequest) -> list[CleanItem]:
         context = await browser.new_context(**context_options)
         try:
             page = await context.new_page()
-            await page.goto(
-                options["target_url"],
-                wait_until=options["wait_until"],
-                timeout=options["navigation_timeout_ms"],
-            )
-            if options["wait_selector"]:
-                await page.wait_for_selector(options["wait_selector"], timeout=options["navigation_timeout_ms"])
-            if options["post_navigation_wait_ms"] > 0:
-                await page.wait_for_timeout(options["post_navigation_wait_ms"])
+            if options["target_url"]:
+                await page.goto(
+                    options["target_url"],
+                    wait_until=options["wait_until"],
+                    timeout=options["navigation_timeout_ms"],
+                )
+                if options["wait_selector"]:
+                    await page.wait_for_selector(options["wait_selector"], timeout=options["navigation_timeout_ms"])
+                if options["post_navigation_wait_ms"] > 0:
+                    await page.wait_for_timeout(options["post_navigation_wait_ms"])
             eval_result = await page.evaluate(script_to_run)
         finally:
             await context.close()

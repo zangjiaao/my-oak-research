@@ -180,7 +180,11 @@ export const SocialConfigByPlatform = z.discriminatedUnion("platform", [
         playwright: z.object({
           mode: z.enum(["eval-js"]).default("eval-js"),
           headless: z.boolean().default(false),
-          targetUrl: z.string().url().default("https://x.com"),
+          targetUrl: z.preprocess(
+            (val) =>
+              typeof val === "string" && !val.trim() ? undefined : val,
+            z.string().url().optional()
+          ),
           scriptPath: z.string().min(1),
           args: z.preprocess((val) => {
             const parsed = parseJson(val);

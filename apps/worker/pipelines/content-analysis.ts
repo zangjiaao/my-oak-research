@@ -680,10 +680,6 @@ function normalizeGatherSocialConfig(
         : "eval-js",
     headless:
       typeof playwright.headless === "boolean" ? playwright.headless : false,
-    targetUrl:
-      typeof playwright.targetUrl === "string" && playwright.targetUrl.trim()
-        ? playwright.targetUrl
-        : "https://x.com",
     scriptPath:
       typeof playwright.scriptPath === "string" ? playwright.scriptPath : "",
     args: Object.fromEntries(
@@ -705,6 +701,9 @@ function normalizeGatherSocialConfig(
 
   if (typeof playwright.stateFile === "string" && playwright.stateFile.trim()) {
     normalizedPlaywright.stateFile = playwright.stateFile;
+  }
+  if (typeof playwright.targetUrl === "string" && playwright.targetUrl.trim()) {
+    normalizedPlaywright.targetUrl = playwright.targetUrl.trim();
   }
 
   return { playwright: normalizedPlaywright };
