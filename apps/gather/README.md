@@ -298,10 +298,12 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 - `instanceId`: 可选，复用上一次返回的实例 ID（不传则创建新实例）
 - `ownerId`: 可选，实例归属标识；复用实例时会校验归属
 - `sessionKey`: 可选，会话隔离键；复用实例时会校验
-- `instanceTtlSeconds`: 可选，实例空闲 TTL（默认 900 秒）
+- `instanceTtlSeconds`: 可选，实例空闲 TTL（默认 900 秒）；超过后会在后续请求中被自动清理
 - `heartbeat`: 可选，`true` 时可发送空脚本续租实例（需配合 `instanceId`）
 - `closeOnComplete`: 可选，默认 `false`，为 `true` 时任务结束自动关闭实例
 - `verbose`: 可选，默认 `true`，在 gather 服务日志中输出逐步执行信息（定位卡点时建议开启）
+
+> 并发建议：需要多实例并行时，不要在脚本中显式执行 `close`，由 worker 在任务结束时关闭；同时依赖空闲 TTL 做兜底回收。
 
 `driver: "agent-browser"` 的返回项会附带：
 

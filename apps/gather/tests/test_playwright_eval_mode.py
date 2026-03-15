@@ -154,3 +154,42 @@ def test_extract_playwright_eval_options_supports_network_proxy():
     )
 
     assert options["proxy"] == {"server": "socks5h://127.0.0.1:9050"}
+
+
+def test_extract_playwright_eval_options_includes_pool_settings():
+    options = main._extract_playwright_eval_options(
+        {
+            "playwright": {
+                "mode": "eval-js",
+                "targetUrl": "https://x.com",
+                "scriptBody": "(args) => ({ text: 'ok' })",
+                "userId": "user-1",
+                "sessionId": "session-1",
+                "poolEnabled": True,
+                "poolIdleTimeoutMs": 15000,
+            }
+        }
+    )
+
+    assert options["pool_enabled"] is True
+    assert options["pool_user_id"] == "user-1"
+    assert options["pool_session_id"] == "session-1"
+    assert options["pool_idle_timeout_ms"] == 15000
+
+
+def test_playwright_pool_key_changes_when_session_changes():
+    request = main.FetchRequest(platform="x", source_id="source-x-001", config={})
+    base_options = {
+        "headless": True,
+        "proxy": {"server": "socks5h://127.0.0.1:9050"},
+        "pool_user_id": "u1",
+        "pool_session_id": "s1",
+    }
+    key1 = main._build_playwright_pool_key(request, base_options, {"cookies": [{"name": "ct0", "value": "a"}]})
+    key2 = main._build_playwright_pool_key(
+        request,
+        {**base_options, "pool_session_id": "s2"},
+        {"cookies": [{"name": "ct0", "value": "a"}]},
+    )
+
+    assert key1 != key2
