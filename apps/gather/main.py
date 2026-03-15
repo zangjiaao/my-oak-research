@@ -857,6 +857,13 @@ def _to_clean_item_from_eval_value(value: Any, request: FetchRequest, target_url
 def _normalize_playwright_eval_result(result: Any, request: FetchRequest, target_url: str) -> list[CleanItem]:
     candidate = result
     if isinstance(candidate, dict):
+        raw_error = candidate.get("error")
+        if isinstance(raw_error, str) and raw_error.strip():
+            hint = candidate.get("hint")
+            message = raw_error.strip()
+            if isinstance(hint, str) and hint.strip():
+                message = f"{message} | hint: {hint.strip()}"
+            raise HTTPException(status_code=400, detail=message)
         for key in ("tweets", "posts", "notes", "items", "results", "data"):
             nested = candidate.get(key)
             if isinstance(nested, list):

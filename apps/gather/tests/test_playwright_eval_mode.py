@@ -1,6 +1,7 @@
 import sys
 from pathlib import Path
 
+import pytest
 from fastapi.testclient import TestClient
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
@@ -122,3 +123,15 @@ def test_normalize_playwright_eval_result_flattens_bb_site_tweets():
     assert item.title == "Alice"
     assert item.text == "hello world"
     assert item.markdown.startswith("@alice:")
+
+
+def test_normalize_playwright_eval_result_raises_bad_request_on_error_payload():
+    request = main.FetchRequest(platform="x", source_id="source-x-001", config={})
+    with pytest.raises(main.HTTPException) as error:
+        main._normalize_playwright_eval_result(
+            {"error": "No ct0 cookie", "hint": "Please log in first"},
+            request,
+            "https://x.com",
+        )
+    assert error.value.status_code == 400
+    assert "No ct0 cookie" in str(error.value.detail)
