@@ -576,18 +576,11 @@ async function fetchSocialSource(
     source.social?.proxy?.url ??
     source.proxy?.url ??
     null;
-  const baseConfig =
-    proxyUrl
-      ? {
-          ...sourceConfigObj,
-          network: {
-            ...asObject(sourceConfigObj.network),
-            proxy: {
-              url: proxyUrl,
-            },
-          },
-        }
-      : sourceConfigObj;
+  const normalizedSocialConfig = normalizeGatherSocialConfig(
+    source.social?.platform,
+    sourceConfigObj
+  );
+  const baseConfig = applyGatherProxyConfig(normalizedSocialConfig, proxyUrl);
   const config =
     keywordFilterTerms.length > 0
       ? {
@@ -640,6 +633,59 @@ async function fetchSocialSource(
 function mapGatherPlatform(platform?: string | null): string {
   if (!platform) return "unknown";
   return platform.toLowerCase();
+}
+
+function normalizeGatherSocialConfig(
+  platform: string | null | undefined,
+  config: Record<string, unknown>
+): Record<string, unknown> {
+  if ((platform || "").toUpperCase() !== "X") {
+    return config;
+  }
+
+  const playwright = asObject(config.playwright);
+  const args = asObject(playwright.args);
+  const normalizedPlaywright: Record<string, unknown> = {
+    mode:
+      typeof playwright.mode === "string" && playwright.mode.trim()
+        ? playwright.mode
+        : "eval-js",
+    headless:
+      typeof playwright.headless === "boolean" ? playwright.headless : false,
+    targetUrl:
+      typeof playwright.targetUrl === "string" && playwright.targetUrl.trim()
+        ? playwright.targetUrl
+        : "https://x.com",
+    scriptPath:
+      typeof playwright.scriptPath === "string" ? playwright.scriptPath : "",
+    args: Object.fromEntries(
+      Object.entries(args).map(([key, value]) => [key, value == null ? "" : String(value)])
+    ),
+  };
+
+  if (typeof playwright.stateFile === "string" && playwright.stateFile.trim()) {
+    normalizedPlaywright.stateFile = playwright.stateFile;
+  }
+
+  return { playwright: normalizedPlaywright };
+}
+
+function applyGatherProxyConfig(
+  config: Record<string, unknown>,
+  proxyUrl: string | null
+): Record<string, unknown> {
+  if (!proxyUrl) {
+    return config;
+  }
+  return {
+    ...config,
+    network: {
+      ...asObject(config.network),
+      proxy: {
+        url: proxyUrl,
+      },
+    },
+  };
 }
 
 function asObject(value: unknown): Record<string, unknown> {
