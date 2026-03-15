@@ -12,13 +12,15 @@ import {
   DarknetSource,
 } from "@/lib/types";
 import { llmGateway, browserAgent } from "@oak/agents";
-import { publishTaskEvent } from "@/lib/queue";
+import { publishTaskEvent, publishContentEvent } from "@/lib/queue";
 import { redact, stripPromptLike } from "@/lib/security";
 
 const SummarySchema = z.object({
   summary: z.string().min(30).max(400),
   relevance: z.boolean(),
 });
+
+const SKIP_AI_SUMMARY = process.env.COLLECTOR_SKIP_AI_SUMMARY !== "false";
 
 type CleanItem = {
   title?: string;
@@ -64,8 +66,15 @@ export async function runFocusCollector(runId: string, queryId: string) {
         include: {
           web: true,
           search: true,
-          social: true,
+          social: {
+            include: {
+              credential: true,
+              proxy: true,
+            },
+          },
           darknet: true,
+          credential: true,
+          proxy: true,
         },
       },
     },
@@ -115,16 +124,49 @@ export async function runFocusCollector(runId: string, queryId: string) {
   });
 
   const keywordsStr = expandedKeywords.join("; ") || "无关键词";
-
   for (let i = 0; i < cleaned.length; i++) {
     const item = cleaned[i];
-    await send({ type: "summary", message: `第 ${i + 1} 条内容生成摘要` });
-    const summary = await summarizeWithRetry(
-      item,
-      keywordsStr,
-      queryId,
-      runId
-    );
+    const existingContent = await findExistingContentBySourceRecord(item);
+    if (existingContent) {
+      const progress = Math.min(
+        100,
+        Math.floor(((i + 1) / cleaned.length) * 100)
+      );
+      await prisma.queryRun.update({
+        where: { id: runId },
+        data: { progress },
+      });
+      await send({
+        type: "dedup-skip",
+        message: "重复内容已跳过",
+        progress,
+        contentId: existingContent.id,
+        sourceId: item.sourceId,
+        recordId: item.recordId,
+        fingerprint: item.fingerprint,
+      });
+      continue;
+    }
+
+    let summary: { summary: string; relevance: boolean };
+    if (SKIP_AI_SUMMARY) {
+      await send({
+        type: "summary-skip",
+        message: `第 ${i + 1} 条内容跳过 AI 摘要，直接入库`,
+      });
+      summary = {
+        summary: buildFallbackSummary(item),
+        relevance: true,
+      };
+    } else {
+      await send({ type: "summary", message: `第 ${i + 1} 条内容生成摘要` });
+      summary = await summarizeWithRetry(
+        item,
+        keywordsStr,
+        queryId,
+        runId
+      );
+    }
 
     const content = await prisma.content.create({
       data: {
@@ -139,6 +181,8 @@ export async function runFocusCollector(runId: string, queryId: string) {
         time: item.time ?? new Date(),
         url: item.url,
         meta: {
+          queryId,
+          runId,
           sourceFingerprint: item.fingerprint,
           driver: item.driver,
           matchedKeywords: item.matchedKeywords ?? [],
@@ -163,6 +207,14 @@ export async function runFocusCollector(runId: string, queryId: string) {
         skipDuplicates: true,
       });
     }
+    await publishContentEvent({
+      type: "content:created",
+      contentId: content.id,
+      queryId,
+      runId,
+      platform: content.platform,
+      time: content.time.toISOString(),
+    });
 
     const progress = Math.min(
       100,
@@ -184,6 +236,7 @@ export async function runFocusCollector(runId: string, queryId: string) {
       meta: { summaryCount: cleaned.length },
     },
   });
+
   await send({
     type: "done",
     message: "任务完成",
@@ -537,26 +590,41 @@ async function fetchSocialSource(
   console.log(`[collector] fetchSocialSource ${source.name} via Python Gather`);
 
   const gatherUrl = process.env.GATHER_SERVICE_URL || "http://localhost:8000";
+  const gatherPlatform = mapGatherPlatform(source.social?.platform);
   const sourceConfig = source.social?.config || {};
+  const sourceConfigObj = asObject(sourceConfig);
+  const authData = resolveGatherAuthData(source);
+  const proxyUrl =
+    source.social?.proxy?.url ??
+    source.proxy?.url ??
+    null;
+  const normalizedSocialConfig = normalizeGatherSocialConfig(
+    source,
+    sourceConfigObj
+  );
+  const baseConfig = applyGatherProxyConfig(normalizedSocialConfig, proxyUrl);
   const config =
     keywordFilterTerms.length > 0
       ? {
-          ...sourceConfig,
+          ...baseConfig,
           keywordFilter: {
-            ...((sourceConfig as Record<string, unknown>).keywordFilter as Record<string, unknown> | undefined),
+            ...asObject((baseConfig as Record<string, unknown>).keywordFilter),
             keywords: keywordFilterTerms,
           },
         }
-      : sourceConfig;
+      : baseConfig;
 
   try {
-    const response = await fetch(`${gatherUrl}/fetch`, {
+    const response = await fetch(`${gatherUrl}/v2/fetch`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        platform: source.social?.platform || "unknown",
+        platform: gatherPlatform,
         config: config,
-        source_id: source.id,
+        sourceId: source.id,
+        authData,
+        responseFormats: ["text", "markdown"],
+        driver: "playwright",
       }),
     });
 
@@ -566,7 +634,7 @@ async function fetchSocialSource(
     }
 
     const data = await response.json();
-    return data as CleanItem[];
+    return normalizeGatherItems(data, source);
   } catch (error) {
     console.error(`[collector] fetchSocialSource error:`, error);
     // Fallback to basic info if gather service is down
@@ -582,6 +650,174 @@ async function fetchSocialSource(
       },
     ];
   }
+}
+
+function mapGatherPlatform(platform?: string | null): string {
+  if (!platform) return "unknown";
+  return platform.toLowerCase();
+}
+
+function normalizeGatherSocialConfig(
+  source: SocialMediaSource,
+  config: Record<string, unknown>
+): Record<string, unknown> {
+  const platform = source.social?.platform;
+  if ((platform || "").toUpperCase() !== "X") {
+    return config;
+  }
+
+  const playwright = asObject(config.playwright);
+  const args = asObject(playwright.args);
+  const authKey =
+    resolveSourceCredentialId(source, playwright) ||
+    "anonymous-auth";
+  const platformKey = (platform || "unknown").toLowerCase();
+  const driverKey = "playwright";
+  const normalizedPlaywright: Record<string, unknown> = {
+    mode:
+      typeof playwright.mode === "string" && playwright.mode.trim()
+        ? playwright.mode
+        : "eval-js",
+    headless:
+      typeof playwright.headless === "boolean" ? playwright.headless : false,
+    scriptPath:
+      typeof playwright.scriptPath === "string" ? playwright.scriptPath : "",
+    args: Object.fromEntries(
+      Object.entries(args).map(([key, value]) => [key, value == null ? "" : String(value)])
+    ),
+    userId:
+      typeof playwright.userId === "string" && playwright.userId.trim()
+        ? playwright.userId
+        : "",
+    sessionId:
+      typeof playwright.sessionId === "string" && playwright.sessionId.trim()
+        ? playwright.sessionId
+        : `${authKey}:${platformKey}:${driverKey}`,
+    poolDriver:
+      typeof playwright.poolDriver === "string" && playwright.poolDriver.trim()
+        ? playwright.poolDriver
+        : driverKey,
+  };
+
+  if (typeof playwright.stateFile === "string" && playwright.stateFile.trim()) {
+    normalizedPlaywright.stateFile = playwright.stateFile;
+  }
+  if (typeof playwright.targetUrl === "string" && playwright.targetUrl.trim()) {
+    normalizedPlaywright.targetUrl = playwright.targetUrl.trim();
+  }
+
+  return { playwright: normalizedPlaywright };
+}
+
+function applyGatherProxyConfig(
+  config: Record<string, unknown>,
+  proxyUrl: string | null
+): Record<string, unknown> {
+  if (!proxyUrl) {
+    return config;
+  }
+  return {
+    ...config,
+    network: {
+      ...asObject(config.network),
+      proxy: {
+        url: proxyUrl,
+      },
+    },
+  };
+}
+
+function asObject(value: unknown): Record<string, unknown> {
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    return value as Record<string, unknown>;
+  }
+  return {};
+}
+
+function resolveSourceCredentialId(
+  source: SocialMediaSource,
+  playwrightConfig: Record<string, unknown>
+): string | null {
+  const ids = [
+    source.social?.credentialId,
+    source.credentialId,
+    playwrightConfig.credentialId,
+    playwrightConfig.credential_id,
+  ];
+  for (const id of ids) {
+    if (typeof id === "string" && id.trim()) {
+      return id.trim();
+    }
+  }
+  return null;
+}
+
+function resolveGatherAuthData(source: SocialMediaSource): Record<string, unknown> | null {
+  const socialCredential = source.social?.credential?.data;
+  if (socialCredential && typeof socialCredential === "object" && !Array.isArray(socialCredential)) {
+    return socialCredential as Record<string, unknown>;
+  }
+  const sourceCredential = source.credential?.data;
+  if (sourceCredential && typeof sourceCredential === "object" && !Array.isArray(sourceCredential)) {
+    return sourceCredential as Record<string, unknown>;
+  }
+  return null;
+}
+
+function normalizeGatherItems(payload: unknown, source: SocialMediaSource): CleanItem[] {
+  if (!Array.isArray(payload)) {
+    return [];
+  }
+  const normalized: CleanItem[] = [];
+  for (const item of payload) {
+    if (!item || typeof item !== "object") continue;
+    const row = item as Record<string, unknown>;
+    const text =
+      typeof row.text === "string"
+        ? row.text
+        : typeof row.markdown === "string"
+          ? row.markdown
+          : "";
+    if (!text) continue;
+
+    const markdown =
+      typeof row.markdown === "string" && row.markdown.trim()
+        ? row.markdown
+        : text;
+    const parsedTime =
+      typeof row.time === "string" || row.time instanceof Date
+        ? new Date(row.time)
+        : null;
+
+    normalized.push({
+      title: typeof row.title === "string" ? row.title : undefined,
+      text,
+      markdown,
+      platform:
+        typeof row.platform === "string" && row.platform.trim()
+          ? row.platform
+          : source.name,
+      url: typeof row.url === "string" ? row.url : undefined,
+      time:
+        parsedTime && !Number.isNaN(parsedTime.getTime())
+          ? parsedTime
+          : new Date(),
+      sourceId: source.id,
+      sourceType: source.type,
+      driver: typeof row.driver === "string" ? row.driver : "python-gather",
+      matchedKeywords: Array.isArray(row.matchedKeywords)
+        ? row.matchedKeywords.filter((entry): entry is string => typeof entry === "string")
+        : [],
+      keywordMatchScore:
+        typeof row.keywordMatchScore === "number"
+          ? row.keywordMatchScore
+          : undefined,
+      recordId: typeof row.recordId === "string" ? row.recordId : undefined,
+      recordType: typeof row.recordType === "string" ? row.recordType : undefined,
+      recordIndex: typeof row.recordIndex === "number" ? row.recordIndex : undefined,
+    });
+  }
+  return normalized;
 }
 
 async function summarizeWithRetry(
@@ -629,6 +865,64 @@ async function summarizeWithRetry(
     }
   }
   throw new Error("摘要失败");
+}
+
+async function findExistingContentBySourceRecord(
+  item: CleanItem
+): Promise<{ id: string } | null> {
+  if (item.recordId) {
+    const existingByRecordId = await prisma.content.findFirst({
+      where: {
+        AND: [
+          {
+            meta: {
+              path: ["sourceId"],
+              equals: item.sourceId,
+            },
+          },
+          {
+            meta: {
+              path: ["recordId"],
+              equals: item.recordId,
+            },
+          },
+        ],
+      },
+      select: { id: true },
+    });
+    if (existingByRecordId) return existingByRecordId;
+  }
+
+  if (item.fingerprint) {
+    return prisma.content.findFirst({
+      where: {
+        AND: [
+          {
+            meta: {
+              path: ["sourceId"],
+              equals: item.sourceId,
+            },
+          },
+          {
+            meta: {
+              path: ["sourceFingerprint"],
+              equals: item.fingerprint,
+            },
+          },
+        ],
+      },
+      select: { id: true },
+    });
+  }
+
+  return null;
+}
+
+function buildFallbackSummary(item: CleanItem): string {
+  const source = item.text?.trim() || item.markdown?.trim() || "";
+  if (!source) return "采集成功，暂无可用正文。";
+  const normalized = source.replace(/\s+/g, " ");
+  return normalized.slice(0, 180);
 }
 
 async function fetchWithTimeout(

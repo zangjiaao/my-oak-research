@@ -30,7 +30,11 @@ export async function POST(
     },
   });
 
-  await collectQueue.add("collect", { runId: run.id, queryId }, defaultJobOpts);
+  await collectQueue.add(
+    "collect-manual",
+    { runId: run.id, queryId, trigger: "manual" },
+    defaultJobOpts
+  );
 
   return NextResponse.json({ runId: run.id });
 }

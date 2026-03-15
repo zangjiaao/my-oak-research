@@ -177,12 +177,30 @@ export const SocialConfigByPlatform = z.discriminatedUnion("platform", [
     platform: z.literal("X"),
     config: z
       .object({
-        user: z.string().optional(),
-        listId: z.string().optional(),
-        query: z.string().optional(),
+        playwright: z.object({
+          mode: z.enum(["eval-js"]).default("eval-js"),
+          headless: z.boolean().default(false),
+          targetUrl: z.preprocess(
+            (val) =>
+              typeof val === "string" && !val.trim() ? undefined : val,
+            z.string().url().optional()
+          ),
+          scriptPath: z.string().min(1),
+          args: z.preprocess((val) => {
+            const parsed = parseJson(val);
+            if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+              return {};
+            }
+            return Object.fromEntries(
+              Object.entries(parsed as Record<string, unknown>).map(
+                ([key, value]) => [key, value == null ? "" : String(value)]
+              )
+            );
+          }, z.record(z.string().min(1), z.string()).default({})),
+        }),
       })
-      .refine((v) => v.user || v.listId || v.query, {
-        message: "X: provide at least one of user/listId/query",
+      .refine((v) => Boolean(v.playwright.scriptPath), {
+        message: "X: playwright scriptPath is required",
       }),
     credentialId: cuidOpt,
     proxyId: cuidOpt,
@@ -469,4 +487,3 @@ export const QueryUpdateSchema = QueryCreateSchema.partial().superRefine((data, 
     });
   }
 });
-

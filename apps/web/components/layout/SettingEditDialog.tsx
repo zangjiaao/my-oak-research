@@ -36,16 +36,16 @@ export const SettingEditDialog = ({
     <Dialog {...props}>
       <DialogTrigger asChild>{triggerButton}</DialogTrigger>
 
-      <DialogContent>
-        <form onSubmit={onSubmit} className="grid gap-4">
-          <DialogHeader>
+      <DialogContent className="max-h-[90vh] overflow-hidden p-0 sm:max-w-2xl">
+        <form onSubmit={onSubmit} className="flex max-h-[90vh] flex-col">
+          <DialogHeader className="px-6 pt-6">
             <DialogTitle>{title}</DialogTitle>
             <DialogDescription>{description}</DialogDescription>
           </DialogHeader>
 
-          {children}
+          <div className="flex-1 overflow-y-auto px-6 py-4">{children}</div>
 
-          <DialogFooter>
+          <DialogFooter className="border-t px-6 py-4">
             <Button type="submit">{buttonText}</Button>
             <DialogClose asChild>
               <Button variant="outline">Cancel</Button>

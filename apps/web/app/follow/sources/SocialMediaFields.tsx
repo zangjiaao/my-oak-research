@@ -86,6 +86,134 @@ const PLATFORM_TO_KIND: Record<string, string> = {
   "FACEBOOK": "facebook-cookie",
 };
 
+type XScriptArg = {
+  required: boolean;
+  description: string;
+};
+
+type XScriptOption = {
+  name: string;
+  description: string;
+  domain: string;
+  scriptPath: string;
+  args: Record<string, XScriptArg>;
+};
+
+const X_SCRIPT_OPTIONS: XScriptOption[] = [
+  {
+    name: "twitter/tweets",
+    description: "获取用户最近的推文（时间线）",
+    domain: "x.com",
+    scriptPath: "/Users/zangjiaao/Reference/bb-sites/twitter/tweets.js",
+    args: {
+      screen_name: {
+        required: true,
+        description: "Twitter handle (without @)",
+      },
+      count: {
+        required: false,
+        description: "Number of tweets (default 20, max 100)",
+      },
+    },
+  },
+  {
+    name: "twitter/thread",
+    description: "获取推文对话线程（原文 + 所有回复）",
+    domain: "x.com",
+    scriptPath: "/Users/zangjiaao/Reference/bb-sites/twitter/thread.js",
+    args: {
+      tweet_id: {
+        required: true,
+        description: "Tweet ID (numeric) or full URL",
+      },
+    },
+  },
+  {
+    name: "twitter/search",
+    description: "搜索推文",
+    domain: "x.com",
+    scriptPath: "/Users/zangjiaao/Reference/bb-sites/twitter/search.js",
+    args: {
+      query: {
+        required: true,
+        description: "Search query",
+      },
+      count: {
+        required: false,
+        description: "Number of results (default 20, max 50)",
+      },
+      type: {
+        required: false,
+        description: "Result type: latest (default) or top",
+      },
+    },
+  },
+];
+
+const DEFAULT_X_SCRIPT = X_SCRIPT_OPTIONS[0];
+
+type PlaywrightArgRow = {
+  id: string;
+  key: string;
+  value: string;
+  required?: boolean;
+  description?: string;
+  preset?: boolean;
+};
+
+const createEmptyArgRow = (): PlaywrightArgRow => ({
+  id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+  key: "",
+  value: "",
+});
+
+const normalizeArgs = (input: unknown): Record<string, string> => {
+  if (!input || typeof input !== "object" || Array.isArray(input)) {
+    return {};
+  }
+  return Object.fromEntries(
+    Object.entries(input as Record<string, unknown>).map(([key, value]) => [
+      key,
+      value == null ? "" : String(value),
+    ])
+  );
+};
+
+const getXScriptOptionByPath = (scriptPath?: string | null) =>
+  X_SCRIPT_OPTIONS.find((item) => item.scriptPath === scriptPath) ?? DEFAULT_X_SCRIPT;
+
+const buildXArgRows = (
+  args: Record<string, string>,
+  script: XScriptOption
+): PlaywrightArgRow[] => {
+  const rows: PlaywrightArgRow[] = [];
+  const included = new Set<string>();
+
+  for (const [key, rule] of Object.entries(script.args)) {
+    rows.push({
+      id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+      key,
+      value: args[key] ?? "",
+      required: rule.required,
+      description: rule.description,
+      preset: true,
+    });
+    included.add(key);
+  }
+
+  for (const [key, value] of Object.entries(args)) {
+    if (included.has(key)) continue;
+    rows.push({
+      id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+      key,
+      value,
+      preset: false,
+    });
+  }
+
+  return rows.length > 0 ? rows : [createEmptyArgRow()];
+};
+
 export const SocialMediaFields = ({
   register,
   control,
@@ -109,6 +237,9 @@ export const SocialMediaFields = ({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [showUploadForm, setShowUploadForm] = useState(false);
   const [newCredentialName, setNewCredentialName] = useState("");
+  const [xArgRows, setXArgRows] = useState<PlaywrightArgRow[]>([
+    createEmptyArgRow(),
+  ]);
 
   // Credentials list
   const [credentials, setCredentials] = useState<CredentialInfo[]>([]);
@@ -135,7 +266,12 @@ export const SocialMediaFields = ({
   };
 
   const getConfigErrorMessage = (key: string) => {
-    const value = socialConfigErrors?.[key];
+    const value = key
+      .split(".")
+      .reduce<unknown>((acc, part) => {
+        if (!acc || typeof acc !== "object") return undefined;
+        return (acc as Record<string, unknown>)[part];
+      }, socialConfigErrors as unknown);
     if (!value) return undefined;
     if (
       typeof value === "object" &&
@@ -176,6 +312,83 @@ export const SocialMediaFields = ({
 
     fetchCredentials();
   }, [socialPlatform, needsCookieAuth]);
+
+  const syncArgsToForm = useCallback(
+    (rows: PlaywrightArgRow[]) => {
+      if (!setValue) return;
+      const args = rows.reduce<Record<string, string>>((acc, row) => {
+        const key = row.key.trim();
+        if (!key) return acc;
+        acc[key] = row.value;
+        return acc;
+      }, {});
+      setValue("social.config.playwright.args", args, { shouldDirty: true });
+    },
+    [setValue]
+  );
+
+  const applyXScriptDefaults = useCallback(
+    (
+      scriptPath: string,
+      incomingArgs: unknown,
+      options?: {
+        markDirty?: boolean;
+      }
+    ) => {
+      if (!setValue) return;
+      const script = getXScriptOptionByPath(scriptPath);
+      const currentArgs = normalizeArgs(incomingArgs);
+      const nextArgs = Object.fromEntries(
+        Object.keys(script.args).map((argKey) => [argKey, currentArgs[argKey] ?? ""])
+      );
+      const rows = buildXArgRows(nextArgs, script);
+      setValue("social.config.playwright.scriptPath", script.scriptPath, {
+        shouldDirty: options?.markDirty ?? false,
+      });
+      setValue("social.config.playwright.args", nextArgs, {
+        shouldDirty: options?.markDirty ?? false,
+      });
+      setXArgRows(rows);
+    },
+    [setValue]
+  );
+
+  useEffect(() => {
+    if (socialPlatform !== "X") return;
+    const scriptPath = watch("social.config.playwright.scriptPath");
+    const normalizedScriptPath = scriptPath || DEFAULT_X_SCRIPT.scriptPath;
+    const rawArgs = watch("social.config.playwright.args");
+    applyXScriptDefaults(normalizedScriptPath, rawArgs);
+  }, [socialPlatform, watch, applyXScriptDefaults]);
+
+  const updateArgRow = useCallback(
+    (id: string, field: "key" | "value", nextValue: string) => {
+      const nextRows = xArgRows.map((row) =>
+        row.id === id ? { ...row, [field]: nextValue } : row
+      );
+      setXArgRows(nextRows);
+      syncArgsToForm(nextRows);
+    },
+    [syncArgsToForm, xArgRows]
+  );
+
+  const addArgRow = useCallback(() => {
+    const nextRows = [...xArgRows, createEmptyArgRow()];
+    setXArgRows(nextRows);
+    syncArgsToForm(nextRows);
+  }, [syncArgsToForm, xArgRows]);
+
+  const removeArgRow = useCallback(
+    (id: string) => {
+      const rowToRemove = xArgRows.find((row) => row.id === id);
+      if (rowToRemove?.required) return;
+      const nextRows = xArgRows.filter((row) => row.id !== id);
+      const safeRows = nextRows.length > 0 ? nextRows : [createEmptyArgRow()];
+      setXArgRows(safeRows);
+      syncArgsToForm(safeRows);
+    },
+    [syncArgsToForm, xArgRows]
+  );
 
   // Handle file selection
   const handleFileSelect = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
@@ -351,6 +564,10 @@ export const SocialMediaFields = ({
 
   // Get selected credential info
   const selectedCredential = credentials.find(c => c.id === currentCredentialId);
+  const selectedXScriptPath = watch("social.config.playwright.scriptPath") as
+    | string
+    | undefined;
+  const selectedXScript = getXScriptOptionByPath(selectedXScriptPath);
 
   // Render auth status indicator
   const renderAuthStatus = () => {
@@ -400,6 +617,16 @@ export const SocialMediaFields = ({
                 setShowUploadForm(false);
                 if (setValue) {
                   setValue("social.credentialId", null);
+                  if (value === "X") {
+                    setValue("social.config.playwright.mode", "eval-js");
+                    setValue("social.config.playwright.headless", false);
+                    setValue("social.config.playwright.targetUrl", "");
+                    setValue(
+                      "social.config.playwright.scriptPath",
+                      DEFAULT_X_SCRIPT.scriptPath
+                    );
+                    setValue("social.config.playwright.args", {});
+                  }
                 }
               }}
               placeholder="Select a social media platform"
@@ -618,32 +845,142 @@ export const SocialMediaFields = ({
 
       {socialPlatform === "X" && (
         <>
-          <div className="grid gap-3">
-            <Label htmlFor="social.config.user">User</Label>
-            <Input
-              id="social.config.user"
-              placeholder="X User (e.g., @username)"
-              {...register("social.config.user")}
-            />
-            <ErrorMessage>{getConfigErrorMessage("user")}</ErrorMessage>
-          </div>
-          <div className="grid gap-3">
-            <Label htmlFor="social.config.listId">List ID</Label>
-            <Input
-              id="social.config.listId"
-              placeholder="X List ID"
-              {...register("social.config.listId")}
-            />
-            <ErrorMessage>{getConfigErrorMessage("listId")}</ErrorMessage>
-          </div>
-          <div className="grid gap-3">
-            <Label htmlFor="social.config.query">Query</Label>
-            <Input
-              id="social.config.query"
-              placeholder="Search query"
-              {...register("social.config.query")}
-            />
-            <ErrorMessage>{getConfigErrorMessage("query")}</ErrorMessage>
+          <div className="grid gap-4 p-4 border rounded-lg bg-muted/30">
+            <Label className="text-base font-medium">Playwright Task Params (Required)</Label>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid gap-3">
+                <Label htmlFor="social.config.playwright.mode">Mode</Label>
+                <Controller
+                  name="social.config.playwright.mode"
+                  control={control}
+                  render={({ field }) => (
+                    <ControlledSelect
+                      value={(field.value as string) || "eval-js"}
+                      onValueChange={field.onChange}
+                      placeholder="Select mode"
+                    >
+                      <SelectItem value="eval-js">eval-js</SelectItem>
+                    </ControlledSelect>
+                  )}
+                />
+              </div>
+
+              <div className="flex items-center gap-3 pt-8">
+                <Controller
+                  name="social.config.playwright.headless"
+                  control={control}
+                  render={({ field }) => (
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={Boolean(field.value)}
+                        onChange={(e) => field.onChange(e.target.checked)}
+                        className="rounded border-gray-300"
+                      />
+                      <span className="text-sm">Headless</span>
+                    </label>
+                  )}
+                />
+              </div>
+
+              <div className="grid gap-3">
+                <Label htmlFor="social.config.playwright.targetUrl">Target URL (Optional)</Label>
+                <Input
+                  id="social.config.playwright.targetUrl"
+                  placeholder="留空则不执行 page.goto()"
+                  {...register("social.config.playwright.targetUrl")}
+                />
+                <ErrorMessage>{getConfigErrorMessage("playwright.targetUrl")}</ErrorMessage>
+              </div>
+
+              <div className="grid gap-3 md:col-span-2">
+                <Label htmlFor="social.config.playwright.scriptPath">Script Template</Label>
+                <Controller
+                  name="social.config.playwright.scriptPath"
+                  control={control}
+                  render={({ field }) => (
+                    <ControlledSelect
+                      value={(field.value as string) || DEFAULT_X_SCRIPT.scriptPath}
+                      onValueChange={(value) => {
+                        const nextScriptPath = value || DEFAULT_X_SCRIPT.scriptPath;
+                        field.onChange(nextScriptPath);
+                        const args = watch("social.config.playwright.args");
+                        applyXScriptDefaults(nextScriptPath, args, { markDirty: true });
+                      }}
+                      placeholder="Select script path"
+                    >
+                      {X_SCRIPT_OPTIONS.map((option) => (
+                        <SelectItem key={option.scriptPath} value={option.scriptPath}>
+                          {option.name}
+                        </SelectItem>
+                      ))}
+                    </ControlledSelect>
+                  )}
+                />
+                <ErrorMessage>{getConfigErrorMessage("playwright.scriptPath")}</ErrorMessage>
+                <p className="text-xs text-muted-foreground">
+                  {selectedXScript.description}
+                </p>
+                <div className="grid gap-2">
+                  <Label htmlFor="social.config.playwright.scriptPath-input">
+                    Script Path (Editable)
+                  </Label>
+                  <Input
+                    id="social.config.playwright.scriptPath-input"
+                    placeholder="/Users/zangjiaao/Reference/bb-sites/twitter/tweets.js"
+                    {...register("social.config.playwright.scriptPath")}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="grid gap-3 border rounded-md p-3 bg-background">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-medium">Args (key:value)</Label>
+                <Button type="button" variant="outline" size="sm" onClick={addArgRow}>
+                  <Plus className="h-3.5 w-3.5 mr-1" />
+                  Add
+                </Button>
+              </div>
+              <div className="grid gap-2 max-h-56 overflow-y-auto pr-1">
+                {xArgRows.map((row) => (
+                  <div key={row.id} className="grid grid-cols-[1fr_1fr_auto] gap-2 items-center">
+                    <Input
+                      value={row.key}
+                      onChange={(e) => updateArgRow(row.id, "key", e.target.value)}
+                      placeholder="key (e.g. screen_name)"
+                      disabled={Boolean(row.preset)}
+                    />
+                    <Input
+                      value={row.value}
+                      onChange={(e) => updateArgRow(row.id, "value", e.target.value)}
+                      placeholder={row.description || "value"}
+                    />
+                    {!row.preset && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => removeArgRow(row.id)}
+                        aria-label="Remove arg row"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                    {row.preset && (
+                      <span className="text-xs text-muted-foreground text-right">
+                        {row.required ? "required" : "optional"}
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                预设参数随脚本切换自动调整；你也可以新增自定义 key:value。
+              </p>
+              <ErrorMessage>{getConfigErrorMessage("playwright.args")}</ErrorMessage>
+            </div>
           </div>
         </>
       )}
