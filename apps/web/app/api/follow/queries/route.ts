@@ -1,6 +1,9 @@
 import prisma from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { scheduleQueryCollect } from "@/lib/queue";
+import { QueryCreateSchema } from "@/app/api/_utils/zod";
+import { logger } from "@/lib/logger";
+import { z } from "zod";
 
 type QueryRow = Awaited<ReturnType<typeof prisma.query.findMany>> extends Array<
   infer R
@@ -63,17 +66,16 @@ export async function GET(request: Request) {
 }
 
 export async function POST(req: Request) {
-  const data = await req.json();
-  const {
-    name,
-    description,
-    frequency,
-    cronSchedule,
-    enabled,
-    keywordIds,
-    sourceIds,
-    rules,
-  } = data;
+  const payload = await req.json();
+  const parsed = QueryCreateSchema.safeParse(payload);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "Invalid query payload", details: z.flattenError(parsed.error) },
+      { status: 400 }
+    );
+  }
+  const data = parsed.data;
+  const { keywordIds, sourceIds } = data;
 
   // Validate keywordIds
   if (keywordIds && keywordIds.length > 0) {
@@ -103,27 +105,39 @@ export async function POST(req: Request) {
 
   const query = await prisma.query.create({
     data: {
-      name,
-      description,
-      frequency,
-      cronSchedule: frequency === "CRONTAB" ? cronSchedule : null,
-      enabled,
-      rules,
+      name: data.name,
+      description: data.description ?? null,
+      frequency: data.frequency,
+      cronSchedule: data.frequency === "CRONTAB" ? data.cronSchedule ?? null : null,
+      enabled: data.enabled,
+      rules: data.rules,
       keywords: {
-        connect: keywordIds?.map((id: string) => ({ id })) || [],
+        connect: keywordIds.map((id) => ({ id })),
       },
       sources: {
-        connect: sourceIds?.map((id: string) => ({ id })) || [],
+        connect: sourceIds.map((id) => ({ id })),
       },
     },
   });
 
-  await scheduleQueryCollect({
-    queryId: query.id,
-    frequency: query.frequency,
-    cronSchedule: query.cronSchedule,
-    enabled: query.enabled,
-  });
+  try {
+    await scheduleQueryCollect({
+      queryId: query.id,
+      frequency: query.frequency,
+      cronSchedule: query.cronSchedule,
+      enabled: query.enabled,
+    });
+  } catch (error) {
+    await prisma.query.delete({ where: { id: query.id } }).catch(() => undefined);
+    logger.error("failed to schedule query after create", {
+      queryId: query.id,
+      error: logger.normalizeError(error),
+    });
+    return NextResponse.json(
+      { error: "Failed to schedule query task" },
+      { status: 503 }
+    );
+  }
 
   return NextResponse.json(query);
 }
