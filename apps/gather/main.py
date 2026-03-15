@@ -1398,6 +1398,20 @@ def _normalize_playwright_eval_result(result: Any, request: FetchRequest, target
     return [_to_clean_item_from_eval_value(candidate, request, target_url, 1)]
 
 
+def _resolve_default_target_url(platform: str) -> str | None:
+    normalized = _BB_SITE_PLATFORM_ALIAS.get(platform.lower(), platform.lower())
+    return _BB_SITE_TARGET_URL.get(normalized)
+
+
+def _looks_like_origin_security_error(error: Exception) -> bool:
+    message = str(error).lower()
+    return (
+        "failed to read the 'cookie' property" in message
+        or "failed to read the 'localstorage' property" in message
+        or "securityerror" in message
+    )
+
+
 async def _run_playwright_eval_script(request: FetchRequest) -> list[CleanItem]:
     from playwright.async_api import TimeoutError as PlaywrightTimeoutError
 
@@ -1435,7 +1449,25 @@ async def _run_playwright_eval_script(request: FetchRequest) -> list[CleanItem]:
                     await page.wait_for_selector(options["wait_selector"], timeout=options["navigation_timeout_ms"])
                 if options["post_navigation_wait_ms"] > 0:
                     await page.wait_for_timeout(options["post_navigation_wait_ms"])
-            eval_result = await page.evaluate(script_to_run)
+            try:
+                eval_result = await page.evaluate(script_to_run)
+            except Exception as error:
+                fallback_target_url = _resolve_default_target_url(request.platform)
+                if (
+                    not options["target_url"]
+                    and fallback_target_url
+                    and _looks_like_origin_security_error(error)
+                ):
+                    await page.goto(
+                        fallback_target_url,
+                        wait_until=options["wait_until"],
+                        timeout=options["navigation_timeout_ms"],
+                    )
+                    if options["post_navigation_wait_ms"] > 0:
+                        await page.wait_for_timeout(options["post_navigation_wait_ms"])
+                    eval_result = await page.evaluate(script_to_run)
+                else:
+                    raise
         finally:
             await context.close()
             if pooled_browser is not None:
