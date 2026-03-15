@@ -191,36 +191,41 @@ def _normalize_optional_str(raw_value: Any, field_name: str) -> str | None:
     return raw_value.strip()
 
 
-def _extract_loop_config(options: dict[str, Any]) -> dict[str, Any] | None:
-    raw_loop = options.get("loop")
-    if raw_loop is None:
-        return None
+def _extract_loop_config(raw_loop: Any, *, field_prefix: str = "loop") -> dict[str, Any]:
     if not isinstance(raw_loop, dict):
         raise AgentBrowserScriptError(
             reason="invalid_config",
-            message="loop must be an object",
+            message=f"{field_prefix} must be an object",
         )
     raw_steps = raw_loop.get("steps")
     if not isinstance(raw_steps, list) or not raw_steps:
         raise AgentBrowserScriptError(
             reason="invalid_config",
-            message="loop.steps must be a non-empty array",
+            message=f"{field_prefix}.steps must be a non-empty array",
         )
-    max_iterations = _read_int(raw_loop.get("maxIterations", 1), field_name="loop.maxIterations", minimum=1)
-    interval_ms = _read_int(raw_loop.get("intervalMs", 0), field_name="loop.intervalMs", minimum=0)
+    max_iterations = _read_int(
+        raw_loop.get("maxIterations", 1),
+        field_name=f"{field_prefix}.maxIterations",
+        minimum=1,
+    )
+    interval_ms = _read_int(
+        raw_loop.get("intervalMs", 0),
+        field_name=f"{field_prefix}.intervalMs",
+        minimum=0,
+    )
     break_when = raw_loop.get("breakWhen")
     if break_when is not None:
         if not isinstance(break_when, dict):
             raise AgentBrowserScriptError(
                 reason="invalid_config",
-                message="loop.breakWhen must be an object",
+                message=f"{field_prefix}.breakWhen must be an object",
             )
         capture_key = break_when.get("captureKey")
         text_includes = break_when.get("textIncludes")
         if capture_key is not None and (not isinstance(capture_key, str) or not capture_key.strip()):
             raise AgentBrowserScriptError(
                 reason="invalid_config",
-                message="loop.breakWhen.captureKey must be a non-empty string",
+                message=f"{field_prefix}.breakWhen.captureKey must be a non-empty string",
             )
         text_includes_values: list[str] | None = None
         if text_includes is not None:
@@ -228,7 +233,7 @@ def _extract_loop_config(options: dict[str, Any]) -> dict[str, Any] | None:
                 if not text_includes:
                     raise AgentBrowserScriptError(
                         reason="invalid_config",
-                        message="loop.breakWhen.textIncludes must be a non-empty string or array",
+                        message=f"{field_prefix}.breakWhen.textIncludes must be a non-empty string or array",
                     )
                 text_includes_values = [text_includes]
             elif isinstance(text_includes, list) and text_includes:
@@ -237,21 +242,19 @@ def _extract_loop_config(options: dict[str, Any]) -> dict[str, Any] | None:
                     if not isinstance(value, str) or not value:
                         raise AgentBrowserScriptError(
                             reason="invalid_config",
-                            message=(
-                                "loop.breakWhen.textIncludes list must contain non-empty strings"
-                            ),
+                            message=(f"{field_prefix}.breakWhen.textIncludes list must contain non-empty strings"),
                         )
                     values.append(value)
                 text_includes_values = values
             else:
                 raise AgentBrowserScriptError(
                     reason="invalid_config",
-                    message="loop.breakWhen.textIncludes must be a non-empty string or array",
+                    message=f"{field_prefix}.breakWhen.textIncludes must be a non-empty string or array",
                 )
         if (capture_key is None) != (text_includes is None):
             raise AgentBrowserScriptError(
                 reason="invalid_config",
-                message="loop.breakWhen requires both captureKey and textIncludes",
+                message=f"{field_prefix}.breakWhen requires both captureKey and textIncludes",
             )
         if break_when is not None and text_includes_values is not None:
             break_when = {
@@ -419,7 +422,33 @@ def _execute_steps_batch(
                 step_index=step_index,
             )
 
+        loop_block = step.get("loop")
         command = step.get("command")
+        if loop_block is not None:
+            if command is not None:
+                raise AgentBrowserScriptError(
+                    reason="invalid_config",
+                    message=f"{batch_label}.steps[{step_index - 1}] cannot contain both command and loop",
+                    step_index=step_index,
+                )
+            loop_config = _extract_loop_config(
+                loop_block,
+                field_prefix=f"{batch_label}.steps[{step_index - 1}].loop",
+            )
+            if _execute_loop_block(
+                loop_config=loop_config,
+                instance=instance,
+                captures=captures,
+                debug_steps=debug_steps,
+                step_results=step_results,
+                capture_filter=capture_filter,
+                command_timeout_ms=command_timeout_ms,
+                verbose=verbose,
+                batch_label=f"{batch_label}.steps[{step_index - 1}].loop",
+            ):
+                should_close_by_step = True
+            continue
+
         if not isinstance(command, str) or not command.strip():
             raise AgentBrowserScriptError(
                 reason="invalid_config",
@@ -545,6 +574,49 @@ def _execute_steps_batch(
     return should_close_by_step
 
 
+def _execute_loop_block(
+    *,
+    loop_config: dict[str, Any],
+    instance: AgentBrowserInstanceState,
+    captures: dict[str, list[str]],
+    debug_steps: list[dict[str, Any]],
+    step_results: list[AgentBrowserStepResult],
+    capture_filter: dict[str, Any],
+    command_timeout_ms: int,
+    verbose: bool,
+    batch_label: str,
+) -> bool:
+    should_close_by_step = False
+    loop_broken = False
+    for iteration in range(1, loop_config["max_iterations"] + 1):
+        _emit_log(
+            verbose,
+            f"{batch_label} iteration={iteration}/{loop_config['max_iterations']}",
+        )
+        if _execute_steps_batch(
+            steps=loop_config["steps"],
+            instance=instance,
+            captures=captures,
+            debug_steps=debug_steps,
+            step_results=step_results,
+            capture_filter=capture_filter,
+            command_timeout_ms=command_timeout_ms,
+            verbose=verbose,
+            batch_label=f"{batch_label}[{iteration}]",
+        ):
+            should_close_by_step = True
+        if _should_break_loop(captures, loop_config["break_when"]):
+            loop_broken = True
+            _emit_log(verbose, f"{batch_label} break triggered at iteration={iteration}")
+            break
+        if loop_config["interval_ms"] > 0 and iteration < loop_config["max_iterations"]:
+            _emit_log(verbose, f"{batch_label} sleep interval {loop_config['interval_ms']}ms")
+            time.sleep(loop_config["interval_ms"] / 1000)
+    if not loop_broken and loop_config["break_when"]:
+        _emit_log(verbose, f"{batch_label} reached maxIterations without matching breakWhen condition")
+    return should_close_by_step
+
+
 def _create_instance(options: dict[str, Any], *, verbose: bool) -> AgentBrowserInstanceState:
     command_prefix, command_prefix_with_state = _build_command_prefixes(options)
     owner_id = _normalize_optional_str(options.get("ownerId"), "ownerId")
@@ -616,18 +688,22 @@ def _resolve_instance(options: dict[str, Any], *, verbose: bool) -> tuple[AgentB
 
 def execute_agent_browser_script(config: dict[str, Any]) -> AgentBrowserScriptResult:
     options = _extract_runtime_options(config)
+    if options.get("loop") is not None:
+        raise AgentBrowserScriptError(
+            reason="invalid_config",
+            message="config.agentBrowser.loop is deprecated; use script[].loop instead",
+        )
     heartbeat = bool(options.get("heartbeat", False))
     if heartbeat and not options.get("instanceId"):
         raise AgentBrowserScriptError(
             reason="invalid_config",
             message="heartbeat requires instanceId",
         )
-    loop_config = _extract_loop_config(options)
     capture_filter = _extract_capture_filter_config(options)
     steps = _extract_script_steps(
         config,
-        allow_empty=heartbeat or loop_config is not None,
-        allow_missing=heartbeat or loop_config is not None,
+        allow_empty=heartbeat,
+        allow_missing=heartbeat,
     )
 
     command_timeout_ms = _read_int(options.get("commandTimeoutMs", 30000), field_name="commandTimeoutMs", minimum=1)
@@ -679,34 +755,6 @@ def execute_agent_browser_script(config: dict[str, Any]) -> AgentBrowserScriptRe
                 batch_label="script",
             )
 
-        if loop_config:
-            loop_broken = False
-            for iteration in range(1, loop_config["max_iterations"] + 1):
-                _emit_log(
-                    verbose,
-                    f"loop iteration={iteration}/{loop_config['max_iterations']}",
-                )
-                if _execute_steps_batch(
-                    steps=loop_config["steps"],
-                    instance=instance,
-                    captures=captures,
-                    debug_steps=debug_steps,
-                    step_results=step_results,
-                    capture_filter=capture_filter,
-                    command_timeout_ms=command_timeout_ms,
-                    verbose=verbose,
-                    batch_label=f"loop[{iteration}]",
-                ):
-                    should_close_by_step = True
-                if _should_break_loop(captures, loop_config["break_when"]):
-                    loop_broken = True
-                    _emit_log(verbose, f"loop break triggered at iteration={iteration}")
-                    break
-                if loop_config["interval_ms"] > 0 and iteration < loop_config["max_iterations"]:
-                    _emit_log(verbose, f"loop sleep interval {loop_config['interval_ms']}ms")
-                    time.sleep(loop_config["interval_ms"] / 1000)
-            if not loop_broken and loop_config["break_when"]:
-                _emit_log(verbose, "loop reached maxIterations without matching breakWhen condition")
     finally:
         instance.last_used_at = time.time()
         should_close_instance = close_on_complete or should_close_by_step

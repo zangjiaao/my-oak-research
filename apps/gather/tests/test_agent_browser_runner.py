@@ -213,18 +213,22 @@ def test_execute_agent_browser_script_loop_breaks_on_capture_condition(monkeypat
     result = execute_agent_browser_script(
         {
             "agentBrowser": {
-                "script": [{"command": "open https://example.com"}],
-                "loop": {
-                    "maxIterations": 5,
-                    "steps": [
-                        {"command": "scroll down 800"},
-                        {"command": "snapshot", "captureAs": "page"},
-                    ],
-                    "breakWhen": {
-                        "captureKey": "page",
-                        "textIncludes": "TARGET",
+                "script": [
+                    {"command": "open https://example.com"},
+                    {
+                        "loop": {
+                            "maxIterations": 5,
+                            "steps": [
+                                {"command": "scroll down 800"},
+                                {"command": "snapshot", "captureAs": "page"},
+                            ],
+                            "breakWhen": {
+                                "captureKey": "page",
+                                "textIncludes": "TARGET",
+                            },
+                        },
                     },
-                },
+                ],
             }
         }
     )
@@ -258,15 +262,19 @@ def test_execute_agent_browser_script_loop_breaks_on_capture_condition_with_mult
     result = execute_agent_browser_script(
         {
             "agentBrowser": {
-                "script": [{"command": "open https://example.com"}],
-                "loop": {
-                    "maxIterations": 5,
-                    "steps": [{"command": "snapshot", "captureAs": "page"}],
-                    "breakWhen": {
-                        "captureKey": "page",
-                        "textIncludes": ["PRIMARY", "SECONDARY"],
+                "script": [
+                    {"command": "open https://example.com"},
+                    {
+                        "loop": {
+                            "maxIterations": 5,
+                            "steps": [{"command": "snapshot", "captureAs": "page"}],
+                            "breakWhen": {
+                                "captureKey": "page",
+                                "textIncludes": ["PRIMARY", "SECONDARY"],
+                            },
+                        },
                     },
-                },
+                ],
             }
         }
     )
@@ -302,11 +310,15 @@ def test_execute_agent_browser_script_capture_filter_supports_min_chars_and_dedu
     result = execute_agent_browser_script(
         {
             "agentBrowser": {
-                "script": [{"command": "open https://example.com"}],
-                "loop": {
-                    "maxIterations": 2,
-                    "steps": [{"command": "snapshot", "captureAs": "page_snapshot"}],
-                },
+                "script": [
+                    {"command": "open https://example.com"},
+                    {
+                        "loop": {
+                            "maxIterations": 2,
+                            "steps": [{"command": "snapshot", "captureAs": "page_snapshot"}],
+                        }
+                    },
+                ],
                 "captureFilter": {
                     "keys": ["page_snapshot"],
                     "perLine": True,
@@ -448,6 +460,7 @@ def test_execute_agent_browser_script_capture_filter_dedupes_with_inline_ref_tag
     snapshot_outputs = iter(
         [
             '- article "alpha [ref=e93]beta same"',
+            '- article "alpha [ref=e93]beta same"',
             '- article "alpha [ref=e74]beta same"',
         ]
     )
@@ -464,8 +477,10 @@ def test_execute_agent_browser_script_capture_filter_dedupes_with_inline_ref_tag
     result = execute_agent_browser_script(
         {
             "agentBrowser": {
-                "script": [{"command": "snapshot", "captureAs": "page_snapshot"}],
-                "loop": {"maxIterations": 2, "steps": [{"command": "snapshot", "captureAs": "page_snapshot"}]},
+                "script": [
+                    {"command": "snapshot", "captureAs": "page_snapshot"},
+                    {"loop": {"maxIterations": 2, "steps": [{"command": "snapshot", "captureAs": "page_snapshot"}]}},
+                ],
                 "captureFilter": {
                     "keys": ["page_snapshot"],
                     "perLine": True,
@@ -483,6 +498,7 @@ def test_execute_agent_browser_script_capture_filter_normalize_ref_suffix_alias_
     snapshot_outputs = iter(
         [
             '- article "same content [ref=e120]"',
+            '- article "same content [ref=e120]"',
             '- article "same content [ref=e121]"',
         ]
     )
@@ -499,8 +515,10 @@ def test_execute_agent_browser_script_capture_filter_normalize_ref_suffix_alias_
     result = execute_agent_browser_script(
         {
             "agentBrowser": {
-                "script": [{"command": "snapshot", "captureAs": "page_snapshot"}],
-                "loop": {"maxIterations": 2, "steps": [{"command": "snapshot", "captureAs": "page_snapshot"}]},
+                "script": [
+                    {"command": "snapshot", "captureAs": "page_snapshot"},
+                    {"loop": {"maxIterations": 2, "steps": [{"command": "snapshot", "captureAs": "page_snapshot"}]}},
+                ],
                 "captureFilter": {
                     "keys": ["page_snapshot"],
                     "perLine": True,
@@ -512,3 +530,18 @@ def test_execute_agent_browser_script_capture_filter_normalize_ref_suffix_alias_
     )
 
     assert result.captures["page_snapshot"] == ['- article "same content [ref=e120]"']
+
+
+def test_execute_agent_browser_script_rejects_top_level_loop_config():
+    with pytest.raises(AgentBrowserScriptError) as error:
+        execute_agent_browser_script(
+            {
+                "agentBrowser": {
+                    "script": [{"command": "open https://example.com"}],
+                    "loop": {"maxIterations": 2, "steps": [{"command": "snapshot"}]},
+                }
+            }
+        )
+
+    assert error.value.reason == "invalid_config"
+    assert "script[].loop" in error.value.message
