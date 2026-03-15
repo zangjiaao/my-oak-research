@@ -103,6 +103,9 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 {
   "platform": "x",
   "stateFile": ".auth/x_auth.json",
+  "verifyScriptPath": "/Users/me/Reference/bb-sites/twitter/me.ts",
+  "verifyArgs": { "screen_name": "openai" },
+  "verifyTargetUrl": "https://x.com",
   "auth_data": {
     "cookies": [...],
     "origins": []
@@ -111,6 +114,10 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
 `auth_data` 与 `stateFile` 二选一即可（`stateFile` 为 gather 服务本机可访问路径）。
+可选覆盖字段：
+- `verifyScriptPath`: 指定本次校验使用的脚本路径（不传则按平台自动查找 `me.ts/me.js/user.ts/user.js`）
+- `verifyArgs`: 透传给校验脚本的参数对象
+- `verifyTargetUrl`: 指定校验跳转地址（不传则按平台默认地址）
 
 **响应**：
 ```json

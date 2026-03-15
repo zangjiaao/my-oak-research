@@ -63,6 +63,18 @@ class VerifyAuthRequest(BaseModel):
         default=None,
         validation_alias=AliasChoices("stateFile", "state_file"),
     )
+    verify_script_path: Optional[str] = Field(
+        default=None,
+        validation_alias=AliasChoices("verifyScriptPath", "verify_script_path"),
+    )
+    verify_args: Optional[Dict[str, Any]] = Field(
+        default=None,
+        validation_alias=AliasChoices("verifyArgs", "verify_args"),
+    )
+    verify_target_url: Optional[str] = Field(
+        default=None,
+        validation_alias=AliasChoices("verifyTargetUrl", "verify_target_url"),
+    )
     headless: bool = False  # Set to False for debugging, True for production
 
 
@@ -258,17 +270,35 @@ async def _verify_auth_with_agent_browser_for_whatsapp(request: VerifyAuthReques
 async def _verify_auth_with_bb_site_script(request: VerifyAuthRequest) -> VerifyAuthResponse | None:
     platform = request.platform.lower()
     normalized = _BB_SITE_PLATFORM_ALIAS.get(platform, platform)
-    target_url = _BB_SITE_TARGET_URL.get(normalized)
+    target_url = request.verify_target_url or _BB_SITE_TARGET_URL.get(normalized)
     if not target_url:
         return None
 
-    script_path = _resolve_bb_site_verify_script(platform)
+    script_path: Path | None = None
+    if request.verify_script_path:
+        explicit_path = Path(request.verify_script_path).expanduser()
+        if not explicit_path.exists():
+            return VerifyAuthResponse(
+                valid=False,
+                message=f"verifyScriptPath does not exist: {request.verify_script_path}",
+                details={"platform": platform, "verifyMethod": "bb-site-script"},
+            )
+        script_path = explicit_path
+    else:
+        script_path = _resolve_bb_site_verify_script(platform)
     if not script_path:
         return None
 
     script_body = _strip_playwright_meta_block(script_path.read_text(encoding="utf-8"))
     if not script_body:
         return None
+    script_args = request.verify_args or {}
+    if not isinstance(script_args, dict):
+        return VerifyAuthResponse(
+            valid=False,
+            message="verifyArgs must be an object",
+            details={"platform": platform, "verifyMethod": "bb-site-script"},
+        )
 
     from playwright.async_api import TimeoutError as PlaywrightTimeoutError
     from playwright.async_api import async_playwright
@@ -281,7 +311,7 @@ async def _verify_auth_with_bb_site_script(request: VerifyAuthRequest) -> Verify
             try:
                 await page.goto(target_url, wait_until="domcontentloaded", timeout=30000)
                 await page.wait_for_timeout(1200)
-                result = await page.evaluate(f"({script_body})({{}})")
+                result = await page.evaluate(f"({script_body})({json.dumps(script_args, ensure_ascii=False)})")
             finally:
                 await context.close()
                 await browser.close()

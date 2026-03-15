@@ -120,6 +120,41 @@ def test_resolve_bb_site_verify_script_prefers_me(monkeypatch, tmp_path):
     assert resolved.name == "me.ts"
 
 
+def test_verify_auth_accepts_verify_script_overrides(monkeypatch):
+    async def fake_script_verify(request):
+        assert request.verify_script_path == "/tmp/demo/me.ts"
+        assert request.verify_args == {"screen_name": "openai"}
+        assert request.verify_target_url == "https://x.com"
+        return VerifyAuthResponse(
+            valid=True,
+            message="script auth ok",
+            details={"verifyMethod": "bb-site-script"},
+        )
+
+    async def fake_legacy_verify(_request):  # pragma: no cover - should not be called
+        raise AssertionError("legacy verify should not be called when script verify returns result")
+
+    monkeypatch.setattr(main, "_verify_auth_with_bb_site_script", fake_script_verify)
+    monkeypatch.setattr(main, "_playwright_verify_auth_legacy", fake_legacy_verify)
+
+    client = TestClient(main.app)
+    response = client.post(
+        "/verify-auth",
+        json={
+            "platform": "x",
+            "auth_data": {"cookies": [{"name": "ct0", "value": "demo"}], "origins": []},
+            "verifyScriptPath": "/tmp/demo/me.ts",
+            "verifyArgs": {"screen_name": "openai"},
+            "verifyTargetUrl": "https://x.com",
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["valid"] is True
+    assert payload["details"]["verifyMethod"] == "bb-site-script"
+
+
 def test_verify_auth_uses_agent_browser_for_whatsapp(monkeypatch):
     class FakeResult:
         captures = {"auth_probe": ['{"ok": true}']}
