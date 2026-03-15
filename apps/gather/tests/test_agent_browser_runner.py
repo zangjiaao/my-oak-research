@@ -13,9 +13,11 @@ from drivers.agent_browser_runner import (
     execute_agent_browser_script,
     heartbeat_agent_browser_instance,
 )
+from drivers import agent_browser_runner as runner_module
 
 
 def test_execute_agent_browser_script_supports_repeat_and_capture(monkeypatch, tmp_path):
+    runner_module._INSTANCES.clear()
     calls = []
     sleep_calls = []
     state_file = tmp_path / "auth-state.json"
@@ -48,10 +50,8 @@ def test_execute_agent_browser_script_supports_repeat_and_capture(monkeypatch, t
 
     assert len(result.step_results) == 3
     assert result.captures["poll_click"] == ["ran:click @e1", "ran:click @e1"]
-    assert any(call[-1] == "close" for call in calls)
     assert sleep_calls == [0.005]
-    assert calls[0] == ["agent-browser", "close"]
-    assert calls[1][:8] == [
+    assert calls[0][:8] == [
         "agent-browser",
         "--headed",
         "--profile",
@@ -61,7 +61,7 @@ def test_execute_agent_browser_script_supports_repeat_and_capture(monkeypatch, t
         "--state",
         str(state_file),
     ]
-    assert "--state" not in calls[2]
+    assert "--state" not in calls[1]
     assert result.instance_id.startswith("ab-")
     assert result.tab_id.startswith("tab-")
     assert result.instance_active is True
@@ -96,7 +96,6 @@ def test_execute_agent_browser_script_reuses_instance_and_close_by_command(monke
 
     assert second.instance_id == first.instance_id
     assert second.instance_active is False
-    assert calls[0] == ["agent-browser", "close"]  # first request preflight
     assert calls[-1] == ["agent-browser", "close"]  # explicit close step
 
 
@@ -174,7 +173,7 @@ def test_execute_agent_browser_script_supports_heartbeat_without_steps(monkeypat
     assert heartbeat.instance_active is True
     assert heartbeat.step_results == []
     assert heartbeat.captures == {}
-    assert calls == [["agent-browser", "close"], ["agent-browser", "open", "https://example.com"]]
+    assert calls == [["agent-browser", "open", "https://example.com"]]
 
 
 def test_heartbeat_agent_browser_instance_returns_instance_state(monkeypatch):
@@ -572,11 +571,48 @@ def test_execute_agent_browser_script_supports_network_proxy(monkeypatch):
         }
     )
 
-    assert calls[0] == ["agent-browser", "close"]
-    assert calls[1][:5] == [
+    assert calls[0][:5] == [
         "agent-browser",
         "--proxy",
         "socks5://127.0.0.1:9050",
         "--proxy-bypass",
         "localhost,127.0.0.1",
     ]
+
+
+def test_execute_agent_browser_script_sweeps_idle_instances(monkeypatch):
+    runner_module._INSTANCES.clear()
+    calls = []
+    now = {"value": 1000.0}
+
+    def fake_run(args, capture_output, text, timeout, check):  # noqa: ARG001
+        calls.append(args)
+        if args[-1] == "close":
+            return subprocess.CompletedProcess(args, 0, stdout="", stderr="")
+        return subprocess.CompletedProcess(args, 0, stdout="ok", stderr="")
+
+    monkeypatch.setattr("drivers.agent_browser_runner.subprocess.run", fake_run)
+    monkeypatch.setattr("drivers.agent_browser_runner.time.time", lambda: now["value"])
+    monkeypatch.setattr("drivers.agent_browser_runner._LAST_SWEEP_AT", 0.0)
+
+    first = execute_agent_browser_script(
+        {
+            "agentBrowser": {
+                "instanceTtlSeconds": 1,
+                "script": [{"command": "open https://example.com"}],
+            }
+        }
+    )
+    assert first.instance_active is True
+
+    now["value"] = 1010.0
+    second = execute_agent_browser_script(
+        {
+            "agentBrowser": {
+                "script": [{"command": "open https://example.com/next"}],
+            }
+        }
+    )
+
+    assert second.instance_id != first.instance_id
+    assert ["agent-browser", "close"] in calls

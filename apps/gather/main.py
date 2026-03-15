@@ -7,10 +7,12 @@ import re
 import io
 import json
 import asyncio
+import hashlib
 import shutil
 import zipfile
 from pathlib import Path
 from urllib.parse import quote, urlparse, urlunparse
+from dataclasses import dataclass
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from fastapi.responses import JSONResponse
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field, ValidationError
@@ -163,6 +165,19 @@ _BB_SITE_TARGET_URL = {
 }
 
 _GATHER_VERIFY_SCRIPT_ROOT = Path(__file__).resolve().parent / "site_scripts"
+
+
+@dataclass
+class _PlaywrightBrowserPoolEntry:
+    browser: Any
+    last_used_at: float
+    idle_timeout_ms: int
+
+
+_PLAYWRIGHT_BROWSER_POOL: dict[str, _PlaywrightBrowserPoolEntry] = {}
+_PLAYWRIGHT_POOL_LOCK = asyncio.Lock()
+_PLAYWRIGHT_RUNTIME = None
+_PLAYWRIGHT_RUNTIME_LOCK = asyncio.Lock()
 
 
 def build_error_response(
@@ -1172,6 +1187,10 @@ def _extract_playwright_eval_options(config: Dict[str, Any]) -> dict[str, Any]:
     if wait_selector is not None and (not isinstance(wait_selector, str) or not wait_selector.strip()):
         raise HTTPException(status_code=400, detail="config.playwright.waitForSelector must be a non-empty string")
 
+    pool_idle_timeout_ms = raw.get("poolIdleTimeoutMs", 120000)
+    if not isinstance(pool_idle_timeout_ms, int) or pool_idle_timeout_ms < 1000:
+        raise HTTPException(status_code=400, detail="config.playwright.poolIdleTimeoutMs must be an integer >= 1000")
+
     args = raw.get("args", {})
     try:
         args_json = json.dumps(args, ensure_ascii=False)
@@ -1207,7 +1226,88 @@ def _extract_playwright_eval_options(config: Dict[str, Any]) -> dict[str, Any]:
         "headless": bool(raw.get("headless", True)),
         "storage_state": storage_state,
         "proxy": _extract_proxy_settings(config, raw),
+        "pool_enabled": bool(raw.get("poolEnabled", True)),
+        "pool_idle_timeout_ms": pool_idle_timeout_ms,
+        "pool_user_id": raw.get("userId", raw.get("user_id")),
+        "pool_session_id": raw.get("sessionId", raw.get("session_id")),
     }
+
+
+def _stable_hash(value: Any) -> str:
+    dumped = json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    return hashlib.sha256(dumped.encode("utf-8")).hexdigest()
+
+
+def _build_playwright_pool_key(request: FetchRequest, options: dict[str, Any], storage_state: Any) -> str:
+    platform = request.platform.lower().strip()
+    user_id = str(options.get("pool_user_id") or "")
+    session_id = str(options.get("pool_session_id") or "")
+    proxy_fingerprint = _stable_hash(options.get("proxy") or {})
+    auth_fingerprint = _stable_hash(storage_state or {})
+    return "|".join(
+        [
+            platform,
+            user_id,
+            session_id,
+            "1" if options["headless"] else "0",
+            proxy_fingerprint,
+            auth_fingerprint,
+        ]
+    )
+
+
+async def _sweep_idle_playwright_browsers(now: float) -> None:
+    to_close: list[Any] = []
+    for key, entry in list(_PLAYWRIGHT_BROWSER_POOL.items()):
+        idle_for_ms = int((now - entry.last_used_at) * 1000)
+        if idle_for_ms >= entry.idle_timeout_ms:
+            _PLAYWRIGHT_BROWSER_POOL.pop(key, None)
+            to_close.append(entry.browser)
+    for browser in to_close:
+        try:
+            await browser.close()
+        except Exception:
+            pass
+
+
+async def _acquire_pooled_playwright_browser(playwright: Any, options: dict[str, Any], request: FetchRequest) -> Any:
+    storage_state = request.auth_data if request.auth_data else options["storage_state"]
+    pool_key = _build_playwright_pool_key(request, options, storage_state)
+    now = asyncio.get_running_loop().time()
+    async with _PLAYWRIGHT_POOL_LOCK:
+        await _sweep_idle_playwright_browsers(now)
+        entry = _PLAYWRIGHT_BROWSER_POOL.get(pool_key)
+        if entry is not None:
+            is_connected = getattr(entry.browser, "is_connected", None)
+            if callable(is_connected) and not is_connected():
+                _PLAYWRIGHT_BROWSER_POOL.pop(pool_key, None)
+            else:
+                entry.last_used_at = now
+                return entry.browser
+
+        launch_options: dict[str, Any] = {"headless": options["headless"]}
+        if options["proxy"] is not None:
+            launch_options["proxy"] = options["proxy"]
+        browser = await playwright.chromium.launch(**launch_options)
+        _PLAYWRIGHT_BROWSER_POOL[pool_key] = _PlaywrightBrowserPoolEntry(
+            browser=browser,
+            last_used_at=now,
+            idle_timeout_ms=options["pool_idle_timeout_ms"],
+        )
+        return browser
+
+
+async def _get_playwright_runtime() -> Any:
+    global _PLAYWRIGHT_RUNTIME
+    if _PLAYWRIGHT_RUNTIME is not None:
+        return _PLAYWRIGHT_RUNTIME
+
+    from playwright.async_api import async_playwright
+
+    async with _PLAYWRIGHT_RUNTIME_LOCK:
+        if _PLAYWRIGHT_RUNTIME is None:
+            _PLAYWRIGHT_RUNTIME = await async_playwright().start()
+    return _PLAYWRIGHT_RUNTIME
 
 
 def _to_clean_item_from_eval_value(value: Any, request: FetchRequest, target_url: str, index: int) -> CleanItem:
@@ -1291,37 +1391,55 @@ def _normalize_playwright_eval_result(result: Any, request: FetchRequest, target
 
 async def _run_playwright_eval_script(request: FetchRequest) -> list[CleanItem]:
     from playwright.async_api import TimeoutError as PlaywrightTimeoutError
-    from playwright.async_api import async_playwright
 
     options = _extract_playwright_eval_options(request.config)
     script_to_run = f"({options['script_body']})({options['args_json']})"
 
     try:
-        async with async_playwright() as playwright:
+        playwright = await _get_playwright_runtime()
+        pooled_browser = None
+        should_close_browser = True
+        if options["pool_enabled"]:
+            browser = await _acquire_pooled_playwright_browser(playwright, options, request)
+            pooled_browser = browser
+            should_close_browser = False
+        else:
             launch_options: dict[str, Any] = {"headless": options["headless"]}
             if options["proxy"] is not None:
                 launch_options["proxy"] = options["proxy"]
             browser = await playwright.chromium.launch(**launch_options)
-            context_options: dict[str, Any] = {}
-            if request.auth_data:
-                context_options["storage_state"] = request.auth_data
-            elif options["storage_state"]:
-                context_options["storage_state"] = options["storage_state"]
-            context = await browser.new_context(**context_options)
-            try:
-                page = await context.new_page()
-                await page.goto(
-                    options["target_url"],
-                    wait_until=options["wait_until"],
-                    timeout=options["navigation_timeout_ms"],
-                )
-                if options["wait_selector"]:
-                    await page.wait_for_selector(options["wait_selector"], timeout=options["navigation_timeout_ms"])
-                if options["post_navigation_wait_ms"] > 0:
-                    await page.wait_for_timeout(options["post_navigation_wait_ms"])
-                eval_result = await page.evaluate(script_to_run)
-            finally:
-                await context.close()
+        context_options: dict[str, Any] = {}
+        if request.auth_data:
+            context_options["storage_state"] = request.auth_data
+        elif options["storage_state"]:
+            context_options["storage_state"] = options["storage_state"]
+        context = await browser.new_context(**context_options)
+        try:
+            page = await context.new_page()
+            await page.goto(
+                options["target_url"],
+                wait_until=options["wait_until"],
+                timeout=options["navigation_timeout_ms"],
+            )
+            if options["wait_selector"]:
+                await page.wait_for_selector(options["wait_selector"], timeout=options["navigation_timeout_ms"])
+            if options["post_navigation_wait_ms"] > 0:
+                await page.wait_for_timeout(options["post_navigation_wait_ms"])
+            eval_result = await page.evaluate(script_to_run)
+        finally:
+            await context.close()
+            if pooled_browser is not None:
+                async with _PLAYWRIGHT_POOL_LOCK:
+                    now = asyncio.get_running_loop().time()
+                    pool_key = _build_playwright_pool_key(
+                        request,
+                        options,
+                        request.auth_data if request.auth_data else options["storage_state"],
+                    )
+                    entry = _PLAYWRIGHT_BROWSER_POOL.get(pool_key)
+                    if entry is not None:
+                        entry.last_used_at = now
+            elif should_close_browser:
                 await browser.close()
     except PlaywrightTimeoutError as error:
         raise HTTPException(status_code=504, detail=f"playwright eval timeout: {error}") from error

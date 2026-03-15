@@ -63,6 +63,7 @@ class AgentBrowserInstanceState:
 
 _INSTANCE_LOCK = threading.Lock()
 _INSTANCES: dict[str, AgentBrowserInstanceState] = {}
+_LAST_SWEEP_AT = 0.0
 _REF_SUFFIX_PATTERN = re.compile(r"\s*\[ref=[^\]]+\]:\s*$")
 _REF_INLINE_PATTERN = re.compile(r"\s*\[ref=[^\]]+\]")
 
@@ -264,6 +265,29 @@ def _safe_close_daemon(verbose: bool) -> None:
         )
     except Exception as error:
         _emit_log(verbose, f"close daemon skipped: {error}")
+
+
+def _sweep_expired_instances(*, now: float, verbose: bool, min_interval_seconds: int = 5) -> None:
+    global _LAST_SWEEP_AT
+    if now - _LAST_SWEEP_AT < min_interval_seconds:
+        return
+    _LAST_SWEEP_AT = now
+
+    expired_ids: list[str] = []
+    with _INSTANCE_LOCK:
+        for instance_id, instance in list(_INSTANCES.items()):
+            if now - instance.last_used_at > instance.ttl_seconds:
+                expired_ids.append(instance_id)
+        for instance_id in expired_ids:
+            _INSTANCES.pop(instance_id, None)
+        remaining = len(_INSTANCES)
+
+    if not expired_ids:
+        return
+
+    _emit_log(verbose, f"sweep expired instances={len(expired_ids)} remaining={remaining}")
+    if remaining == 0:
+        _safe_close_daemon(verbose)
 
 
 def _normalize_optional_str(raw_value: Any, field_name: str) -> str | None:
@@ -728,6 +752,7 @@ def _create_instance(options: dict[str, Any], *, verbose: bool) -> AgentBrowserI
 
 
 def _resolve_instance(options: dict[str, Any], *, verbose: bool) -> tuple[AgentBrowserInstanceState, bool]:
+    _sweep_expired_instances(now=time.time(), verbose=verbose)
     instance_id = options.get("instanceId")
     request_owner_id = _normalize_optional_str(options.get("ownerId"), "ownerId")
     request_session_key = _normalize_optional_str(options.get("sessionKey"), "sessionKey")
@@ -744,7 +769,9 @@ def _resolve_instance(options: dict[str, Any], *, verbose: bool) -> tuple[AgentB
         if idle_seconds > instance.ttl_seconds:
             with _INSTANCE_LOCK:
                 _INSTANCES.pop(instance.instance_id, None)
-            _safe_close_daemon(verbose)
+                remaining = len(_INSTANCES)
+            if remaining == 0:
+                _safe_close_daemon(verbose)
             raise AgentBrowserScriptError(
                 reason="instance_expired",
                 message=(
@@ -795,7 +822,7 @@ def execute_agent_browser_script(config: dict[str, Any]) -> AgentBrowserScriptRe
     command_timeout_ms = _read_int(options.get("commandTimeoutMs", 30000), field_name="commandTimeoutMs", minimum=1)
     close_on_complete = bool(options.get("closeOnComplete", False))
     verbose = bool(options.get("verbose", True))
-    instance, created_new_instance = _resolve_instance(options, verbose=verbose)
+    instance, _ = _resolve_instance(options, verbose=verbose)
     state_file = options.get("stateFile")
     should_close_by_step = False
 
@@ -808,10 +835,6 @@ def execute_agent_browser_script(config: dict[str, Any]) -> AgentBrowserScriptRe
         f"start script instanceId={instance.instance_id} tabId={instance.tab_id} "
         f"steps={len(steps)} heartbeat={heartbeat} state={state_file or '-'}",
     )
-
-    if created_new_instance:
-        _emit_log(verbose, "preflight close daemon")
-        _safe_close_daemon(verbose)
 
     if heartbeat and not steps:
         _emit_log(verbose, "heartbeat only request acknowledged")
@@ -845,13 +868,16 @@ def execute_agent_browser_script(config: dict[str, Any]) -> AgentBrowserScriptRe
         instance.last_used_at = time.time()
         should_close_instance = close_on_complete or should_close_by_step
         if should_close_instance:
-            try:
-                _emit_log(verbose, "close daemon on complete")
-                _safe_close_daemon(verbose)
-            except Exception:
-                pass
+            should_close_daemon = False
             with _INSTANCE_LOCK:
                 _INSTANCES.pop(instance.instance_id, None)
+                should_close_daemon = len(_INSTANCES) == 0
+            if should_close_daemon:
+                try:
+                    _emit_log(verbose, "close daemon on complete")
+                    _safe_close_daemon(verbose)
+                except Exception:
+                    pass
 
     _emit_log(verbose, f"script completed steps_executed={len(step_results)}")
     with _INSTANCE_LOCK:
