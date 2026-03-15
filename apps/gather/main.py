@@ -1230,6 +1230,7 @@ def _extract_playwright_eval_options(config: Dict[str, Any]) -> dict[str, Any]:
         "pool_idle_timeout_ms": pool_idle_timeout_ms,
         "pool_user_id": raw.get("userId", raw.get("user_id")),
         "pool_session_id": raw.get("sessionId", raw.get("session_id")),
+        "pool_driver": raw.get("poolDriver", raw.get("pool_driver", "playwright")),
     }
 
 
@@ -1242,11 +1243,13 @@ def _build_playwright_pool_key(request: FetchRequest, options: dict[str, Any], s
     platform = request.platform.lower().strip()
     user_id = str(options.get("pool_user_id") or "")
     session_id = str(options.get("pool_session_id") or "")
+    driver = str(options.get("pool_driver") or "playwright")
     proxy_fingerprint = _stable_hash(options.get("proxy") or {})
     auth_fingerprint = _stable_hash(storage_state or {})
     return "|".join(
         [
             platform,
+            driver,
             user_id,
             session_id,
             "1" if options["headless"] else "0",

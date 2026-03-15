@@ -599,7 +599,7 @@ async function fetchSocialSource(
     source.proxy?.url ??
     null;
   const normalizedSocialConfig = normalizeGatherSocialConfig(
-    source.social?.platform,
+    source,
     sourceConfigObj
   );
   const baseConfig = applyGatherProxyConfig(normalizedSocialConfig, proxyUrl);
@@ -658,15 +658,25 @@ function mapGatherPlatform(platform?: string | null): string {
 }
 
 function normalizeGatherSocialConfig(
-  platform: string | null | undefined,
+  source: SocialMediaSource,
   config: Record<string, unknown>
 ): Record<string, unknown> {
+  const platform = source.social?.platform;
   if ((platform || "").toUpperCase() !== "X") {
     return config;
   }
 
   const playwright = asObject(config.playwright);
   const args = asObject(playwright.args);
+  const screenName =
+    typeof args.screen_name === "string" && args.screen_name.trim()
+      ? args.screen_name.trim()
+      : "";
+  const authKey =
+    resolveSourceCredentialId(source, playwright) ||
+    "anonymous-auth";
+  const platformKey = (platform || "unknown").toLowerCase();
+  const driverKey = "playwright";
   const normalizedPlaywright: Record<string, unknown> = {
     mode:
       typeof playwright.mode === "string" && playwright.mode.trim()
@@ -683,6 +693,18 @@ function normalizeGatherSocialConfig(
     args: Object.fromEntries(
       Object.entries(args).map(([key, value]) => [key, value == null ? "" : String(value)])
     ),
+    userId:
+      typeof playwright.userId === "string" && playwright.userId.trim()
+        ? playwright.userId
+        : screenName,
+    sessionId:
+      typeof playwright.sessionId === "string" && playwright.sessionId.trim()
+        ? playwright.sessionId
+        : `${authKey}:${platformKey}:${driverKey}`,
+    poolDriver:
+      typeof playwright.poolDriver === "string" && playwright.poolDriver.trim()
+        ? playwright.poolDriver
+        : driverKey,
   };
 
   if (typeof playwright.stateFile === "string" && playwright.stateFile.trim()) {
@@ -715,6 +737,24 @@ function asObject(value: unknown): Record<string, unknown> {
     return value as Record<string, unknown>;
   }
   return {};
+}
+
+function resolveSourceCredentialId(
+  source: SocialMediaSource,
+  playwrightConfig: Record<string, unknown>
+): string | null {
+  const ids = [
+    source.social?.credentialId,
+    source.credentialId,
+    playwrightConfig.credentialId,
+    playwrightConfig.credential_id,
+  ];
+  for (const id of ids) {
+    if (typeof id === "string" && id.trim()) {
+      return id.trim();
+    }
+  }
+  return null;
 }
 
 function resolveGatherAuthData(source: SocialMediaSource): Record<string, unknown> | null {
