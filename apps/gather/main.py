@@ -1268,6 +1268,22 @@ def _apply_keyword_hard_filter(request: FetchRequest, items: List[CleanItem]) ->
     return filtered
 
 
+def _normalize_clean_items(raw_items: list[Any]) -> list[CleanItem]:
+    normalized: list[CleanItem] = []
+    for item in raw_items:
+        if isinstance(item, CleanItem):
+            normalized.append(item)
+            continue
+        try:
+            normalized.append(CleanItem.model_validate(item))
+        except ValidationError as error:
+            raise HTTPException(
+                status_code=500,
+                detail=f"driver returned invalid item payload: {error.errors()[0].get('msg', 'validation failed')}",
+            ) from error
+    return normalized
+
+
 def _apply_response_formats(items: list[CleanItem], response_formats: Optional[List[str]]) -> list[CleanItem]:
     if not response_formats:
         return items
@@ -1375,7 +1391,8 @@ async def verify_auth(request: VerifyAuthRequest):
 @app.post("/fetch", response_model=List[CleanItem], response_model_exclude_none=True)
 async def fetch_data(request: FetchRequest):
     try:
-        results = await driver_registry.fetch(request)
+        raw_results = await driver_registry.fetch(request)
+        results = _normalize_clean_items(raw_results)
         results = _apply_keyword_hard_filter(request, results)
         return _apply_response_formats(results, request.response_formats)
     except DriverNotFoundError as error:
@@ -1417,7 +1434,8 @@ async def fetch_data_v2(payload: Dict[str, Any]):
     )
 
     try:
-        results = await driver_registry.fetch(v1_request, driver_name=request.driver)
+        raw_results = await driver_registry.fetch(v1_request, driver_name=request.driver)
+        results = _normalize_clean_items(raw_results)
         results = _apply_keyword_hard_filter(v1_request, results)
         if request.driver:
             for item in results:
