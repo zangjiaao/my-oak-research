@@ -23,6 +23,7 @@ from drivers.agent_browser_runner import (
 )
 from drivers.playwright_driver import PlaywrightDriver
 from drivers.registry import DriverRegistry, DriverNotFoundError
+from drivers.xhttp_driver import XHttpDriver
 
 # Load environment variables from .env file
 load_dotenv()
@@ -57,7 +58,31 @@ class FetchV2Request(BaseModel):
 
 class VerifyAuthRequest(BaseModel):
     platform: str
-    auth_data: Dict[str, Any]  # Playwright storage_state format (cookies + origins)
+    auth_data: Optional[Dict[str, Any]] = None  # Playwright storage_state format (cookies + origins)
+    state_file: Optional[str] = Field(
+        default=None,
+        validation_alias=AliasChoices("stateFile", "state_file"),
+    )
+    verify_script_path: Optional[str] = Field(
+        default=None,
+        validation_alias=AliasChoices("verifyScriptPath", "verify_script_path"),
+    )
+    verify_args: Optional[Dict[str, Any]] = Field(
+        default=None,
+        validation_alias=AliasChoices("verifyArgs", "verify_args"),
+    )
+    verify_target_url: Optional[str] = Field(
+        default=None,
+        validation_alias=AliasChoices("verifyTargetUrl", "verify_target_url"),
+    )
+    verify_timeout_ms: int = Field(
+        default=60000,
+        validation_alias=AliasChoices("verifyTimeoutMs", "verify_timeout_ms"),
+    )
+    verify_post_wait_ms: int = Field(
+        default=3000,
+        validation_alias=AliasChoices("verifyPostWaitMs", "verify_post_wait_ms"),
+    )
     headless: bool = False  # Set to False for debugging, True for production
 
 
@@ -80,6 +105,11 @@ class CleanItem(BaseModel):
     instanceId: Optional[str] = None
     tabId: Optional[str] = None
     instanceActive: Optional[bool] = None
+    matchedKeywords: Optional[List[str]] = None
+    keywordMatchScore: Optional[float] = None
+    recordId: Optional[str] = None
+    recordType: Optional[str] = None
+    recordIndex: Optional[int] = None
 
 
 class ErrorDetail(BaseModel):
@@ -109,6 +139,31 @@ class AgentBrowserHeartbeatResponse(BaseModel):
     expiresAt: datetime
 
 
+class KeywordFilterConfigError(ValueError):
+    pass
+
+
+_BB_SITE_PLATFORM_ALIAS = {
+    "x": "twitter",
+    "twitter": "twitter",
+    "xhs": "xiaohongshu",
+}
+
+_BB_SITE_TARGET_URL = {
+    "twitter": "https://x.com",
+    "xiaohongshu": "https://www.xiaohongshu.com",
+    "reddit": "https://www.reddit.com",
+    "douyin": "https://www.douyin.com",
+    "tiktok": "https://www.tiktok.com",
+    "weibo": "https://weibo.com",
+    "telegram": "https://web.telegram.org",
+    "instagram": "https://www.instagram.com",
+    "facebook": "https://www.facebook.com",
+}
+
+_GATHER_VERIFY_SCRIPT_ROOT = Path(__file__).resolve().parent / "site_scripts"
+
+
 def build_error_response(
     status_code: int,
     code: str,
@@ -126,7 +181,292 @@ async def root():
     return {"status": "ok", "service": "oak-gather"}
 
 
-async def _playwright_verify_auth(request: VerifyAuthRequest):
+def _resolve_bb_site_verify_script(platform: str) -> Path | None:
+    normalized = _BB_SITE_PLATFORM_ALIAS.get(platform.lower(), platform.lower())
+    script_dir_candidates: list[Path] = []
+    if _GATHER_VERIFY_SCRIPT_ROOT.exists():
+        script_dir_candidates.append(_GATHER_VERIFY_SCRIPT_ROOT)
+    configured_dir = os.getenv("BB_SITES_DIR")
+    if configured_dir:
+        script_dir_candidates.append(Path(configured_dir).expanduser())
+    script_dir_candidates.extend(
+        [
+            Path("~/.bb-browser/bb-sites").expanduser(),
+            Path("~/Reference/bb-sites").expanduser(),
+        ]
+    )
+
+    for base_dir in script_dir_candidates:
+        for suffix in ("me.ts", "me.js", "user.ts", "user.js"):
+            candidate = base_dir / normalized / suffix
+            if candidate.exists():
+                return candidate
+    return None
+
+
+async def _verify_auth_with_agent_browser_for_whatsapp(request: VerifyAuthRequest) -> VerifyAuthResponse | None:
+    if request.platform.lower() != "whatsapp":
+        return None
+
+    options: dict[str, Any] = {
+        "headed": not request.headless,
+        "verbose": False,
+        "closeOnComplete": True,
+        "commandTimeoutMs": 30000,
+        "script": [
+            {"command": "open https://web.whatsapp.com/"},
+            {"command": "wait --load domcontentloaded"},
+            {
+                "command": (
+                    "eval \"(()=>{"
+                    "const loggedIn=Boolean(document.querySelector('[aria-label=\\\"Chat list\\\"]')"
+                    "||document.querySelector('[data-testid=\\\"chat-list\\\"]')"
+                    "||document.querySelector('[contenteditable=\\\"true\\\"][data-tab]'));"
+                    "const needsQr=Boolean(document.querySelector('canvas[aria-label*=\\\"QR\\\"]'));"
+                    "if(loggedIn)return JSON.stringify({ok:true});"
+                    "if(needsQr)return JSON.stringify({ok:false,error:'QR required'});"
+                    "return JSON.stringify({ok:false,error:'Unable to confirm auth status'});"
+                    "})()\""
+                ),
+                "captureAs": "auth_probe",
+            },
+        ],
+    }
+
+    if request.state_file:
+        options["stateFile"] = request.state_file
+
+    auth_data = request.auth_data or {}
+    profile_name = auth_data.get("profileName")
+    if isinstance(profile_name, str) and profile_name.strip():
+        profile_path = AUTH_DIR / profile_name.strip()
+        if profile_path.exists():
+            options["profile"] = str(profile_path)
+
+    try:
+        script_result = await asyncio.to_thread(
+            execute_agent_browser_script,
+            {"agentBrowser": options},
+        )
+    except AgentBrowserScriptError as error:
+        print(f"[gather] whatsapp agent-browser verify failed, fallback to legacy verify: {error}")
+        return None
+    except Exception as error:  # pragma: no cover - defensive
+        print(f"[gather] whatsapp agent-browser verify unexpected error, fallback to legacy verify: {error}")
+        return None
+
+    captures = script_result.captures.get("auth_probe") or []
+    if not captures:
+        return None
+    raw = captures[-1]
+    try:
+        payload = json.loads(raw)
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(payload, dict):
+        return None
+
+    if payload.get("ok") is True:
+        return VerifyAuthResponse(
+            valid=True,
+            message="WhatsApp authentication is valid",
+            details={"platform": "whatsapp", "verifyMethod": "agent-browser"},
+        )
+    return VerifyAuthResponse(
+        valid=False,
+        message=str(payload.get("error") or "WhatsApp authentication is invalid or expired"),
+        details={"platform": "whatsapp", "verifyMethod": "agent-browser"},
+    )
+
+
+async def _verify_auth_with_bb_site_script(request: VerifyAuthRequest) -> VerifyAuthResponse | None:
+    platform = request.platform.lower()
+    normalized = _BB_SITE_PLATFORM_ALIAS.get(platform, platform)
+    target_url = request.verify_target_url or _BB_SITE_TARGET_URL.get(normalized)
+    if not target_url:
+        return None
+
+    script_path: Path | None = None
+    if request.verify_script_path:
+        explicit_path = Path(request.verify_script_path).expanduser()
+        if not explicit_path.exists():
+            return VerifyAuthResponse(
+                valid=False,
+                message=f"verifyScriptPath does not exist: {request.verify_script_path}",
+                details={"platform": platform, "verifyMethod": "bb-site-script"},
+            )
+        script_path = explicit_path
+    else:
+        script_path = _resolve_bb_site_verify_script(platform)
+    if not script_path:
+        return None
+
+    script_body = _strip_playwright_meta_block(script_path.read_text(encoding="utf-8"))
+    if not script_body:
+        return None
+    script_args = request.verify_args or {}
+    if not isinstance(script_args, dict):
+        return VerifyAuthResponse(
+            valid=False,
+            message="verifyArgs must be an object",
+            details={"platform": platform, "verifyMethod": "bb-site-script"},
+        )
+
+    from playwright.async_api import TimeoutError as PlaywrightTimeoutError
+    from playwright.async_api import async_playwright
+
+    try:
+        async with async_playwright() as playwright:
+            browser = await playwright.chromium.launch(headless=request.headless)
+            context = await browser.new_context(storage_state=request.auth_data)
+            page = await context.new_page()
+            try:
+                await page.goto(
+                    target_url,
+                    wait_until="domcontentloaded",
+                    timeout=max(1000, int(request.verify_timeout_ms)),
+                )
+                await page.wait_for_timeout(max(0, int(request.verify_post_wait_ms)))
+                result = await page.evaluate(f"({script_body})({json.dumps(script_args, ensure_ascii=False)})")
+            finally:
+                await context.close()
+                await browser.close()
+    except PlaywrightTimeoutError as error:
+        print(f"[gather] bb-site verify timeout for {platform}, fallback to legacy verify: {error}")
+        return None
+    except Exception as error:
+        print(f"[gather] bb-site verify failed for {platform}, fallback to legacy verify: {error}")
+        return None
+
+    if isinstance(result, dict):
+        error_message = result.get("error")
+        if error_message:
+            return VerifyAuthResponse(
+                valid=False,
+                message=str(error_message),
+                details={
+                    "platform": platform,
+                    "hint": result.get("hint"),
+                    "verifyMethod": "bb-site-script",
+                    "scriptPath": str(script_path),
+                },
+            )
+        ok_flag = result.get("ok")
+        if ok_flag is True:
+            return VerifyAuthResponse(
+                valid=True,
+                message=f"{request.platform} authentication is valid",
+                details={
+                    "platform": request.platform,
+                    "verifyMethod": "bb-site-script",
+                    "scriptPath": str(script_path),
+                    "result": result,
+                },
+            )
+        if ok_flag is False:
+            return VerifyAuthResponse(
+                valid=False,
+                message=f"{request.platform} authentication is invalid or expired",
+                details={
+                    "platform": request.platform,
+                    "hint": result.get("hint"),
+                    "verifyMethod": "bb-site-script",
+                    "scriptPath": str(script_path),
+                    "result": result,
+                },
+            )
+        user = {
+            key: result.get(key)
+            for key in ("id", "user_id", "uid", "screen_name", "username", "name")
+            if result.get(key) is not None
+        }
+        if user:
+            return VerifyAuthResponse(
+                valid=True,
+                message=f"{request.platform} authentication is valid",
+                details={
+                    "platform": request.platform,
+                    "verifyMethod": "bb-site-script",
+                    "scriptPath": str(script_path),
+                    "user": user,
+                },
+            )
+
+    if isinstance(result, list) and result:
+        return VerifyAuthResponse(
+            valid=True,
+            message=f"{request.platform} authentication is valid",
+            details={
+                "platform": request.platform,
+                "verifyMethod": "bb-site-script",
+                "scriptPath": str(script_path),
+                "resultCount": len(result),
+            },
+        )
+
+    if result is True:
+        return VerifyAuthResponse(
+            valid=True,
+            message=f"{request.platform} authentication is valid",
+            details={
+                "platform": request.platform,
+                "verifyMethod": "bb-site-script",
+                "scriptPath": str(script_path),
+            },
+        )
+
+    if result is False:
+        return VerifyAuthResponse(
+            valid=False,
+            message=f"{request.platform} authentication is invalid or expired",
+            details={
+                "platform": request.platform,
+                "verifyMethod": "bb-site-script",
+                "scriptPath": str(script_path),
+            },
+        )
+    return None
+
+
+def _resolve_verify_auth_data(request: VerifyAuthRequest) -> tuple[dict[str, Any] | None, VerifyAuthResponse | None]:
+    if isinstance(request.auth_data, dict):
+        return request.auth_data, None
+
+    if request.state_file:
+        path = Path(request.state_file).expanduser()
+        if not path.exists():
+            return None, VerifyAuthResponse(
+                valid=False,
+                message=f"stateFile does not exist: {request.state_file}",
+                details={"error": "invalid_state_file"},
+            )
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as error:
+            return None, VerifyAuthResponse(
+                valid=False,
+                message=f"stateFile is not valid JSON: {request.state_file}",
+                details={"error": str(error)},
+            )
+        if not isinstance(payload, dict):
+            return None, VerifyAuthResponse(
+                valid=False,
+                message=f"stateFile must contain a JSON object: {request.state_file}",
+                details={"error": "invalid_state_payload"},
+            )
+        return payload, None
+
+    if request.platform.lower() == "whatsapp":
+        return {}, None
+
+    return None, VerifyAuthResponse(
+        valid=False,
+        message="auth_data or stateFile is required",
+        details={"error": "missing_auth_data"},
+    )
+
+
+async def _playwright_verify_auth_legacy(request: VerifyAuthRequest):
     """
     Verify if the provided authentication data (cookies) is valid for the specified platform.
     This endpoint is used when users upload auth.json files to check if they're still valid.
@@ -369,6 +709,22 @@ async def _playwright_verify_auth(request: VerifyAuthRequest):
         )
 
 
+async def _playwright_verify_auth(request: VerifyAuthRequest):
+    auth_data, error_response = _resolve_verify_auth_data(request)
+    if error_response is not None:
+        return error_response
+
+    normalized_request = request.model_copy(update={"auth_data": auth_data or {}})
+    whatsapp_result = await _verify_auth_with_agent_browser_for_whatsapp(normalized_request)
+    if whatsapp_result is not None:
+        return whatsapp_result
+
+    scripted_result = await _verify_auth_with_bb_site_script(normalized_request)
+    if scripted_result is not None:
+        return scripted_result
+    return await _playwright_verify_auth_legacy(normalized_request)
+
+
 async def _playwright_fetch_data(request: FetchRequest):
     """
     Unified entry point for social media data fetching.
@@ -377,6 +733,12 @@ async def _playwright_fetch_data(request: FetchRequest):
     platform = request.platform.lower()
     config = request.config
     auth_data = request.auth_data
+
+    playwright_options = config.get("playwright")
+    if isinstance(playwright_options, dict):
+        mode = str(playwright_options.get("mode", "")).lower()
+        if mode in {"eval-js", "evaljs", "eval"}:
+            return await _run_playwright_eval_script(request)
     
     print(f"[gather] Fetching data for {platform} with config {config}")
     
@@ -402,7 +764,9 @@ async def _playwright_fetch_data(request: FetchRequest):
                         url=tweet.get("url"),
                         sourceId=request.source_id,
                         sourceType="SOCIAL_MEDIA",
-                        time=datetime.fromisoformat(tweet["timestamp"]) if tweet.get("timestamp") else datetime.now()
+                        time=datetime.fromisoformat(tweet["timestamp"]) if tweet.get("timestamp") else datetime.now(),
+                        recordId=_extract_x_status_id(tweet.get("url")),
+                        recordType="tweet",
                     ))
                     
         elif platform == "xiaohongshu" or platform == "xhs":
@@ -424,7 +788,9 @@ async def _playwright_fetch_data(request: FetchRequest):
                         url=note.get("url"),
                         sourceId=request.source_id,
                         sourceType="SOCIAL_MEDIA",
-                        time=datetime.now()
+                        time=datetime.now(),
+                        recordId=note.get("id"),
+                        recordType="note",
                     ))
         
         elif platform == "reddit":
@@ -696,10 +1062,544 @@ async def _playwright_fetch_data(request: FetchRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+def _strip_playwright_meta_block(script: str) -> str:
+    return re.sub(r"/\*\s*@meta[\s\S]*?\*/", "", script, count=1).strip()
+
+
+def _extract_playwright_eval_options(config: Dict[str, Any]) -> dict[str, Any]:
+    raw = config.get("playwright")
+    if not isinstance(raw, dict):
+        raise HTTPException(status_code=400, detail="config.playwright must be an object")
+
+    target_url = raw.get("targetUrl")
+    if not isinstance(target_url, str) or not target_url.strip():
+        raise HTTPException(status_code=400, detail="config.playwright.targetUrl is required for eval-js mode")
+
+    script_body = raw.get("scriptBody") or raw.get("jsBody")
+    script_path = raw.get("scriptPath")
+    if script_body is None and script_path is None:
+        raise HTTPException(status_code=400, detail="config.playwright.scriptBody or scriptPath is required")
+
+    if script_body is not None and not isinstance(script_body, str):
+        raise HTTPException(status_code=400, detail="config.playwright.scriptBody must be a string")
+
+    if script_path is not None:
+        if not isinstance(script_path, str) or not script_path.strip():
+            raise HTTPException(status_code=400, detail="config.playwright.scriptPath must be a non-empty string")
+        resolved = Path(script_path).expanduser()
+        if not resolved.is_absolute():
+            resolved = (Path(__file__).resolve().parent / resolved).resolve()
+        if not resolved.exists() or not resolved.is_file():
+            raise HTTPException(status_code=400, detail=f"scriptPath does not exist: {script_path}")
+        script_body = resolved.read_text(encoding="utf-8")
+
+    wait_until = str(raw.get("waitUntil", "domcontentloaded")).lower()
+    if wait_until not in {"domcontentloaded", "networkidle", "load", "commit"}:
+        raise HTTPException(status_code=400, detail="config.playwright.waitUntil must be one of domcontentloaded/networkidle/load/commit")
+
+    navigation_timeout_ms = raw.get("navigationTimeoutMs", 60000)
+    if not isinstance(navigation_timeout_ms, int) or navigation_timeout_ms < 1000:
+        raise HTTPException(status_code=400, detail="config.playwright.navigationTimeoutMs must be an integer >= 1000")
+
+    post_nav_wait_ms = raw.get("postNavigationWaitMs", 0)
+    if not isinstance(post_nav_wait_ms, int) or post_nav_wait_ms < 0:
+        raise HTTPException(status_code=400, detail="config.playwright.postNavigationWaitMs must be an integer >= 0")
+
+    wait_selector = raw.get("waitForSelector")
+    if wait_selector is not None and (not isinstance(wait_selector, str) or not wait_selector.strip()):
+        raise HTTPException(status_code=400, detail="config.playwright.waitForSelector must be a non-empty string")
+
+    args = raw.get("args", {})
+    try:
+        args_json = json.dumps(args, ensure_ascii=False)
+    except TypeError as error:
+        raise HTTPException(status_code=400, detail=f"config.playwright.args is not JSON serializable: {error}") from error
+
+    storage_state: Dict[str, Any] | None = None
+    state_file = raw.get("stateFile", raw.get("authFile"))
+    if state_file is not None:
+        if not isinstance(state_file, str) or not state_file.strip():
+            raise HTTPException(status_code=400, detail="config.playwright.stateFile must be a non-empty string")
+        state_path = Path(state_file).expanduser()
+        if not state_path.is_absolute():
+            state_path = (Path(__file__).resolve().parent / state_path).resolve()
+        if not state_path.exists() or not state_path.is_file():
+            raise HTTPException(status_code=400, detail=f"stateFile does not exist: {state_file}")
+        try:
+            raw_state = json.loads(state_path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as error:
+            raise HTTPException(status_code=400, detail=f"stateFile is not valid JSON: {error}") from error
+        if not isinstance(raw_state, dict):
+            raise HTTPException(status_code=400, detail="stateFile JSON must be an object")
+        storage_state = raw_state
+
+    return {
+        "target_url": target_url.strip(),
+        "script_body": _strip_playwright_meta_block(script_body or ""),
+        "wait_until": wait_until,
+        "navigation_timeout_ms": navigation_timeout_ms,
+        "post_navigation_wait_ms": post_nav_wait_ms,
+        "wait_selector": wait_selector.strip() if isinstance(wait_selector, str) else None,
+        "args_json": args_json,
+        "headless": bool(raw.get("headless", True)),
+        "storage_state": storage_state,
+    }
+
+
+def _to_clean_item_from_eval_value(value: Any, request: FetchRequest, target_url: str, index: int) -> CleanItem:
+    if isinstance(value, dict):
+        raw_time = value.get("time", value.get("created_at"))
+        parsed_time: datetime | None = None
+        if isinstance(raw_time, str):
+            try:
+                parsed_time = datetime.fromisoformat(raw_time)
+            except ValueError:
+                parsed_time = None
+                try:
+                    parsed_time = datetime.strptime(raw_time, "%a %b %d %H:%M:%S %z %Y")
+                except ValueError:
+                    parsed_time = None
+        text = value.get("text")
+        if text is None and isinstance(value.get("full_text"), str):
+            text = value.get("full_text")
+        markdown = value.get("markdown")
+        if text is None and markdown is None:
+            text = json.dumps(value, ensure_ascii=False)
+            markdown = text
+        elif text is None:
+            text = str(markdown)
+        elif markdown is None:
+            author = value.get("author")
+            markdown = f"@{author}: {text}" if isinstance(author, str) and author else str(text)
+        return CleanItem(
+            title=value.get("title") or value.get("name"),
+            text=str(text),
+            markdown=str(markdown),
+            platform=str(value.get("platform") or request.platform),
+            url=value.get("url") or target_url,
+            time=parsed_time or datetime.now(),
+            sourceId=request.source_id,
+            sourceType="SOCIAL_MEDIA",
+            recordId=value.get("recordId") or value.get("id"),
+            recordType=str(value.get("recordType") or value.get("type") or "eval-js"),
+            recordIndex=value.get("recordIndex") if isinstance(value.get("recordIndex"), int) else index,
+        )
+
+    text_value = str(value)
+    return CleanItem(
+        title=f"playwright eval result {index}",
+        text=text_value,
+        markdown=text_value,
+        platform=request.platform,
+        url=target_url,
+        time=datetime.now(),
+        sourceId=request.source_id,
+        sourceType="SOCIAL_MEDIA",
+        recordType="eval-js",
+        recordIndex=index,
+    )
+
+
+def _normalize_playwright_eval_result(result: Any, request: FetchRequest, target_url: str) -> list[CleanItem]:
+    candidate = result
+    if isinstance(candidate, dict):
+        raw_error = candidate.get("error")
+        if isinstance(raw_error, str) and raw_error.strip():
+            hint = candidate.get("hint")
+            message = raw_error.strip()
+            if isinstance(hint, str) and hint.strip():
+                message = f"{message} | hint: {hint.strip()}"
+            raise HTTPException(status_code=400, detail=message)
+        for key in ("tweets", "posts", "notes", "items", "results", "data"):
+            nested = candidate.get(key)
+            if isinstance(nested, list):
+                candidate = nested
+                break
+    if isinstance(candidate, list):
+        if not candidate:
+            return []
+        return [
+            _to_clean_item_from_eval_value(item, request, target_url, index)
+            for index, item in enumerate(candidate, start=1)
+        ]
+    return [_to_clean_item_from_eval_value(candidate, request, target_url, 1)]
+
+
+async def _run_playwright_eval_script(request: FetchRequest) -> list[CleanItem]:
+    from playwright.async_api import TimeoutError as PlaywrightTimeoutError
+    from playwright.async_api import async_playwright
+
+    options = _extract_playwright_eval_options(request.config)
+    script_to_run = f"({options['script_body']})({options['args_json']})"
+
+    try:
+        async with async_playwright() as playwright:
+            browser = await playwright.chromium.launch(headless=options["headless"])
+            context_options: dict[str, Any] = {}
+            if request.auth_data:
+                context_options["storage_state"] = request.auth_data
+            elif options["storage_state"]:
+                context_options["storage_state"] = options["storage_state"]
+            context = await browser.new_context(**context_options)
+            try:
+                page = await context.new_page()
+                await page.goto(
+                    options["target_url"],
+                    wait_until=options["wait_until"],
+                    timeout=options["navigation_timeout_ms"],
+                )
+                if options["wait_selector"]:
+                    await page.wait_for_selector(options["wait_selector"], timeout=options["navigation_timeout_ms"])
+                if options["post_navigation_wait_ms"] > 0:
+                    await page.wait_for_timeout(options["post_navigation_wait_ms"])
+                eval_result = await page.evaluate(script_to_run)
+            finally:
+                await context.close()
+                await browser.close()
+    except PlaywrightTimeoutError as error:
+        raise HTTPException(status_code=504, detail=f"playwright eval timeout: {error}") from error
+    except HTTPException:
+        raise
+    except Exception as error:
+        raise HTTPException(status_code=500, detail=f"playwright eval execution failed: {error}") from error
+
+    items = _normalize_playwright_eval_result(eval_result, request, options["target_url"])
+    if not items:
+        raise HTTPException(status_code=500, detail="playwright eval script finished without output")
+    return items
+
+
 def _truncate_text(value: str, max_length: int = 12000) -> str:
     if len(value) <= max_length:
         return value
     return f"{value[:max_length]}..."
+
+
+def _extract_x_status_id(url: Optional[str]) -> Optional[str]:
+    if not url:
+        return None
+    matched = re.search(r"/status/(\d+)", url)
+    return matched.group(1) if matched else None
+
+
+def _normalize_capture_text(value: str) -> str:
+    normalized = value.strip()
+    if normalized.startswith('"""') and normalized.endswith('"""'):
+        normalized = normalized[3:-3]
+    for _ in range(2):
+        if normalized.startswith('"') and normalized.endswith('"'):
+            try:
+                decoded = json.loads(normalized)
+            except json.JSONDecodeError:
+                break
+            if isinstance(decoded, str):
+                normalized = decoded.strip()
+                continue
+        break
+    normalized = normalized.replace("\\r\\n", "\n").replace("\\n", "\n")
+    return normalized.strip()
+
+
+def _resolve_record_schema(config: Dict[str, Any]) -> dict[str, Any]:
+    default_schema = {
+        "format": "auto",
+        "record_separator": "\n",
+        "pair_separator": "｜",
+        "field_map": {
+            "id": "MSGID",
+            "text": "MSG",
+            "url": "LINK",
+            "time": "DATE",
+            "meta": "META",
+            "author": "AUTH",
+            "type": "TYPE",
+        },
+    }
+    raw = config.get("recordSchema")
+    if raw is None and isinstance(config.get("agentBrowser"), dict):
+        raw = config["agentBrowser"].get("recordSchema")
+    if not isinstance(raw, dict):
+        return default_schema
+
+    schema = dict(default_schema)
+    schema["format"] = str(raw.get("format", schema["format"])).lower()
+    if isinstance(raw.get("recordSeparator"), str) and raw["recordSeparator"]:
+        schema["record_separator"] = raw["recordSeparator"]
+    if isinstance(raw.get("pairSeparator"), str) and raw["pairSeparator"]:
+        schema["pair_separator"] = raw["pairSeparator"]
+    field_map = raw.get("fieldMap")
+    if isinstance(field_map, dict):
+        normalized_map: dict[str, str] = {}
+        for key, value in field_map.items():
+            if isinstance(key, str) and isinstance(value, str) and key and value:
+                normalized_map[key.lower()] = value.upper()
+        if normalized_map:
+            schema["field_map"] = {**schema["field_map"], **normalized_map}
+    return schema
+
+
+def _extract_jsonl_records(text: str) -> list[dict[str, Any]]:
+    def parse_object_line(raw_line: str) -> Optional[dict[str, Any]]:
+        try:
+            payload = json.loads(raw_line)
+        except json.JSONDecodeError:
+            return None
+        if not isinstance(payload, dict):
+            return None
+        body = payload.get("text", payload.get("content", ""))
+        if not isinstance(body, str) or not body.strip():
+            return None
+        record_id = payload.get("recordId", payload.get("id"))
+        record_type = payload.get("recordType", payload.get("type", "message"))
+        return {
+            "record_id": str(record_id).strip() if record_id else None,
+            "record_type": str(record_type).strip() if record_type else "message",
+            "body": body.strip(),
+            "url": str(payload["url"]).strip() if isinstance(payload.get("url"), str) else None,
+            "time": str(payload["time"]).strip() if isinstance(payload.get("time"), str) else None,
+            "meta": str(payload["meta"]).strip() if isinstance(payload.get("meta"), str) else None,
+            "author": str(payload["author"]).strip() if isinstance(payload.get("author"), str) else None,
+        }
+
+    def expand_line_candidates(raw_line: str) -> list[str]:
+        candidates: list[str] = []
+        queue = [raw_line.strip()]
+        seen: set[str] = set()
+        while queue:
+            current = queue.pop(0).strip()
+            if not current or current in seen:
+                continue
+            seen.add(current)
+            candidates.append(current)
+
+            if current == '""':
+                continue
+
+            if current.startswith('"') and current.endswith('"'):
+                try:
+                    decoded = json.loads(current)
+                except json.JSONDecodeError:
+                    decoded = current[1:-1]
+                if isinstance(decoded, str):
+                    queue.extend(part.strip() for part in decoded.splitlines() if part.strip())
+
+            if "\\n" in current:
+                queue.extend(part.strip() for part in current.split("\\n") if part.strip())
+            if "\n" in current:
+                queue.extend(part.strip() for part in current.splitlines() if part.strip())
+
+        return candidates
+
+    candidates = [text]
+    if '\\"' in text:
+        candidates.append(text.replace('\\"', '"'))
+
+    for candidate in candidates:
+        records: list[dict[str, Any]] = []
+        seen_signatures: set[tuple[Optional[str], str]] = set()
+
+        def append_parsed(parsed: dict[str, Any]) -> None:
+            signature = (parsed["record_id"], parsed["body"])
+            if signature in seen_signatures:
+                return
+            seen_signatures.add(signature)
+            parsed["record_index"] = len(records) + 1
+            records.append(parsed)
+
+        for quoted in re.finditer(r'"(?:\\.|[^"\\])*"', candidate, re.S):
+            wrapped = quoted.group(0)
+            try:
+                decoded = json.loads(wrapped)
+            except json.JSONDecodeError:
+                decoded = wrapped[1:-1]
+                decoded = decoded.replace('\\"', '"').replace("\\r\\n", "\n").replace("\\n", "\n")
+            if not isinstance(decoded, str) or not decoded.strip():
+                continue
+            for fragment in expand_line_candidates(decoded):
+                if not (fragment.startswith("{") and fragment.endswith("}")):
+                    continue
+                parsed = parse_object_line(fragment)
+                if parsed:
+                    append_parsed(parsed)
+
+        for line in candidate.splitlines():
+            for expanded_line in expand_line_candidates(line):
+                if not (expanded_line.startswith("{") and expanded_line.endswith("}")):
+                    continue
+                parsed = parse_object_line(expanded_line)
+                if not parsed:
+                    continue
+                append_parsed(parsed)
+
+        relaxed = candidate.replace('\\"', '"')
+        for matched in re.finditer(r"\{[^{}]+\}", relaxed):
+            parsed = parse_object_line(matched.group(0))
+            if parsed:
+                append_parsed(parsed)
+        if records:
+            return records
+    return []
+
+
+def _extract_tagged_records(text: str, schema: dict[str, Any]) -> list[dict[str, Any]]:
+    field_map = schema["field_map"]
+    id_key = field_map.get("id", "MSGID")
+    text_key = field_map.get("text", "MSG")
+    url_key = field_map.get("url", "LINK")
+    time_key = field_map.get("time", "DATE")
+    meta_key = field_map.get("meta", "META")
+    type_key = field_map.get("type", "TYPE")
+    author_key = field_map.get("author", "AUTH")
+    pair_separator = schema["pair_separator"]
+    lines = [part.strip() for part in text.split(schema["record_separator"]) if part.strip()]
+    records: list[dict[str, Any]] = []
+
+    for line in lines:
+        fields: dict[str, str] = {}
+        chunks = [chunk.strip() for chunk in line.split(pair_separator) if chunk.strip()]
+        for chunk in chunks:
+            for delimiter in ("：", ":"):
+                if delimiter in chunk:
+                    key, value = chunk.split(delimiter, 1)
+                    fields[key.strip().upper()] = value.strip()
+                    break
+        body = fields.get(text_key, "")
+        if not body:
+            continue
+        records.append(
+            {
+                "record_id": fields.get(id_key),
+                "record_type": fields.get(type_key, "message"),
+                "record_index": len(records) + 1,
+                "body": body,
+                "url": fields.get(url_key),
+                "time": fields.get(time_key),
+                "meta": fields.get(meta_key),
+                "author": fields.get(author_key),
+            }
+        )
+    return records
+
+
+def _extract_structured_records(text: str) -> list[dict[str, Any]]:
+    pattern = re.compile(
+        r"(?:(?<=\n)|^)(?P<record_id>[a-zA-Z][\w-]*-\d+):\s*(?P<body>.*?)(?=(?:\n[a-zA-Z][\w-]*-\d+:)|\Z)",
+        re.S,
+    )
+    records = []
+    for index, matched in enumerate(pattern.finditer(text), start=1):
+        body = matched.group("body").strip()
+        if not body:
+            continue
+        records.append(
+            {
+                "record_id": matched.group("record_id"),
+                "body": body,
+                "record_index": index,
+                "record_type": "message",
+                "url": None,
+                "time": None,
+                "meta": None,
+                "author": None,
+            }
+        )
+    return records
+
+
+def _capture_outputs_to_clean_items(
+    request: FetchRequest,
+    script_result: Any,
+    capture_key: str,
+    outputs: list[str],
+    now: datetime,
+) -> list[CleanItem]:
+    text = _truncate_text("\n".join(output for output in outputs if output))
+    if not text:
+        text = f"Capture '{capture_key}' completed with {len(outputs)} executions"
+        return [
+            CleanItem(
+                title=f"agent-browser capture: {capture_key}",
+                text=text,
+                markdown=f"### {capture_key}\n\n```\n{text}\n```",
+                platform=request.platform,
+                sourceId=request.source_id,
+                sourceType="SOCIAL_MEDIA",
+                time=now,
+                driver="agent-browser",
+                instanceId=script_result.instance_id,
+                tabId=script_result.tab_id,
+                instanceActive=script_result.instance_active,
+                recordType="capture",
+            )
+        ]
+
+    normalized = _normalize_capture_text(text)
+    schema = _resolve_record_schema(request.config)
+    records: list[dict[str, Any]] = []
+    if schema["format"] in {"auto", "jsonl"}:
+        records = _extract_jsonl_records(normalized)
+    if not records and schema["format"] in {"auto", "tagged"}:
+        records = _extract_tagged_records(normalized, schema)
+    if not records and schema["format"] in {"auto", "legacy"}:
+        records = _extract_structured_records(normalized)
+
+    if not records:
+        return [
+            CleanItem(
+                title=f"agent-browser capture: {capture_key}",
+                text=text,
+                markdown=f"### {capture_key}\n\n```\n{text}\n```",
+                platform=request.platform,
+                sourceId=request.source_id,
+                sourceType="SOCIAL_MEDIA",
+                time=now,
+                driver="agent-browser",
+                instanceId=script_result.instance_id,
+                tabId=script_result.tab_id,
+                instanceActive=script_result.instance_active,
+                recordType="capture",
+            )
+        ]
+
+    items: list[CleanItem] = []
+    for record in records:
+        record_title = record["record_id"] or f"{capture_key} #{record['record_index']}"
+        markdown = f"### {record_title}\n\n{record['body']}"
+        if record.get("meta"):
+            markdown = f"{markdown}\n\n> meta: {record['meta']}"
+        record_time = now
+        raw_time = record.get("time")
+        if isinstance(raw_time, str):
+            parsed_time = None
+            for candidate in (raw_time, raw_time.replace("Z", "+00:00")):
+                try:
+                    parsed_time = datetime.fromisoformat(candidate)
+                    break
+                except ValueError:
+                    continue
+            if parsed_time is not None:
+                record_time = parsed_time
+
+        items.append(
+            CleanItem(
+                title=f"agent-browser {capture_key}: {record_title}",
+                text=record["body"],
+                markdown=markdown,
+                platform=request.platform,
+                url=record.get("url"),
+                sourceId=request.source_id,
+                sourceType="SOCIAL_MEDIA",
+                time=record_time,
+                driver="agent-browser",
+                instanceId=script_result.instance_id,
+                tabId=script_result.tab_id,
+                instanceActive=script_result.instance_active,
+                recordId=record["record_id"],
+                recordType=record.get("record_type", "message"),
+                recordIndex=record["record_index"],
+            )
+        )
+    return items
 
 
 def _agent_browser_results_to_clean_items(
@@ -712,22 +1612,13 @@ def _agent_browser_results_to_clean_items(
 
     if captures:
         for capture_key, outputs in captures.items():
-            text = _truncate_text("\n".join(output for output in outputs if output))
-            if not text:
-                text = f"Capture '{capture_key}' completed with {len(outputs)} executions"
-            items.append(
-                CleanItem(
-                    title=f"agent-browser capture: {capture_key}",
-                    text=text,
-                    markdown=f"### {capture_key}\n\n```\n{text}\n```",
-                    platform=request.platform,
-                    sourceId=request.source_id,
-                    sourceType="SOCIAL_MEDIA",
-                    time=now,
-                    driver="agent-browser",
-                    instanceId=script_result.instance_id,
-                    tabId=script_result.tab_id,
-                    instanceActive=script_result.instance_active,
+            items.extend(
+                _capture_outputs_to_clean_items(
+                    request=request,
+                    script_result=script_result,
+                    capture_key=capture_key,
+                    outputs=outputs,
+                    now=now,
                 )
             )
 
@@ -766,6 +1657,190 @@ async def _agent_browser_verify_auth(_request: VerifyAuthRequest):
         valid=True,
         message="agent-browser authentication is configured through fetch config (profile/session/state).",
     )
+
+
+def _extract_keyword_filter_keywords(config: Dict[str, Any]) -> Optional[List[str]]:
+    raw_filter = config.get("keywordFilter")
+    raw_keywords: Any = None
+
+    if raw_filter is None:
+        raw_keywords = config.get("keywords")
+        if raw_keywords is None:
+            return None
+    elif isinstance(raw_filter, dict):
+        if raw_filter.get("enabled", True) is False:
+            return None
+        raw_keywords = raw_filter.get("keywords", raw_filter.get("terms"))
+    else:
+        raise KeywordFilterConfigError("config.keywordFilter must be an object")
+
+    if not isinstance(raw_keywords, list):
+        raise KeywordFilterConfigError("keyword filter keywords must be a string array")
+
+    normalized: list[str] = []
+    for index, value in enumerate(raw_keywords):
+        if not isinstance(value, str):
+            raise KeywordFilterConfigError(f"keyword filter keywords[{index}] must be string")
+        keyword = value.strip()
+        if not keyword:
+            raise KeywordFilterConfigError(f"keyword filter keywords[{index}] must not be empty")
+        normalized.append(keyword.lower())
+
+    unique_keywords = list(dict.fromkeys(normalized))
+    if not unique_keywords:
+        raise KeywordFilterConfigError("keyword filter keywords must not be empty")
+    return unique_keywords
+
+
+def _extract_keyword_filter_options(config: Dict[str, Any]) -> dict[str, Any]:
+    raw_filter = config.get("keywordFilter")
+    if raw_filter is None:
+        return {"match_scope": "item", "split_mode": "auto"}
+    if not isinstance(raw_filter, dict):
+        raise KeywordFilterConfigError("config.keywordFilter must be an object")
+
+    raw_scope = raw_filter.get("matchScope", raw_filter.get("scope", "item"))
+    if raw_scope not in {"item", "segment"}:
+        raise KeywordFilterConfigError("keyword filter matchScope must be item or segment")
+
+    raw_split_mode = raw_filter.get("splitMode", raw_filter.get("segmentSplit", "auto"))
+    if raw_split_mode not in {"auto", "line", "paragraph"}:
+        raise KeywordFilterConfigError("keyword filter splitMode must be auto, line, or paragraph")
+
+    min_segment_chars = raw_filter.get("minSegmentChars", 1)
+    if not isinstance(min_segment_chars, int) or min_segment_chars < 1:
+        raise KeywordFilterConfigError("keyword filter minSegmentChars must be a positive integer")
+
+    return {
+        "match_scope": raw_scope,
+        "split_mode": raw_split_mode,
+        "min_segment_chars": min_segment_chars,
+    }
+
+
+def _keyword_filter_text(item: CleanItem) -> str:
+    parts = [
+        item.title or "",
+        item.text or "",
+        item.markdown or "",
+        item.url or "",
+    ]
+    return " ".join(part for part in parts if part).lower()
+
+
+def _split_text_segments(text: str, split_mode: str, min_segment_chars: int) -> list[str]:
+    if split_mode == "line":
+        raw_segments = text.splitlines()
+    elif split_mode == "paragraph":
+        raw_segments = re.split(r"\n\s*\n+", text)
+    else:
+        if "\n\n" in text:
+            raw_segments = re.split(r"\n\s*\n+", text)
+        else:
+            raw_segments = text.splitlines()
+
+    segments: list[str] = []
+    for segment in raw_segments:
+        normalized = segment.strip()
+        if len(normalized) >= min_segment_chars:
+            segments.append(normalized)
+    return segments
+
+
+def _apply_keyword_segment_filter(item: CleanItem, keywords: list[str], options: dict[str, Any]) -> list[CleanItem]:
+    segments = _split_text_segments(
+        item.text or item.markdown or "",
+        split_mode=options["split_mode"],
+        min_segment_chars=options["min_segment_chars"],
+    )
+    if not segments:
+        return []
+
+    matched_items: list[CleanItem] = []
+    for index, segment in enumerate(segments, start=1):
+        haystack = segment.lower()
+        matched = [keyword for keyword in keywords if keyword in haystack]
+        if not matched:
+            continue
+
+        matched_items.append(
+            item.model_copy(
+                update={
+                    "title": f"{item.title or item.platform} [segment {index}]",
+                    "text": segment,
+                    "markdown": segment,
+                    "matchedKeywords": matched,
+                    "keywordMatchScore": round(len(matched) / len(keywords), 4),
+                }
+            )
+        )
+    return matched_items
+
+
+def _apply_keyword_hard_filter(request: FetchRequest, items: List[CleanItem]) -> List[CleanItem]:
+    try:
+        keywords = _extract_keyword_filter_keywords(request.config)
+        options = _extract_keyword_filter_options(request.config)
+    except KeywordFilterConfigError as error:
+        print(
+            f"[gather][keyword-filter][error] "
+            f"{json.dumps({'sourceId': request.source_id, 'platform': request.platform, 'error': str(error)}, ensure_ascii=False)}"
+        )
+        raise HTTPException(status_code=400, detail=f"keyword filter invalid config: {error}") from error
+
+    if not keywords:
+        return items
+
+    filtered: list[CleanItem] = []
+    hit = 0
+    miss = 0
+    fetched = len(items)
+
+    for item in items:
+        if options["match_scope"] == "segment":
+            segment_hits = _apply_keyword_segment_filter(item, keywords, options)
+            if segment_hits:
+                filtered.extend(segment_hits)
+                hit += 1
+                continue
+        else:
+            haystack = _keyword_filter_text(item)
+            matched = [keyword for keyword in keywords if keyword in haystack]
+            if matched:
+                item.matchedKeywords = matched
+                item.keywordMatchScore = round(len(matched) / len(keywords), 4)
+                filtered.append(item)
+                hit += 1
+                continue
+
+        miss += 1
+        print(
+            f"[gather][keyword-filter][audit] "
+            f"{json.dumps({'sourceId': item.sourceId, 'platform': item.platform, 'url': item.url, 'reason': 'keyword_miss'}, ensure_ascii=False)}"
+        )
+
+    print(
+        f"[gather][keyword-filter][metrics] "
+        f"{json.dumps({'sourceId': request.source_id, 'platform': request.platform, 'fetched': fetched, 'hit': hit, 'miss': miss, 'persisted': len(filtered), 'matchScope': options['match_scope']}, ensure_ascii=False)}"
+    )
+
+    return filtered
+
+
+def _normalize_clean_items(raw_items: list[Any]) -> list[CleanItem]:
+    normalized: list[CleanItem] = []
+    for item in raw_items:
+        if isinstance(item, CleanItem):
+            normalized.append(item)
+            continue
+        try:
+            normalized.append(CleanItem.model_validate(item))
+        except ValidationError as error:
+            raise HTTPException(
+                status_code=500,
+                detail=f"driver returned invalid item payload: {error.errors()[0].get('msg', 'validation failed')}",
+            ) from error
+    return normalized
 
 
 def _apply_response_formats(items: list[CleanItem], response_formats: Optional[List[str]]) -> list[CleanItem]:
@@ -831,6 +1906,10 @@ async def _agent_browser_fetch_data(request: FetchRequest):
 
 driver_registry = DriverRegistry(default_driver="playwright")
 driver_registry.register(
+    "xhttp",
+    XHttpDriver(),
+)
+driver_registry.register(
     "playwright",
     PlaywrightDriver(
         verify_auth_handler=_playwright_verify_auth,
@@ -871,7 +1950,9 @@ async def verify_auth(request: VerifyAuthRequest):
 @app.post("/fetch", response_model=List[CleanItem], response_model_exclude_none=True)
 async def fetch_data(request: FetchRequest):
     try:
-        results = await driver_registry.fetch(request)
+        raw_results = await driver_registry.fetch(request)
+        results = _normalize_clean_items(raw_results)
+        results = _apply_keyword_hard_filter(request, results)
         return _apply_response_formats(results, request.response_formats)
     except DriverNotFoundError as error:
         raise _to_driver_http_exception(error)
@@ -912,7 +1993,9 @@ async def fetch_data_v2(payload: Dict[str, Any]):
     )
 
     try:
-        results = await driver_registry.fetch(v1_request, driver_name=request.driver)
+        raw_results = await driver_registry.fetch(v1_request, driver_name=request.driver)
+        results = _normalize_clean_items(raw_results)
+        results = _apply_keyword_hard_filter(v1_request, results)
         if request.driver:
             for item in results:
                 item.driver = request.driver
