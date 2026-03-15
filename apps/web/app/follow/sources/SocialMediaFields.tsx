@@ -628,10 +628,11 @@ export const SocialMediaFields = ({
 
       {socialPlatform === "X" && (
         <>
-          <div className="grid gap-3 p-4 border rounded-lg bg-muted/30">
+          <div className="grid gap-4 p-4 border rounded-lg bg-muted/30">
             <Label className="text-base font-medium">Playwright Task Params (Required)</Label>
 
-            <div className="grid gap-3">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid gap-3">
               <Label htmlFor="social.config.playwright.mode">Mode</Label>
               <Controller
                 name="social.config.playwright.mode"
@@ -646,73 +647,74 @@ export const SocialMediaFields = ({
                   </ControlledSelect>
                 )}
               />
-            </div>
+              </div>
 
-            <div className="flex items-center gap-3">
-              <Controller
-                name="social.config.playwright.headless"
-                control={control}
-                render={({ field }) => (
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={Boolean(field.value)}
-                      onChange={(e) => field.onChange(e.target.checked)}
-                      className="rounded border-gray-300"
-                    />
-                    <span className="text-sm">Headless</span>
-                  </label>
-                )}
-              />
-            </div>
+              <div className="flex items-center gap-3 pt-8">
+                <Controller
+                  name="social.config.playwright.headless"
+                  control={control}
+                  render={({ field }) => (
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={Boolean(field.value)}
+                        onChange={(e) => field.onChange(e.target.checked)}
+                        className="rounded border-gray-300"
+                      />
+                      <span className="text-sm">Headless</span>
+                    </label>
+                  )}
+                />
+              </div>
 
-            <div className="grid gap-3">
-              <Label htmlFor="social.config.playwright.targetUrl">Target URL</Label>
-              <Input
-                id="social.config.playwright.targetUrl"
-                placeholder="https://x.com"
-                {...register("social.config.playwright.targetUrl")}
-              />
-              <ErrorMessage>{getConfigErrorMessage("playwright.targetUrl")}</ErrorMessage>
-            </div>
+              <div className="grid gap-3">
+                <Label htmlFor="social.config.playwright.targetUrl">Target URL</Label>
+                <Input
+                  id="social.config.playwright.targetUrl"
+                  placeholder="https://x.com"
+                  {...register("social.config.playwright.targetUrl")}
+                />
+                <ErrorMessage>{getConfigErrorMessage("playwright.targetUrl")}</ErrorMessage>
+              </div>
 
-            <div className="grid gap-3">
-              <Label htmlFor="social.config.playwright.scriptPath">Script Path</Label>
-              <Input
-                id="social.config.playwright.scriptPath"
-                placeholder="/Users/xxx/Reference/bb-sites/twitter/tweets.js"
-                {...register("social.config.playwright.scriptPath")}
-              />
-              <ErrorMessage>{getConfigErrorMessage("playwright.scriptPath")}</ErrorMessage>
-            </div>
+              <div className="grid gap-3">
+                <Label htmlFor="social.config.playwright.scriptPath">Script Path</Label>
+                <Input
+                  id="social.config.playwright.scriptPath"
+                  placeholder="/Users/xxx/Reference/bb-sites/twitter/tweets.js"
+                  {...register("social.config.playwright.scriptPath")}
+                />
+                <ErrorMessage>{getConfigErrorMessage("playwright.scriptPath")}</ErrorMessage>
+              </div>
 
-            <div className="grid gap-3">
-              <Label htmlFor="social.config.playwright.stateFile">State File</Label>
-              <Input
-                id="social.config.playwright.stateFile"
-                placeholder=".auth/x_auth.json"
-                {...register("social.config.playwright.stateFile")}
-              />
-              <ErrorMessage>{getConfigErrorMessage("playwright.stateFile")}</ErrorMessage>
-            </div>
+              <div className="grid gap-3">
+                <Label htmlFor="social.config.playwright.stateFile">State File</Label>
+                <Input
+                  id="social.config.playwright.stateFile"
+                  placeholder=".auth/x_auth.json"
+                  {...register("social.config.playwright.stateFile")}
+                />
+                <ErrorMessage>{getConfigErrorMessage("playwright.stateFile")}</ErrorMessage>
+              </div>
 
-            <div className="grid gap-3">
-              <Label htmlFor="social.config.playwright.args.screen_name">Args.screen_name</Label>
-              <Input
-                id="social.config.playwright.args.screen_name"
-                placeholder="akokoi1"
-                {...register("social.config.playwright.args.screen_name")}
-              />
-              <ErrorMessage>{getConfigErrorMessage("playwright.args.screen_name")}</ErrorMessage>
-            </div>
+              <div className="grid gap-3">
+                <Label htmlFor="social.config.playwright.args.screen_name">Args.screen_name</Label>
+                <Input
+                  id="social.config.playwright.args.screen_name"
+                  placeholder="akokoi1"
+                  {...register("social.config.playwright.args.screen_name")}
+                />
+                <ErrorMessage>{getConfigErrorMessage("playwright.args.screen_name")}</ErrorMessage>
+              </div>
 
-            <div className="grid gap-3">
-              <Label htmlFor="social.config.playwright.args.count">Args.count</Label>
-              <Input
-                id="social.config.playwright.args.count"
-                placeholder="20"
-                {...register("social.config.playwright.args.count")}
-              />
+              <div className="grid gap-3">
+                <Label htmlFor="social.config.playwright.args.count">Args.count</Label>
+                <Input
+                  id="social.config.playwright.args.count"
+                  placeholder="20"
+                  {...register("social.config.playwright.args.count")}
+                />
+              </div>
             </div>
           </div>
         </>
