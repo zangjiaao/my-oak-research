@@ -173,11 +173,86 @@ def _resolve_bb_site_verify_script(platform: str) -> Path | None:
     )
 
     for base_dir in script_dir_candidates:
-        for suffix in ("user.js", "user.ts"):
+        for suffix in ("me.ts", "me.js", "user.ts", "user.js"):
             candidate = base_dir / normalized / suffix
             if candidate.exists():
                 return candidate
     return None
+
+
+async def _verify_auth_with_agent_browser_for_whatsapp(request: VerifyAuthRequest) -> VerifyAuthResponse | None:
+    if request.platform.lower() != "whatsapp":
+        return None
+
+    options: dict[str, Any] = {
+        "headed": not request.headless,
+        "verbose": False,
+        "closeOnComplete": True,
+        "commandTimeoutMs": 30000,
+        "script": [
+            {"command": "open https://web.whatsapp.com/"},
+            {"command": "wait --load domcontentloaded"},
+            {
+                "command": (
+                    "eval \"(()=>{"
+                    "const loggedIn=Boolean(document.querySelector('[aria-label=\\\"Chat list\\\"]')"
+                    "||document.querySelector('[data-testid=\\\"chat-list\\\"]')"
+                    "||document.querySelector('[contenteditable=\\\"true\\\"][data-tab]'));"
+                    "const needsQr=Boolean(document.querySelector('canvas[aria-label*=\\\"QR\\\"]'));"
+                    "if(loggedIn)return JSON.stringify({ok:true});"
+                    "if(needsQr)return JSON.stringify({ok:false,error:'QR required'});"
+                    "return JSON.stringify({ok:false,error:'Unable to confirm auth status'});"
+                    "})()\""
+                ),
+                "captureAs": "auth_probe",
+            },
+        ],
+    }
+
+    if request.state_file:
+        options["stateFile"] = request.state_file
+
+    auth_data = request.auth_data or {}
+    profile_name = auth_data.get("profileName")
+    if isinstance(profile_name, str) and profile_name.strip():
+        profile_path = AUTH_DIR / profile_name.strip()
+        if profile_path.exists():
+            options["profile"] = str(profile_path)
+
+    try:
+        script_result = await asyncio.to_thread(
+            execute_agent_browser_script,
+            {"agentBrowser": options},
+        )
+    except AgentBrowserScriptError as error:
+        print(f"[gather] whatsapp agent-browser verify failed, fallback to legacy verify: {error}")
+        return None
+    except Exception as error:  # pragma: no cover - defensive
+        print(f"[gather] whatsapp agent-browser verify unexpected error, fallback to legacy verify: {error}")
+        return None
+
+    captures = script_result.captures.get("auth_probe") or []
+    if not captures:
+        return None
+    raw = captures[-1]
+    try:
+        payload = json.loads(raw)
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(payload, dict):
+        return None
+
+    if payload.get("ok") is True:
+        return VerifyAuthResponse(
+            valid=True,
+            message="WhatsApp authentication is valid",
+            details={"platform": "whatsapp", "verifyMethod": "agent-browser"},
+        )
+    return VerifyAuthResponse(
+        valid=False,
+        message=str(payload.get("error") or "WhatsApp authentication is invalid or expired"),
+        details={"platform": "whatsapp", "verifyMethod": "agent-browser"},
+    )
 
 
 async def _verify_auth_with_bb_site_script(request: VerifyAuthRequest) -> VerifyAuthResponse | None:
@@ -570,6 +645,10 @@ async def _playwright_verify_auth(request: VerifyAuthRequest):
         return error_response
 
     normalized_request = request.model_copy(update={"auth_data": auth_data or {}})
+    whatsapp_result = await _verify_auth_with_agent_browser_for_whatsapp(normalized_request)
+    if whatsapp_result is not None:
+        return whatsapp_result
+
     scripted_result = await _verify_auth_with_bb_site_script(normalized_request)
     if scripted_result is not None:
         return scripted_result

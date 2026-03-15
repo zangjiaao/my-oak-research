@@ -104,3 +104,50 @@ def test_verify_auth_supports_state_file(monkeypatch, tmp_path):
     payload = response.json()
     assert payload["valid"] is True
     assert payload["details"]["verifyMethod"] == "bb-site-script"
+
+
+def test_resolve_bb_site_verify_script_prefers_me(monkeypatch, tmp_path):
+    base = tmp_path / "bb-sites"
+    platform_dir = base / "twitter"
+    platform_dir.mkdir(parents=True, exist_ok=True)
+    (platform_dir / "user.js").write_text("async function(){return {ok:true}}", encoding="utf-8")
+    (platform_dir / "me.ts").write_text("async function(){return {ok:true}}", encoding="utf-8")
+
+    monkeypatch.setenv("BB_SITES_DIR", str(base))
+
+    resolved = main._resolve_bb_site_verify_script("x")
+    assert resolved is not None
+    assert resolved.name == "me.ts"
+
+
+def test_verify_auth_uses_agent_browser_for_whatsapp(monkeypatch):
+    class FakeResult:
+        captures = {"auth_probe": ['{"ok": true}']}
+
+    def fake_execute_agent_browser_script(config):  # noqa: ANN001
+        assert "agentBrowser" in config
+        return FakeResult()
+
+    async def fake_script_verify(_request):  # pragma: no cover - should not be called
+        raise AssertionError("bb-site script verify should not be called for whatsapp when agent-browser succeeds")
+
+    async def fake_legacy_verify(_request):  # pragma: no cover - should not be called
+        raise AssertionError("legacy verify should not be called for whatsapp when agent-browser succeeds")
+
+    monkeypatch.setattr(main, "execute_agent_browser_script", fake_execute_agent_browser_script)
+    monkeypatch.setattr(main, "_verify_auth_with_bb_site_script", fake_script_verify)
+    monkeypatch.setattr(main, "_playwright_verify_auth_legacy", fake_legacy_verify)
+
+    client = TestClient(main.app)
+    response = client.post(
+        "/verify-auth",
+        json={
+            "platform": "whatsapp",
+            "auth_data": {"profileName": "demo"},
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["valid"] is True
+    assert payload["details"]["verifyMethod"] == "agent-browser"
