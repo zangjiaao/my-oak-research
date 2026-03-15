@@ -387,6 +387,12 @@ async def _playwright_fetch_data(request: FetchRequest):
     platform = request.platform.lower()
     config = request.config
     auth_data = request.auth_data
+
+    playwright_options = config.get("playwright")
+    if isinstance(playwright_options, dict):
+        mode = str(playwright_options.get("mode", "")).lower()
+        if mode in {"eval-js", "evaljs", "eval"}:
+            return await _run_playwright_eval_script(request)
     
     print(f"[gather] Fetching data for {platform} with config {config}")
     
@@ -708,6 +714,178 @@ async def _playwright_fetch_data(request: FetchRequest):
     except Exception as e:
         print(f"[gather] Error fetching {platform}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+def _strip_playwright_meta_block(script: str) -> str:
+    return re.sub(r"/\*\s*@meta[\s\S]*?\*/", "", script, count=1).strip()
+
+
+def _extract_playwright_eval_options(config: Dict[str, Any]) -> dict[str, Any]:
+    raw = config.get("playwright")
+    if not isinstance(raw, dict):
+        raise HTTPException(status_code=400, detail="config.playwright must be an object")
+
+    target_url = raw.get("targetUrl")
+    if not isinstance(target_url, str) or not target_url.strip():
+        raise HTTPException(status_code=400, detail="config.playwright.targetUrl is required for eval-js mode")
+
+    script_body = raw.get("scriptBody") or raw.get("jsBody")
+    script_path = raw.get("scriptPath")
+    if script_body is None and script_path is None:
+        raise HTTPException(status_code=400, detail="config.playwright.scriptBody or scriptPath is required")
+
+    if script_body is not None and not isinstance(script_body, str):
+        raise HTTPException(status_code=400, detail="config.playwright.scriptBody must be a string")
+
+    if script_path is not None:
+        if not isinstance(script_path, str) or not script_path.strip():
+            raise HTTPException(status_code=400, detail="config.playwright.scriptPath must be a non-empty string")
+        resolved = Path(script_path).expanduser()
+        if not resolved.is_absolute():
+            resolved = (Path(__file__).resolve().parent / resolved).resolve()
+        if not resolved.exists() or not resolved.is_file():
+            raise HTTPException(status_code=400, detail=f"scriptPath does not exist: {script_path}")
+        script_body = resolved.read_text(encoding="utf-8")
+
+    wait_until = str(raw.get("waitUntil", "domcontentloaded")).lower()
+    if wait_until not in {"domcontentloaded", "networkidle", "load", "commit"}:
+        raise HTTPException(status_code=400, detail="config.playwright.waitUntil must be one of domcontentloaded/networkidle/load/commit")
+
+    navigation_timeout_ms = raw.get("navigationTimeoutMs", 60000)
+    if not isinstance(navigation_timeout_ms, int) or navigation_timeout_ms < 1000:
+        raise HTTPException(status_code=400, detail="config.playwright.navigationTimeoutMs must be an integer >= 1000")
+
+    post_nav_wait_ms = raw.get("postNavigationWaitMs", 0)
+    if not isinstance(post_nav_wait_ms, int) or post_nav_wait_ms < 0:
+        raise HTTPException(status_code=400, detail="config.playwright.postNavigationWaitMs must be an integer >= 0")
+
+    wait_selector = raw.get("waitForSelector")
+    if wait_selector is not None and (not isinstance(wait_selector, str) or not wait_selector.strip()):
+        raise HTTPException(status_code=400, detail="config.playwright.waitForSelector must be a non-empty string")
+
+    args = raw.get("args", {})
+    try:
+        args_json = json.dumps(args, ensure_ascii=False)
+    except TypeError as error:
+        raise HTTPException(status_code=400, detail=f"config.playwright.args is not JSON serializable: {error}") from error
+
+    return {
+        "target_url": target_url.strip(),
+        "script_body": _strip_playwright_meta_block(script_body or ""),
+        "wait_until": wait_until,
+        "navigation_timeout_ms": navigation_timeout_ms,
+        "post_navigation_wait_ms": post_nav_wait_ms,
+        "wait_selector": wait_selector.strip() if isinstance(wait_selector, str) else None,
+        "args_json": args_json,
+        "headless": bool(raw.get("headless", True)),
+    }
+
+
+def _to_clean_item_from_eval_value(value: Any, request: FetchRequest, target_url: str, index: int) -> CleanItem:
+    if isinstance(value, dict):
+        raw_time = value.get("time")
+        parsed_time: datetime | None = None
+        if isinstance(raw_time, str):
+            try:
+                parsed_time = datetime.fromisoformat(raw_time)
+            except ValueError:
+                parsed_time = None
+        text = value.get("text")
+        markdown = value.get("markdown")
+        if text is None and markdown is None:
+            text = json.dumps(value, ensure_ascii=False)
+            markdown = text
+        elif text is None:
+            text = str(markdown)
+        elif markdown is None:
+            markdown = str(text)
+        return CleanItem(
+            title=value.get("title"),
+            text=str(text),
+            markdown=str(markdown),
+            platform=str(value.get("platform") or request.platform),
+            url=value.get("url") or target_url,
+            time=parsed_time or datetime.now(),
+            sourceId=request.source_id,
+            sourceType="SOCIAL_MEDIA",
+            recordId=value.get("recordId"),
+            recordType=str(value.get("recordType") or "eval-js"),
+            recordIndex=value.get("recordIndex") if isinstance(value.get("recordIndex"), int) else index,
+        )
+
+    text_value = str(value)
+    return CleanItem(
+        title=f"playwright eval result {index}",
+        text=text_value,
+        markdown=text_value,
+        platform=request.platform,
+        url=target_url,
+        time=datetime.now(),
+        sourceId=request.source_id,
+        sourceType="SOCIAL_MEDIA",
+        recordType="eval-js",
+        recordIndex=index,
+    )
+
+
+def _normalize_playwright_eval_result(result: Any, request: FetchRequest, target_url: str) -> list[CleanItem]:
+    candidate = result
+    if isinstance(candidate, dict):
+        for key in ("items", "results", "data"):
+            nested = candidate.get(key)
+            if isinstance(nested, list):
+                candidate = nested
+                break
+    if isinstance(candidate, list):
+        if not candidate:
+            return []
+        return [
+            _to_clean_item_from_eval_value(item, request, target_url, index)
+            for index, item in enumerate(candidate, start=1)
+        ]
+    return [_to_clean_item_from_eval_value(candidate, request, target_url, 1)]
+
+
+async def _run_playwright_eval_script(request: FetchRequest) -> list[CleanItem]:
+    from playwright.async_api import TimeoutError as PlaywrightTimeoutError
+    from playwright.async_api import async_playwright
+
+    options = _extract_playwright_eval_options(request.config)
+    script_to_run = f"({options['script_body']})({options['args_json']})"
+
+    try:
+        async with async_playwright() as playwright:
+            browser = await playwright.chromium.launch(headless=options["headless"])
+            context_options: dict[str, Any] = {}
+            if request.auth_data:
+                context_options["storage_state"] = request.auth_data
+            context = await browser.new_context(**context_options)
+            try:
+                page = await context.new_page()
+                await page.goto(
+                    options["target_url"],
+                    wait_until=options["wait_until"],
+                    timeout=options["navigation_timeout_ms"],
+                )
+                if options["wait_selector"]:
+                    await page.wait_for_selector(options["wait_selector"], timeout=options["navigation_timeout_ms"])
+                if options["post_navigation_wait_ms"] > 0:
+                    await page.wait_for_timeout(options["post_navigation_wait_ms"])
+                eval_result = await page.evaluate(script_to_run)
+            finally:
+                await context.close()
+                await browser.close()
+    except PlaywrightTimeoutError as error:
+        raise HTTPException(status_code=504, detail=f"playwright eval timeout: {error}") from error
+    except HTTPException:
+        raise
+    except Exception as error:
+        raise HTTPException(status_code=500, detail=f"playwright eval execution failed: {error}") from error
+
+    items = _normalize_playwright_eval_result(eval_result, request, options["target_url"])
+    if not items:
+        raise HTTPException(status_code=500, detail="playwright eval script finished without output")
+    return items
 
 
 def _truncate_text(value: str, max_length: int = 12000) -> str:
