@@ -5,6 +5,7 @@ import subprocess
 import threading
 import time
 import re
+from urllib.parse import quote, urlparse, urlunparse
 from uuid import uuid4
 from dataclasses import dataclass
 from pathlib import Path
@@ -132,7 +133,86 @@ def _extract_runtime_options(config: dict[str, Any]) -> dict[str, Any]:
             reason="invalid_config",
             message="config.agentBrowser must be an object",
         )
-    return container
+    merged = dict(container)
+    if "network" not in merged and isinstance(config.get("network"), dict):
+        merged["network"] = config["network"]
+    return merged
+
+
+def _inject_proxy_credentials(proxy_url: str, username: str | None, password: str | None) -> str:
+    parsed = urlparse(proxy_url)
+    if parsed.username:
+        return proxy_url
+    if username is None:
+        return proxy_url
+    encoded_user = quote(username, safe="")
+    encoded_password = quote(password or "", safe="")
+    netloc = f"{encoded_user}:{encoded_password}@{parsed.hostname or ''}"
+    if parsed.port:
+        netloc = f"{netloc}:{parsed.port}"
+    return urlunparse((parsed.scheme, netloc, parsed.path, parsed.params, parsed.query, parsed.fragment))
+
+
+def _resolve_proxy_options(options: dict[str, Any]) -> tuple[str | None, str | None]:
+    raw_proxy: Any | None = options.get("proxy")
+    if raw_proxy is None:
+        network = options.get("network")
+        if isinstance(network, dict):
+            raw_proxy = network.get("proxy")
+
+    if raw_proxy is None:
+        return None, None
+
+    if isinstance(raw_proxy, str):
+        proxy_url = raw_proxy.strip()
+        username = None
+        password = None
+        bypass = None
+    elif isinstance(raw_proxy, dict):
+        raw_url = raw_proxy.get("url", raw_proxy.get("server"))
+        if not isinstance(raw_url, str) or not raw_url.strip():
+            raise AgentBrowserScriptError(
+                reason="invalid_config",
+                message="network.proxy.url is required",
+            )
+        proxy_url = raw_url.strip()
+        username = raw_proxy.get("username")
+        password = raw_proxy.get("password")
+        bypass = raw_proxy.get("bypass")
+        if username is not None and not isinstance(username, str):
+            raise AgentBrowserScriptError(
+                reason="invalid_config",
+                message="network.proxy.username must be a string",
+            )
+        if password is not None and not isinstance(password, str):
+            raise AgentBrowserScriptError(
+                reason="invalid_config",
+                message="network.proxy.password must be a string",
+            )
+        if bypass is not None and not isinstance(bypass, str):
+            raise AgentBrowserScriptError(
+                reason="invalid_config",
+                message="network.proxy.bypass must be a string",
+            )
+    else:
+        raise AgentBrowserScriptError(
+            reason="invalid_config",
+            message="network.proxy must be a string or object",
+        )
+
+    parsed = urlparse(proxy_url)
+    if parsed.scheme.lower() not in {"http", "https", "socks5", "socks5h"}:
+        raise AgentBrowserScriptError(
+            reason="invalid_config",
+            message="network.proxy must use http/https/socks5/socks5h",
+        )
+    if not parsed.hostname:
+        raise AgentBrowserScriptError(
+            reason="invalid_config",
+            message="network.proxy.url is invalid",
+        )
+    resolved_proxy = _inject_proxy_credentials(proxy_url, username, password)
+    return resolved_proxy, bypass
 
 
 def _build_command_prefixes(options: dict[str, Any]) -> tuple[list[str], list[str]]:
@@ -147,6 +227,12 @@ def _build_command_prefixes(options: dict[str, Any]) -> tuple[list[str], list[st
     session_name = options.get("sessionName")
     if session_name:
         command_prefix.extend(["--session-name", str(session_name)])
+
+    proxy_url, proxy_bypass = _resolve_proxy_options(options)
+    if proxy_url:
+        command_prefix.extend(["--proxy", proxy_url])
+    if proxy_bypass:
+        command_prefix.extend(["--proxy-bypass", proxy_bypass])
 
     state_path: Path | None = None
     state_file = options.get("stateFile")

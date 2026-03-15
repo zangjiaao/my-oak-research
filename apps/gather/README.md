@@ -188,6 +188,30 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
 `/fetch` 兼容入口使用 `response_formats`（snake_case）。
 
+### 通用网络代理配置（支持 HTTP/SOCKS/Tor）
+
+三个 driver（`xhttp` / `playwright` / `agent-browser`）都支持在 `config.network.proxy` 下统一配置代理：
+
+```json
+{
+  "config": {
+    "network": {
+      "proxy": {
+        "url": "socks5h://127.0.0.1:9050",
+        "username": "optional-user",
+        "password": "optional-pass",
+        "bypass": "localhost,127.0.0.1"
+      }
+    }
+  }
+}
+```
+
+- `url`: 必填，支持 `http://`、`https://`、`socks5://`、`socks5h://`
+- `username/password`: 可选，未写入 URL 时会自动注入
+- `bypass`: 可选，主要用于浏览器类 driver（Playwright / agent-browser）
+- Tor 推荐使用 `socks5h://127.0.0.1:9050`（DNS 也走 Tor）
+
 ### xhttp 驱动（`driver: "xhttp"`）
 
 适用于直接调用搜索 API 或普通 HTTP 页面，不依赖浏览器环境。

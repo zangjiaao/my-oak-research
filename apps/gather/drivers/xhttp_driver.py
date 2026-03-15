@@ -13,7 +13,7 @@ import time
 from datetime import datetime
 from html import unescape
 from typing import Any
-from urllib.parse import urlparse
+from urllib.parse import quote, urlparse, urlunparse
 
 import httpx
 from fastapi import HTTPException
@@ -82,6 +82,57 @@ def _resolve_params(config: dict[str, Any]) -> dict[str, Any]:
             continue
         raise HTTPException(status_code=400, detail="config.params values must be string/number/bool")
     return params
+
+
+def _inject_proxy_credentials(proxy_url: str, username: str | None, password: str | None) -> str:
+    parsed = urlparse(proxy_url)
+    if parsed.username:
+        return proxy_url
+    if username is None:
+        return proxy_url
+    encoded_user = quote(username, safe="")
+    encoded_password = quote(password or "", safe="")
+    netloc = f"{encoded_user}:{encoded_password}@{parsed.hostname or ''}"
+    if parsed.port:
+        netloc = f"{netloc}:{parsed.port}"
+    return urlunparse((parsed.scheme, netloc, parsed.path, parsed.params, parsed.query, parsed.fragment))
+
+
+def _resolve_proxy_url(config: dict[str, Any]) -> str | None:
+    network = config.get("network")
+    if network is None:
+        return None
+    if not isinstance(network, dict):
+        raise HTTPException(status_code=400, detail="config.network must be an object")
+
+    raw_proxy = network.get("proxy")
+    if raw_proxy is None:
+        return None
+
+    if isinstance(raw_proxy, str):
+        proxy_url = raw_proxy.strip()
+        username = None
+        password = None
+    elif isinstance(raw_proxy, dict):
+        raw_url = raw_proxy.get("url", raw_proxy.get("server"))
+        if not isinstance(raw_url, str) or not raw_url.strip():
+            raise HTTPException(status_code=400, detail="config.network.proxy.url is required")
+        proxy_url = raw_url.strip()
+        username = raw_proxy.get("username")
+        password = raw_proxy.get("password")
+        if username is not None and not isinstance(username, str):
+            raise HTTPException(status_code=400, detail="config.network.proxy.username must be a string")
+        if password is not None and not isinstance(password, str):
+            raise HTTPException(status_code=400, detail="config.network.proxy.password must be a string")
+    else:
+        raise HTTPException(status_code=400, detail="config.network.proxy must be a string or object")
+
+    parsed = urlparse(proxy_url)
+    if parsed.scheme.lower() not in {"http", "https", "socks5", "socks5h"}:
+        raise HTTPException(status_code=400, detail="config.network.proxy must use http/https/socks5/socks5h")
+    if not parsed.hostname:
+        raise HTTPException(status_code=400, detail="config.network.proxy.url is invalid")
+    return _inject_proxy_credentials(proxy_url, username, password)
 
 
 def _resolve_body_payload(config: dict[str, Any]) -> tuple[Any | None, Any | None, bytes | None]:
@@ -270,6 +321,7 @@ class XHttpDriver(BaseDriver):
         config = request.config
         urls = _resolve_xhttp_urls(config)
         method = _resolve_method(config)
+        proxy_url = _resolve_proxy_url(config)
         base_params = _resolve_params(config)
         base_json_payload, base_form_payload, base_content_payload = _resolve_body_payload(config)
         headers = config.get("headers", {})
@@ -290,7 +342,7 @@ class XHttpDriver(BaseDriver):
         }
 
         results: list[Any] = []
-        async with httpx.AsyncClient(timeout=float(timeout_seconds), follow_redirects=True) as client:
+        async with httpx.AsyncClient(timeout=float(timeout_seconds), follow_redirects=True, proxy=proxy_url) as client:
             for target_url in urls:
                 request_params = copy.deepcopy(base_params)
                 request_json_payload = copy.deepcopy(base_json_payload)

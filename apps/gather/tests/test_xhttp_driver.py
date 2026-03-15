@@ -200,3 +200,52 @@ def test_xhttp_fetch_data_supports_post_json_with_signature(monkeypatch):
         hashlib.sha256,
     ).hexdigest()
     assert calls[0]["headers"]["X-Signature"] == expected
+
+
+def test_xhttp_fetch_data_supports_network_proxy(monkeypatch):
+    client_kwargs = {}
+
+    class FakeResponse:
+        def __init__(self):
+            self.headers = {"content-type": "application/json"}
+            self.url = "https://api.example.com/search"
+            self.text = "{\"ok\":true}"
+
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {"ok": True}
+
+    class FakeClient:
+        def __init__(self, *args, **kwargs):
+            client_kwargs.update(kwargs)
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):  # noqa: ARG002
+            return False
+
+        async def request(self, method, url, headers=None, params=None, json=None, data=None, content=None):  # noqa: ARG002
+            return FakeResponse()
+
+    from drivers import xhttp_driver
+
+    monkeypatch.setattr(xhttp_driver.httpx, "AsyncClient", FakeClient)
+
+    request = FetchRequest(
+        platform="x",
+        source_id="source-1",
+        config={
+            "url": "https://api.example.com/search",
+            "network": {
+                "proxy": {
+                    "url": "socks5h://127.0.0.1:9050",
+                }
+            },
+        },
+    )
+    asyncio.run(XHttpDriver().fetch(request))
+
+    assert client_kwargs["proxy"] == "socks5h://127.0.0.1:9050"
