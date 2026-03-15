@@ -802,14 +802,20 @@ def _extract_playwright_eval_options(config: Dict[str, Any]) -> dict[str, Any]:
 
 def _to_clean_item_from_eval_value(value: Any, request: FetchRequest, target_url: str, index: int) -> CleanItem:
     if isinstance(value, dict):
-        raw_time = value.get("time")
+        raw_time = value.get("time", value.get("created_at"))
         parsed_time: datetime | None = None
         if isinstance(raw_time, str):
             try:
                 parsed_time = datetime.fromisoformat(raw_time)
             except ValueError:
                 parsed_time = None
+                try:
+                    parsed_time = datetime.strptime(raw_time, "%a %b %d %H:%M:%S %z %Y")
+                except ValueError:
+                    parsed_time = None
         text = value.get("text")
+        if text is None and isinstance(value.get("full_text"), str):
+            text = value.get("full_text")
         markdown = value.get("markdown")
         if text is None and markdown is None:
             text = json.dumps(value, ensure_ascii=False)
@@ -817,9 +823,10 @@ def _to_clean_item_from_eval_value(value: Any, request: FetchRequest, target_url
         elif text is None:
             text = str(markdown)
         elif markdown is None:
-            markdown = str(text)
+            author = value.get("author")
+            markdown = f"@{author}: {text}" if isinstance(author, str) and author else str(text)
         return CleanItem(
-            title=value.get("title"),
+            title=value.get("title") or value.get("name"),
             text=str(text),
             markdown=str(markdown),
             platform=str(value.get("platform") or request.platform),
@@ -827,8 +834,8 @@ def _to_clean_item_from_eval_value(value: Any, request: FetchRequest, target_url
             time=parsed_time or datetime.now(),
             sourceId=request.source_id,
             sourceType="SOCIAL_MEDIA",
-            recordId=value.get("recordId"),
-            recordType=str(value.get("recordType") or "eval-js"),
+            recordId=value.get("recordId") or value.get("id"),
+            recordType=str(value.get("recordType") or value.get("type") or "eval-js"),
             recordIndex=value.get("recordIndex") if isinstance(value.get("recordIndex"), int) else index,
         )
 
@@ -850,7 +857,7 @@ def _to_clean_item_from_eval_value(value: Any, request: FetchRequest, target_url
 def _normalize_playwright_eval_result(result: Any, request: FetchRequest, target_url: str) -> list[CleanItem]:
     candidate = result
     if isinstance(candidate, dict):
-        for key in ("items", "results", "data"):
+        for key in ("tweets", "posts", "notes", "items", "results", "data"):
             nested = candidate.get(key)
             if isinstance(nested, list):
                 candidate = nested

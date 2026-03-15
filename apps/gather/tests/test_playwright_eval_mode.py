@@ -95,3 +95,30 @@ def test_extract_playwright_eval_options_supports_state_file(tmp_path):
 
     assert options["storage_state"] is not None
     assert options["storage_state"]["cookies"][0]["name"] == "ct0"
+
+
+def test_normalize_playwright_eval_result_flattens_bb_site_tweets():
+    result = {
+        "query": "openai",
+        "count": 1,
+        "tweets": [
+            {
+                "id": "123",
+                "author": "alice",
+                "name": "Alice",
+                "url": "https://x.com/alice/status/123",
+                "text": "hello world",
+                "created_at": "Sun Mar 15 04:03:16 +0000 2026",
+            }
+        ],
+    }
+    request = main.FetchRequest(platform="x", source_id="source-x-001", config={})
+    items = main._normalize_playwright_eval_result(result, request, "https://x.com")
+
+    assert len(items) == 1
+    item = items[0]
+    assert item.recordId == "123"
+    assert item.recordType == "eval-js"
+    assert item.title == "Alice"
+    assert item.text == "hello world"
+    assert item.markdown.startswith("@alice:")
