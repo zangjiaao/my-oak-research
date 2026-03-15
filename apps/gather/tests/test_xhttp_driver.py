@@ -9,13 +9,13 @@ ROOT_DIR = Path(__file__).resolve().parents[1]
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
-import main
 from main import FetchRequest
+from drivers.xhttp_driver import XHttpDriver, _resolve_xhttp_urls
 
 
 def test_resolve_xhttp_urls_rejects_missing_url():
     with pytest.raises(HTTPException) as error:
-        main._resolve_xhttp_urls({})
+        _resolve_xhttp_urls({})
     assert error.value.status_code == 400
 
 
@@ -42,15 +42,17 @@ def test_xhttp_fetch_data_extracts_html_text(monkeypatch):
         async def get(self, url, headers=None):  # noqa: ARG002
             return FakeResponse()
 
-    monkeypatch.setattr(main.httpx, "AsyncClient", FakeClient)
+    from drivers import xhttp_driver
+
+    monkeypatch.setattr(xhttp_driver.httpx, "AsyncClient", FakeClient)
 
     request = FetchRequest(
         platform="x",
         source_id="source-1",
         config={"url": "https://example.com"},
     )
-    items = asyncio.run(main._xhttp_fetch_data(request))
+    items = asyncio.run(XHttpDriver().fetch(request))
     assert len(items) == 1
-    assert items[0].title == "Hello"
-    assert "World" in (items[0].text or "")
-    assert items[0].recordType == "xhttp"
+    assert items[0]["title"] == "Hello"
+    assert "World" in (items[0]["text"] or "")
+    assert items[0]["recordType"] == "xhttp"
