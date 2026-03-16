@@ -55,6 +55,7 @@ class AgentBrowserInstanceState:
     command_prefix: list[str]
     command_prefix_with_state: list[str]
     state_file: str | None
+    use_state_env: bool
     state_applied: bool
     owner_id: str | None
     session_key: str | None
@@ -609,6 +610,7 @@ def _execute_steps_batch(
             is_close_command = bool(command_parts) and command_parts[0] == "close"
             used_state_prefix = False
             state_applied_this_command = False
+            command_env: dict[str, str] | None = None
             if is_close_command:
                 args = ["agent-browser", "close"]
                 should_close_by_step = True
@@ -621,6 +623,9 @@ def _execute_steps_batch(
                 )
                 used_state_prefix = can_use_state_prefix
                 args = active_prefix + command_parts
+                if instance.use_state_env and instance.state_file:
+                    command_env = os.environ.copy()
+                    command_env["AGENT_BROWSER_STATE"] = instance.state_file
 
             started_at = time.monotonic()
             _emit_log(
@@ -634,6 +639,7 @@ def _execute_steps_batch(
                     text=True,
                     timeout=command_timeout_ms / 1000,
                     check=False,
+                    env=command_env,
                 )
             except FileNotFoundError as error:
                 raise AgentBrowserScriptError(
@@ -680,6 +686,7 @@ def _execute_steps_batch(
                     if instance.state_file:
                         fallback_env = os.environ.copy()
                         fallback_env["AGENT_BROWSER_STATE"] = instance.state_file
+                        instance.use_state_env = True
                     _emit_log(
                         verbose,
                         f"{batch_label} state flag unsupported, retry command without --state"
@@ -827,6 +834,7 @@ def _create_instance(options: dict[str, Any], *, verbose: bool) -> AgentBrowserI
         command_prefix=command_prefix,
         command_prefix_with_state=command_prefix_with_state,
         state_file=resolved_state_file,
+        use_state_env=False,
         state_applied=False,
         owner_id=owner_id,
         session_key=session_key,

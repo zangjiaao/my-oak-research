@@ -42,10 +42,22 @@ def _env_flag(name: str, default: bool = False) -> bool:
 
 
 _API_IO_LOG_ENABLED = _env_flag("GATHER_API_IO_LOG_ENABLED", False)
-_API_IO_LOG_DIR = Path(
+_RAW_API_IO_LOG_DIR = Path(
     os.getenv("GATHER_API_IO_LOG_DIR", str(Path(__file__).resolve().parent / "logs"))
 ).expanduser()
+_API_IO_LOG_DIR = (
+    _RAW_API_IO_LOG_DIR
+    if _RAW_API_IO_LOG_DIR.is_absolute()
+    else (Path(__file__).resolve().parent / _RAW_API_IO_LOG_DIR).resolve()
+)
 _API_IO_LOG_MAX_CHARS = int(os.getenv("GATHER_API_IO_LOG_MAX_CHARS", "120000"))
+
+if _API_IO_LOG_ENABLED:
+    try:
+        _API_IO_LOG_DIR.mkdir(parents=True, exist_ok=True)
+        print(f"[gather] api io log enabled dir={_API_IO_LOG_DIR}")
+    except Exception as error:
+        print(f"[gather] failed to initialize api io log dir: {error}")
 
 
 def _truncate_for_log(value: Any, max_chars: int) -> Any:
