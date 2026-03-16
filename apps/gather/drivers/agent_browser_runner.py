@@ -5,7 +5,6 @@ import subprocess
 import threading
 import time
 import re
-import os
 from urllib.parse import quote, urlparse, urlunparse
 from uuid import uuid4
 from dataclasses import dataclass
@@ -53,9 +52,7 @@ class AgentBrowserInstanceState:
     instance_id: str
     tab_id: str
     command_prefix: list[str]
-    command_prefix_with_state: list[str]
     state_file: str | None
-    use_state_env: bool
     state_applied: bool
     owner_id: str | None
     session_key: str | None
@@ -241,7 +238,7 @@ def _resolve_proxy_options(options: dict[str, Any]) -> tuple[str | None, str | N
     return resolved_proxy, bypass
 
 
-def _build_command_prefixes(options: dict[str, Any]) -> tuple[list[str], list[str]]:
+def _build_command_prefixes(options: dict[str, Any]) -> tuple[list[str], str | None]:
     command_prefix = ["agent-browser"]
     if bool(options.get("headed", False)):
         command_prefix.append("--headed")
@@ -270,12 +267,7 @@ def _build_command_prefixes(options: dict[str, Any]) -> tuple[list[str], list[st
                 message=f"stateFile does not exist: {state_file}",
             )
 
-    command_prefix_with_state = (
-        command_prefix + ["--state", str(state_path)]
-        if state_path
-        else command_prefix
-    )
-    return command_prefix, command_prefix_with_state
+    return command_prefix, (str(state_path) if state_path else None)
 
 
 def _safe_close_daemon(verbose: bool) -> None:
@@ -610,22 +602,16 @@ def _execute_steps_batch(
             is_close_command = bool(command_parts) and command_parts[0] == "close"
             used_state_prefix = False
             state_applied_this_command = False
-            command_env: dict[str, str] | None = None
             if is_close_command:
                 args = ["agent-browser", "close"]
                 should_close_by_step = True
             else:
-                can_use_state_prefix = instance.command_prefix_with_state != instance.command_prefix and not instance.state_applied
-                active_prefix = (
-                    instance.command_prefix_with_state
-                    if can_use_state_prefix
-                    else instance.command_prefix
-                )
+                can_use_state_prefix = bool(instance.state_file) and not instance.state_applied
+                active_prefix = instance.command_prefix
                 used_state_prefix = can_use_state_prefix
                 args = active_prefix + command_parts
-                if instance.use_state_env and instance.state_file:
-                    command_env = os.environ.copy()
-                    command_env["AGENT_BROWSER_STATE"] = instance.state_file
+                if can_use_state_prefix and instance.state_file:
+                    args = args + ["--state", instance.state_file]
 
             started_at = time.monotonic()
             _emit_log(
@@ -639,7 +625,6 @@ def _execute_steps_batch(
                     text=True,
                     timeout=command_timeout_ms / 1000,
                     check=False,
-                    env=command_env,
                 )
             except FileNotFoundError as error:
                 raise AgentBrowserScriptError(
@@ -681,59 +666,19 @@ def _execute_steps_batch(
             if completed.returncode != 0:
                 detail = stderr.strip() or stdout.strip() or f"exit code {completed.returncode}"
                 if used_state_prefix and _supports_state_flag_error(detail):
-                    fallback_args = instance.command_prefix + command_parts
-                    fallback_env = None
-                    if instance.state_file:
-                        fallback_env = os.environ.copy()
-                        fallback_env["AGENT_BROWSER_STATE"] = instance.state_file
-                        instance.use_state_env = True
-                    _emit_log(
-                        verbose,
-                        f"{batch_label} state flag unsupported, retry command without --state"
-                        + (" (use AGENT_BROWSER_STATE env)" if fallback_env else ""),
+                    raise AgentBrowserScriptError(
+                        reason="invalid_config",
+                        message=(
+                            "agent-browser does not support --state for this command. "
+                            "Please verify installed agent-browser version and stateFile format/path."
+                        ),
+                        step_index=step_index,
+                        command=command,
+                        return_code=completed.returncode,
+                        stdout=_truncate_text(stdout.strip()),
+                        stderr=_truncate_text(stderr.strip()),
+                        debug_context={"steps": debug_steps},
                     )
-                    fallback_started_at = time.monotonic()
-                    try:
-                        completed = subprocess.run(
-                            fallback_args,
-                            capture_output=True,
-                            text=True,
-                            timeout=command_timeout_ms / 1000,
-                            check=False,
-                            env=fallback_env,
-                        )
-                    except subprocess.TimeoutExpired as error:
-                        raise AgentBrowserScriptError(
-                            reason="command_timeout",
-                            message=f"Command timed out after {command_timeout_ms}ms",
-                            step_index=step_index,
-                            command=command,
-                            debug_context={"steps": debug_steps},
-                        ) from error
-
-                    stdout = completed.stdout or ""
-                    stderr = completed.stderr or ""
-                    elapsed_ms = int((time.monotonic() - fallback_started_at) * 1000)
-                    debug_step = {
-                        "batch": batch_label,
-                        "step_index": step_index,
-                        "attempt": attempt,
-                        "command": command,
-                        "elapsed_ms": elapsed_ms,
-                        "return_code": completed.returncode,
-                        "stdout": _truncate_text(stdout.strip()),
-                        "stderr": _truncate_text(stderr.strip()),
-                        "fallback_no_state": True,
-                    }
-                    debug_steps.append(debug_step)
-                    _emit_log(
-                        verbose,
-                        f"{batch_label} step={step_index} attempt={attempt} fallback-no-state exit={completed.returncode} elapsed={elapsed_ms}ms",
-                    )
-                    detail = stderr.strip() or stdout.strip() or f"exit code {completed.returncode}"
-                    if completed.returncode == 0 and fallback_env:
-                        state_applied_this_command = True
-                        _emit_log(verbose, f"{batch_label} state applied via AGENT_BROWSER_STATE env")
 
                 if completed.returncode != 0:
                     _emit_log(
@@ -820,11 +765,7 @@ def _execute_loop_block(
 
 
 def _create_instance(options: dict[str, Any], *, verbose: bool) -> AgentBrowserInstanceState:
-    command_prefix, command_prefix_with_state = _build_command_prefixes(options)
-    state_file = options.get("stateFile")
-    resolved_state_file: str | None = None
-    if isinstance(state_file, str) and state_file.strip():
-        resolved_state_file = str(_resolve_state_path(state_file.strip()))
+    command_prefix, resolved_state_file = _build_command_prefixes(options)
     owner_id = _normalize_optional_str(options.get("ownerId"), "ownerId")
     session_key = _normalize_optional_str(options.get("sessionKey"), "sessionKey")
     ttl_seconds = _read_int(options.get("instanceTtlSeconds", 900), field_name="instanceTtlSeconds", minimum=1)
@@ -832,9 +773,7 @@ def _create_instance(options: dict[str, Any], *, verbose: bool) -> AgentBrowserI
         instance_id=f"ab-{uuid4().hex[:10]}",
         tab_id=f"tab-{uuid4().hex[:8]}",
         command_prefix=command_prefix,
-        command_prefix_with_state=command_prefix_with_state,
         state_file=resolved_state_file,
-        use_state_env=False,
         state_applied=False,
         owner_id=owner_id,
         session_key=session_key,

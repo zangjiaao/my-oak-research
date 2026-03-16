@@ -45,11 +45,14 @@ _API_IO_LOG_ENABLED = _env_flag("GATHER_API_IO_LOG_ENABLED", False)
 _RAW_API_IO_LOG_DIR = Path(
     os.getenv("GATHER_API_IO_LOG_DIR", str(Path(__file__).resolve().parent / "logs"))
 ).expanduser()
-_API_IO_LOG_DIR = (
-    _RAW_API_IO_LOG_DIR
-    if _RAW_API_IO_LOG_DIR.is_absolute()
-    else (Path(__file__).resolve().parent / _RAW_API_IO_LOG_DIR).resolve()
-)
+_GATHER_APP_ROOT = Path(__file__).resolve().parent
+_REPO_ROOT = _GATHER_APP_ROOT.parents[1]
+if _RAW_API_IO_LOG_DIR.is_absolute():
+    _API_IO_LOG_DIR = _RAW_API_IO_LOG_DIR
+elif str(_RAW_API_IO_LOG_DIR).startswith("apps/"):
+    _API_IO_LOG_DIR = (_REPO_ROOT / _RAW_API_IO_LOG_DIR).resolve()
+else:
+    _API_IO_LOG_DIR = (_GATHER_APP_ROOT / _RAW_API_IO_LOG_DIR).resolve()
 _API_IO_LOG_MAX_CHARS = int(os.getenv("GATHER_API_IO_LOG_MAX_CHARS", "120000"))
 
 if _API_IO_LOG_ENABLED:
