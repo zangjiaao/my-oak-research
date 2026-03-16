@@ -135,31 +135,9 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 }
 ```
 
-### 获取数据 v1（兼容）(POST /fetch)
-
-使用认证获取社交媒体数据。
-
-**请求体**：
-```json
-{
-  "platform": "x",
-  "source_id": "source_123",
-  "auth_data": {
-    "cookies": [...],
-    "origins": []
-  },
-  "config": {
-    "query": "AI",
-    "maxResults": 10
-  }
-}
-```
-
-> `/fetch` 为兼容入口，继续使用 `source_id/auth_data`（snake_case）请求字段。
-
 ### 获取数据 v2（推荐）(POST /v2/fetch)
 
-`/v2/fetch` 是稳定契约入口，返回结构与 `/fetch` 一致（数组 `CleanItem`）。
+`/v2/fetch` 是唯一 fetch 契约入口，返回数组 `CleanItem`。
 
 **请求体**：
 ```json
@@ -188,7 +166,7 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 - `["markdown"]`：仅返回 `markdown`
 - `["text", "markdown"]`：同时返回两种（默认行为）
 
-`/v2/fetch` 仍兼容旧字段（`config`、`responseFormats`、`config.agentBrowser`），但推荐统一迁移到 `driverOptions` + `output`。
+`/v2/fetch` 兼容旧字段（`config`、`responseFormats`、`config.agentBrowser`），推荐统一迁移到 `driverOptions` + `output`。
 
 ### 通用网络代理配置（支持 HTTP/SOCKS/Tor）
 
@@ -524,12 +502,12 @@ print(response.json())
 
 # 获取数据
 response = requests.post(
-    "http://localhost:8000/fetch",
+    "http://localhost:8000/v2/fetch",
     json={
         "platform": "x",
-        "source_id": "test",
-        "auth_data": {"cookies": [...], "origins": []},
-        "config": {"query": "AI news", "maxResults": 5}
+        "sourceId": "test",
+        "authData": {"cookies": [...], "origins": []},
+        "driverOptions": {"query": "AI news", "maxResults": 5}
     }
 )
 for item in response.json():

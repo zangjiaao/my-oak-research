@@ -111,7 +111,7 @@ def test_fetch_v2_driver_options_without_legacy_config():
     assert "text" in items[0]
 
 
-def test_fetch_v1_backward_compat():
+def test_fetch_v1_endpoint_removed():
     response = client.post(
         "/fetch",
         json={
@@ -120,34 +120,4 @@ def test_fetch_v1_backward_compat():
             "config": {},
         },
     )
-
-    assert response.status_code == 200
-    items = response.json()
-    assert isinstance(items, list)
-    assert items
-
-    for item in items:
-        assert "text" in item
-        assert "platform" in item
-        assert "sourceId" in item
-        assert "sourceType" in item
-
-
-def test_fetch_v1_response_formats_text_only():
-    response = client.post(
-        "/fetch",
-        json={
-            "platform": "contract-test-platform",
-            "source_id": "legacy_source_123",
-            "response_formats": ["text"],
-            "config": {},
-        },
-    )
-
-    assert response.status_code == 200
-    items = response.json()
-    assert isinstance(items, list)
-    assert items
-    for item in items:
-        assert "text" in item
-        assert "markdown" not in item
+    assert response.status_code == 404

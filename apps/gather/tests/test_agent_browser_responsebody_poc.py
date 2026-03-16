@@ -129,10 +129,10 @@ def test_poc_does_not_change_default_driver():
     client = TestClient(main.app)
 
     response = client.post(
-        "/fetch",
+        "/v2/fetch",
         json={
             "platform": "contract-test-platform",
-            "source_id": "legacy_source_456",
+            "sourceId": "source-456",
             "config": {},
         },
     )
