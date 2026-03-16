@@ -11,6 +11,7 @@ import type {
 } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { toast } from "sonner";
 import {
   SourceCreateSchema,
   SourceUpdateSchema,
@@ -257,6 +258,19 @@ interface CommonFieldsProps {
   errors: FieldErrors<SourceFormValues>;
 }
 
+const getFirstErrorMessage = (errors: FieldErrors<SourceFormValues>): string | undefined => {
+  const queue: unknown[] = [errors];
+  while (queue.length > 0) {
+    const current = queue.shift();
+    if (!current || typeof current !== "object") continue;
+    if ("message" in current && typeof (current as { message?: unknown }).message === "string") {
+      return (current as { message: string }).message;
+    }
+    queue.push(...Object.values(current as Record<string, unknown>));
+  }
+  return undefined;
+};
+
 const CommonFields = ({ register, errors }: CommonFieldsProps) => (
   <>
     <div className="grid gap-3">
@@ -457,7 +471,9 @@ const SourceDialog = ({
             ? "Update"
             : "Add"
       }
-      onSubmit={handleSubmit(onSubmit)}
+      onSubmit={handleSubmit(onSubmit, (formErrors) => {
+        toast.error(getFirstErrorMessage(formErrors) || "Please check required fields.");
+      })}
     >
       <div className="grid gap-4">
         <CommonFields register={register} errors={errors} />

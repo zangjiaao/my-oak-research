@@ -321,7 +321,12 @@ export const SocialConfigByPlatform = z.discriminatedUnion("platform", [
             message: "XIAOHONGSHU: unsupported driver",
           });
         }
-        if (!v.userId && !v.noteId && !v.query) {
+        if (
+          v.driver !== "agent-browser" &&
+          !v.userId &&
+          !v.noteId &&
+          !v.query
+        ) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
             path: ["query"],
