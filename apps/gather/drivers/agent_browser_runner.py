@@ -84,6 +84,10 @@ def _supports_state_flag_error(detail: str) -> bool:
     return "unknown command: --state" in normalized or "unknown option '--state'" in normalized
 
 
+def _state_ignored_warning(detail: str) -> bool:
+    return "state ignored: daemon already running" in detail.lower()
+
+
 def _resolve_state_path(state_file: str) -> Path:
     raw_path = Path(state_file)
     if raw_path.is_absolute():
@@ -661,6 +665,46 @@ def _execute_steps_batch(
                 verbose,
                 f"{batch_label} step={step_index} attempt={attempt} exit={completed.returncode} elapsed={elapsed_ms}ms",
             )
+            if used_state_prefix and _state_ignored_warning(stderr):
+                _emit_log(verbose, f"{batch_label} state ignored by existing daemon, restarting daemon and retrying")
+                _safe_close_daemon(verbose)
+                retry_started_at = time.monotonic()
+                try:
+                    completed = subprocess.run(
+                        args,
+                        capture_output=True,
+                        text=True,
+                        timeout=command_timeout_ms / 1000,
+                        check=False,
+                    )
+                except subprocess.TimeoutExpired as error:
+                    raise AgentBrowserScriptError(
+                        reason="command_timeout",
+                        message=f"Command timed out after {command_timeout_ms}ms",
+                        step_index=step_index,
+                        command=command,
+                        debug_context={"steps": debug_steps},
+                    ) from error
+                stdout = completed.stdout or ""
+                stderr = completed.stderr or ""
+                elapsed_ms = int((time.monotonic() - retry_started_at) * 1000)
+                debug_steps.append(
+                    {
+                        "batch": batch_label,
+                        "step_index": step_index,
+                        "attempt": attempt,
+                        "command": command,
+                        "elapsed_ms": elapsed_ms,
+                        "return_code": completed.returncode,
+                        "stdout": _truncate_text(stdout.strip()),
+                        "stderr": _truncate_text(stderr.strip()),
+                        "retry_after_close_daemon": True,
+                    }
+                )
+                _emit_log(
+                    verbose,
+                    f"{batch_label} step={step_index} attempt={attempt} retry-after-close exit={completed.returncode} elapsed={elapsed_ms}ms",
+                )
             if completed.returncode == 0 and used_state_prefix:
                 state_applied_this_command = True
             if completed.returncode != 0:
@@ -766,6 +810,9 @@ def _execute_loop_block(
 
 def _create_instance(options: dict[str, Any], *, verbose: bool) -> AgentBrowserInstanceState:
     command_prefix, resolved_state_file = _build_command_prefixes(options)
+    if resolved_state_file:
+        _emit_log(verbose, "ensure fresh daemon before applying stateFile")
+        _safe_close_daemon(verbose)
     owner_id = _normalize_optional_str(options.get("ownerId"), "ownerId")
     session_key = _normalize_optional_str(options.get("sessionKey"), "sessionKey")
     ttl_seconds = _read_int(options.get("instanceTtlSeconds", 900), field_name="instanceTtlSeconds", minimum=1)
