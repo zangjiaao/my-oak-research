@@ -3,7 +3,7 @@ import type { SocialPlatform } from "@/app/generated/prisma";
 export type SocialDriver = "xhttp" | "playwright" | "agent-browser";
 
 export const SOCIAL_PLATFORM_DRIVER_SUPPORT: Record<SocialPlatform, readonly SocialDriver[]> = {
-  X: ["playwright", "xhttp", "agent-browser"],
+  X: ["playwright", "agent-browser"],
   REDDIT: ["playwright", "xhttp", "agent-browser"],
   XIAOHONGSHU: ["playwright", "xhttp", "agent-browser"],
   DOUYIN: ["playwright", "xhttp", "agent-browser"],

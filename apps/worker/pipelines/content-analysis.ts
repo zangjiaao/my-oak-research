@@ -619,15 +619,22 @@ async function fetchSocialSource(
     null;
   const normalizedSocialConfig = normalizeGatherSocialConfig(
     source,
-    sourceConfigObj
+    sourceConfigObj,
+    gatherDriver
   );
   const baseConfig = applyGatherProxyConfig(normalizedSocialConfig, proxyUrl);
+  const existingKeywordFilter = asObject(
+    (baseConfig as Record<string, unknown>).keywordFilter
+  );
+  const hasConfiguredKeywords =
+    Array.isArray(existingKeywordFilter.keywords) &&
+    existingKeywordFilter.keywords.length > 0;
   const config =
-    keywordFilterTerms.length > 0
+    keywordFilterTerms.length > 0 && !hasConfiguredKeywords
       ? {
           ...baseConfig,
           keywordFilter: {
-            ...asObject((baseConfig as Record<string, unknown>).keywordFilter),
+            ...existingKeywordFilter,
             keywords: keywordFilterTerms,
           },
         }
@@ -696,15 +703,15 @@ function mapGatherPlatform(platform?: string | null): string {
 
 function normalizeGatherSocialConfig(
   source: SocialMediaSource,
-  config: Record<string, unknown>
+  config: Record<string, unknown>,
+  driver: GatherSocialDriver
 ): Record<string, unknown> {
-  const platform = source.social?.platform;
-  if ((platform || "").toUpperCase() !== "X") {
-    return config;
+  if (driver === "agent-browser") {
+    return normalizeAgentBrowserGatherConfig(config);
   }
 
-  const driver = resolveGatherDriver(config, platform);
-  if (driver !== "playwright") {
+  const platform = source.social?.platform;
+  if ((platform || "").toUpperCase() !== "X" || driver !== "playwright") {
     return {
       ...config,
       driver,
@@ -752,6 +759,52 @@ function normalizeGatherSocialConfig(
   }
 
   return { playwright: normalizedPlaywright };
+}
+
+function normalizeAgentBrowserGatherConfig(
+  config: Record<string, unknown>
+): Record<string, unknown> {
+  const topLevelKeywordFilter = asObject(config.keywordFilter);
+  const rawAgentBrowser = asObject(config.agentBrowser);
+
+  let agentBrowserOptions = rawAgentBrowser;
+  let wrappedKeywordFilter: Record<string, unknown> = {};
+
+  const wrappedConfig = asObject(rawAgentBrowser.config);
+  if (Object.keys(wrappedConfig).length > 0) {
+    const nestedAgentBrowser = asObject(wrappedConfig.agentBrowser);
+    if (Object.keys(nestedAgentBrowser).length > 0) {
+      agentBrowserOptions = nestedAgentBrowser;
+    }
+    const nestedKeywordFilter = asObject(wrappedConfig.keywordFilter);
+    if (Object.keys(nestedKeywordFilter).length > 0) {
+      wrappedKeywordFilter = nestedKeywordFilter;
+    }
+  } else {
+    const nestedAgentBrowser = asObject(rawAgentBrowser.agentBrowser);
+    if (Object.keys(nestedAgentBrowser).length > 0) {
+      agentBrowserOptions = nestedAgentBrowser;
+    }
+    const directKeywordFilter = asObject(rawAgentBrowser.keywordFilter);
+    if (Object.keys(directKeywordFilter).length > 0) {
+      wrappedKeywordFilter = directKeywordFilter;
+    }
+  }
+
+  const keywordFilter =
+    Object.keys(topLevelKeywordFilter).length > 0
+      ? topLevelKeywordFilter
+      : wrappedKeywordFilter;
+
+  return {
+    driver: "agent-browser",
+    ...(Object.keys(agentBrowserOptions).length > 0
+      ? { agentBrowser: agentBrowserOptions }
+      : {}),
+    ...(Object.keys(keywordFilter).length > 0
+      ? { keywordFilter }
+      : {}),
+  };
 }
 
 function applyGatherProxyConfig(
