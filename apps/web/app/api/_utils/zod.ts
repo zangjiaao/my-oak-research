@@ -157,7 +157,7 @@ const AgentBrowserConfigInput = z
     ownerId: z.string().optional().nullable(),
     sessionKey: z.string().optional().nullable(),
     headed: z.boolean().optional().default(true),
-    closeOnComplete: z.boolean().optional().default(true),
+    closeOnComplete: z.boolean().optional().default(false),
     script: z.array(AgentBrowserScriptStepInput).default([]),
     recordSchema: z
       .object({

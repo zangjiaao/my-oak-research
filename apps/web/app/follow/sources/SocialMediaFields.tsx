@@ -752,7 +752,7 @@ export const SocialMediaFields = ({
             <label className="flex items-center gap-2 cursor-pointer">
               <input
                 type="checkbox"
-                checked={field.value !== false}
+                checked={Boolean(field.value)}
                 onChange={(e) => field.onChange(e.target.checked)}
                 className="rounded border-gray-300"
               />

@@ -808,6 +808,7 @@ function normalizeAgentBrowserGatherConfig(
     ...agentBrowserOptions,
     ownerId,
     sessionKey,
+    closeOnComplete: false,
   };
   if (
     typeof normalizedAgentBrowser.stateFile !== "string" ||

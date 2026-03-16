@@ -905,6 +905,34 @@ def _resolve_instance(options: dict[str, Any], *, verbose: bool) -> tuple[AgentB
         _emit_log(verbose, f"reuse instance instanceId={instance.instance_id} tabId={instance.tab_id}")
         return instance, False
 
+    if request_owner_id and request_session_key:
+        with _INSTANCE_LOCK:
+            candidates = [
+                item
+                for item in _INSTANCES.values()
+                if item.owner_id == request_owner_id and item.session_key == request_session_key
+            ]
+        if candidates:
+            instance = max(candidates, key=lambda item: item.last_used_at)
+            now = time.time()
+            idle_seconds = now - instance.last_used_at
+            if idle_seconds <= instance.ttl_seconds:
+                requested_state_file: str | None = None
+                if isinstance(options.get("stateFile"), str) and options.get("stateFile").strip():
+                    requested_state_file = str(_resolve_state_path(options.get("stateFile").strip()))
+                if requested_state_file and instance.state_file and requested_state_file != instance.state_file:
+                    _emit_log(
+                        verbose,
+                        "existing pooled instance stateFile mismatch; create new instance",
+                    )
+                else:
+                    instance.last_used_at = now
+                    _emit_log(
+                        verbose,
+                        f"reuse pooled instance instanceId={instance.instance_id} tabId={instance.tab_id}",
+                    )
+                    return instance, False
+
     instance = _create_instance(options, verbose=verbose)
     with _INSTANCE_LOCK:
         _INSTANCES[instance.instance_id] = instance
