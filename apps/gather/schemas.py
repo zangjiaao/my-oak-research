@@ -16,21 +16,15 @@ class FetchV2Request(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     platform: str
-    config: Optional[Dict[str, Any]] = None
-    source_id: str = Field(validation_alias=AliasChoices("sourceId", "source_id"))
+    source_id: str = Field(validation_alias=AliasChoices("sourceId"))
     auth_data: Optional[Dict[str, Any]] = Field(
         default=None,
-        validation_alias=AliasChoices("authData", "auth_data"),
+        validation_alias=AliasChoices("authData"),
     )
     driver: Optional[str] = None
-    response_formats: Optional[List[Literal["text", "markdown"]]] = Field(
-        default=None,
-        validation_alias=AliasChoices("responseFormats", "response_formats"),
-    )
     output: Optional[Dict[str, Any]] = None
     driver_options: Optional[Dict[str, Any]] = Field(
-        default=None,
-        validation_alias=AliasChoices("driverOptions", "driver_options"),
+        validation_alias=AliasChoices("driverOptions"),
     )
 
 

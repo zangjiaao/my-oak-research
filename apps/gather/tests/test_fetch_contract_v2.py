@@ -45,7 +45,7 @@ def test_fetch_v2_happy_path(monkeypatch):
         json={
             "platform": "contract-test-platform",
             "sourceId": "source_123",
-            "config": {},
+            "driverOptions": {},
         },
     )
 
@@ -66,7 +66,7 @@ def test_fetch_v2_validation_error():
         "/v2/fetch",
         json={
             "sourceId": "source_123",
-            "config": {},
+            "driverOptions": {},
         },
     )
 
@@ -86,7 +86,7 @@ def test_fetch_v2_response_formats_text_only(monkeypatch):
             "platform": "contract-test-platform",
             "sourceId": "source_123",
             "output": {"formats": ["text"]},
-            "config": {},
+            "driverOptions": {},
         },
     )
 
@@ -106,7 +106,7 @@ def test_fetch_v2_response_formats_markdown_only(monkeypatch):
             "platform": "contract-test-platform",
             "sourceId": "source_123",
             "output": {"formats": ["markdown"]},
-            "config": {},
+            "driverOptions": {},
         },
     )
 

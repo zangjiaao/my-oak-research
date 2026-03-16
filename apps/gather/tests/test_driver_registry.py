@@ -76,8 +76,8 @@ def test_fetch_v2_driver_selected(monkeypatch):
         "/v2/fetch",
         json={
             "platform": "x",
-            "config": {},
-            "source_id": "source-1",
+            "driverOptions": {},
+            "sourceId": "source-1",
             "driver": "stub",
         },
     )

@@ -92,7 +92,7 @@ def test_keyword_hit_content_persisted(monkeypatch):
         json={
             "platform": "hit-only",
             "sourceId": "source-hit",
-            "config": {"filters": {"keyword": {"keywords": ["ai", "regulation"]}}},
+            "driverOptions": {"filters": {"keyword": {"keywords": ["ai", "regulation"]}}},
         },
     )
 
@@ -110,7 +110,7 @@ def test_keyword_miss_content_not_persisted(monkeypatch, capsys):
         json={
             "platform": "miss-only",
             "sourceId": "source-miss",
-            "config": {"filters": {"keyword": {"keywords": ["ai"]}}},
+            "driverOptions": {"filters": {"keyword": {"keywords": ["ai"]}}},
         },
     )
 
@@ -127,7 +127,7 @@ def test_keyword_hit_only_persisted_miss_audit_only(monkeypatch, capsys):
         json={
             "platform": "mixed",
             "sourceId": "source-mixed",
-            "config": {"filters": {"keyword": {"keywords": ["ai"]}}},
+            "driverOptions": {"filters": {"keyword": {"keywords": ["ai"]}}},
         },
     )
 
@@ -146,7 +146,7 @@ def test_keyword_filter_metrics_emitted(monkeypatch, capsys):
         json={
             "platform": "mixed",
             "sourceId": "source-metrics",
-            "config": {"filters": {"keyword": {"keywords": ["ai"]}}},
+            "driverOptions": {"filters": {"keyword": {"keywords": ["ai"]}}},
         },
     )
 
@@ -166,7 +166,7 @@ def test_keyword_filter_invalid_config_fails_closed(monkeypatch, capsys):
         json={
             "platform": "mixed",
             "sourceId": "source-invalid",
-            "config": {"filters": {"keyword": {"keywords": []}}},
+            "driverOptions": {"filters": {"keyword": {"keywords": []}}},
         },
     )
 
@@ -184,7 +184,7 @@ def test_keyword_segment_scope_keeps_only_matched_segments(monkeypatch):
         json={
             "platform": "chat-batch",
             "sourceId": "source-chat-segment",
-            "config": {
+            "driverOptions": {
                 "filters": {
                     "keyword": {
                         "keywords": ["alpha"],
@@ -211,7 +211,7 @@ def test_keyword_segment_scope_supports_min_segment_chars(monkeypatch):
         json={
             "platform": "chat-batch",
             "sourceId": "source-chat-min-chars",
-            "config": {
+            "driverOptions": {
                 "filters": {
                     "keyword": {
                         "keywords": ["alpha"],

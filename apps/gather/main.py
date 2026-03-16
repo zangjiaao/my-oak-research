@@ -1238,17 +1238,14 @@ def _normalize_agent_browser_driver_options(
 
 def _normalize_v2_fetch_request(request: FetchV2Request) -> FetchRequest:
     normalized_driver = request.driver.strip().lower() if isinstance(request.driver, str) else ""
-    config = dict(request.config or {})
+    config = dict(request.driver_options or {})
 
-    if isinstance(request.driver_options, dict):
-        if normalized_driver == "agent-browser":
-            config = _normalize_agent_browser_driver_options(request.source_id, config, request.driver_options)
-        else:
-            config = {**config, **request.driver_options}
+    if normalized_driver == "agent-browser":
+        config = _normalize_agent_browser_driver_options(request.source_id, {}, config)
 
     output = _as_dict(request.output)
     output_formats = output.get("formats")
-    response_formats = request.response_formats
+    response_formats: list[str] = ["text", "markdown"]
     if isinstance(output_formats, list):
         response_formats = [value for value in output_formats if value in {"text", "markdown"}]
 

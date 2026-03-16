@@ -37,7 +37,7 @@ def test_fetch_v2_playwright_eval_mode_uses_eval_runner(monkeypatch):
             "platform": "x",
             "sourceId": "source-eval-1",
             "driver": "playwright",
-            "config": {
+            "driverOptions": {
                 "playwright": {
                     "mode": "eval-js",
                     "targetUrl": "https://x.com",
@@ -66,7 +66,7 @@ def test_fetch_v2_playwright_eval_mode_allows_missing_target_url():
             "platform": "x",
             "sourceId": "source-eval-2",
             "driver": "playwright",
-            "config": {
+            "driverOptions": {
                 "playwright": {
                     "mode": "eval-js",
                     "scriptBody": "(args) => ({ text: 'ok' })",

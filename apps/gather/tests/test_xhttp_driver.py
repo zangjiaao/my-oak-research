@@ -109,7 +109,7 @@ def test_v2_fetch_xhttp_keeps_keyword_filter_compat(monkeypatch):
             "platform": "x",
             "sourceId": "source-1",
             "driver": "xhttp",
-            "config": {
+            "driverOptions": {
                 "url": "https://example.com",
                 "keywordFilter": {"keywords": ["keyword"]},
             },

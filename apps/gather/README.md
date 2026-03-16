@@ -166,7 +166,7 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 - `["markdown"]`：仅返回 `markdown`
 - `["text", "markdown"]`：同时返回两种（默认行为）
 
-`/v2/fetch` 兼容旧字段（`config`、`responseFormats`、`config.agentBrowser`），推荐统一迁移到 `driverOptions` + `output`。
+`/v2/fetch` 只接受新字段：`sourceId`、`authData`、`driverOptions`、`output`。旧字段（如 `config`、`responseFormats`、`source_id`）会返回校验错误。
 
 ### 通用网络代理配置（支持 HTTP/SOCKS/Tor）
 
