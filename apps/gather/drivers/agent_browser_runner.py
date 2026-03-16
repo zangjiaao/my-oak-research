@@ -79,6 +79,11 @@ def _truncate_text(value: str, max_length: int = 3000) -> str:
     return f"{value[:max_length]}..."
 
 
+def _supports_state_flag_error(detail: str) -> bool:
+    normalized = detail.lower()
+    return "unknown command: --state" in normalized or "unknown option '--state'" in normalized
+
+
 def _read_int(raw_value: Any, *, field_name: str, minimum: int = 0) -> int:
     try:
         value = int(raw_value)
@@ -583,18 +588,19 @@ def _execute_steps_batch(
         command_parts = shlex.split(command)
         for attempt in range(1, repeat + 1):
             is_close_command = bool(command_parts) and command_parts[0] == "close"
+            used_state_prefix = False
             if is_close_command:
                 args = ["agent-browser", "close"]
                 should_close_by_step = True
             else:
+                can_use_state_prefix = instance.command_prefix_with_state != instance.command_prefix and not instance.state_applied
                 active_prefix = (
                     instance.command_prefix_with_state
-                    if (instance.command_prefix_with_state != instance.command_prefix and not instance.state_applied)
+                    if can_use_state_prefix
                     else instance.command_prefix
                 )
+                used_state_prefix = can_use_state_prefix
                 args = active_prefix + command_parts
-                if instance.command_prefix_with_state != instance.command_prefix and not instance.state_applied:
-                    instance.state_applied = True
 
             started_at = time.monotonic()
             _emit_log(
@@ -646,21 +652,69 @@ def _execute_steps_batch(
             )
             if completed.returncode != 0:
                 detail = stderr.strip() or stdout.strip() or f"exit code {completed.returncode}"
-                _emit_log(
-                    verbose,
-                    f"{batch_label} step failed step={step_index} command={command} detail={_truncate_text(detail)}",
-                )
-                raise AgentBrowserScriptError(
-                    reason="command_failed",
-                    message=f"agent-browser command failed: {detail}",
-                    step_index=step_index,
-                    command=command,
-                    return_code=completed.returncode,
-                    stdout=_truncate_text(stdout.strip()),
-                    stderr=_truncate_text(stderr.strip()),
-                    debug_context={"steps": debug_steps},
-                )
+                if used_state_prefix and _supports_state_flag_error(detail):
+                    fallback_args = instance.command_prefix + command_parts
+                    _emit_log(
+                        verbose,
+                        f"{batch_label} state flag unsupported, retry command without --state",
+                    )
+                    fallback_started_at = time.monotonic()
+                    try:
+                        completed = subprocess.run(
+                            fallback_args,
+                            capture_output=True,
+                            text=True,
+                            timeout=command_timeout_ms / 1000,
+                            check=False,
+                        )
+                    except subprocess.TimeoutExpired as error:
+                        raise AgentBrowserScriptError(
+                            reason="command_timeout",
+                            message=f"Command timed out after {command_timeout_ms}ms",
+                            step_index=step_index,
+                            command=command,
+                            debug_context={"steps": debug_steps},
+                        ) from error
 
+                    stdout = completed.stdout or ""
+                    stderr = completed.stderr or ""
+                    elapsed_ms = int((time.monotonic() - fallback_started_at) * 1000)
+                    debug_step = {
+                        "batch": batch_label,
+                        "step_index": step_index,
+                        "attempt": attempt,
+                        "command": command,
+                        "elapsed_ms": elapsed_ms,
+                        "return_code": completed.returncode,
+                        "stdout": _truncate_text(stdout.strip()),
+                        "stderr": _truncate_text(stderr.strip()),
+                        "fallback_no_state": True,
+                    }
+                    debug_steps.append(debug_step)
+                    _emit_log(
+                        verbose,
+                        f"{batch_label} step={step_index} attempt={attempt} fallback-no-state exit={completed.returncode} elapsed={elapsed_ms}ms",
+                    )
+                    detail = stderr.strip() or stdout.strip() or f"exit code {completed.returncode}"
+
+                if completed.returncode != 0:
+                    _emit_log(
+                        verbose,
+                        f"{batch_label} step failed step={step_index} command={command} detail={_truncate_text(detail)}",
+                    )
+                    raise AgentBrowserScriptError(
+                        reason="command_failed",
+                        message=f"agent-browser command failed: {detail}",
+                        step_index=step_index,
+                        command=command,
+                        return_code=completed.returncode,
+                        stdout=_truncate_text(stdout.strip()),
+                        stderr=_truncate_text(stderr.strip()),
+                        debug_context={"steps": debug_steps},
+                    )
+
+            if used_state_prefix:
+                instance.state_applied = True
             step_results.append(
                 AgentBrowserStepResult(
                     step_index=step_index,
