@@ -928,28 +928,41 @@ function sanitizeGatherConfig(
 
 function resolveGatherOutput(
   config: Record<string, unknown>
-): { formats: Array<"text" | "markdown">; record?: Record<string, unknown> } {
+): { fields: string[] } {
   const configuredOutput = asObject(config.output);
-  const raw =
+  const rawFields = configuredOutput.fields ?? configuredOutput.field;
+  if (Array.isArray(rawFields)) {
+    const normalized = Array.from(
+      new Set(
+        rawFields
+          .filter((value): value is string => typeof value === "string")
+          .map((value) => value.trim())
+          .filter(Boolean)
+      )
+    );
+    if (normalized.length > 0) {
+      return { fields: normalized };
+    }
+  }
+
+  const rawFormats =
     configuredOutput.formats ??
     configuredOutput.responseFormats ??
     config.responseFormats;
-  if (!Array.isArray(raw)) {
-    return { formats: ["text", "markdown"] };
+  if (Array.isArray(rawFormats)) {
+    const mapped = Array.from(
+      new Set(
+        rawFormats
+          .filter((value): value is string => typeof value === "string")
+          .map((value) => value.trim().toLowerCase())
+          .filter((value): value is "text" | "markdown" => value === "text" || value === "markdown")
+      )
+    );
+    if (mapped.length > 0) {
+      return { fields: mapped };
+    }
   }
-  const normalized = Array.from(
-    new Set(
-      raw
-        .filter((value): value is string => typeof value === "string")
-        .map((value) => value.trim().toLowerCase())
-        .filter((value): value is "text" | "markdown" => value === "text" || value === "markdown")
-    )
-  );
-  const record = asObject(configuredOutput.record);
-  return {
-    formats: normalized.length > 0 ? normalized : ["text", "markdown"],
-    ...(Object.keys(record).length > 0 ? { record } : {}),
-  };
+  return { fields: ["text", "markdown", "url"] };
 }
 
 function resolveAgentBrowserOwnerId(

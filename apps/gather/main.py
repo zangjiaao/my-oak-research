@@ -1175,42 +1175,58 @@ def _normalize_clean_items(raw_items: list[Any]) -> list[CleanItem]:
     return normalized
 
 
-def _apply_response_formats(items: list[CleanItem], response_formats: Optional[List[str]]) -> list[CleanItem]:
-    if not response_formats:
+_MISSING = object()
+
+
+def _read_nested_field(payload: dict[str, Any], path: list[str]) -> Any:
+    current: Any = payload
+    for segment in path:
+        if not isinstance(current, dict) or segment not in current:
+            return _MISSING
+        current = current[segment]
+    return current
+
+
+def _write_nested_field(payload: dict[str, Any], path: list[str], value: Any) -> None:
+    current = payload
+    for segment in path[:-1]:
+        next_value = current.get(segment)
+        if not isinstance(next_value, dict):
+            next_value = {}
+            current[segment] = next_value
+        current = next_value
+    current[path[-1]] = value
+
+
+def _apply_output_fields(items: list[CleanItem], output_fields: Optional[List[str]]) -> list[CleanItem]:
+    if not output_fields:
         return items
 
-    allowed = set(response_formats)
-    include_text = "text" in allowed
-    include_markdown = "markdown" in allowed
-
     for item in items:
-        if not isinstance(item.recordContent, dict):
-            item.recordContent = {}
-        if not include_text:
-            item.text = None
-            item.recordContent.pop("text", None)
-        if not include_markdown:
-            item.markdown = None
-            item.recordContent.pop("markdown", None)
+        source = item.recordContent if isinstance(item.recordContent, dict) else {}
+        filtered: dict[str, Any] = {}
+        for raw_field in output_fields:
+            if not isinstance(raw_field, str):
+                continue
+            field = raw_field.strip()
+            if not field:
+                continue
+            if field == "*":
+                filtered = dict(source)
+                break
+            path = [segment for segment in field.split(".") if segment]
+            if not path:
+                continue
+            value = _read_nested_field(source, path)
+            if value is _MISSING:
+                continue
+            _write_nested_field(filtered, path, value)
+        item.recordContent = filtered
     return items
 
 
 def _as_dict(value: Any) -> dict[str, Any]:
     return value if isinstance(value, dict) else {}
-
-
-def _normalize_output_record_schema(output: dict[str, Any]) -> dict[str, Any] | None:
-    record = _as_dict(output.get("record"))
-    if not record:
-        return None
-    return {
-        "format": record.get("format", "auto"),
-        "recordSeparator": record.get("recordSeparator", record.get("record_separator", "\n")),
-        "pairSeparator": record.get("pairSeparator", record.get("pair_separator", "｜")),
-        "fieldMap": _as_dict(record.get("fieldMap", record.get("field_map"))),
-        "compression": record.get("compression"),
-        "encoding": record.get("encoding"),
-    }
 
 
 def _normalize_agent_browser_driver_options(
@@ -1257,23 +1273,25 @@ def _normalize_v2_fetch_request(request: FetchV2Request) -> FetchRequest:
         config = _normalize_agent_browser_driver_options(request.source_id, {}, config)
 
     output = _as_dict(request.output)
-    output_formats = output.get("formats")
-    response_formats: list[str] = ["text", "markdown"]
-    if isinstance(output_formats, list):
-        response_formats = [value for value in output_formats if value in {"text", "markdown"}]
-
-    output_record_schema = _normalize_output_record_schema(output)
-    if output_record_schema and "recordSchema" not in config:
-        config["recordSchema"] = output_record_schema
-    if isinstance(output.get("format"), str) and "outputFormat" not in config:
-        config["outputFormat"] = output["format"]
+    output_fields: list[str] = []
+    raw_fields = output.get("fields", output.get("field"))
+    if isinstance(raw_fields, list):
+        output_fields = [value for value in raw_fields if isinstance(value, str) and value.strip()]
+    elif isinstance(raw_fields, str) and raw_fields.strip():
+        output_fields = [raw_fields.strip()]
+    elif isinstance(output.get("formats"), list):
+        output_fields = [
+            value
+            for value in output["formats"]
+            if isinstance(value, str) and value in {"text", "markdown"}
+        ]
 
     return FetchRequest(
         platform=request.platform,
         config=config,
         source_id=request.source_id,
         auth_data=request.auth_data,
-        response_formats=response_formats,
+        output_fields=output_fields or None,
     )
 
 
@@ -1415,7 +1433,7 @@ async def fetch_data_v2(payload: Dict[str, Any]):
         if request.driver:
             for item in results:
                 item.driver = request.driver
-        response_payload = _apply_response_formats(results, v1_request.response_formats)
+        response_payload = _apply_output_fields(results, v1_request.output_fields)
         _log_api_io(
             "/v2/fetch",
             payload,

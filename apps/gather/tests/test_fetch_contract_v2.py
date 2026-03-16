@@ -83,13 +83,13 @@ def test_fetch_v2_validation_error():
     assert payload["error"]["retryable"] is False
 
 
-def test_fetch_v2_response_formats_text_only(monkeypatch):
+def test_fetch_v2_output_fields_text_only(monkeypatch):
     response = _client_with_stub_driver(monkeypatch).post(
         "/v2/fetch",
         json={
             "platform": "contract-test-platform",
             "sourceId": "source_123",
-            "output": {"formats": ["text"]},
+            "output": {"fields": ["text"]},
             "driverOptions": {},
         },
     )
@@ -104,13 +104,13 @@ def test_fetch_v2_response_formats_text_only(monkeypatch):
         assert "markdown" not in item["recordContent"]
 
 
-def test_fetch_v2_response_formats_markdown_only(monkeypatch):
+def test_fetch_v2_output_fields_markdown_only(monkeypatch):
     response = _client_with_stub_driver(monkeypatch).post(
         "/v2/fetch",
         json={
             "platform": "contract-test-platform",
             "sourceId": "source_123",
-            "output": {"formats": ["markdown"]},
+            "output": {"fields": ["markdown"]},
             "driverOptions": {},
         },
     )
@@ -132,7 +132,7 @@ def test_fetch_v2_driver_options_without_legacy_config(monkeypatch):
             "platform": "contract-test-platform",
             "sourceId": "source_123",
             "driver": "playwright",
-            "output": {"formats": ["text"]},
+            "output": {"fields": ["text"]},
             "driverOptions": {"query": "AI"},
         },
     )
@@ -143,6 +143,24 @@ def test_fetch_v2_driver_options_without_legacy_config(monkeypatch):
     assert items
     assert "recordContent" in items[0]
     assert "text" in items[0]["recordContent"]
+
+
+def test_fetch_v2_output_fields_keep_requested_content_only(monkeypatch):
+    response = _client_with_stub_driver(monkeypatch).post(
+        "/v2/fetch",
+        json={
+            "platform": "contract-test-platform",
+            "sourceId": "source_123",
+            "output": {"fields": ["text", "url"]},
+            "driverOptions": {},
+        },
+    )
+
+    assert response.status_code == 200
+    items = response.json()
+    assert items
+    assert "text" in items[0]["recordContent"]
+    assert "url" not in items[0]["recordContent"]
 
 
 def test_fetch_v1_endpoint_removed():

@@ -1,5 +1,5 @@
 from datetime import UTC, datetime
-from typing import Any, Dict, List, Literal, Optional
+from typing import Any, Dict, List, Optional
 
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field, model_validator
 
@@ -9,7 +9,7 @@ class FetchRequest(BaseModel):
     config: Dict[str, Any]
     source_id: str
     auth_data: Optional[Dict[str, Any]] = None
-    response_formats: Optional[List[Literal["text", "markdown"]]] = None
+    output_fields: Optional[List[str]] = None
 
 
 class FetchV2Request(BaseModel):

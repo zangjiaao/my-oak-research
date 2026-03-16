@@ -145,7 +145,7 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
   "platform": "x",
   "sourceId": "source_123",
   "output": {
-    "formats": ["text", "markdown"]
+    "fields": ["text", "meta.image", "url", "comments"]
   },
   "authData": {
     "cookies": [...],
@@ -160,21 +160,21 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
 `driver` 为可选扩展字段；可选值为 `xhttp`、`playwright`、`agent-browser`。未传时默认走 `playwright`。
-`output.formats` 为可选字段，可选值：`"text"`、`"markdown"`，用于控制 `recordContent` 中输出哪些正文字段：
+`output.fields` 为可选字段，控制 `recordContent` 输出字段（支持点路径）：
 
-- `["text"]`：仅返回 `recordContent.text`
-- `["markdown"]`：仅返回 `recordContent.markdown`
-- `["text", "markdown"]`：同时返回两种（默认行为）
+- `["text"]`：只返回 `recordContent.text`
+- `["text", "url"]`：返回 `recordContent.text` + `recordContent.url`
+- `["meta.image"]`：返回嵌套字段 `recordContent.meta.image`
 
 `/v2/fetch` 只接受新字段：`sourceId`、`authData`、`driverOptions`、`output`。旧字段（如 `config`、`responseFormats`、`source_id`）会返回校验错误。
 
 ### 通用网络代理配置（支持 HTTP/SOCKS/Tor）
 
-三个 driver（`xhttp` / `playwright` / `agent-browser`）都支持在 `config.network.proxy` 下统一配置代理：
+三个 driver（`xhttp` / `playwright` / `agent-browser`）都支持在 `driverOptions.network.proxy` 下统一配置代理：
 
 ```json
 {
-  "config": {
+  "driverOptions": {
     "network": {
       "proxy": {
         "url": "socks5h://127.0.0.1:9050",
@@ -201,7 +201,7 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
   "platform": "search",
   "sourceId": "source_search_demo",
   "driver": "xhttp",
-  "config": {
+  "driverOptions": {
     "url": "https://api.example.com/search",
     "method": "POST",
     "headers": {
@@ -471,7 +471,7 @@ Worker 侧建议统一调用 `/v2/fetch`，并显式传 `driver`，避免默认�
   "platform": "x",
   "sourceId": "source-x-001",
   "driver": "xhttp",
-  "config": {
+  "driverOptions": {
     "url": "https://api.example.com/search",
     "method": "POST",
     "json": { "query": "openai" }
@@ -511,7 +511,7 @@ response = requests.post(
     }
 )
 for item in response.json():
-    print(item["text"])
+    print(item["recordContent"].get("text"))
 ```
 
 ### 在 Web UI 中使用
