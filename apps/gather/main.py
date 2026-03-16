@@ -34,6 +34,53 @@ load_dotenv()
 app = FastAPI(title="Oak Gather Service")
 
 
+def _env_flag(name: str, default: bool = False) -> bool:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+_API_IO_LOG_ENABLED = _env_flag("GATHER_API_IO_LOG_ENABLED", False)
+_API_IO_LOG_DIR = Path(
+    os.getenv("GATHER_API_IO_LOG_DIR", str(Path(__file__).resolve().parent / "logs"))
+).expanduser()
+_API_IO_LOG_MAX_CHARS = int(os.getenv("GATHER_API_IO_LOG_MAX_CHARS", "120000"))
+
+
+def _truncate_for_log(value: Any, max_chars: int) -> Any:
+    if isinstance(value, str):
+        if len(value) <= max_chars:
+            return value
+        return f"{value[:max_chars]}...(truncated, total={len(value)})"
+    if isinstance(value, list):
+        return [_truncate_for_log(item, max_chars) for item in value]
+    if isinstance(value, dict):
+        return {str(k): _truncate_for_log(v, max_chars) for k, v in value.items()}
+    return value
+
+
+def _log_api_io(route: str, request_body: Any, response_body: Any, status_code: int) -> None:
+    if not _API_IO_LOG_ENABLED:
+        return
+    try:
+        _API_IO_LOG_DIR.mkdir(parents=True, exist_ok=True)
+        now = datetime.now(timezone.utc)
+        file_path = _API_IO_LOG_DIR / f"api-io-{now.strftime('%Y-%m-%d')}.jsonl"
+        entry = {
+            "time": now.isoformat(),
+            "route": route,
+            "statusCode": status_code,
+            "request": _truncate_for_log(request_body, _API_IO_LOG_MAX_CHARS),
+            "response": _truncate_for_log(response_body, _API_IO_LOG_MAX_CHARS),
+        }
+        with file_path.open("a", encoding="utf-8") as f:
+            f.write(json.dumps(entry, ensure_ascii=False))
+            f.write("\n")
+    except Exception as error:  # pragma: no cover - logging must never break api
+        print(f"[gather] failed to write api io log for {route}: {error}")
+
+
 class FetchRequest(BaseModel):
     platform: str
     config: Dict[str, Any]
@@ -2246,8 +2293,21 @@ def _to_driver_error_response(error: DriverNotFoundError) -> JSONResponse:
 @app.post("/verify-auth", response_model=VerifyAuthResponse)
 async def verify_auth(request: VerifyAuthRequest):
     try:
-        return await driver_registry.verify_auth(request)
+        result = await driver_registry.verify_auth(request)
+        _log_api_io(
+            "/verify-auth",
+            request.model_dump(mode="json", by_alias=True),
+            result.model_dump(mode="json") if isinstance(result, BaseModel) else result,
+            200,
+        )
+        return result
     except DriverNotFoundError as error:
+        _log_api_io(
+            "/verify-auth",
+            request.model_dump(mode="json", by_alias=True),
+            error.to_detail(),
+            400,
+        )
         raise _to_driver_http_exception(error)
 
 
@@ -2257,8 +2317,21 @@ async def fetch_data(request: FetchRequest):
         raw_results = await driver_registry.fetch(request)
         results = _normalize_clean_items(raw_results)
         results = _apply_keyword_hard_filter(request, results)
-        return _apply_response_formats(results, request.response_formats)
+        response_payload = _apply_response_formats(results, request.response_formats)
+        _log_api_io(
+            "/fetch",
+            request.model_dump(mode="json", by_alias=True),
+            [item.model_dump(mode="json", exclude_none=True) for item in response_payload],
+            200,
+        )
+        return response_payload
     except DriverNotFoundError as error:
+        _log_api_io(
+            "/fetch",
+            request.model_dump(mode="json", by_alias=True),
+            error.to_detail(),
+            400,
+        )
         raise _to_driver_http_exception(error)
 
 
@@ -2281,12 +2354,14 @@ async def fetch_data_v2(payload: Dict[str, Any]):
         message = first_error.get("msg", "Invalid request payload")
         if location:
             message = f"{location}: {message}"
-        return build_error_response(
+        response = build_error_response(
             status_code=422,
             code="VALIDATION_ERROR",
             message=message,
             retryable=False,
         )
+        _log_api_io("/v2/fetch", payload, response.body.decode("utf-8"), 422)
+        return response
 
     v1_request = FetchRequest(
         platform=request.platform,
@@ -2303,9 +2378,18 @@ async def fetch_data_v2(payload: Dict[str, Any]):
         if request.driver:
             for item in results:
                 item.driver = request.driver
-        return _apply_response_formats(results, request.response_formats)
+        response_payload = _apply_response_formats(results, request.response_formats)
+        _log_api_io(
+            "/v2/fetch",
+            payload,
+            [item.model_dump(mode="json", exclude_none=True) for item in response_payload],
+            200,
+        )
+        return response_payload
     except DriverNotFoundError as error:
-        return _to_driver_error_response(error)
+        response = _to_driver_error_response(error)
+        _log_api_io("/v2/fetch", payload, response.body.decode("utf-8"), 400)
+        return response
     except HTTPException as e:
         status_code = e.status_code
         if isinstance(e.detail, dict):
@@ -2314,19 +2398,23 @@ async def fetch_data_v2(payload: Dict[str, Any]):
             message = str(e.detail) if e.detail else "Request failed"
         code = "FETCH_BAD_REQUEST" if status_code < 500 else "FETCH_INTERNAL_ERROR"
         retryable = status_code >= 500
-        return build_error_response(
+        response = build_error_response(
             status_code=status_code,
             code=code,
             message=message,
             retryable=retryable,
         )
+        _log_api_io("/v2/fetch", payload, response.body.decode("utf-8"), status_code)
+        return response
     except Exception:
-        return build_error_response(
+        response = build_error_response(
             status_code=500,
             code="FETCH_INTERNAL_ERROR",
             message="Internal server error",
             retryable=True,
         )
+        _log_api_io("/v2/fetch", payload, response.body.decode("utf-8"), 500)
+        return response
 
 
 @app.post(

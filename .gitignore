@@ -88,3 +88,6 @@ ENV/
 # Auth files (contain sensitive cookie data)
 .auth/
 *_auth.json
+
+# Gather API IO logs
+apps/gather/logs/
