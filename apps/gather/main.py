@@ -454,6 +454,12 @@ async def _verify_auth_with_bb_site_script(request: VerifyAuthRequest) -> Verify
     if isinstance(result, dict):
         error_message = result.get("error")
         if error_message:
+            if str(error_message).strip().lower() == "cannot confirm logged-in state":
+                print(
+                    f"[gather] bb-site verify inconclusive for {platform} "
+                    f"(error={error_message}), fallback to legacy verify"
+                )
+                return None
             return VerifyAuthResponse(
                 valid=False,
                 message=str(error_message),
