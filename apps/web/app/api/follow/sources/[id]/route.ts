@@ -9,6 +9,58 @@ function jsonOrNull(value: unknown) {
   return value === null ? Prisma.JsonNull : value;
 }
 
+function asObject(value: unknown): Record<string, unknown> {
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    return value as Record<string, unknown>;
+  }
+  return {};
+}
+
+function toDelimitedStringArray(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return Array.from(
+      new Set(
+        value
+          .map((item) => (typeof item === "string" ? item.trim() : ""))
+          .filter(Boolean)
+      )
+    );
+  }
+  if (typeof value === "string") {
+    return Array.from(
+      new Set(
+        value
+          .split(/[,\n\r，、;；\t]+/g)
+          .map((item) => item.trim())
+          .filter(Boolean)
+      )
+    );
+  }
+  return [];
+}
+
+function normalizeSocialConfigForPersist(config: unknown): unknown {
+  const configObj = asObject(config);
+  if (Object.keys(configObj).length === 0) {
+    return config;
+  }
+
+  const normalized = { ...configObj };
+  const agentBrowser = asObject(normalized.agentBrowser);
+  if (Object.keys(agentBrowser).length > 0) {
+    const captureFilter = asObject(agentBrowser.captureFilter);
+    if (Object.keys(captureFilter).length > 0 && "keys" in captureFilter) {
+      agentBrowser.captureFilter = {
+        ...captureFilter,
+        keys: toDelimitedStringArray(captureFilter.keys),
+      };
+      normalized.agentBrowser = agentBrowser;
+    }
+  }
+
+  return normalized;
+}
+
 // 更新数据类型定义
 type ConfigUpdateData = Record<string, unknown>;
 
@@ -162,7 +214,7 @@ export async function PATCH(
         if (socialData.platform !== undefined)
           updateData.platform = socialData.platform;
         if (socialData.config !== undefined)
-          updateData.config = socialData.config;
+          updateData.config = normalizeSocialConfigForPersist(socialData.config);
         if (socialData.credentialId !== undefined)
           updateData.credentialId = socialData.credentialId;
         if (socialData.proxyId !== undefined)

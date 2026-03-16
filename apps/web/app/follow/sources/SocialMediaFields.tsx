@@ -184,6 +184,29 @@ const createEmptyAgentScriptRow = (): AgentScriptRow => ({
   json: "",
 });
 
+const toDelimitedStringArray = (value: unknown): string[] => {
+  if (Array.isArray(value)) {
+    return Array.from(
+      new Set(
+        value
+          .map((item) => (typeof item === "string" ? item.trim() : ""))
+          .filter(Boolean)
+      )
+    );
+  }
+  if (typeof value === "string") {
+    return Array.from(
+      new Set(
+        value
+          .split(/[,\n\r，、;；\t]+/g)
+          .map((item) => item.trim())
+          .filter(Boolean)
+      )
+    );
+  }
+  return [];
+};
+
 const normalizeArgs = (input: unknown): Record<string, string> => {
   if (!input || typeof input !== "object" || Array.isArray(input)) {
     return {};
@@ -822,11 +845,28 @@ export const SocialMediaFields = ({
           <Label htmlFor="social.config.agentBrowser.captureFilter.keys">
             Capture Filter Keys
           </Label>
-          <Input
-            id="social.config.agentBrowser.captureFilter.keys"
-            placeholder="messages_text"
-            {...register("social.config.agentBrowser.captureFilter.keys")}
+          <Controller
+            name="social.config.agentBrowser.captureFilter.keys"
+            control={control}
+            render={({ field }) => (
+              <Textarea
+                id="social.config.agentBrowser.captureFilter.keys"
+                rows={3}
+                placeholder={"xhs_note_text\nxhs_note_meta"}
+                value={
+                  Array.isArray(field.value)
+                    ? field.value.join("\n")
+                    : typeof field.value === "string"
+                      ? field.value
+                      : ""
+                }
+                onChange={(e) => field.onChange(toDelimitedStringArray(e.target.value))}
+              />
+            )}
           />
+          <p className="text-xs text-muted-foreground">
+            支持多个 key，使用逗号或换行分隔。
+          </p>
         </div>
       </div>
 
