@@ -324,6 +324,7 @@ export const SocialConfigByPlatform = z.discriminatedUnion("platform", [
         if (!v.userId && !v.noteId && !v.query) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
+            path: ["query"],
             message: "Xiaohongshu: provide at least one of userId/noteId/query",
           });
         }
