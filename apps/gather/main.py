@@ -1567,6 +1567,100 @@ def _looks_like_origin_security_error(error: Exception) -> bool:
     )
 
 
+def _is_xiaohongshu_auth_probe_miss(result: Any, platform: str) -> bool:
+    if not isinstance(result, dict):
+        return False
+    normalized_platform = platform.lower().strip()
+    if normalized_platform not in {"xhs", "xiaohongshu"}:
+        return False
+    raw_error = result.get("error")
+    if not isinstance(raw_error, str):
+        return False
+    if raw_error.strip().lower() != "failed to get user info":
+        return False
+    raw_hint = result.get("hint")
+    if not isinstance(raw_hint, str):
+        return False
+    normalized_hint = raw_hint.strip().lower()
+    return "user/me" in normalized_hint and "captured" in normalized_hint
+
+
+async def _run_xiaohongshu_direct_user_me_probe(page: Any) -> dict[str, Any]:
+    return await page.evaluate(
+        """
+        (async () => {
+          try {
+            const candidates = [
+              "/api/sns/web/v1/user/me",
+              "https://www.xiaohongshu.com/api/sns/web/v1/user/me"
+            ];
+            let lastStatus = null;
+            let lastBody = "";
+            for (const endpoint of candidates) {
+              const response = await fetch(endpoint, { credentials: "include" });
+              const text = await response.text();
+              lastStatus = response.status;
+              lastBody = text;
+              let payload = null;
+              try {
+                payload = JSON.parse(text);
+              } catch (_) {}
+              if (response.ok && payload && payload.success && payload.data) {
+                const user = payload.data;
+                return {
+                  nickname: user.nickname,
+                  red_id: user.red_id,
+                  desc: user.desc,
+                  gender: user.gender,
+                  userid: user.user_id,
+                  url: user.user_id
+                    ? `https://www.xiaohongshu.com/user/profile/${user.user_id}`
+                    : "https://www.xiaohongshu.com",
+                  _debug: {
+                    probe: "direct-user-me",
+                    endpoint
+                  }
+                };
+              }
+            }
+            return {
+              error: "Failed to get user info",
+              hint: `Direct /user/me probe failed (status=${lastStatus})`,
+              debug: {
+                probe: "direct-user-me",
+                responseStatus: lastStatus,
+                responseSnippet: String(lastBody || "").slice(0, 400)
+              }
+            };
+          } catch (error) {
+            return {
+              error: "Failed to get user info",
+              hint: `Direct /user/me probe exception: ${String(error)}`
+            };
+          }
+        })()
+        """
+    )
+
+
+async def _apply_xiaohongshu_user_me_fallback(
+    page: Any, eval_result: Any, request: FetchRequest
+) -> Any:
+    if not _is_xiaohongshu_auth_probe_miss(eval_result, request.platform):
+        return eval_result
+    fallback_result = await _run_xiaohongshu_direct_user_me_probe(page)
+    if isinstance(fallback_result, dict):
+        fallback_error = fallback_result.get("error")
+        if not (isinstance(fallback_error, str) and fallback_error.strip()):
+            return fallback_result
+        if isinstance(eval_result, dict):
+            original_hint = eval_result.get("hint")
+            fallback_hint = fallback_result.get("hint")
+            if isinstance(original_hint, str) and isinstance(fallback_hint, str):
+                fallback_result["hint"] = f"{original_hint}; {fallback_hint}"
+    return eval_result
+
+
 async def _run_playwright_eval_script(request: FetchRequest) -> list[CleanItem]:
     from playwright.async_api import TimeoutError as PlaywrightTimeoutError
 
@@ -1613,8 +1707,9 @@ async def _run_playwright_eval_script(request: FetchRequest) -> list[CleanItem]:
                             if options["post_navigation_wait_ms"] > 0:
                                 await page.wait_for_timeout(options["post_navigation_wait_ms"])
                             eval_result = await page.evaluate(script_to_run)
-                        else:
-                            raise
+                    else:
+                        raise
+                    eval_result = await _apply_xiaohongshu_user_me_fallback(page, eval_result, request)
             else:
                 context_options: dict[str, Any] = {}
                 if request.auth_data:
@@ -1654,6 +1749,7 @@ async def _run_playwright_eval_script(request: FetchRequest) -> list[CleanItem]:
                         eval_result = await page.evaluate(script_to_run)
                     else:
                         raise
+                eval_result = await _apply_xiaohongshu_user_me_fallback(page, eval_result, request)
         finally:
             if context is not None:
                 await context.close()
