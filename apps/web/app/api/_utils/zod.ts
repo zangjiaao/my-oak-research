@@ -130,6 +130,57 @@ export const SearchEngineKindEnum = z.enum([
 export const SocialPlatformEnum = z.enum(["X", "TELEGRAM", "REDDIT", "XIAOHONGSHU", "DOUYIN", "TIKTOK", "WEIBO", "WHATSAPP", "INSTAGRAM", "FACEBOOK"]);
 export const SocialDriverEnum = z.enum(["xhttp", "playwright", "agent-browser"]);
 
+const KeywordFilterInput = z
+  .object({
+    keywords: delimitedStringArray({
+      itemMin: 1,
+      itemMax: 128,
+      totalMax: 64,
+      minItems: 0,
+    }).default([]),
+    matchScope: z.enum(["segment", "full"]).optional(),
+    splitMode: z.enum(["line", "paragraph", "auto"]).optional(),
+    minSegmentChars: z.number().int().min(0).optional(),
+  })
+  .optional()
+  .nullable();
+
+const AgentBrowserScriptStepInput = z.object({
+  command: z.string().min(1),
+  captureAs: z.string().optional().nullable(),
+});
+
+const AgentBrowserConfigInput = z
+  .object({
+    ownerId: z.string().optional().nullable(),
+    sessionKey: z.string().optional().nullable(),
+    headed: z.boolean().optional().default(true),
+    closeOnComplete: z.boolean().optional().default(true),
+    script: z.array(AgentBrowserScriptStepInput).default([]),
+    recordSchema: z
+      .object({
+        format: z.enum(["auto", "jsonl", "tagged", "structured"]).optional(),
+      })
+      .optional()
+      .nullable(),
+    captureFilter: z
+      .object({
+        keys: delimitedStringArray({
+          itemMin: 1,
+          itemMax: 64,
+          totalMax: 64,
+          minItems: 0,
+        }).default([]),
+        perLine: z.boolean().optional(),
+        dedupe: z.boolean().optional(),
+        minChars: z.number().int().min(0).optional(),
+      })
+      .optional()
+      .nullable(),
+  })
+  .optional()
+  .nullable();
+
 function parseJson(val: unknown) {
   if (val === "") return undefined;
   if (typeof val === "string") {
@@ -183,6 +234,7 @@ export const SocialConfigByPlatform = z.discriminatedUnion("platform", [
     config: z
       .object({
         driver: SocialDriverEnum.default(getDefaultDriver("X")),
+        keywordFilter: KeywordFilterInput,
         playwright: z.object({
           mode: z.enum(["eval-js"]).default("eval-js"),
           headless: z.boolean().default(false),
@@ -204,7 +256,7 @@ export const SocialConfigByPlatform = z.discriminatedUnion("platform", [
             );
           }, z.record(z.string().min(1), z.string()).default({})),
         }).optional(),
-        agentBrowser: z.preprocess((val) => parseJson(val), z.record(z.string(), z.any()).optional().nullable()),
+        agentBrowser: z.preprocess((val) => parseJson(val), AgentBrowserConfigInput),
       })
       .superRefine((v, ctx) => {
         if (!supportsDriver("X", v.driver)) {
@@ -229,7 +281,8 @@ export const SocialConfigByPlatform = z.discriminatedUnion("platform", [
     platform: z.literal("REDDIT"),
     config: z.object({
       driver: SocialDriverEnum.default(getDefaultDriver("REDDIT")),
-      agentBrowser: z.preprocess((val) => parseJson(val), z.record(z.string(), z.any()).optional().nullable()),
+      keywordFilter: KeywordFilterInput,
+      agentBrowser: z.preprocess((val) => parseJson(val), AgentBrowserConfigInput),
       subreddit: z.string().min(1),
       sort: z.enum(["hot", "new", "top"]).optional(),
     }).superRefine((v, ctx) => {
@@ -249,7 +302,8 @@ export const SocialConfigByPlatform = z.discriminatedUnion("platform", [
     config: z
       .object({
         driver: SocialDriverEnum.default(getDefaultDriver("XIAOHONGSHU")),
-        agentBrowser: z.preprocess((val) => parseJson(val), z.record(z.string(), z.any()).optional().nullable()),
+        keywordFilter: KeywordFilterInput,
+        agentBrowser: z.preprocess((val) => parseJson(val), AgentBrowserConfigInput),
         userId: z.string().optional(),
         noteId: z.string().optional(),
         query: z.string().optional(),
@@ -277,7 +331,8 @@ export const SocialConfigByPlatform = z.discriminatedUnion("platform", [
     config: z
       .object({
         driver: SocialDriverEnum.default(getDefaultDriver("DOUYIN")),
-        agentBrowser: z.preprocess((val) => parseJson(val), z.record(z.string(), z.any()).optional().nullable()),
+        keywordFilter: KeywordFilterInput,
+        agentBrowser: z.preprocess((val) => parseJson(val), AgentBrowserConfigInput),
         userId: z.string().optional(),
         videoId: z.string().optional(),
         query: z.string().optional(),
@@ -305,7 +360,8 @@ export const SocialConfigByPlatform = z.discriminatedUnion("platform", [
     config: z
       .object({
         driver: SocialDriverEnum.default(getDefaultDriver("TIKTOK")),
-        agentBrowser: z.preprocess((val) => parseJson(val), z.record(z.string(), z.any()).optional().nullable()),
+        keywordFilter: KeywordFilterInput,
+        agentBrowser: z.preprocess((val) => parseJson(val), AgentBrowserConfigInput),
         username: z.string().optional(),
         videoId: z.string().optional(),
         query: z.string().optional(),
@@ -333,7 +389,8 @@ export const SocialConfigByPlatform = z.discriminatedUnion("platform", [
     config: z
       .object({
         driver: SocialDriverEnum.default(getDefaultDriver("WEIBO")),
-        agentBrowser: z.preprocess((val) => parseJson(val), z.record(z.string(), z.any()).optional().nullable()),
+        keywordFilter: KeywordFilterInput,
+        agentBrowser: z.preprocess((val) => parseJson(val), AgentBrowserConfigInput),
         userId: z.string().optional(),
         query: z.string().optional(),
         hotTopics: z.boolean().optional(),
@@ -361,7 +418,8 @@ export const SocialConfigByPlatform = z.discriminatedUnion("platform", [
     config: z
       .object({
         driver: SocialDriverEnum.default(getDefaultDriver("TELEGRAM")),
-        agentBrowser: z.preprocess((val) => parseJson(val), z.record(z.string(), z.any()).optional().nullable()),
+        keywordFilter: KeywordFilterInput,
+        agentBrowser: z.preprocess((val) => parseJson(val), AgentBrowserConfigInput),
         chatId: z.string().optional(),
         maxResults: z.number().optional(),
       })
@@ -382,7 +440,8 @@ export const SocialConfigByPlatform = z.discriminatedUnion("platform", [
     config: z
       .object({
         driver: SocialDriverEnum.default(getDefaultDriver("WHATSAPP")),
-        agentBrowser: z.preprocess((val) => parseJson(val), z.record(z.string(), z.any()).optional().nullable()),
+        keywordFilter: KeywordFilterInput,
+        agentBrowser: z.preprocess((val) => parseJson(val), AgentBrowserConfigInput),
         contactName: z.string().optional(),
         maxResults: z.number().optional(),
       })
@@ -403,7 +462,8 @@ export const SocialConfigByPlatform = z.discriminatedUnion("platform", [
     config: z
       .object({
         driver: SocialDriverEnum.default(getDefaultDriver("INSTAGRAM")),
-        agentBrowser: z.preprocess((val) => parseJson(val), z.record(z.string(), z.any()).optional().nullable()),
+        keywordFilter: KeywordFilterInput,
+        agentBrowser: z.preprocess((val) => parseJson(val), AgentBrowserConfigInput),
         username: z.string().optional(),
         postId: z.string().optional(),
         query: z.string().optional(),
@@ -426,7 +486,8 @@ export const SocialConfigByPlatform = z.discriminatedUnion("platform", [
     config: z
       .object({
         driver: SocialDriverEnum.default(getDefaultDriver("FACEBOOK")),
-        agentBrowser: z.preprocess((val) => parseJson(val), z.record(z.string(), z.any()).optional().nullable()),
+        keywordFilter: KeywordFilterInput,
+        agentBrowser: z.preprocess((val) => parseJson(val), AgentBrowserConfigInput),
         username: z.string().optional(),
         postId: z.string().optional(),
         query: z.string().optional(),

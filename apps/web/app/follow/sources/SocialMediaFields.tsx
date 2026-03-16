@@ -11,7 +11,6 @@ import { z } from "zod";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { ErrorMessage } from "@/components/business";
 import SelectProxy from "./SelectProxy";
 import { Proxy } from "@/app/generated/prisma";
@@ -168,10 +167,22 @@ type PlaywrightArgRow = {
   preset?: boolean;
 };
 
+type AgentScriptRow = {
+  id: string;
+  command: string;
+  captureAs: string;
+};
+
 const createEmptyArgRow = (): PlaywrightArgRow => ({
   id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
   key: "",
   value: "",
+});
+
+const createEmptyAgentScriptRow = (): AgentScriptRow => ({
+  id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+  command: "",
+  captureAs: "",
 });
 
 const normalizeArgs = (input: unknown): Record<string, string> => {
@@ -255,6 +266,9 @@ export const SocialMediaFields = ({
   const [newCredentialName, setNewCredentialName] = useState("");
   const [xArgRows, setXArgRows] = useState<PlaywrightArgRow[]>([
     createEmptyArgRow(),
+  ]);
+  const [agentScriptRows, setAgentScriptRows] = useState<AgentScriptRow[]>([
+    createEmptyAgentScriptRow(),
   ]);
 
   // Credentials list
@@ -382,6 +396,26 @@ export const SocialMediaFields = ({
     [setValue]
   );
 
+  const syncAgentScriptToForm = useCallback(
+    (rows: AgentScriptRow[]) => {
+      if (!setValue) return;
+      const script = rows
+        .map((row) => ({
+          command: row.command.trim(),
+          captureAs: row.captureAs.trim(),
+        }))
+        .filter((row) => row.command)
+        .map((row) => ({
+          command: row.command,
+          ...(row.captureAs ? { captureAs: row.captureAs } : {}),
+        }));
+      setValue("social.config.agentBrowser.script", script, {
+        shouldDirty: true,
+      });
+    },
+    [setValue]
+  );
+
   useEffect(() => {
     if (!setValue) return;
     if (!socialPlatform) return;
@@ -397,6 +431,25 @@ export const SocialMediaFields = ({
     const rawArgs = watch("social.config.playwright.args");
     applyXScriptDefaults(normalizedScriptPath, rawArgs);
   }, [socialPlatform, watch, applyXScriptDefaults]);
+
+  useEffect(() => {
+    if (resolvedDriver !== "agent-browser") return;
+    const rawScript = watch("social.config.agentBrowser.script");
+    const rows = Array.isArray(rawScript)
+      ? rawScript
+          .map((step) => {
+            if (!step || typeof step !== "object") return null;
+            const row = step as Record<string, unknown>;
+            return {
+              id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+              command: typeof row.command === "string" ? row.command : "",
+              captureAs: typeof row.captureAs === "string" ? row.captureAs : "",
+            } satisfies AgentScriptRow;
+          })
+          .filter(Boolean)
+      : [];
+    setAgentScriptRows(rows.length > 0 ? (rows as AgentScriptRow[]) : [createEmptyAgentScriptRow()]);
+  }, [resolvedDriver, watch]);
 
   const updateArgRow = useCallback(
     (id: string, field: "key" | "value", nextValue: string) => {
@@ -425,6 +478,33 @@ export const SocialMediaFields = ({
       syncArgsToForm(safeRows);
     },
     [syncArgsToForm, xArgRows]
+  );
+
+  const updateAgentScriptRow = useCallback(
+    (id: string, field: "command" | "captureAs", value: string) => {
+      const rows = agentScriptRows.map((row) =>
+        row.id === id ? { ...row, [field]: value } : row
+      );
+      setAgentScriptRows(rows);
+      syncAgentScriptToForm(rows);
+    },
+    [agentScriptRows, syncAgentScriptToForm]
+  );
+
+  const addAgentScriptRow = useCallback(() => {
+    const rows = [...agentScriptRows, createEmptyAgentScriptRow()];
+    setAgentScriptRows(rows);
+    syncAgentScriptToForm(rows);
+  }, [agentScriptRows, syncAgentScriptToForm]);
+
+  const removeAgentScriptRow = useCallback(
+    (id: string) => {
+      const rows = agentScriptRows.filter((row) => row.id !== id);
+      const safeRows = rows.length > 0 ? rows : [createEmptyAgentScriptRow()];
+      setAgentScriptRows(safeRows);
+      syncAgentScriptToForm(safeRows);
+    },
+    [agentScriptRows, syncAgentScriptToForm]
   );
 
   // Handle file selection
@@ -635,6 +715,230 @@ export const SocialMediaFields = ({
         return null;
     }
   };
+
+  const renderAgentBrowserFields = () => (
+    <div className="grid gap-4 rounded-lg border bg-muted/30 p-4">
+      <Label className="text-base font-medium">Agent Browser Params</Label>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-2">
+          <Label htmlFor="social.config.agentBrowser.ownerId">Owner ID</Label>
+          <Input
+            id="social.config.agentBrowser.ownerId"
+            placeholder="user-1001"
+            {...register("social.config.agentBrowser.ownerId")}
+          />
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor="social.config.agentBrowser.sessionKey">Session Key</Label>
+          <Input
+            id="social.config.agentBrowser.sessionKey"
+            placeholder="ws-tenant-a"
+            {...register("social.config.agentBrowser.sessionKey")}
+          />
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-5">
+        <Controller
+          name="social.config.agentBrowser.headed"
+          control={control}
+          render={({ field }) => (
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={Boolean(field.value)}
+                onChange={(e) => field.onChange(e.target.checked)}
+                className="rounded border-gray-300"
+              />
+              <span className="text-sm">Headed</span>
+            </label>
+          )}
+        />
+        <Controller
+          name="social.config.agentBrowser.closeOnComplete"
+          control={control}
+          render={({ field }) => (
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={field.value !== false}
+                onChange={(e) => field.onChange(e.target.checked)}
+                className="rounded border-gray-300"
+              />
+              <span className="text-sm">Close On Complete</span>
+            </label>
+          )}
+        />
+      </div>
+
+      <div className="grid gap-3 rounded-md border bg-background p-3">
+        <div className="flex items-center justify-between">
+          <Label className="text-sm font-medium">Script Steps</Label>
+          <Button type="button" variant="outline" size="sm" onClick={addAgentScriptRow}>
+            <Plus className="mr-1 h-3.5 w-3.5" />
+            Add
+          </Button>
+        </div>
+        <div className="grid gap-2">
+          {agentScriptRows.map((row) => (
+            <div key={row.id} className="grid grid-cols-[1fr_200px_auto] gap-2 items-center">
+              <Input
+                value={row.command}
+                placeholder='command, e.g. open https://web.telegram.org'
+                onChange={(e) => updateAgentScriptRow(row.id, "command", e.target.value)}
+              />
+              <Input
+                value={row.captureAs}
+                placeholder="captureAs (optional)"
+                onChange={(e) => updateAgentScriptRow(row.id, "captureAs", e.target.value)}
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => removeAgentScriptRow(row.id)}
+                aria-label="Remove script row"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-2">
+          <Label htmlFor="social.config.keywordFilter.keywords">
+            Keyword Filter - Keywords
+          </Label>
+          <Input
+            id="social.config.keywordFilter.keywords"
+            placeholder="伊朗, 联合国, 导弹"
+            {...register("social.config.keywordFilter.keywords")}
+          />
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor="social.config.keywordFilter.minSegmentChars">
+            Min Segment Chars
+          </Label>
+          <Input
+            id="social.config.keywordFilter.minSegmentChars"
+            type="number"
+            min={0}
+            {...register("social.config.keywordFilter.minSegmentChars", {
+              setValueAs: (value) => (value === "" ? undefined : Number(value)),
+            })}
+          />
+        </div>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-2">
+          <Label>Match Scope</Label>
+          <Controller
+            name="social.config.keywordFilter.matchScope"
+            control={control}
+            render={({ field }) => (
+              <ControlledSelect
+                value={(field.value as string) || "segment"}
+                onValueChange={field.onChange}
+                placeholder="Select match scope"
+              >
+                <SelectItem value="segment">segment</SelectItem>
+                <SelectItem value="full">full</SelectItem>
+              </ControlledSelect>
+            )}
+          />
+        </div>
+        <div className="grid gap-2">
+          <Label>Split Mode</Label>
+          <Controller
+            name="social.config.keywordFilter.splitMode"
+            control={control}
+            render={({ field }) => (
+              <ControlledSelect
+                value={(field.value as string) || "line"}
+                onValueChange={field.onChange}
+                placeholder="Select split mode"
+              >
+                <SelectItem value="line">line</SelectItem>
+                <SelectItem value="paragraph">paragraph</SelectItem>
+                <SelectItem value="auto">auto</SelectItem>
+              </ControlledSelect>
+            )}
+          />
+        </div>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-2">
+          <Label htmlFor="social.config.agentBrowser.recordSchema.format">
+            Record Schema Format
+          </Label>
+          <Controller
+            name="social.config.agentBrowser.recordSchema.format"
+            control={control}
+            render={({ field }) => (
+              <ControlledSelect
+                value={(field.value as string) || "jsonl"}
+                onValueChange={field.onChange}
+                placeholder="Select format"
+              >
+                <SelectItem value="jsonl">jsonl</SelectItem>
+                <SelectItem value="tagged">tagged</SelectItem>
+                <SelectItem value="structured">structured</SelectItem>
+                <SelectItem value="auto">auto</SelectItem>
+              </ControlledSelect>
+            )}
+          />
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor="social.config.agentBrowser.captureFilter.keys">
+            Capture Filter Keys
+          </Label>
+          <Input
+            id="social.config.agentBrowser.captureFilter.keys"
+            placeholder="messages_text"
+            {...register("social.config.agentBrowser.captureFilter.keys")}
+          />
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-5">
+        <Controller
+          name="social.config.agentBrowser.captureFilter.perLine"
+          control={control}
+          render={({ field }) => (
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={Boolean(field.value)}
+                onChange={(e) => field.onChange(e.target.checked)}
+                className="rounded border-gray-300"
+              />
+              <span className="text-sm">Capture Per Line</span>
+            </label>
+          )}
+        />
+        <Controller
+          name="social.config.agentBrowser.captureFilter.dedupe"
+          control={control}
+          render={({ field }) => (
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={Boolean(field.value)}
+                onChange={(e) => field.onChange(e.target.checked)}
+                className="rounded border-gray-300"
+              />
+              <span className="text-sm">Capture Dedupe</span>
+            </label>
+          )}
+        />
+      </div>
+    </div>
+  );
 
   return (
     <>
@@ -1067,16 +1371,7 @@ export const SocialMediaFields = ({
           )}
 
           {resolvedDriver === "agent-browser" && (
-            <div className="grid gap-3 rounded-lg border bg-muted/30 p-4">
-              <Label htmlFor="social.config.agentBrowser">Agent Browser Config (JSON)</Label>
-              <Textarea
-                id="social.config.agentBrowser"
-                placeholder='{"agentBrowser":{"script":[{"command":"open https://x.com"}]}}'
-                rows={8}
-                {...register("social.config.agentBrowser")}
-              />
-              <ErrorMessage>{getConfigErrorMessage("agentBrowser")}</ErrorMessage>
-            </div>
+            renderAgentBrowserFields()
           )}
         </>
       )}
@@ -1088,16 +1383,7 @@ export const SocialMediaFields = ({
       )}
 
       {socialPlatform && socialPlatform !== "X" && resolvedDriver === "agent-browser" && (
-        <div className="grid gap-3 rounded-lg border bg-muted/30 p-4">
-          <Label htmlFor="social.config.agentBrowser">Agent Browser Config (JSON)</Label>
-          <Textarea
-            id="social.config.agentBrowser"
-            placeholder='{"agentBrowser":{"script":[{"command":"open https://example.com"}]}}'
-            rows={8}
-            {...register("social.config.agentBrowser")}
-          />
-          <ErrorMessage>{getConfigErrorMessage("agentBrowser")}</ErrorMessage>
-        </div>
+        renderAgentBrowserFields()
       )}
 
       {socialPlatform === "REDDIT" && (
