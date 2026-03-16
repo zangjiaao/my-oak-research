@@ -706,8 +706,13 @@ function normalizeGatherSocialConfig(
   driver: GatherSocialDriver
 ): Record<string, unknown> {
   const sanitizedConfig = sanitizeGatherConfig(config);
+  const credentialStateFile = resolveCredentialStateFile(source);
   if (driver === "agent-browser") {
-    return normalizeAgentBrowserGatherConfig(source, sanitizedConfig);
+    return normalizeAgentBrowserGatherConfig(
+      source,
+      sanitizedConfig,
+      credentialStateFile
+    );
   }
 
   const platform = source.social?.platform;
@@ -750,6 +755,8 @@ function normalizeGatherSocialConfig(
 
   if (typeof playwright.stateFile === "string" && playwright.stateFile.trim()) {
     normalizedPlaywright.stateFile = playwright.stateFile;
+  } else if (credentialStateFile) {
+    normalizedPlaywright.stateFile = credentialStateFile;
   }
   if (typeof playwright.targetUrl === "string" && playwright.targetUrl.trim()) {
     normalizedPlaywright.targetUrl = playwright.targetUrl.trim();
@@ -760,7 +767,8 @@ function normalizeGatherSocialConfig(
 
 function normalizeAgentBrowserGatherConfig(
   source: SocialMediaSource,
-  config: Record<string, unknown>
+  config: Record<string, unknown>,
+  credentialStateFile: string | null
 ): Record<string, unknown> {
   const topLevelKeywordFilter = asObject(config.keywordFilter);
   const rawAgentBrowser = asObject(config.agentBrowser);
@@ -796,11 +804,19 @@ function normalizeAgentBrowserGatherConfig(
 
   const ownerId = resolveAgentBrowserOwnerId(source, agentBrowserOptions);
   const sessionKey = resolveAgentBrowserSessionKey(source, agentBrowserOptions);
-  const normalizedAgentBrowser = {
+  const normalizedAgentBrowser: Record<string, unknown> = {
     ...agentBrowserOptions,
     ownerId,
     sessionKey,
   };
+  if (
+    typeof normalizedAgentBrowser.stateFile !== "string" ||
+    !normalizedAgentBrowser.stateFile.trim()
+  ) {
+    if (credentialStateFile) {
+      normalizedAgentBrowser.stateFile = credentialStateFile;
+    }
+  }
 
   return {
     agentBrowser: normalizedAgentBrowser,
@@ -808,6 +824,20 @@ function normalizeAgentBrowserGatherConfig(
       ? { keywordFilter }
       : {}),
   };
+}
+
+function resolveCredentialStateFile(source: SocialMediaSource): string | null {
+  const candidates = [source.social?.credential?.data, source.credential?.data];
+  for (const candidate of candidates) {
+    if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) {
+      continue;
+    }
+    const stateFile = (candidate as Record<string, unknown>).stateFile;
+    if (typeof stateFile === "string" && stateFile.trim()) {
+      return stateFile.trim();
+    }
+  }
+  return null;
 }
 
 function sanitizeGatherConfig(

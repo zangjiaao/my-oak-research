@@ -2508,6 +2508,7 @@ async def agent_browser_heartbeat(payload: Dict[str, Any]):
 AUTH_DIR = Path(__file__).parent / ".auth"
 MAX_PROFILE_SIZE = 100 * 1024 * 1024  # 100MB
 PROFILE_NAME_PATTERN = re.compile(r'^[a-zA-Z0-9_-]{1,64}$')
+STATE_FILE_NAME_PATTERN = re.compile(r"^[a-z0-9_-]{1,64}\.json$")
 
 
 class UploadProfileResponse(BaseModel):
@@ -2516,6 +2517,84 @@ class UploadProfileResponse(BaseModel):
     profile_name: str
     verified: bool = False
     details: Optional[Dict[str, Any]] = None
+
+
+class SaveAuthStateRequest(BaseModel):
+    platform: str
+    auth_data: Dict[str, Any] = Field(
+        validation_alias=AliasChoices("authData", "auth_data")
+    )
+    name: Optional[str] = None
+
+
+class SaveAuthStateResponse(BaseModel):
+    success: bool
+    stateFile: str
+    profileName: str
+
+
+class DeleteAuthStateRequest(BaseModel):
+    state_file: str = Field(validation_alias=AliasChoices("stateFile", "state_file"))
+
+
+def _build_state_file_name(platform: str, alias: str | None, auth_data: dict[str, Any]) -> str:
+    normalized_platform = re.sub(r"[^a-z0-9_-]+", "-", platform.lower()).strip("-") or "social"
+    normalized_alias = re.sub(r"[^a-z0-9_-]+", "-", (alias or "default").lower()).strip("-") or "default"
+    payload_hash = hashlib.sha256(
+        json.dumps(auth_data, ensure_ascii=False, sort_keys=True).encode("utf-8")
+    ).hexdigest()[:12]
+    return f"{normalized_platform}_{normalized_alias}_{payload_hash}.json"
+
+
+def _validate_auth_data_shape(auth_data: dict[str, Any]) -> None:
+    cookies = auth_data.get("cookies")
+    origins = auth_data.get("origins")
+    has_cookies = isinstance(cookies, list) and len(cookies) > 0
+    has_origins = isinstance(origins, list) and len(origins) > 0
+    if not has_cookies and not has_origins:
+        raise HTTPException(
+            status_code=400,
+            detail="auth_data must contain cookies or origins",
+        )
+
+
+@app.post("/auth/state-file", response_model=SaveAuthStateResponse)
+async def save_auth_state_file(request: SaveAuthStateRequest):
+    auth_data = request.auth_data
+    if not isinstance(auth_data, dict):
+        raise HTTPException(status_code=400, detail="auth_data must be an object")
+    _validate_auth_data_shape(auth_data)
+
+    AUTH_DIR.mkdir(exist_ok=True)
+    file_name = _build_state_file_name(request.platform, request.name, auth_data)
+    if not STATE_FILE_NAME_PATTERN.match(file_name):
+        raise HTTPException(status_code=400, detail="invalid state file name")
+    target_file = (AUTH_DIR / file_name).resolve()
+    if not str(target_file).startswith(str(AUTH_DIR.resolve())):
+        raise HTTPException(status_code=400, detail="invalid state file path")
+
+    with target_file.open("w", encoding="utf-8") as fp:
+        json.dump(auth_data, fp, ensure_ascii=False)
+
+    return SaveAuthStateResponse(
+        success=True,
+        stateFile=f".auth/{file_name}",
+        profileName=file_name,
+    )
+
+
+@app.delete("/auth/state-file")
+async def delete_auth_state_file(request: DeleteAuthStateRequest):
+    raw_state_file = request.state_file.strip()
+    file_name = Path(raw_state_file).name
+    if not STATE_FILE_NAME_PATTERN.match(file_name):
+        raise HTTPException(status_code=400, detail="invalid state file name")
+    target_file = (AUTH_DIR / file_name).resolve()
+    if not str(target_file).startswith(str(AUTH_DIR.resolve())):
+        raise HTTPException(status_code=400, detail="invalid state file path")
+    if target_file.exists():
+        target_file.unlink()
+    return {"success": True, "stateFile": f".auth/{file_name}"}
 
 
 @app.post("/upload-profile", response_model=UploadProfileResponse)

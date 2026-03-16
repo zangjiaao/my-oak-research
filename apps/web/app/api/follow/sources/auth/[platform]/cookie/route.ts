@@ -32,6 +32,21 @@ const UploadAuthSchema = z.object({
 
 const GATHER_SERVICE_URL = process.env.GATHER_SERVICE_URL || "http://localhost:8000";
 
+function extractStateFilePath(data: unknown): string | null {
+  if (!data || typeof data !== "object" || Array.isArray(data)) {
+    return null;
+  }
+  const stateFile = (data as Record<string, unknown>).stateFile;
+  if (typeof stateFile === "string" && stateFile.trim()) {
+    return stateFile.trim();
+  }
+  return null;
+}
+
+function credentialNameFromInput(name: string | undefined, platformUpper: string): string {
+  return name || `${platformUpper}_cookie_auth`;
+}
+
 /**
  * POST /api/follow/sources/auth/[platform]/cookie
  * 
@@ -203,8 +218,28 @@ export async function POST(
       }, 400);
     }
 
+    const persistStateResponse = await fetch(`${GATHER_SERVICE_URL}/auth/state-file`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        platform: platformNormalized,
+        auth_data: authData,
+        name: credentialNameFromInput(providedName, platform.toUpperCase()),
+      }),
+    });
+    if (!persistStateResponse.ok) {
+      const errorText = await persistStateResponse.text();
+      console.error(`[auth] Persist state file failed: ${errorText}`);
+      return serverError(new Error(`Failed to persist auth state file: ${errorText}`));
+    }
+    const persistStateResult = await persistStateResponse.json();
+    const stateFile = persistStateResult?.stateFile;
+    if (typeof stateFile !== "string" || !stateFile.trim()) {
+      return serverError(new Error("Failed to persist auth state file: missing stateFile"));
+    }
+
     // Step 2: Create or update Credential
-    const credentialName = providedName || `${platform.toUpperCase()}_cookie_auth`;
+    const credentialName = credentialNameFromInput(providedName, platform.toUpperCase());
     const credentialKind = `${platformNormalized}-cookie`;
 
     console.log(`[auth] Using credential name: "${credentialName}" for kind: "${credentialKind}"`);
@@ -222,7 +257,7 @@ export async function POST(
       credential = await prisma.credential.update({
         where: { id: existingCredential.id },
         data: {
-          data: authData as any, // Store the entire storage_state
+          data: { authType: "state-file", stateFile } as any,
           updatedAt: new Date(),
         },
       });
@@ -233,7 +268,7 @@ export async function POST(
         data: {
           name: credentialName,
           kind: credentialKind,
-          data: authData as any,
+          data: { authType: "state-file", stateFile } as any,
         },
       });
       console.log(`[auth] Created new credential: ${credential.id} (Name: ${credentialName})`);
@@ -314,13 +349,16 @@ export async function GET(
     const verify = searchParams.get("verify") === "true";
 
     if (verify) {
+      const stateFile = extractStateFilePath(credential.data);
       // Check with gather service
       const verifyResponse = await fetch(`${GATHER_SERVICE_URL}/verify-auth`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           platform: platformNormalized,
-          auth_data: credential.data,
+          ...(stateFile
+            ? { state_file: stateFile }
+            : { auth_data: credential.data }),
         }),
       });
 
