@@ -265,6 +265,15 @@ export const SocialMediaFields = ({
   const socialPlatform = watch("social.platform") as SocialPlatform | undefined;
   const selectedDriver = watch("social.config.driver") as string | undefined;
   const currentCredentialId = watch("social.credentialId") as string | null | undefined;
+  const currentRecordFormat = watch(
+    "social.config.agentBrowser.recordSchema.format"
+  ) as string | undefined;
+  const currentMatchScope = watch(
+    "social.config.keywordFilter.matchScope"
+  ) as string | undefined;
+  const currentSplitMode = watch(
+    "social.config.keywordFilter.splitMode"
+  ) as string | undefined;
   const supportedDrivers = socialPlatform
     ? getSupportedDrivers(socialPlatform)
     : [];
@@ -377,6 +386,34 @@ export const SocialMediaFields = ({
       setAuthStatus({ status: "idle" });
     }
   }, [setValue, socialPlatform, resolvedDriver]);
+
+  useEffect(() => {
+    if (!setValue) return;
+    if (!socialPlatform || resolvedDriver !== "agent-browser") return;
+
+    if (!currentRecordFormat) {
+      setValue("social.config.agentBrowser.recordSchema.format", "jsonl", {
+        shouldDirty: false,
+      });
+    }
+    if (!currentMatchScope) {
+      setValue("social.config.keywordFilter.matchScope", "segment", {
+        shouldDirty: false,
+      });
+    }
+    if (!currentSplitMode) {
+      setValue("social.config.keywordFilter.splitMode", "line", {
+        shouldDirty: false,
+      });
+    }
+  }, [
+    setValue,
+    socialPlatform,
+    resolvedDriver,
+    currentRecordFormat,
+    currentMatchScope,
+    currentSplitMode,
+  ]);
 
   const syncArgsToForm = useCallback(
     (rows: PlaywrightArgRow[]) => {
