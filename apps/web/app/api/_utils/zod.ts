@@ -129,6 +129,11 @@ export const SearchEngineKindEnum = z.enum([
 ]);
 export const SocialPlatformEnum = z.enum(["X", "TELEGRAM", "REDDIT", "XIAOHONGSHU", "DOUYIN", "TIKTOK", "WEIBO", "WHATSAPP", "INSTAGRAM", "FACEBOOK"]);
 export const SocialDriverEnum = z.enum(["xhttp", "playwright", "agent-browser"]);
+const GatherResponseFormatEnum = z.enum(["text", "markdown"]);
+const GatherResponseFormatsInput = z
+  .array(GatherResponseFormatEnum)
+  .min(1)
+  .default(["text", "markdown"]);
 
 const KeywordFilterInput = z
   .object({
@@ -231,6 +236,7 @@ export const SocialConfigByPlatform = z.discriminatedUnion("platform", [
     config: z
       .object({
         driver: SocialDriverEnum.default(getDefaultDriver("X")),
+        responseFormats: GatherResponseFormatsInput,
         keywordFilter: KeywordFilterInput,
         playwright: z.object({
           mode: z.enum(["eval-js"]).default("eval-js"),
@@ -278,6 +284,7 @@ export const SocialConfigByPlatform = z.discriminatedUnion("platform", [
     platform: z.literal("REDDIT"),
     config: z.object({
       driver: SocialDriverEnum.default(getDefaultDriver("REDDIT")),
+      responseFormats: GatherResponseFormatsInput,
       keywordFilter: KeywordFilterInput,
       agentBrowser: z.preprocess((val) => parseJson(val), AgentBrowserConfigInput),
       subreddit: z.string().min(1),
@@ -299,6 +306,7 @@ export const SocialConfigByPlatform = z.discriminatedUnion("platform", [
     config: z
       .object({
         driver: SocialDriverEnum.default(getDefaultDriver("XIAOHONGSHU")),
+        responseFormats: GatherResponseFormatsInput,
         keywordFilter: KeywordFilterInput,
         agentBrowser: z.preprocess((val) => parseJson(val), AgentBrowserConfigInput),
         userId: z.string().optional(),
@@ -328,6 +336,7 @@ export const SocialConfigByPlatform = z.discriminatedUnion("platform", [
     config: z
       .object({
         driver: SocialDriverEnum.default(getDefaultDriver("DOUYIN")),
+        responseFormats: GatherResponseFormatsInput,
         keywordFilter: KeywordFilterInput,
         agentBrowser: z.preprocess((val) => parseJson(val), AgentBrowserConfigInput),
         userId: z.string().optional(),
@@ -357,6 +366,7 @@ export const SocialConfigByPlatform = z.discriminatedUnion("platform", [
     config: z
       .object({
         driver: SocialDriverEnum.default(getDefaultDriver("TIKTOK")),
+        responseFormats: GatherResponseFormatsInput,
         keywordFilter: KeywordFilterInput,
         agentBrowser: z.preprocess((val) => parseJson(val), AgentBrowserConfigInput),
         username: z.string().optional(),
@@ -386,6 +396,7 @@ export const SocialConfigByPlatform = z.discriminatedUnion("platform", [
     config: z
       .object({
         driver: SocialDriverEnum.default(getDefaultDriver("WEIBO")),
+        responseFormats: GatherResponseFormatsInput,
         keywordFilter: KeywordFilterInput,
         agentBrowser: z.preprocess((val) => parseJson(val), AgentBrowserConfigInput),
         userId: z.string().optional(),
@@ -415,6 +426,7 @@ export const SocialConfigByPlatform = z.discriminatedUnion("platform", [
     config: z
       .object({
         driver: SocialDriverEnum.default(getDefaultDriver("TELEGRAM")),
+        responseFormats: GatherResponseFormatsInput,
         keywordFilter: KeywordFilterInput,
         agentBrowser: z.preprocess((val) => parseJson(val), AgentBrowserConfigInput),
         chatId: z.string().optional(),
@@ -437,6 +449,7 @@ export const SocialConfigByPlatform = z.discriminatedUnion("platform", [
     config: z
       .object({
         driver: SocialDriverEnum.default(getDefaultDriver("WHATSAPP")),
+        responseFormats: GatherResponseFormatsInput,
         keywordFilter: KeywordFilterInput,
         agentBrowser: z.preprocess((val) => parseJson(val), AgentBrowserConfigInput),
         contactName: z.string().optional(),
@@ -459,6 +472,7 @@ export const SocialConfigByPlatform = z.discriminatedUnion("platform", [
     config: z
       .object({
         driver: SocialDriverEnum.default(getDefaultDriver("INSTAGRAM")),
+        responseFormats: GatherResponseFormatsInput,
         keywordFilter: KeywordFilterInput,
         agentBrowser: z.preprocess((val) => parseJson(val), AgentBrowserConfigInput),
         username: z.string().optional(),
@@ -483,6 +497,7 @@ export const SocialConfigByPlatform = z.discriminatedUnion("platform", [
     config: z
       .object({
         driver: SocialDriverEnum.default(getDefaultDriver("FACEBOOK")),
+        responseFormats: GatherResponseFormatsInput,
         keywordFilter: KeywordFilterInput,
         agentBrowser: z.preprocess((val) => parseJson(val), AgentBrowserConfigInput),
         username: z.string().optional(),

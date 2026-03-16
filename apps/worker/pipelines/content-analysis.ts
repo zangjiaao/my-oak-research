@@ -612,11 +612,11 @@ async function fetchSocialSource(
     sourceConfigObj,
     source.social?.platform
   );
-  const authData = resolveGatherAuthData(source, gatherDriver);
   const proxyUrl =
     source.social?.proxy?.url ??
     source.proxy?.url ??
     null;
+  const responseFormats = resolveGatherResponseFormats(sourceConfigObj);
   const normalizedSocialConfig = normalizeGatherSocialConfig(
     source,
     sourceConfigObj,
@@ -648,8 +648,7 @@ async function fetchSocialSource(
         platform: gatherPlatform,
         config: config,
         sourceId: source.id,
-        authData,
-        responseFormats: ["text", "markdown"],
+        responseFormats,
         driver: gatherDriver,
       }),
     });
@@ -706,19 +705,17 @@ function normalizeGatherSocialConfig(
   config: Record<string, unknown>,
   driver: GatherSocialDriver
 ): Record<string, unknown> {
+  const sanitizedConfig = sanitizeGatherConfig(config);
   if (driver === "agent-browser") {
-    return normalizeAgentBrowserGatherConfig(source, config);
+    return normalizeAgentBrowserGatherConfig(source, sanitizedConfig);
   }
 
   const platform = source.social?.platform;
   if ((platform || "").toUpperCase() !== "X" || driver !== "playwright") {
-    return {
-      ...config,
-      driver,
-    };
+    return sanitizedConfig;
   }
 
-  const playwright = asObject(config.playwright);
+  const playwright = asObject(sanitizedConfig.playwright);
   const args = asObject(playwright.args);
   const authKey =
     resolveSourceCredentialId(source, playwright) ||
@@ -806,12 +803,38 @@ function normalizeAgentBrowserGatherConfig(
   };
 
   return {
-    driver: "agent-browser",
     agentBrowser: normalizedAgentBrowser,
     ...(Object.keys(keywordFilter).length > 0
       ? { keywordFilter }
       : {}),
   };
+}
+
+function sanitizeGatherConfig(
+  config: Record<string, unknown>
+): Record<string, unknown> {
+  const sanitized = { ...config };
+  delete sanitized.driver;
+  delete sanitized.responseFormats;
+  return sanitized;
+}
+
+function resolveGatherResponseFormats(
+  config: Record<string, unknown>
+): Array<"text" | "markdown"> {
+  const raw = config.responseFormats;
+  if (!Array.isArray(raw)) {
+    return ["text", "markdown"];
+  }
+  const normalized = Array.from(
+    new Set(
+      raw
+        .filter((value): value is string => typeof value === "string")
+        .map((value) => value.trim().toLowerCase())
+        .filter((value): value is "text" | "markdown" => value === "text" || value === "markdown")
+    )
+  );
+  return normalized.length > 0 ? normalized : ["text", "markdown"];
 }
 
 function resolveAgentBrowserOwnerId(
@@ -888,24 +911,6 @@ function resolveSourceCredentialId(
     if (typeof id === "string" && id.trim()) {
       return id.trim();
     }
-  }
-  return null;
-}
-
-function resolveGatherAuthData(
-  source: SocialMediaSource,
-  driver: GatherSocialDriver
-): Record<string, unknown> | null {
-  if (driver === "xhttp") {
-    return null;
-  }
-  const socialCredential = source.social?.credential?.data;
-  if (socialCredential && typeof socialCredential === "object" && !Array.isArray(socialCredential)) {
-    return socialCredential as Record<string, unknown>;
-  }
-  const sourceCredential = source.credential?.data;
-  if (sourceCredential && typeof sourceCredential === "object" && !Array.isArray(sourceCredential)) {
-    return sourceCredential as Record<string, unknown>;
   }
   return null;
 }

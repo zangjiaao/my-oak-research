@@ -687,6 +687,10 @@ export const SocialMediaFields = ({
     | string
     | undefined;
   const selectedXScript = getXScriptOptionByPath(selectedXScriptPath);
+  const keywordFilterError =
+    getConfigErrorMessage("keywordFilter.keywords") ??
+    getConfigErrorMessage("keywordFilter");
+  const responseFormatsError = getConfigErrorMessage("responseFormats");
 
   // Render auth status indicator
   const renderAuthStatus = () => {
@@ -792,61 +796,6 @@ export const SocialMediaFields = ({
         </p>
       </div>
 
-      <p className="text-xs text-muted-foreground">
-        关键词过滤由 Query 关联的 Keywords 模块统一注入，此处无需配置。
-      </p>
-
-      <div className="grid gap-4 md:grid-cols-3">
-        <div className="grid gap-2">
-          <Label>Match Scope</Label>
-          <Controller
-            name="social.config.keywordFilter.matchScope"
-            control={control}
-            render={({ field }) => (
-              <ControlledSelect
-                value={(field.value as string) || "segment"}
-                onValueChange={field.onChange}
-                placeholder="Select match scope"
-              >
-                <SelectItem value="segment">segment</SelectItem>
-                <SelectItem value="full">full</SelectItem>
-              </ControlledSelect>
-            )}
-          />
-        </div>
-        <div className="grid gap-2">
-          <Label>Split Mode</Label>
-          <Controller
-            name="social.config.keywordFilter.splitMode"
-            control={control}
-            render={({ field }) => (
-              <ControlledSelect
-                value={(field.value as string) || "line"}
-                onValueChange={field.onChange}
-                placeholder="Select split mode"
-              >
-                <SelectItem value="line">line</SelectItem>
-                <SelectItem value="paragraph">paragraph</SelectItem>
-                <SelectItem value="auto">auto</SelectItem>
-              </ControlledSelect>
-            )}
-          />
-        </div>
-        <div className="grid gap-2">
-          <Label htmlFor="social.config.keywordFilter.minSegmentChars">
-            Min Segment Chars
-          </Label>
-          <Input
-            id="social.config.keywordFilter.minSegmentChars"
-            type="number"
-            min={0}
-            {...register("social.config.keywordFilter.minSegmentChars", {
-              setValueAs: (value) => (value === "" ? undefined : Number(value)),
-            })}
-          />
-        </div>
-      </div>
-
       <div className="grid gap-4 md:grid-cols-2">
         <div className="grid gap-2">
           <Label htmlFor="social.config.agentBrowser.recordSchema.format">
@@ -912,6 +861,129 @@ export const SocialMediaFields = ({
             </label>
           )}
         />
+      </div>
+    </div>
+  );
+
+  const renderGatherOutputAndFilterFields = () => (
+    <div className="grid gap-4 rounded-lg border bg-muted/30 p-4">
+      <Label className="text-base font-medium">Gather Output & Keyword Filter</Label>
+
+      <div className="grid gap-2">
+        <Label>Response Formats</Label>
+        <Controller
+          name="social.config.responseFormats"
+          control={control}
+          render={({ field }) => {
+            const selected = Array.isArray(field.value) && field.value.length > 0
+              ? field.value
+              : ["text", "markdown"];
+            const toggle = (format: "text" | "markdown", checked: boolean) => {
+              const next = checked
+                ? Array.from(new Set([...selected, format]))
+                : selected.filter((value) => value !== format);
+              field.onChange(next.length > 0 ? next : [format]);
+            };
+            return (
+              <div className="flex flex-wrap items-center gap-5">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={selected.includes("text")}
+                    onChange={(e) => toggle("text", e.target.checked)}
+                    className="rounded border-gray-300"
+                  />
+                  <span className="text-sm">text</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={selected.includes("markdown")}
+                    onChange={(e) => toggle("markdown", e.target.checked)}
+                    className="rounded border-gray-300"
+                  />
+                  <span className="text-sm">markdown</span>
+                </label>
+              </div>
+            );
+          }}
+        />
+        <ErrorMessage>{responseFormatsError}</ErrorMessage>
+      </div>
+
+      <div className="grid gap-2">
+        <Label htmlFor="social.config.keywordFilter.keywords">Keywords</Label>
+        <Controller
+          name="social.config.keywordFilter.keywords"
+          control={control}
+          render={({ field }) => (
+            <Textarea
+              id="social.config.keywordFilter.keywords"
+              rows={3}
+              placeholder="关键词，使用逗号或换行分隔"
+              value={
+                Array.isArray(field.value)
+                  ? field.value.join("\n")
+                  : typeof field.value === "string"
+                    ? field.value
+                    : ""
+              }
+              onChange={(e) => field.onChange(e.target.value)}
+            />
+          )}
+        />
+        <ErrorMessage>{keywordFilterError}</ErrorMessage>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-2">
+          <Label>Match Scope</Label>
+          <Controller
+            name="social.config.keywordFilter.matchScope"
+            control={control}
+            render={({ field }) => (
+              <ControlledSelect
+                value={(field.value as string) || "segment"}
+                onValueChange={field.onChange}
+                placeholder="Select match scope"
+              >
+                <SelectItem value="segment">segment</SelectItem>
+                <SelectItem value="full">full</SelectItem>
+              </ControlledSelect>
+            )}
+          />
+        </div>
+        <div className="grid gap-2">
+          <Label>Split Mode</Label>
+          <Controller
+            name="social.config.keywordFilter.splitMode"
+            control={control}
+            render={({ field }) => (
+              <ControlledSelect
+                value={(field.value as string) || "line"}
+                onValueChange={field.onChange}
+                placeholder="Select split mode"
+              >
+                <SelectItem value="line">line</SelectItem>
+                <SelectItem value="paragraph">paragraph</SelectItem>
+                <SelectItem value="auto">auto</SelectItem>
+              </ControlledSelect>
+            )}
+          />
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor="social.config.keywordFilter.minSegmentChars">
+            Min Segment Chars
+          </Label>
+          <Input
+            id="social.config.keywordFilter.minSegmentChars"
+            type="number"
+            min={0}
+            {...register("social.config.keywordFilter.minSegmentChars", {
+              setValueAs: (value) => (value === "" ? undefined : Number(value)),
+            })}
+          />
+        </div>
       </div>
     </div>
   );
@@ -1361,6 +1433,8 @@ export const SocialMediaFields = ({
       {socialPlatform && socialPlatform !== "X" && resolvedDriver === "agent-browser" && (
         renderAgentBrowserFields()
       )}
+
+      {socialPlatform && renderGatherOutputAndFilterFields()}
 
       {socialPlatform === "REDDIT" && resolvedDriver !== "agent-browser" && (
         <>
