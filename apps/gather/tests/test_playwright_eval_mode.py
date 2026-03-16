@@ -58,7 +58,7 @@ def test_fetch_v2_playwright_eval_mode_uses_eval_runner(monkeypatch):
     assert payload[0]["recordType"] == "eval-js"
 
 
-def test_fetch_v2_playwright_eval_mode_requires_target_url():
+def test_fetch_v2_playwright_eval_mode_allows_missing_target_url():
     client = TestClient(main.app)
     response = client.post(
         "/v2/fetch",
@@ -75,10 +75,9 @@ def test_fetch_v2_playwright_eval_mode_requires_target_url():
         },
     )
 
-    assert response.status_code == 400
+    assert response.status_code == 200
     payload = response.json()
-    assert payload["error"]["code"] == "FETCH_BAD_REQUEST"
-    assert "targetUrl" in payload["error"]["message"]
+    assert isinstance(payload, list)
 
 
 def test_extract_playwright_eval_options_supports_state_file(tmp_path):

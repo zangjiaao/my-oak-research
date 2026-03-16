@@ -6,14 +6,41 @@ from fastapi.testclient import TestClient
 
 sys.path.append(str(Path(__file__).resolve().parents[1]))
 
-from main import app  # noqa: E402
+import main  # noqa: E402
+from drivers.base_driver import BaseDriver  # noqa: E402
+from drivers.registry import DriverRegistry  # noqa: E402
+from main import CleanItem, app  # noqa: E402
 
 
 client = TestClient(app)
 
 
-def test_fetch_v2_happy_path():
-    response = client.post(
+class StubFetchDriver(BaseDriver):
+    async def verify_auth(self, _request):
+        return {"valid": True}
+
+    async def fetch(self, request):
+        return [
+            CleanItem(
+                title="stub",
+                text="stub text",
+                markdown="stub markdown",
+                platform=request.platform,
+                sourceId=request.source_id,
+                sourceType="SOCIAL_MEDIA",
+            )
+        ]
+
+
+def _client_with_stub_driver(monkeypatch) -> TestClient:
+    registry = DriverRegistry(default_driver="playwright")
+    registry.register("playwright", StubFetchDriver())
+    monkeypatch.setattr(main, "driver_registry", registry)
+    return TestClient(main.app)
+
+
+def test_fetch_v2_happy_path(monkeypatch):
+    response = _client_with_stub_driver(monkeypatch).post(
         "/v2/fetch",
         json={
             "platform": "contract-test-platform",
@@ -52,8 +79,8 @@ def test_fetch_v2_validation_error():
     assert payload["error"]["retryable"] is False
 
 
-def test_fetch_v2_response_formats_text_only():
-    response = client.post(
+def test_fetch_v2_response_formats_text_only(monkeypatch):
+    response = _client_with_stub_driver(monkeypatch).post(
         "/v2/fetch",
         json={
             "platform": "contract-test-platform",
@@ -72,8 +99,8 @@ def test_fetch_v2_response_formats_text_only():
         assert "markdown" not in item
 
 
-def test_fetch_v2_response_formats_markdown_only():
-    response = client.post(
+def test_fetch_v2_response_formats_markdown_only(monkeypatch):
+    response = _client_with_stub_driver(monkeypatch).post(
         "/v2/fetch",
         json={
             "platform": "contract-test-platform",
@@ -92,8 +119,8 @@ def test_fetch_v2_response_formats_markdown_only():
         assert "markdown" in item
 
 
-def test_fetch_v2_driver_options_without_legacy_config():
-    response = client.post(
+def test_fetch_v2_driver_options_without_legacy_config(monkeypatch):
+    response = _client_with_stub_driver(monkeypatch).post(
         "/v2/fetch",
         json={
             "platform": "contract-test-platform",
