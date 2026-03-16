@@ -467,9 +467,27 @@ def _extract_keyword_filter_options(config: Dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _collect_record_content_strings(value: Any) -> list[str]:
+    if isinstance(value, str):
+        stripped = value.strip()
+        return [stripped] if stripped else []
+    if isinstance(value, dict):
+        collected: list[str] = []
+        for nested in value.values():
+            collected.extend(_collect_record_content_strings(nested))
+        return collected
+    if isinstance(value, list):
+        collected: list[str] = []
+        for nested in value:
+            collected.extend(_collect_record_content_strings(nested))
+        return collected
+    return []
+
+
 def _keyword_filter_text(item: CleanItem) -> str:
-    parts = [item.title or "", item.text or "", item.markdown or "", item.url or ""]
-    return " ".join(part for part in parts if part).lower()
+    record_content = item.recordContent if isinstance(item.recordContent, dict) else {}
+    parts = _collect_record_content_strings(record_content)
+    return " ".join(parts).lower()
 
 
 def _split_text_segments(text: str, split_mode: str, min_segment_chars: int) -> list[str]:
@@ -488,8 +506,9 @@ def _split_text_segments(text: str, split_mode: str, min_segment_chars: int) -> 
 
 
 def _apply_keyword_segment_filter(item: CleanItem, keywords: list[str], options: dict[str, Any]) -> list[CleanItem]:
+    record_content = item.recordContent if isinstance(item.recordContent, dict) else {}
     segments = _split_text_segments(
-        item.text or item.markdown or "",
+        "\n".join(_collect_record_content_strings(record_content)),
         split_mode=options["split_mode"],
         min_segment_chars=options["min_segment_chars"],
     )
@@ -504,9 +523,9 @@ def _apply_keyword_segment_filter(item: CleanItem, keywords: list[str], options:
         matched_items.append(
             item.model_copy(
                 update={
-                    "title": f"{item.title or item.platform} [segment {index}]",
                     "text": segment,
                     "markdown": segment,
+                    "recordContent": {**record_content, "text": segment, "markdown": segment},
                     "matchedKeywords": matched,
                     "keywordMatchScore": round(len(matched) / len(keywords), 4),
                 }
