@@ -807,69 +807,9 @@ export const SocialMediaFields = ({
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <div className="grid gap-2">
-          <Label htmlFor="social.config.keywordFilter.keywords">
-            Keyword Filter - Keywords
-          </Label>
-          <Input
-            id="social.config.keywordFilter.keywords"
-            placeholder="伊朗, 联合国, 导弹"
-            {...register("social.config.keywordFilter.keywords")}
-          />
-        </div>
-        <div className="grid gap-2">
-          <Label htmlFor="social.config.keywordFilter.minSegmentChars">
-            Min Segment Chars
-          </Label>
-          <Input
-            id="social.config.keywordFilter.minSegmentChars"
-            type="number"
-            min={0}
-            {...register("social.config.keywordFilter.minSegmentChars", {
-              setValueAs: (value) => (value === "" ? undefined : Number(value)),
-            })}
-          />
-        </div>
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-2">
-        <div className="grid gap-2">
-          <Label>Match Scope</Label>
-          <Controller
-            name="social.config.keywordFilter.matchScope"
-            control={control}
-            render={({ field }) => (
-              <ControlledSelect
-                value={(field.value as string) || "segment"}
-                onValueChange={field.onChange}
-                placeholder="Select match scope"
-              >
-                <SelectItem value="segment">segment</SelectItem>
-                <SelectItem value="full">full</SelectItem>
-              </ControlledSelect>
-            )}
-          />
-        </div>
-        <div className="grid gap-2">
-          <Label>Split Mode</Label>
-          <Controller
-            name="social.config.keywordFilter.splitMode"
-            control={control}
-            render={({ field }) => (
-              <ControlledSelect
-                value={(field.value as string) || "line"}
-                onValueChange={field.onChange}
-                placeholder="Select split mode"
-              >
-                <SelectItem value="line">line</SelectItem>
-                <SelectItem value="paragraph">paragraph</SelectItem>
-                <SelectItem value="auto">auto</SelectItem>
-              </ControlledSelect>
-            )}
-          />
-        </div>
-      </div>
+      <p className="text-xs text-muted-foreground">
+        关键词过滤由 Query 关联的 Keywords 模块统一注入，此处无需配置。
+      </p>
 
       <div className="grid gap-4 md:grid-cols-2">
         <div className="grid gap-2">
