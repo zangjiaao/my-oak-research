@@ -58,7 +58,7 @@ def test_fetch_v2_response_formats_text_only():
         json={
             "platform": "contract-test-platform",
             "sourceId": "source_123",
-            "responseFormats": ["text"],
+            "output": {"formats": ["text"]},
             "config": {},
         },
     )
@@ -78,7 +78,7 @@ def test_fetch_v2_response_formats_markdown_only():
         json={
             "platform": "contract-test-platform",
             "sourceId": "source_123",
-            "responseFormats": ["markdown"],
+            "output": {"formats": ["markdown"]},
             "config": {},
         },
     )
@@ -90,6 +90,25 @@ def test_fetch_v2_response_formats_markdown_only():
     for item in items:
         assert "text" not in item
         assert "markdown" in item
+
+
+def test_fetch_v2_driver_options_without_legacy_config():
+    response = client.post(
+        "/v2/fetch",
+        json={
+            "platform": "contract-test-platform",
+            "sourceId": "source_123",
+            "driver": "playwright",
+            "output": {"formats": ["text"]},
+            "driverOptions": {"query": "AI"},
+        },
+    )
+
+    assert response.status_code == 200
+    items = response.json()
+    assert isinstance(items, list)
+    assert items
+    assert "text" in items[0]
 
 
 def test_fetch_v1_backward_compat():

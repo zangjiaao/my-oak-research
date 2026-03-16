@@ -140,7 +140,7 @@ class FetchV2Request(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     platform: str
-    config: Dict[str, Any]
+    config: Optional[Dict[str, Any]] = None
     source_id: str = Field(validation_alias=AliasChoices("sourceId", "source_id"))
     auth_data: Optional[Dict[str, Any]] = Field(
         default=None,
@@ -150,6 +150,11 @@ class FetchV2Request(BaseModel):
     response_formats: Optional[List[Literal["text", "markdown"]]] = Field(
         default=None,
         validation_alias=AliasChoices("responseFormats", "response_formats"),
+    )
+    output: Optional[Dict[str, Any]] = None
+    driver_options: Optional[Dict[str, Any]] = Field(
+        default=None,
+        validation_alias=AliasChoices("driverOptions", "driver_options"),
     )
 
 
@@ -1821,6 +1826,12 @@ def _resolve_record_schema(config: Dict[str, Any]) -> dict[str, Any]:
         },
     }
     raw = config.get("recordSchema")
+    if raw is None and isinstance(config.get("outputFormat"), str):
+        raw = {"format": config.get("outputFormat")}
+    if raw is None and isinstance(config.get("output"), dict):
+        output = config["output"]
+        if isinstance(output.get("record"), dict):
+            raw = output["record"]
     if raw is None and isinstance(config.get("agentBrowser"), dict):
         raw = config["agentBrowser"].get("recordSchema")
     if not isinstance(raw, dict):
@@ -2164,8 +2175,25 @@ async def _agent_browser_verify_auth(_request: VerifyAuthRequest):
     )
 
 
-def _extract_keyword_filter_keywords(config: Dict[str, Any]) -> Optional[List[str]]:
+def _resolve_keyword_filter(config: Dict[str, Any]) -> Any:
     raw_filter = config.get("keywordFilter")
+    if raw_filter is not None:
+        return raw_filter
+    filters = config.get("filters")
+    if isinstance(filters, dict):
+        candidate = filters.get("keyword")
+        if candidate is not None:
+            return candidate
+    agent_browser_options = config.get("agentBrowser")
+    if isinstance(agent_browser_options, dict):
+        nested_filters = agent_browser_options.get("filters")
+        if isinstance(nested_filters, dict):
+            return nested_filters.get("keyword")
+    return None
+
+
+def _extract_keyword_filter_keywords(config: Dict[str, Any]) -> Optional[List[str]]:
+    raw_filter = _resolve_keyword_filter(config)
     raw_keywords: Any = None
 
     if raw_filter is None:
@@ -2177,7 +2205,7 @@ def _extract_keyword_filter_keywords(config: Dict[str, Any]) -> Optional[List[st
             return None
         raw_keywords = raw_filter.get("keywords", raw_filter.get("terms"))
     else:
-        raise KeywordFilterConfigError("config.keywordFilter must be an object")
+        raise KeywordFilterConfigError("config.keywordFilter or config.filters.keyword must be an object")
 
     if not isinstance(raw_keywords, list):
         raise KeywordFilterConfigError("keyword filter keywords must be a string array")
@@ -2198,11 +2226,11 @@ def _extract_keyword_filter_keywords(config: Dict[str, Any]) -> Optional[List[st
 
 
 def _extract_keyword_filter_options(config: Dict[str, Any]) -> dict[str, Any]:
-    raw_filter = config.get("keywordFilter")
+    raw_filter = _resolve_keyword_filter(config)
     if raw_filter is None:
         return {"match_scope": "item", "split_mode": "auto"}
     if not isinstance(raw_filter, dict):
-        raise KeywordFilterConfigError("config.keywordFilter must be an object")
+        raise KeywordFilterConfigError("config.keywordFilter or config.filters.keyword must be an object")
 
     raw_scope = raw_filter.get("matchScope", raw_filter.get("scope", "item"))
     if raw_scope not in {"item", "segment"}:
@@ -2212,9 +2240,9 @@ def _extract_keyword_filter_options(config: Dict[str, Any]) -> dict[str, Any]:
     if raw_split_mode not in {"auto", "line", "paragraph"}:
         raise KeywordFilterConfigError("keyword filter splitMode must be auto, line, or paragraph")
 
-    min_segment_chars = raw_filter.get("minSegmentChars", 1)
+    min_segment_chars = raw_filter.get("minChars", raw_filter.get("minSegmentChars", 1))
     if not isinstance(min_segment_chars, int) or min_segment_chars < 1:
-        raise KeywordFilterConfigError("keyword filter minSegmentChars must be a positive integer")
+        raise KeywordFilterConfigError("keyword filter minChars must be a positive integer")
 
     return {
         "match_scope": raw_scope,
@@ -2364,6 +2392,91 @@ def _apply_response_formats(items: list[CleanItem], response_formats: Optional[L
     return items
 
 
+def _as_dict(value: Any) -> dict[str, Any]:
+    return value if isinstance(value, dict) else {}
+
+
+def _normalize_output_record_schema(output: dict[str, Any]) -> dict[str, Any] | None:
+    record = _as_dict(output.get("record"))
+    if not record:
+        return None
+    return {
+        "format": record.get("format", "auto"),
+        "recordSeparator": record.get("recordSeparator", record.get("record_separator", "\n")),
+        "pairSeparator": record.get("pairSeparator", record.get("pair_separator", "｜")),
+        "fieldMap": _as_dict(record.get("fieldMap", record.get("field_map"))),
+        "compression": record.get("compression"),
+        "encoding": record.get("encoding"),
+    }
+
+
+def _normalize_agent_browser_driver_options(
+    source_id: str,
+    base_config: dict[str, Any],
+    driver_options: dict[str, Any],
+) -> dict[str, Any]:
+    normalized_config = dict(base_config)
+    existing_options = _as_dict(normalized_config.get("agentBrowser"))
+    merged_options = {**existing_options, **driver_options}
+
+    auth_options = _as_dict(merged_options.pop("auth", None))
+    state_file = auth_options.get("stateFile", auth_options.get("state_file"))
+    if isinstance(state_file, str) and state_file.strip() and not merged_options.get("stateFile"):
+        merged_options["stateFile"] = state_file.strip()
+
+    raw_filters = _as_dict(merged_options.pop("filters", None))
+    capture_filter = _as_dict(raw_filters.get("capture"))
+    if capture_filter:
+        merged_options["captureFilter"] = {
+            **_as_dict(merged_options.get("captureFilter")),
+            **capture_filter,
+        }
+    keyword_filter = _as_dict(raw_filters.get("keyword"))
+    if keyword_filter and not _as_dict(normalized_config.get("keywordFilter")):
+        normalized_config["keywordFilter"] = keyword_filter
+
+    session_key = merged_options.get("sessionKey")
+    if isinstance(session_key, str) and session_key.strip() == source_id:
+        merged_options.pop("sessionKey", None)
+    session_key_legacy = merged_options.get("session_key")
+    if isinstance(session_key_legacy, str) and session_key_legacy.strip() == source_id:
+        merged_options.pop("session_key", None)
+
+    normalized_config["agentBrowser"] = merged_options
+    return normalized_config
+
+
+def _normalize_v2_fetch_request(request: FetchV2Request) -> FetchRequest:
+    normalized_driver = request.driver.strip().lower() if isinstance(request.driver, str) else ""
+    config = dict(request.config or {})
+
+    if isinstance(request.driver_options, dict):
+        if normalized_driver == "agent-browser":
+            config = _normalize_agent_browser_driver_options(request.source_id, config, request.driver_options)
+        else:
+            config = {**config, **request.driver_options}
+
+    output = _as_dict(request.output)
+    output_formats = output.get("formats")
+    response_formats = request.response_formats
+    if isinstance(output_formats, list):
+        response_formats = [value for value in output_formats if value in {"text", "markdown"}]
+
+    output_record_schema = _normalize_output_record_schema(output)
+    if output_record_schema and "recordSchema" not in config:
+        config["recordSchema"] = output_record_schema
+    if isinstance(output.get("format"), str) and "outputFormat" not in config:
+        config["outputFormat"] = output["format"]
+
+    return FetchRequest(
+        platform=request.platform,
+        config=config,
+        source_id=request.source_id,
+        auth_data=request.auth_data,
+        response_formats=response_formats,
+    )
+
+
 async def _agent_browser_fetch_data(request: FetchRequest):
     try:
         script_result = await asyncio.to_thread(execute_agent_browser_script, request.config)
@@ -2471,7 +2584,7 @@ async def fetch_data(request: FetchRequest):
         raw_results = await driver_registry.fetch(request)
         results = _normalize_clean_items(raw_results)
         results = _apply_keyword_hard_filter(request, results)
-        response_payload = _apply_response_formats(results, request.response_formats)
+        response_payload = _apply_response_formats(results, v1_request.response_formats)
         _log_api_io(
             "/fetch",
             request.model_dump(mode="json", by_alias=True),
@@ -2517,13 +2630,7 @@ async def fetch_data_v2(payload: Dict[str, Any]):
         _log_api_io("/v2/fetch", payload, response.body.decode("utf-8"), 422)
         return response
 
-    v1_request = FetchRequest(
-        platform=request.platform,
-        config=request.config,
-        source_id=request.source_id,
-        auth_data=request.auth_data,
-        response_formats=request.response_formats,
-    )
+    v1_request = _normalize_v2_fetch_request(request)
 
     try:
         raw_results = await driver_registry.fetch(v1_request, driver_name=request.driver)

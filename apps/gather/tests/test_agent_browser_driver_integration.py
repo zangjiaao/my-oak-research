@@ -16,7 +16,10 @@ from drivers.agent_browser_runner import (
 
 
 def test_v2_fetch_agent_browser_driver_returns_captures(monkeypatch):
+    captured_config = {}
+
     def fake_execute_agent_browser_script(_config):
+        captured_config.update(_config)
         return AgentBrowserScriptResult(
             step_results=[
                 AgentBrowserStepResult(
@@ -44,9 +47,12 @@ def test_v2_fetch_agent_browser_driver_returns_captures(monkeypatch):
             "platform": "telegram",
             "sourceId": "source-telegram-1",
             "driver": "agent-browser",
-            "config": {
-                "agentBrowser": {
-                    "script": [{"command": "open https://web.telegram.org/a/"}],
+            "driverOptions": {
+                "script": [{"command": "open https://web.telegram.org/a/"}],
+                "filters": {
+                    "capture": {
+                        "keys": ["messages"],
+                    }
                 }
             },
         },
@@ -62,6 +68,7 @@ def test_v2_fetch_agent_browser_driver_returns_captures(monkeypatch):
     assert payload[0]["instanceId"] == "ab-demo123"
     assert payload[0]["tabId"] == "tab-main01"
     assert payload[0]["instanceActive"] is True
+    assert captured_config["agentBrowser"]["captureFilter"]["keys"] == ["messages"]
 
 
 def test_v2_fetch_agent_browser_driver_surfaces_config_error(monkeypatch):
@@ -80,7 +87,7 @@ def test_v2_fetch_agent_browser_driver_surfaces_config_error(monkeypatch):
             "platform": "telegram",
             "sourceId": "source-telegram-2",
             "driver": "agent-browser",
-            "config": {"agentBrowser": {}},
+            "driverOptions": {},
         },
     )
 
@@ -107,7 +114,7 @@ def test_v2_fetch_agent_browser_driver_maps_owner_mismatch_to_403(monkeypatch):
             "platform": "telegram",
             "sourceId": "source-telegram-3",
             "driver": "agent-browser",
-            "config": {"agentBrowser": {"instanceId": "ab-test", "ownerId": "user-b", "script": []}},
+            "driverOptions": {"instanceId": "ab-test", "ownerId": "user-b", "script": []},
         },
     )
 
@@ -115,6 +122,50 @@ def test_v2_fetch_agent_browser_driver_maps_owner_mismatch_to_403(monkeypatch):
     payload = response.json()
     assert payload["error"]["code"] == "FETCH_BAD_REQUEST"
     assert payload["error"]["retryable"] is False
+
+
+def test_v2_fetch_agent_browser_driver_options_maps_auth_and_filters(monkeypatch):
+    captured_config = {}
+
+    def fake_execute_agent_browser_script(_config):
+        captured_config.update(_config)
+        return AgentBrowserScriptResult(
+            step_results=[],
+            captures={"messages": ["alpha"]},
+            instance_id="ab-demo123",
+            tab_id="tab-main01",
+            instance_active=True,
+            ttl_seconds=900,
+            expires_at_epoch=1700000000.0,
+        )
+
+    monkeypatch.setattr(main, "execute_agent_browser_script", fake_execute_agent_browser_script)
+
+    client = TestClient(main.app)
+    response = client.post(
+        "/v2/fetch",
+        json={
+            "platform": "telegram",
+            "sourceId": "source-telegram-4",
+            "driver": "agent-browser",
+            "driverOptions": {
+                "sessionKey": "source-telegram-4",
+                "auth": {"stateFile": ".auth/demo.json"},
+                "script": [{"command": "open https://web.telegram.org/a/"}],
+                "filters": {
+                    "keyword": {
+                        "keywords": ["alpha"],
+                        "minChars": 8,
+                    }
+                },
+            },
+        },
+    )
+
+    assert response.status_code == 200
+    assert "sessionKey" not in captured_config["agentBrowser"]
+    assert captured_config["agentBrowser"]["stateFile"] == ".auth/demo.json"
+    assert captured_config["keywordFilter"]["keywords"] == ["alpha"]
 
 
 def test_agent_browser_heartbeat_endpoint(monkeypatch):

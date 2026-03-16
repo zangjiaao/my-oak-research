@@ -616,28 +616,23 @@ async function fetchSocialSource(
     source.social?.proxy?.url ??
     source.proxy?.url ??
     null;
-  const responseFormats = resolveGatherResponseFormats(sourceConfigObj);
+  const output = resolveGatherOutput(sourceConfigObj);
   const normalizedSocialConfig = normalizeGatherSocialConfig(
     source,
     sourceConfigObj,
     gatherDriver
   );
   const baseConfig = applyGatherProxyConfig(normalizedSocialConfig, proxyUrl);
-  const existingKeywordFilter = asObject(
-    (baseConfig as Record<string, unknown>).keywordFilter
-  );
+  const existingKeywordFilter = resolveGatherKeywordFilter(baseConfig, gatherDriver);
   const hasConfiguredKeywords =
     Array.isArray(existingKeywordFilter.keywords) &&
     existingKeywordFilter.keywords.length > 0;
-  const config =
+  const driverOptions =
     keywordFilterTerms.length > 0 && !hasConfiguredKeywords
-      ? {
-          ...baseConfig,
-          keywordFilter: {
-            ...existingKeywordFilter,
-            keywords: keywordFilterTerms,
-          },
-        }
+      ? injectGatherKeywordFilter(baseConfig, gatherDriver, {
+          ...existingKeywordFilter,
+          keywords: keywordFilterTerms,
+        })
       : baseConfig;
 
   try {
@@ -646,9 +641,9 @@ async function fetchSocialSource(
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         platform: gatherPlatform,
-        config: config,
+        driverOptions,
         sourceId: source.id,
-        responseFormats,
+        output,
         driver: gatherDriver,
       }),
     });
@@ -771,13 +766,23 @@ function normalizeAgentBrowserGatherConfig(
   credentialStateFile: string | null
 ): Record<string, unknown> {
   const topLevelKeywordFilter = asObject(config.keywordFilter);
+  const topLevelFilters = asObject(config.filters);
+  const topLevelFiltersKeyword = asObject(topLevelFilters.keyword);
+  const rawDriverOptions = asObject(config.driverOptions);
   const rawAgentBrowser = asObject(config.agentBrowser);
 
   let agentBrowserOptions = rawAgentBrowser;
   let wrappedKeywordFilter: Record<string, unknown> = {};
 
-  const wrappedConfig = asObject(rawAgentBrowser.config);
-  if (Object.keys(wrappedConfig).length > 0) {
+  const wrappedConfig = asObject(rawDriverOptions.config);
+  if (Object.keys(rawDriverOptions).length > 0) {
+    agentBrowserOptions = rawDriverOptions;
+    const nestedFilters = asObject(rawDriverOptions.filters);
+    const nestedKeywordFilter = asObject(nestedFilters.keyword);
+    if (Object.keys(nestedKeywordFilter).length > 0) {
+      wrappedKeywordFilter = nestedKeywordFilter;
+    }
+  } else if (Object.keys(wrappedConfig).length > 0) {
     const nestedAgentBrowser = asObject(wrappedConfig.agentBrowser);
     if (Object.keys(nestedAgentBrowser).length > 0) {
       agentBrowserOptions = nestedAgentBrowser;
@@ -787,29 +792,53 @@ function normalizeAgentBrowserGatherConfig(
       wrappedKeywordFilter = nestedKeywordFilter;
     }
   } else {
-    const nestedAgentBrowser = asObject(rawAgentBrowser.agentBrowser);
-    if (Object.keys(nestedAgentBrowser).length > 0) {
-      agentBrowserOptions = nestedAgentBrowser;
-    }
-    const directKeywordFilter = asObject(rawAgentBrowser.keywordFilter);
-    if (Object.keys(directKeywordFilter).length > 0) {
-      wrappedKeywordFilter = directKeywordFilter;
+    const wrappedConfig = asObject(rawAgentBrowser.config);
+    if (Object.keys(wrappedConfig).length > 0) {
+      const nestedAgentBrowser = asObject(wrappedConfig.agentBrowser);
+      if (Object.keys(nestedAgentBrowser).length > 0) {
+        agentBrowserOptions = nestedAgentBrowser;
+      }
+      const nestedKeywordFilter = asObject(wrappedConfig.keywordFilter);
+      if (Object.keys(nestedKeywordFilter).length > 0) {
+        wrappedKeywordFilter = nestedKeywordFilter;
+      }
+    } else {
+      const nestedAgentBrowser = asObject(rawAgentBrowser.agentBrowser);
+      if (Object.keys(nestedAgentBrowser).length > 0) {
+        agentBrowserOptions = nestedAgentBrowser;
+      }
+      const directKeywordFilter = asObject(rawAgentBrowser.keywordFilter);
+      if (Object.keys(directKeywordFilter).length > 0) {
+        wrappedKeywordFilter = directKeywordFilter;
+      }
     }
   }
 
   const keywordFilter =
     Object.keys(topLevelKeywordFilter).length > 0
       ? topLevelKeywordFilter
-      : wrappedKeywordFilter;
+      : Object.keys(topLevelFiltersKeyword).length > 0
+        ? topLevelFiltersKeyword
+        : wrappedKeywordFilter;
 
   const ownerId = resolveAgentBrowserOwnerId(source, agentBrowserOptions);
-  const sessionKey = resolveAgentBrowserSessionKey(source, agentBrowserOptions);
   const normalizedAgentBrowser: Record<string, unknown> = {
     ...agentBrowserOptions,
     ownerId,
-    sessionKey,
     closeOnComplete: false,
   };
+  if (
+    typeof normalizedAgentBrowser.sessionKey === "string" &&
+    normalizedAgentBrowser.sessionKey.trim() === source.id
+  ) {
+    delete normalizedAgentBrowser.sessionKey;
+  }
+  if (
+    typeof normalizedAgentBrowser.session_key === "string" &&
+    normalizedAgentBrowser.session_key.trim() === source.id
+  ) {
+    delete normalizedAgentBrowser.session_key;
+  }
   const captureFilter = asObject(normalizedAgentBrowser.captureFilter);
   const captureKeys = normalizeStringArray(captureFilter.keys);
   if (captureKeys.length > 0) {
@@ -826,12 +855,42 @@ function normalizeAgentBrowserGatherConfig(
       normalizedAgentBrowser.stateFile = credentialStateFile;
     }
   }
+  const auth: Record<string, unknown> = {};
+  if (
+    typeof normalizedAgentBrowser.stateFile === "string" &&
+    normalizedAgentBrowser.stateFile.trim()
+  ) {
+    auth.stateFile = normalizedAgentBrowser.stateFile.trim();
+  }
+
+  const filters: Record<string, unknown> = {};
+  if (Object.keys(captureFilter).length > 0) {
+    const normalizedCapture = { ...captureFilter };
+    if (typeof normalizedCapture.minSegmentChars === "number" && normalizedCapture.minChars == null) {
+      normalizedCapture.minChars = normalizedCapture.minSegmentChars;
+      delete normalizedCapture.minSegmentChars;
+    }
+    filters.capture = normalizedCapture;
+  }
+  if (Object.keys(keywordFilter).length > 0) {
+    const normalizedKeywordFilter = { ...keywordFilter };
+    if (
+      typeof normalizedKeywordFilter.minSegmentChars === "number" &&
+      normalizedKeywordFilter.minChars == null
+    ) {
+      normalizedKeywordFilter.minChars = normalizedKeywordFilter.minSegmentChars;
+      delete normalizedKeywordFilter.minSegmentChars;
+    }
+    filters.keyword = normalizedKeywordFilter;
+  }
+
+  delete normalizedAgentBrowser.captureFilter;
+  delete normalizedAgentBrowser.keywordFilter;
 
   return {
-    agentBrowser: normalizedAgentBrowser,
-    ...(Object.keys(keywordFilter).length > 0
-      ? { keywordFilter }
-      : {}),
+    ...normalizedAgentBrowser,
+    ...(Object.keys(auth).length > 0 ? { auth } : {}),
+    ...(Object.keys(filters).length > 0 ? { filters } : {}),
   };
 }
 
@@ -855,15 +914,21 @@ function sanitizeGatherConfig(
   const sanitized = { ...config };
   delete sanitized.driver;
   delete sanitized.responseFormats;
+  delete sanitized.output;
+  delete sanitized.driverOptions;
   return sanitized;
 }
 
-function resolveGatherResponseFormats(
+function resolveGatherOutput(
   config: Record<string, unknown>
-): Array<"text" | "markdown"> {
-  const raw = config.responseFormats;
+): { formats: Array<"text" | "markdown">; record?: Record<string, unknown> } {
+  const configuredOutput = asObject(config.output);
+  const raw =
+    configuredOutput.formats ??
+    configuredOutput.responseFormats ??
+    config.responseFormats;
   if (!Array.isArray(raw)) {
-    return ["text", "markdown"];
+    return { formats: ["text", "markdown"] };
   }
   const normalized = Array.from(
     new Set(
@@ -873,7 +938,11 @@ function resolveGatherResponseFormats(
         .filter((value): value is "text" | "markdown" => value === "text" || value === "markdown")
     )
   );
-  return normalized.length > 0 ? normalized : ["text", "markdown"];
+  const record = asObject(configuredOutput.record);
+  return {
+    formats: normalized.length > 0 ? normalized : ["text", "markdown"],
+    ...(Object.keys(record).length > 0 ? { record } : {}),
+  };
 }
 
 function resolveAgentBrowserOwnerId(
@@ -894,21 +963,36 @@ function resolveAgentBrowserOwnerId(
   return `source:${source.id}`;
 }
 
-function resolveAgentBrowserSessionKey(
-  source: SocialMediaSource,
-  options: Record<string, unknown>
-): string {
-  const candidates = [
-    options.sessionKey,
-    options.session_key,
-  ];
-  for (const value of candidates) {
-    if (typeof value === "string" && value.trim()) {
-      return value.trim();
-    }
+function resolveGatherKeywordFilter(
+  driverOptions: Record<string, unknown>,
+  driver: GatherSocialDriver
+): Record<string, unknown> {
+  if (driver !== "agent-browser") {
+    return asObject(driverOptions.keywordFilter);
   }
-  const platform = (source.social?.platform || "social").toLowerCase();
-  return `${platform}:${source.id}:agent-browser`;
+  const filters = asObject(driverOptions.filters);
+  return asObject(filters.keyword);
+}
+
+function injectGatherKeywordFilter(
+  driverOptions: Record<string, unknown>,
+  driver: GatherSocialDriver,
+  keywordFilter: Record<string, unknown>
+): Record<string, unknown> {
+  if (driver !== "agent-browser") {
+    return {
+      ...driverOptions,
+      keywordFilter,
+    };
+  }
+  const filters = asObject(driverOptions.filters);
+  return {
+    ...driverOptions,
+    filters: {
+      ...filters,
+      keyword: keywordFilter,
+    },
+  };
 }
 
 function applyGatherProxyConfig(

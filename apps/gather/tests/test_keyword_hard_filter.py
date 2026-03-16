@@ -92,7 +92,7 @@ def test_keyword_hit_content_persisted(monkeypatch):
         json={
             "platform": "hit-only",
             "sourceId": "source-hit",
-            "config": {"keywordFilter": {"keywords": ["ai", "regulation"]}},
+            "config": {"filters": {"keyword": {"keywords": ["ai", "regulation"]}}},
         },
     )
 
@@ -110,7 +110,7 @@ def test_keyword_miss_content_not_persisted(monkeypatch, capsys):
         json={
             "platform": "miss-only",
             "sourceId": "source-miss",
-            "config": {"keywordFilter": {"keywords": ["ai"]}},
+            "config": {"filters": {"keyword": {"keywords": ["ai"]}}},
         },
     )
 
@@ -127,7 +127,7 @@ def test_keyword_hit_only_persisted_miss_audit_only(monkeypatch, capsys):
         json={
             "platform": "mixed",
             "sourceId": "source-mixed",
-            "config": {"keywordFilter": {"keywords": ["ai"]}},
+            "config": {"filters": {"keyword": {"keywords": ["ai"]}}},
         },
     )
 
@@ -146,7 +146,7 @@ def test_keyword_filter_metrics_emitted(monkeypatch, capsys):
         json={
             "platform": "mixed",
             "sourceId": "source-metrics",
-            "config": {"keywordFilter": {"keywords": ["ai"]}},
+            "config": {"filters": {"keyword": {"keywords": ["ai"]}}},
         },
     )
 
@@ -166,7 +166,7 @@ def test_keyword_filter_invalid_config_fails_closed(monkeypatch, capsys):
         json={
             "platform": "mixed",
             "sourceId": "source-invalid",
-            "config": {"keywordFilter": {"keywords": []}},
+            "config": {"filters": {"keyword": {"keywords": []}}},
         },
     )
 
@@ -185,10 +185,12 @@ def test_keyword_segment_scope_keeps_only_matched_segments(monkeypatch):
             "platform": "chat-batch",
             "sourceId": "source-chat-segment",
             "config": {
-                "keywordFilter": {
-                    "keywords": ["alpha"],
-                    "matchScope": "segment",
-                    "splitMode": "line",
+                "filters": {
+                    "keyword": {
+                        "keywords": ["alpha"],
+                        "matchScope": "segment",
+                        "splitMode": "line",
+                    }
                 }
             },
         },
@@ -210,11 +212,13 @@ def test_keyword_segment_scope_supports_min_segment_chars(monkeypatch):
             "platform": "chat-batch",
             "sourceId": "source-chat-min-chars",
             "config": {
-                "keywordFilter": {
-                    "keywords": ["alpha"],
-                    "matchScope": "segment",
-                    "splitMode": "line",
-                    "minSegmentChars": 30,
+                "filters": {
+                    "keyword": {
+                        "keywords": ["alpha"],
+                        "matchScope": "segment",
+                        "splitMode": "line",
+                        "minChars": 30,
+                    }
                 }
             },
         },

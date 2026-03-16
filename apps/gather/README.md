@@ -166,12 +166,14 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 {
   "platform": "x",
   "sourceId": "source_123",
-  "responseFormats": ["text", "markdown"],
+  "output": {
+    "formats": ["text", "markdown"]
+  },
   "authData": {
     "cookies": [...],
     "origins": []
   },
-  "config": {
+  "driverOptions": {
     "query": "AI",
     "maxResults": 10
   },
@@ -180,13 +182,13 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
 `driver` 为可选扩展字段；可选值为 `xhttp`、`playwright`、`agent-browser`。未传时默认走 `playwright`。
-`responseFormats` 为可选字段，可选值：`"text"`、`"markdown"`：
+`output.formats` 为可选字段，可选值：`"text"`、`"markdown"`：
 
 - `["text"]`：仅返回 `text`
 - `["markdown"]`：仅返回 `markdown`
 - `["text", "markdown"]`：同时返回两种（默认行为）
 
-`/fetch` 兼容入口使用 `response_formats`（snake_case）。
+`/v2/fetch` 仍兼容旧字段（`config`、`responseFormats`、`config.agentBrowser`），但推荐统一迁移到 `driverOptions` + `output`。
 
 ### 通用网络代理配置（支持 HTTP/SOCKS/Tor）
 
@@ -271,23 +273,36 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
   "platform": "telegram",
   "sourceId": "source_telegram_demo",
   "driver": "agent-browser",
-  "config": {
-    "agentBrowser": {
-      "headed": true,
-      "profile": ".auth/telegram_profile",
-      "script": [
-        { "command": "open https://web.telegram.org/a/" },
-        { "command": "wait --load networkidle" },
-        { "command": "snapshot -i", "captureAs": "entry_snapshot" },
-        { "command": "click @e25", "repeat": 3, "intervalMs": 2000 },
-        { "command": "get text @e40", "captureAs": "messages" }
-      ]
+  "driverOptions": {
+    "headed": true,
+    "profile": ".auth/telegram_profile",
+    "auth": {
+      "stateFile": ".auth/telegram_auth.json"
+    },
+    "script": [
+      { "command": "open https://web.telegram.org/a/" },
+      { "command": "wait --load networkidle" },
+      { "command": "snapshot -i", "captureAs": "entry_snapshot" },
+      { "command": "click @e25", "repeat": 3, "intervalMs": 2000 },
+      { "command": "get text @e40", "captureAs": "messages" }
+    ],
+    "filters": {
+      "capture": {
+        "keys": ["messages"],
+        "minChars": 20
+      },
+      "keyword": {
+        "keywords": ["openclaw"],
+        "matchScope": "segment",
+        "splitMode": "line",
+        "minChars": 8
+      }
     }
   }
 }
 ```
 
-`agentBrowser` 常用参数：
+`driverOptions`（agent-browser）常用参数：
 
 - `script`: 必填，步骤数组（每步至少包含 `command`）
 - `headed`: 可选，`true` 时可视化执行（等价于 `agent-browser --headed`）
@@ -297,7 +312,7 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 - `commandTimeoutMs`: 可选，单步超时，默认 30000
 - `instanceId`: 可选，复用上一次返回的实例 ID（不传则创建新实例）
 - `ownerId`: 可选，实例归属标识；复用实例时会校验归属
-- `sessionKey`: 可选，会话隔离键；复用实例时会校验
+- `sessionKey`: 可选，会话隔离键；默认不需要与 `sourceId` 重复
 - `instanceTtlSeconds`: 可选，实例空闲 TTL（默认 900 秒）；超过后会在后续请求中被自动清理
 - `heartbeat`: 可选，`true` 时可发送空脚本续租实例（需配合 `instanceId`）
 - `closeOnComplete`: 可选，默认 `false`，为 `true` 时任务结束自动关闭实例
@@ -320,28 +335,28 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
   "platform": "x",
   "sourceId": "loop_demo_001",
   "driver": "agent-browser",
-  "config": {
-    "agentBrowser": {
-      "instanceId": "ab-1234567890",
-      "ownerId": "user-1001",
-      "script": [
-        { "command": "open https://x.com/some-post" },
-        {
-          "loop": {
-            "maxIterations": 20,
-            "intervalMs": 1000,
-            "steps": [
-              { "command": "scroll down 900" },
-              { "command": "snapshot", "captureAs": "page_snapshot" }
-            ],
-            "breakWhen": {
-              "captureKey": "page_snapshot",
-              "textIncludes": ["目标关键词", "备选关键词"]
-            }
+  "driverOptions": {
+    "instanceId": "ab-1234567890",
+    "ownerId": "user-1001",
+    "script": [
+      { "command": "open https://x.com/some-post" },
+      {
+        "loop": {
+          "maxIterations": 20,
+          "intervalMs": 1000,
+          "steps": [
+            { "command": "scroll down 900" },
+            { "command": "snapshot", "captureAs": "page_snapshot" }
+          ],
+          "breakWhen": {
+            "captureKey": "page_snapshot",
+            "textIncludes": ["目标关键词", "备选关键词"]
           }
         }
-      ],
-      "captureFilter": {
+      }
+    ],
+    "filters": {
+      "capture": {
         "keys": ["page_snapshot"],
         "perLine": true,
         "minChars": 20,
@@ -354,7 +369,7 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 }
 ```
 
-`loop` 参数说明（作为 `script` 中的一个步骤对象传入，不再支持 `config.agentBrowser.loop` 顶层写法）：
+`loop` 参数说明（作为 `script` 中的一个步骤对象传入，不再支持顶层 loop 写法）：
 
 - `maxIterations`: 最大循环次数（必填）
 - `intervalMs`: 每轮循环间隔（可选）
