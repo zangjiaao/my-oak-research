@@ -145,10 +145,7 @@ const KeywordFilterInput = z
   .optional()
   .nullable();
 
-const AgentBrowserScriptStepInput = z.object({
-  command: z.string().min(1),
-  captureAs: z.string().optional().nullable(),
-});
+const AgentBrowserScriptStepInput = z.record(z.string(), z.any());
 
 const AgentBrowserConfigInput = z
   .object({

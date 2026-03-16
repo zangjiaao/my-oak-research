@@ -11,6 +11,7 @@ import { z } from "zod";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { ErrorMessage } from "@/components/business";
 import SelectProxy from "./SelectProxy";
 import { Proxy } from "@/app/generated/prisma";
@@ -169,8 +170,7 @@ type PlaywrightArgRow = {
 
 type AgentScriptRow = {
   id: string;
-  command: string;
-  captureAs: string;
+  json: string;
 };
 
 const createEmptyArgRow = (): PlaywrightArgRow => ({
@@ -181,8 +181,7 @@ const createEmptyArgRow = (): PlaywrightArgRow => ({
 
 const createEmptyAgentScriptRow = (): AgentScriptRow => ({
   id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
-  command: "",
-  captureAs: "",
+  json: "",
 });
 
 const normalizeArgs = (input: unknown): Record<string, string> => {
@@ -400,15 +399,20 @@ export const SocialMediaFields = ({
     (rows: AgentScriptRow[]) => {
       if (!setValue) return;
       const script = rows
-        .map((row) => ({
-          command: row.command.trim(),
-          captureAs: row.captureAs.trim(),
-        }))
-        .filter((row) => row.command)
-        .map((row) => ({
-          command: row.command,
-          ...(row.captureAs ? { captureAs: row.captureAs } : {}),
-        }));
+        .map((row) => row.json.trim())
+        .filter(Boolean)
+        .map((row) => {
+          try {
+            const parsed = JSON.parse(row);
+            if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+              return parsed as Record<string, unknown>;
+            }
+            return null;
+          } catch {
+            return null;
+          }
+        })
+        .filter((step): step is Record<string, unknown> => Boolean(step));
       setValue("social.config.agentBrowser.script", script, {
         shouldDirty: true,
       });
@@ -439,11 +443,9 @@ export const SocialMediaFields = ({
       ? rawScript
           .map((step) => {
             if (!step || typeof step !== "object") return null;
-            const row = step as Record<string, unknown>;
             return {
               id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
-              command: typeof row.command === "string" ? row.command : "",
-              captureAs: typeof row.captureAs === "string" ? row.captureAs : "",
+              json: JSON.stringify(step, null, 2),
             } satisfies AgentScriptRow;
           })
           .filter(Boolean)
@@ -481,9 +483,9 @@ export const SocialMediaFields = ({
   );
 
   const updateAgentScriptRow = useCallback(
-    (id: string, field: "command" | "captureAs", value: string) => {
+    (id: string, value: string) => {
       const rows = agentScriptRows.map((row) =>
-        row.id === id ? { ...row, [field]: value } : row
+        row.id === id ? { ...row, json: value } : row
       );
       setAgentScriptRows(rows);
       syncAgentScriptToForm(rows);
@@ -758,7 +760,7 @@ export const SocialMediaFields = ({
 
       <div className="grid gap-3 rounded-md border bg-background p-3">
         <div className="flex items-center justify-between">
-          <Label className="text-sm font-medium">Script Steps</Label>
+          <Label className="text-sm font-medium">Script Steps (JSON per step)</Label>
           <Button type="button" variant="outline" size="sm" onClick={addAgentScriptRow}>
             <Plus className="mr-1 h-3.5 w-3.5" />
             Add
@@ -766,16 +768,12 @@ export const SocialMediaFields = ({
         </div>
         <div className="grid gap-2">
           {agentScriptRows.map((row) => (
-            <div key={row.id} className="grid grid-cols-[1fr_200px_auto] gap-2 items-center">
-              <Input
-                value={row.command}
-                placeholder='command, e.g. open https://web.telegram.org'
-                onChange={(e) => updateAgentScriptRow(row.id, "command", e.target.value)}
-              />
-              <Input
-                value={row.captureAs}
-                placeholder="captureAs (optional)"
-                onChange={(e) => updateAgentScriptRow(row.id, "captureAs", e.target.value)}
+            <div key={row.id} className="grid grid-cols-[1fr_auto] gap-2 items-start">
+              <Textarea
+                value={row.json}
+                rows={6}
+                placeholder='{"command":"open https://web.telegram.org/a/#-1001364377229"}'
+                onChange={(e) => updateAgentScriptRow(row.id, e.target.value)}
               />
               <Button
                 type="button"
@@ -789,11 +787,65 @@ export const SocialMediaFields = ({
             </div>
           ))}
         </div>
+        <p className="text-xs text-muted-foreground">
+          每行一个 JSON 对象步骤；仅合法 JSON 会被保存到配置。
+        </p>
       </div>
 
       <p className="text-xs text-muted-foreground">
         关键词过滤由 Query 关联的 Keywords 模块统一注入，此处无需配置。
       </p>
+
+      <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-2">
+          <Label>Match Scope</Label>
+          <Controller
+            name="social.config.keywordFilter.matchScope"
+            control={control}
+            render={({ field }) => (
+              <ControlledSelect
+                value={(field.value as string) || "segment"}
+                onValueChange={field.onChange}
+                placeholder="Select match scope"
+              >
+                <SelectItem value="segment">segment</SelectItem>
+                <SelectItem value="full">full</SelectItem>
+              </ControlledSelect>
+            )}
+          />
+        </div>
+        <div className="grid gap-2">
+          <Label>Split Mode</Label>
+          <Controller
+            name="social.config.keywordFilter.splitMode"
+            control={control}
+            render={({ field }) => (
+              <ControlledSelect
+                value={(field.value as string) || "line"}
+                onValueChange={field.onChange}
+                placeholder="Select split mode"
+              >
+                <SelectItem value="line">line</SelectItem>
+                <SelectItem value="paragraph">paragraph</SelectItem>
+                <SelectItem value="auto">auto</SelectItem>
+              </ControlledSelect>
+            )}
+          />
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor="social.config.keywordFilter.minSegmentChars">
+            Min Segment Chars
+          </Label>
+          <Input
+            id="social.config.keywordFilter.minSegmentChars"
+            type="number"
+            min={0}
+            {...register("social.config.keywordFilter.minSegmentChars", {
+              setValueAs: (value) => (value === "" ? undefined : Number(value)),
+            })}
+          />
+        </div>
+      </div>
 
       <div className="grid gap-4 md:grid-cols-2">
         <div className="grid gap-2">
