@@ -1362,7 +1362,7 @@ export const SocialMediaFields = ({
         renderAgentBrowserFields()
       )}
 
-      {socialPlatform === "REDDIT" && (
+      {socialPlatform === "REDDIT" && resolvedDriver !== "agent-browser" && (
         <>
           <div className="grid gap-3">
             <Label htmlFor="social.config.subreddit">Subreddit</Label>
@@ -1385,7 +1385,7 @@ export const SocialMediaFields = ({
         </>
       )}
 
-      {socialPlatform === "XIAOHONGSHU" && (
+      {socialPlatform === "XIAOHONGSHU" && resolvedDriver !== "agent-browser" && (
         <>
           <div className="grid gap-3">
             <Label htmlFor="social.config.userId">用户 ID</Label>
@@ -1417,7 +1417,7 @@ export const SocialMediaFields = ({
         </>
       )}
 
-      {socialPlatform === "DOUYIN" && (
+      {socialPlatform === "DOUYIN" && resolvedDriver !== "agent-browser" && (
         <>
           <div className="grid gap-3">
             <Label htmlFor="social.config.userId">用户 ID</Label>
@@ -1449,7 +1449,7 @@ export const SocialMediaFields = ({
         </>
       )}
 
-      {socialPlatform === "TIKTOK" && (
+      {socialPlatform === "TIKTOK" && resolvedDriver !== "agent-browser" && (
         <>
           <div className="grid gap-3">
             <Label htmlFor="social.config.username">用户名</Label>
@@ -1481,7 +1481,7 @@ export const SocialMediaFields = ({
         </>
       )}
 
-      {socialPlatform === "WEIBO" && (
+      {socialPlatform === "WEIBO" && resolvedDriver !== "agent-browser" && (
         <>
           <div className="grid gap-3">
             <Label htmlFor="social.config.userId">用户 ID</Label>
@@ -1521,7 +1521,7 @@ export const SocialMediaFields = ({
         </>
       )}
 
-      {socialPlatform === "TELEGRAM" && (
+      {socialPlatform === "TELEGRAM" && resolvedDriver !== "agent-browser" && (
         <>
           <div className="grid gap-3">
             <Label htmlFor="social.config.chatId">频道/群组 ID</Label>
@@ -1538,7 +1538,7 @@ export const SocialMediaFields = ({
         </>
       )}
 
-      {socialPlatform === "WHATSAPP" && (
+      {socialPlatform === "WHATSAPP" && resolvedDriver !== "agent-browser" && (
         <>
           <div className="grid gap-3">
             <Label htmlFor="social.config.contactName">联系人/群组名称</Label>
@@ -1555,7 +1555,7 @@ export const SocialMediaFields = ({
         </>
       )}
 
-      {socialPlatform === "INSTAGRAM" && (
+      {socialPlatform === "INSTAGRAM" && resolvedDriver !== "agent-browser" && (
         <>
           <div className="grid gap-3">
             <Label htmlFor="social.config.username">用户名</Label>
@@ -1587,7 +1587,7 @@ export const SocialMediaFields = ({
         </>
       )}
 
-      {socialPlatform === "FACEBOOK" && (
+      {socialPlatform === "FACEBOOK" && resolvedDriver !== "agent-browser" && (
         <>
           <div className="grid gap-3">
             <Label htmlFor="social.config.username">用户名 / 页面 ID</Label>
