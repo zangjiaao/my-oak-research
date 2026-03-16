@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import os
 import shlex
+import shutil
 import subprocess
 import threading
 import time
@@ -10,6 +12,31 @@ from uuid import uuid4
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+
+
+def _resolve_agent_browser_bin() -> str:
+    """Resolve the agent-browser binary, preferring the system-installed version
+    over any node_modules/.bin version which may be outdated."""
+    env_override = os.environ.get("AGENT_BROWSER_BIN")
+    if env_override:
+        return env_override
+
+    original_path = os.environ.get("PATH", "")
+    filtered_dirs = [
+        d for d in original_path.split(os.pathsep)
+        if "node_modules" not in d
+    ]
+    system_bin = shutil.which("agent-browser", path=os.pathsep.join(filtered_dirs))
+    if system_bin:
+        return system_bin
+
+    default_bin = shutil.which("agent-browser")
+    if default_bin:
+        return default_bin
+    return "agent-browser"
+
+
+_AGENT_BROWSER_BIN = _resolve_agent_browser_bin()
 
 
 @dataclass(slots=True)
@@ -52,7 +79,7 @@ class AgentBrowserInstanceState:
     instance_id: str
     tab_id: str
     command_prefix: list[str]
-    command_prefix_with_state: list[str]
+    state_file: str | None
     state_applied: bool
     owner_id: str | None
     session_key: str | None
@@ -77,6 +104,32 @@ def _truncate_text(value: str, max_length: int = 3000) -> str:
     if len(value) <= max_length:
         return value
     return f"{value[:max_length]}..."
+
+
+def _supports_state_flag_error(detail: str) -> bool:
+    normalized = detail.lower()
+    return "unknown command: --state" in normalized or "unknown option '--state'" in normalized
+
+
+def _state_ignored_warning(detail: str) -> bool:
+    return "state ignored: daemon already running" in detail.lower()
+
+
+def _resolve_state_path(state_file: str) -> Path:
+    raw_path = Path(state_file)
+    if raw_path.is_absolute():
+        return raw_path
+
+    cwd_candidate = (Path.cwd() / raw_path).resolve()
+    if cwd_candidate.exists():
+        return cwd_candidate
+
+    gather_root = Path(__file__).resolve().parents[1]
+    gather_candidate = (gather_root / raw_path).resolve()
+    if gather_candidate.exists():
+        return gather_candidate
+
+    return cwd_candidate
 
 
 def _read_int(raw_value: Any, *, field_name: str, minimum: int = 0) -> int:
@@ -216,8 +269,8 @@ def _resolve_proxy_options(options: dict[str, Any]) -> tuple[str | None, str | N
     return resolved_proxy, bypass
 
 
-def _build_command_prefixes(options: dict[str, Any]) -> tuple[list[str], list[str]]:
-    command_prefix = ["agent-browser"]
+def _build_command_prefixes(options: dict[str, Any]) -> tuple[list[str], str | None]:
+    command_prefix = [_AGENT_BROWSER_BIN]
     if bool(options.get("headed", False)):
         command_prefix.append("--headed")
 
@@ -238,26 +291,21 @@ def _build_command_prefixes(options: dict[str, Any]) -> tuple[list[str], list[st
     state_path: Path | None = None
     state_file = options.get("stateFile")
     if state_file:
-        state_path = Path(str(state_file))
+        state_path = _resolve_state_path(str(state_file))
         if not state_path.exists():
             raise AgentBrowserScriptError(
                 reason="invalid_config",
                 message=f"stateFile does not exist: {state_file}",
             )
 
-    command_prefix_with_state = (
-        command_prefix + ["--state", str(state_path)]
-        if state_path
-        else command_prefix
-    )
-    return command_prefix, command_prefix_with_state
+    return command_prefix, (str(state_path) if state_path else None)
 
 
 def _safe_close_daemon(verbose: bool) -> None:
     _emit_log(verbose, "close daemon")
     try:
         subprocess.run(
-            ["agent-browser", "close"],
+            [_AGENT_BROWSER_BIN, "close"],
             capture_output=True,
             text=True,
             timeout=10,
@@ -583,18 +631,18 @@ def _execute_steps_batch(
         command_parts = shlex.split(command)
         for attempt in range(1, repeat + 1):
             is_close_command = bool(command_parts) and command_parts[0] == "close"
+            used_state_prefix = False
+            state_applied_this_command = False
             if is_close_command:
-                args = ["agent-browser", "close"]
+                args = [_AGENT_BROWSER_BIN, "close"]
                 should_close_by_step = True
             else:
-                active_prefix = (
-                    instance.command_prefix_with_state
-                    if (instance.command_prefix_with_state != instance.command_prefix and not instance.state_applied)
-                    else instance.command_prefix
-                )
+                can_use_state_prefix = bool(instance.state_file) and not instance.state_applied
+                active_prefix = instance.command_prefix
+                used_state_prefix = can_use_state_prefix
                 args = active_prefix + command_parts
-                if instance.command_prefix_with_state != instance.command_prefix and not instance.state_applied:
-                    instance.state_applied = True
+                if can_use_state_prefix and instance.state_file:
+                    args = args + ["--state", instance.state_file]
 
             started_at = time.monotonic()
             _emit_log(
@@ -644,23 +692,83 @@ def _execute_steps_batch(
                 verbose,
                 f"{batch_label} step={step_index} attempt={attempt} exit={completed.returncode} elapsed={elapsed_ms}ms",
             )
-            if completed.returncode != 0:
-                detail = stderr.strip() or stdout.strip() or f"exit code {completed.returncode}"
+            if used_state_prefix and _state_ignored_warning(stderr):
+                _emit_log(verbose, f"{batch_label} state ignored by existing daemon, restarting daemon and retrying")
+                _safe_close_daemon(verbose)
+                retry_started_at = time.monotonic()
+                try:
+                    completed = subprocess.run(
+                        args,
+                        capture_output=True,
+                        text=True,
+                        timeout=command_timeout_ms / 1000,
+                        check=False,
+                    )
+                except subprocess.TimeoutExpired as error:
+                    raise AgentBrowserScriptError(
+                        reason="command_timeout",
+                        message=f"Command timed out after {command_timeout_ms}ms",
+                        step_index=step_index,
+                        command=command,
+                        debug_context={"steps": debug_steps},
+                    ) from error
+                stdout = completed.stdout or ""
+                stderr = completed.stderr or ""
+                elapsed_ms = int((time.monotonic() - retry_started_at) * 1000)
+                debug_steps.append(
+                    {
+                        "batch": batch_label,
+                        "step_index": step_index,
+                        "attempt": attempt,
+                        "command": command,
+                        "elapsed_ms": elapsed_ms,
+                        "return_code": completed.returncode,
+                        "stdout": _truncate_text(stdout.strip()),
+                        "stderr": _truncate_text(stderr.strip()),
+                        "retry_after_close_daemon": True,
+                    }
+                )
                 _emit_log(
                     verbose,
-                    f"{batch_label} step failed step={step_index} command={command} detail={_truncate_text(detail)}",
+                    f"{batch_label} step={step_index} attempt={attempt} retry-after-close exit={completed.returncode} elapsed={elapsed_ms}ms",
                 )
-                raise AgentBrowserScriptError(
-                    reason="command_failed",
-                    message=f"agent-browser command failed: {detail}",
-                    step_index=step_index,
-                    command=command,
-                    return_code=completed.returncode,
-                    stdout=_truncate_text(stdout.strip()),
-                    stderr=_truncate_text(stderr.strip()),
-                    debug_context={"steps": debug_steps},
-                )
+            if completed.returncode == 0 and used_state_prefix:
+                state_applied_this_command = True
+            if completed.returncode != 0:
+                detail = stderr.strip() or stdout.strip() or f"exit code {completed.returncode}"
+                if used_state_prefix and _supports_state_flag_error(detail):
+                    raise AgentBrowserScriptError(
+                        reason="invalid_config",
+                        message=(
+                            "agent-browser does not support --state for this command. "
+                            "Please verify installed agent-browser version and stateFile format/path."
+                        ),
+                        step_index=step_index,
+                        command=command,
+                        return_code=completed.returncode,
+                        stdout=_truncate_text(stdout.strip()),
+                        stderr=_truncate_text(stderr.strip()),
+                        debug_context={"steps": debug_steps},
+                    )
 
+                if completed.returncode != 0:
+                    _emit_log(
+                        verbose,
+                        f"{batch_label} step failed step={step_index} command={command} detail={_truncate_text(detail)}",
+                    )
+                    raise AgentBrowserScriptError(
+                        reason="command_failed",
+                        message=f"agent-browser command failed: {detail}",
+                        step_index=step_index,
+                        command=command,
+                        return_code=completed.returncode,
+                        stdout=_truncate_text(stdout.strip()),
+                        stderr=_truncate_text(stderr.strip()),
+                        debug_context={"steps": debug_steps},
+                    )
+
+            if state_applied_this_command:
+                instance.state_applied = True
             step_results.append(
                 AgentBrowserStepResult(
                     step_index=step_index,
@@ -728,7 +836,11 @@ def _execute_loop_block(
 
 
 def _create_instance(options: dict[str, Any], *, verbose: bool) -> AgentBrowserInstanceState:
-    command_prefix, command_prefix_with_state = _build_command_prefixes(options)
+    command_prefix, resolved_state_file = _build_command_prefixes(options)
+    _emit_log(verbose, f"using binary: {_AGENT_BROWSER_BIN}")
+    if resolved_state_file:
+        _emit_log(verbose, "ensure fresh daemon before applying stateFile")
+        _safe_close_daemon(verbose)
     owner_id = _normalize_optional_str(options.get("ownerId"), "ownerId")
     session_key = _normalize_optional_str(options.get("sessionKey"), "sessionKey")
     ttl_seconds = _read_int(options.get("instanceTtlSeconds", 900), field_name="instanceTtlSeconds", minimum=1)
@@ -736,7 +848,7 @@ def _create_instance(options: dict[str, Any], *, verbose: bool) -> AgentBrowserI
         instance_id=f"ab-{uuid4().hex[:10]}",
         tab_id=f"tab-{uuid4().hex[:8]}",
         command_prefix=command_prefix,
-        command_prefix_with_state=command_prefix_with_state,
+        state_file=resolved_state_file,
         state_applied=False,
         owner_id=owner_id,
         session_key=session_key,

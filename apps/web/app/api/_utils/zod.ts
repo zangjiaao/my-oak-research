@@ -1,4 +1,8 @@
 import { z } from "zod";
+import {
+  getDefaultDriver,
+  supportsDriver,
+} from "@/lib/social-driver-support";
 
 export const LangEnum = z
   .enum(["zh", "en", "ja", "auto"])
@@ -124,6 +128,55 @@ export const SearchEngineKindEnum = z.enum([
   "CUSTOM",
 ]);
 export const SocialPlatformEnum = z.enum(["X", "TELEGRAM", "REDDIT", "XIAOHONGSHU", "DOUYIN", "TIKTOK", "WEIBO", "WHATSAPP", "INSTAGRAM", "FACEBOOK"]);
+export const SocialDriverEnum = z.enum(["xhttp", "playwright", "agent-browser"]);
+
+const KeywordFilterInput = z
+  .object({
+    keywords: delimitedStringArray({
+      itemMin: 1,
+      itemMax: 128,
+      totalMax: 64,
+      minItems: 0,
+    }).default([]),
+    matchScope: z.enum(["segment", "full"]).optional(),
+    splitMode: z.enum(["line", "paragraph", "auto"]).optional(),
+    minSegmentChars: z.number().int().min(0).optional(),
+  })
+  .optional()
+  .nullable();
+
+const AgentBrowserScriptStepInput = z.record(z.string(), z.any());
+
+const AgentBrowserConfigInput = z
+  .object({
+    ownerId: z.string().optional().nullable(),
+    sessionKey: z.string().optional().nullable(),
+    headed: z.boolean().optional().default(true),
+    closeOnComplete: z.boolean().optional().default(true),
+    script: z.array(AgentBrowserScriptStepInput).default([]),
+    recordSchema: z
+      .object({
+        format: z.enum(["auto", "jsonl", "tagged", "structured"]).optional(),
+      })
+      .optional()
+      .nullable(),
+    captureFilter: z
+      .object({
+        keys: delimitedStringArray({
+          itemMin: 1,
+          itemMax: 64,
+          totalMax: 64,
+          minItems: 0,
+        }).default([]),
+        perLine: z.boolean().optional(),
+        dedupe: z.boolean().optional(),
+        minChars: z.number().int().min(0).optional(),
+      })
+      .optional()
+      .nullable(),
+  })
+  .optional()
+  .nullable();
 
 function parseJson(val: unknown) {
   if (val === "") return undefined;
@@ -177,6 +230,8 @@ export const SocialConfigByPlatform = z.discriminatedUnion("platform", [
     platform: z.literal("X"),
     config: z
       .object({
+        driver: SocialDriverEnum.default(getDefaultDriver("X")),
+        keywordFilter: KeywordFilterInput,
         playwright: z.object({
           mode: z.enum(["eval-js"]).default("eval-js"),
           headless: z.boolean().default(false),
@@ -197,10 +252,24 @@ export const SocialConfigByPlatform = z.discriminatedUnion("platform", [
               )
             );
           }, z.record(z.string().min(1), z.string()).default({})),
-        }),
+        }).optional(),
+        agentBrowser: z.preprocess((val) => parseJson(val), AgentBrowserConfigInput),
       })
-      .refine((v) => Boolean(v.playwright.scriptPath), {
-        message: "X: playwright scriptPath is required",
+      .superRefine((v, ctx) => {
+        if (!supportsDriver("X", v.driver)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["driver"],
+            message: "X: unsupported driver",
+          });
+        }
+        if (v.driver === "playwright" && !v.playwright?.scriptPath) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["playwright", "scriptPath"],
+            message: "X: playwright scriptPath is required",
+          });
+        }
       }),
     credentialId: cuidOpt,
     proxyId: cuidOpt,
@@ -208,8 +277,19 @@ export const SocialConfigByPlatform = z.discriminatedUnion("platform", [
   z.object({
     platform: z.literal("REDDIT"),
     config: z.object({
+      driver: SocialDriverEnum.default(getDefaultDriver("REDDIT")),
+      keywordFilter: KeywordFilterInput,
+      agentBrowser: z.preprocess((val) => parseJson(val), AgentBrowserConfigInput),
       subreddit: z.string().min(1),
       sort: z.enum(["hot", "new", "top"]).optional(),
+    }).superRefine((v, ctx) => {
+      if (!supportsDriver("REDDIT", v.driver)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["driver"],
+          message: "REDDIT: unsupported driver",
+        });
+      }
     }),
     credentialId: cuidOpt,
     proxyId: cuidOpt,
@@ -218,12 +298,27 @@ export const SocialConfigByPlatform = z.discriminatedUnion("platform", [
     platform: z.literal("XIAOHONGSHU"),
     config: z
       .object({
+        driver: SocialDriverEnum.default(getDefaultDriver("XIAOHONGSHU")),
+        keywordFilter: KeywordFilterInput,
+        agentBrowser: z.preprocess((val) => parseJson(val), AgentBrowserConfigInput),
         userId: z.string().optional(),
         noteId: z.string().optional(),
         query: z.string().optional(),
       })
-      .refine((v) => v.userId || v.noteId || v.query, {
-        message: "Xiaohongshu: provide at least one of userId/noteId/query",
+      .superRefine((v, ctx) => {
+        if (!supportsDriver("XIAOHONGSHU", v.driver)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["driver"],
+            message: "XIAOHONGSHU: unsupported driver",
+          });
+        }
+        if (!v.userId && !v.noteId && !v.query) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Xiaohongshu: provide at least one of userId/noteId/query",
+          });
+        }
       }),
     credentialId: cuidOpt,
     proxyId: cuidOpt,
@@ -232,12 +327,27 @@ export const SocialConfigByPlatform = z.discriminatedUnion("platform", [
     platform: z.literal("DOUYIN"),
     config: z
       .object({
+        driver: SocialDriverEnum.default(getDefaultDriver("DOUYIN")),
+        keywordFilter: KeywordFilterInput,
+        agentBrowser: z.preprocess((val) => parseJson(val), AgentBrowserConfigInput),
         userId: z.string().optional(),
         videoId: z.string().optional(),
         query: z.string().optional(),
       })
-      .refine((v) => v.userId || v.videoId || v.query, {
-        message: "Douyin: provide at least one of userId/videoId/query",
+      .superRefine((v, ctx) => {
+        if (!supportsDriver("DOUYIN", v.driver)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["driver"],
+            message: "DOUYIN: unsupported driver",
+          });
+        }
+        if (!v.userId && !v.videoId && !v.query) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Douyin: provide at least one of userId/videoId/query",
+          });
+        }
       }),
     credentialId: cuidOpt,
     proxyId: cuidOpt,
@@ -246,12 +356,27 @@ export const SocialConfigByPlatform = z.discriminatedUnion("platform", [
     platform: z.literal("TIKTOK"),
     config: z
       .object({
+        driver: SocialDriverEnum.default(getDefaultDriver("TIKTOK")),
+        keywordFilter: KeywordFilterInput,
+        agentBrowser: z.preprocess((val) => parseJson(val), AgentBrowserConfigInput),
         username: z.string().optional(),
         videoId: z.string().optional(),
         query: z.string().optional(),
       })
-      .refine((v) => v.username || v.videoId || v.query, {
-        message: "TikTok: provide at least one of username/videoId/query",
+      .superRefine((v, ctx) => {
+        if (!supportsDriver("TIKTOK", v.driver)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["driver"],
+            message: "TIKTOK: unsupported driver",
+          });
+        }
+        if (!v.username && !v.videoId && !v.query) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "TikTok: provide at least one of username/videoId/query",
+          });
+        }
       }),
     credentialId: cuidOpt,
     proxyId: cuidOpt,
@@ -260,12 +385,27 @@ export const SocialConfigByPlatform = z.discriminatedUnion("platform", [
     platform: z.literal("WEIBO"),
     config: z
       .object({
+        driver: SocialDriverEnum.default(getDefaultDriver("WEIBO")),
+        keywordFilter: KeywordFilterInput,
+        agentBrowser: z.preprocess((val) => parseJson(val), AgentBrowserConfigInput),
         userId: z.string().optional(),
         query: z.string().optional(),
         hotTopics: z.boolean().optional(),
       })
-      .refine((v) => v.userId || v.query || v.hotTopics, {
-        message: "Weibo: provide at least one of userId/query/hotTopics",
+      .superRefine((v, ctx) => {
+        if (!supportsDriver("WEIBO", v.driver)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["driver"],
+            message: "WEIBO: unsupported driver",
+          });
+        }
+        if (!v.userId && !v.query && !v.hotTopics) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Weibo: provide at least one of userId/query/hotTopics",
+          });
+        }
       }),
     credentialId: cuidOpt,
     proxyId: cuidOpt,
@@ -274,8 +414,20 @@ export const SocialConfigByPlatform = z.discriminatedUnion("platform", [
     platform: z.literal("TELEGRAM"),
     config: z
       .object({
+        driver: SocialDriverEnum.default(getDefaultDriver("TELEGRAM")),
+        keywordFilter: KeywordFilterInput,
+        agentBrowser: z.preprocess((val) => parseJson(val), AgentBrowserConfigInput),
         chatId: z.string().optional(),
         maxResults: z.number().optional(),
+      })
+      .superRefine((v, ctx) => {
+        if (!supportsDriver("TELEGRAM", v.driver)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["driver"],
+            message: "TELEGRAM: unsupported driver",
+          });
+        }
       }),
     credentialId: cuidOpt,
     proxyId: cuidOpt,
@@ -284,8 +436,20 @@ export const SocialConfigByPlatform = z.discriminatedUnion("platform", [
     platform: z.literal("WHATSAPP"),
     config: z
       .object({
+        driver: SocialDriverEnum.default(getDefaultDriver("WHATSAPP")),
+        keywordFilter: KeywordFilterInput,
+        agentBrowser: z.preprocess((val) => parseJson(val), AgentBrowserConfigInput),
         contactName: z.string().optional(),
         maxResults: z.number().optional(),
+      })
+      .superRefine((v, ctx) => {
+        if (!supportsDriver("WHATSAPP", v.driver)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["driver"],
+            message: "WHATSAPP: unsupported driver",
+          });
+        }
       }),
     credentialId: cuidOpt,
     proxyId: cuidOpt,
@@ -294,10 +458,22 @@ export const SocialConfigByPlatform = z.discriminatedUnion("platform", [
     platform: z.literal("INSTAGRAM"),
     config: z
       .object({
+        driver: SocialDriverEnum.default(getDefaultDriver("INSTAGRAM")),
+        keywordFilter: KeywordFilterInput,
+        agentBrowser: z.preprocess((val) => parseJson(val), AgentBrowserConfigInput),
         username: z.string().optional(),
         postId: z.string().optional(),
         query: z.string().optional(),
         maxResults: z.number().optional(),
+      })
+      .superRefine((v, ctx) => {
+        if (!supportsDriver("INSTAGRAM", v.driver)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["driver"],
+            message: "INSTAGRAM: unsupported driver",
+          });
+        }
       }),
     credentialId: cuidOpt,
     proxyId: cuidOpt,
@@ -306,10 +482,22 @@ export const SocialConfigByPlatform = z.discriminatedUnion("platform", [
     platform: z.literal("FACEBOOK"),
     config: z
       .object({
+        driver: SocialDriverEnum.default(getDefaultDriver("FACEBOOK")),
+        keywordFilter: KeywordFilterInput,
+        agentBrowser: z.preprocess((val) => parseJson(val), AgentBrowserConfigInput),
         username: z.string().optional(),
         postId: z.string().optional(),
         query: z.string().optional(),
         maxResults: z.number().optional(),
+      })
+      .superRefine((v, ctx) => {
+        if (!supportsDriver("FACEBOOK", v.driver)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["driver"],
+            message: "FACEBOOK: unsupported driver",
+          });
+        }
       }),
     credentialId: cuidOpt,
     proxyId: cuidOpt,

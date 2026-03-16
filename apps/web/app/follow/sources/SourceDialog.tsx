@@ -41,6 +41,7 @@ import { useSourceMutation } from "@/hooks/useSourceMutation";
 import { SocialMediaFields } from "./SocialMediaFields";
 import { DarknetFields } from "./DarknetFields";
 import { SearchEngineFields } from "./SearchEngineFields";
+import { getDefaultDriver } from "@/lib/social-driver-support";
 
 type SourceFormValues = z.infer<typeof SourceCreateSchema>;
 type WebFormValues = Extract<SourceFormValues, { type: "WEB" }>;
@@ -170,19 +171,27 @@ const getDefaultValues = (
     }
     case "SOCIAL_MEDIA": {
       if (isSocialSource(source)) {
+        const socialConfig = (source.social.config || {}) as Record<string, unknown>;
+        if (typeof socialConfig.driver !== "string") {
+          socialConfig.driver = getDefaultDriver(source.social.platform);
+        }
         return {
           ...base,
           type: "SOCIAL_MEDIA",
-          social: source.social as unknown as SocialFormValues["social"],
+          social: {
+            ...source.social,
+            config: socialConfig,
+          } as unknown as SocialFormValues["social"],
         } as SourceFormValues;
       }
       const defaultSocial: SocialFormValues["social"] = {
         platform: "X",
         config: {
+          driver: getDefaultDriver("X"),
           playwright: {
             mode: "eval-js",
             headless: false,
-            targetUrl: "https://x.com",
+            targetUrl: "",
           },
         } as any,
         credentialId: null,
