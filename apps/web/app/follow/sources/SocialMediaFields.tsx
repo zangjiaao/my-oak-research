@@ -719,25 +719,9 @@ export const SocialMediaFields = ({
   const renderAgentBrowserFields = () => (
     <div className="grid gap-4 rounded-lg border bg-muted/30 p-4">
       <Label className="text-base font-medium">Agent Browser Params</Label>
-
-      <div className="grid gap-4 md:grid-cols-2">
-        <div className="grid gap-2">
-          <Label htmlFor="social.config.agentBrowser.ownerId">Owner ID</Label>
-          <Input
-            id="social.config.agentBrowser.ownerId"
-            placeholder="user-1001"
-            {...register("social.config.agentBrowser.ownerId")}
-          />
-        </div>
-        <div className="grid gap-2">
-          <Label htmlFor="social.config.agentBrowser.sessionKey">Session Key</Label>
-          <Input
-            id="social.config.agentBrowser.sessionKey"
-            placeholder="ws-tenant-a"
-            {...register("social.config.agentBrowser.sessionKey")}
-          />
-        </div>
-      </div>
+      <p className="text-xs text-muted-foreground">
+        ownerId / sessionKey 由系统统一维护，表单无需填写。
+      </p>
 
       <div className="flex flex-wrap items-center gap-5">
         <Controller

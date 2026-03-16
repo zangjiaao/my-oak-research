@@ -9,7 +9,7 @@ export const SOCIAL_PLATFORM_DRIVER_SUPPORT: Record<SocialPlatform, readonly Soc
   DOUYIN: ["playwright", "xhttp", "agent-browser"],
   TIKTOK: ["playwright", "xhttp", "agent-browser"],
   WEIBO: ["playwright", "xhttp", "agent-browser"],
-  TELEGRAM: ["playwright", "xhttp", "agent-browser"],
+  TELEGRAM: ["agent-browser"],
   WHATSAPP: ["playwright", "xhttp", "agent-browser"],
   INSTAGRAM: ["playwright", "xhttp", "agent-browser"],
   FACEBOOK: ["playwright", "xhttp", "agent-browser"],

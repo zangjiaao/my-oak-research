@@ -707,7 +707,7 @@ function normalizeGatherSocialConfig(
   driver: GatherSocialDriver
 ): Record<string, unknown> {
   if (driver === "agent-browser") {
-    return normalizeAgentBrowserGatherConfig(config);
+    return normalizeAgentBrowserGatherConfig(source, config);
   }
 
   const platform = source.social?.platform;
@@ -762,6 +762,7 @@ function normalizeGatherSocialConfig(
 }
 
 function normalizeAgentBrowserGatherConfig(
+  source: SocialMediaSource,
   config: Record<string, unknown>
 ): Record<string, unknown> {
   const topLevelKeywordFilter = asObject(config.keywordFilter);
@@ -796,15 +797,56 @@ function normalizeAgentBrowserGatherConfig(
       ? topLevelKeywordFilter
       : wrappedKeywordFilter;
 
+  const ownerId = resolveAgentBrowserOwnerId(source, agentBrowserOptions);
+  const sessionKey = resolveAgentBrowserSessionKey(source, agentBrowserOptions);
+  const normalizedAgentBrowser = {
+    ...agentBrowserOptions,
+    ownerId,
+    sessionKey,
+  };
+
   return {
     driver: "agent-browser",
-    ...(Object.keys(agentBrowserOptions).length > 0
-      ? { agentBrowser: agentBrowserOptions }
-      : {}),
+    agentBrowser: normalizedAgentBrowser,
     ...(Object.keys(keywordFilter).length > 0
       ? { keywordFilter }
       : {}),
   };
+}
+
+function resolveAgentBrowserOwnerId(
+  source: SocialMediaSource,
+  options: Record<string, unknown>
+): string {
+  const candidates = [
+    options.ownerId,
+    options.owner_id,
+    source.social?.credentialId,
+    source.credentialId,
+  ];
+  for (const value of candidates) {
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
+  }
+  return `source:${source.id}`;
+}
+
+function resolveAgentBrowserSessionKey(
+  source: SocialMediaSource,
+  options: Record<string, unknown>
+): string {
+  const candidates = [
+    options.sessionKey,
+    options.session_key,
+  ];
+  for (const value of candidates) {
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
+  }
+  const platform = (source.social?.platform || "social").toLowerCase();
+  return `${platform}:${source.id}:agent-browser`;
 }
 
 function applyGatherProxyConfig(
