@@ -86,6 +86,23 @@ def _supports_state_flag_error(detail: str) -> bool:
     return "unknown command: --state" in normalized or "unknown option '--state'" in normalized
 
 
+def _resolve_state_path(state_file: str) -> Path:
+    raw_path = Path(state_file)
+    if raw_path.is_absolute():
+        return raw_path
+
+    cwd_candidate = (Path.cwd() / raw_path).resolve()
+    if cwd_candidate.exists():
+        return cwd_candidate
+
+    gather_root = Path(__file__).resolve().parents[1]
+    gather_candidate = (gather_root / raw_path).resolve()
+    if gather_candidate.exists():
+        return gather_candidate
+
+    return cwd_candidate
+
+
 def _read_int(raw_value: Any, *, field_name: str, minimum: int = 0) -> int:
     try:
         value = int(raw_value)
@@ -245,7 +262,7 @@ def _build_command_prefixes(options: dict[str, Any]) -> tuple[list[str], list[st
     state_path: Path | None = None
     state_file = options.get("stateFile")
     if state_file:
-        state_path = Path(str(state_file))
+        state_path = _resolve_state_path(str(state_file))
         if not state_path.exists():
             raise AgentBrowserScriptError(
                 reason="invalid_config",
@@ -798,6 +815,9 @@ def _execute_loop_block(
 def _create_instance(options: dict[str, Any], *, verbose: bool) -> AgentBrowserInstanceState:
     command_prefix, command_prefix_with_state = _build_command_prefixes(options)
     state_file = options.get("stateFile")
+    resolved_state_file: str | None = None
+    if isinstance(state_file, str) and state_file.strip():
+        resolved_state_file = str(_resolve_state_path(state_file.strip()))
     owner_id = _normalize_optional_str(options.get("ownerId"), "ownerId")
     session_key = _normalize_optional_str(options.get("sessionKey"), "sessionKey")
     ttl_seconds = _read_int(options.get("instanceTtlSeconds", 900), field_name="instanceTtlSeconds", minimum=1)
@@ -806,7 +826,7 @@ def _create_instance(options: dict[str, Any], *, verbose: bool) -> AgentBrowserI
         tab_id=f"tab-{uuid4().hex[:8]}",
         command_prefix=command_prefix,
         command_prefix_with_state=command_prefix_with_state,
-        state_file=str(state_file).strip() if isinstance(state_file, str) and state_file.strip() else None,
+        state_file=resolved_state_file,
         state_applied=False,
         owner_id=owner_id,
         session_key=session_key,
