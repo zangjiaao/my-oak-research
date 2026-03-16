@@ -134,7 +134,7 @@ def test_keyword_hit_only_persisted_miss_audit_only(monkeypatch, capsys):
     assert response.status_code == 200
     items = response.json()
     assert len(items) == 1
-    assert items[0]["title"] == "AI signal"
+    assert "ai intelligence market" in items[0]["recordContent"]["text"]
     output = capsys.readouterr().out
     assert "[gather][keyword-filter][audit]" in output
 
@@ -199,9 +199,9 @@ def test_keyword_segment_scope_keeps_only_matched_segments(monkeypatch):
     assert response.status_code == 200
     items = response.json()
     assert len(items) == 1
-    assert "alpha launch is live" in items[0]["text"]
+    assert "alpha launch is live" in items[0]["recordContent"]["text"]
     assert items[0]["matchedKeywords"] == ["alpha"]
-    assert items[0]["title"].endswith("[segment 3]")
+    assert items[0]["recordType"] == "message"
 
 
 def test_keyword_segment_scope_supports_min_segment_chars(monkeypatch):
@@ -227,4 +227,4 @@ def test_keyword_segment_scope_supports_min_segment_chars(monkeypatch):
     assert response.status_code == 200
     items = response.json()
     assert len(items) == 1
-    assert "alpha launch is live" in items[0]["text"]
+    assert "alpha launch is live" in items[0]["recordContent"]["text"]

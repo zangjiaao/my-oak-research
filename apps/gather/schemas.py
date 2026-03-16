@@ -65,12 +65,12 @@ class VerifyAuthResponse(BaseModel):
 
 
 class CleanItem(BaseModel):
-    title: Optional[str] = None
-    text: Optional[str] = None
-    markdown: Optional[str] = None
+    title: Optional[str] = Field(default=None, exclude=True)
+    text: Optional[str] = Field(default=None, exclude=True)
+    markdown: Optional[str] = Field(default=None, exclude=True)
     platform: str
-    url: Optional[str] = None
-    time: Optional[datetime] = None
+    url: Optional[str] = Field(default=None, exclude=True)
+    time: Optional[datetime] = Field(default=None, exclude=True)
     sourceId: str
     sourceType: str
     recordId: str

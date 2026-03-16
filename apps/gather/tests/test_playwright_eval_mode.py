@@ -53,7 +53,7 @@ def test_fetch_v2_playwright_eval_mode_uses_eval_runner(monkeypatch):
     payload = response.json()
     assert isinstance(payload, list)
     assert payload
-    assert payload[0]["title"] == "eval-title"
+    assert payload[0]["recordContent"]["text"] == "eval keyword text"
     assert payload[0]["driver"] == "playwright"
     assert payload[0]["recordType"] == "eval-js"
 

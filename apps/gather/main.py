@@ -1184,10 +1184,14 @@ def _apply_response_formats(items: list[CleanItem], response_formats: Optional[L
     include_markdown = "markdown" in allowed
 
     for item in items:
+        if not isinstance(item.recordContent, dict):
+            item.recordContent = {}
         if not include_text:
             item.text = None
+            item.recordContent.pop("text", None)
         if not include_markdown:
             item.markdown = None
+            item.recordContent.pop("markdown", None)
     return items
 
 

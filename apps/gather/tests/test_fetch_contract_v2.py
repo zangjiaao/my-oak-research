@@ -55,7 +55,6 @@ def test_fetch_v2_happy_path(monkeypatch):
     assert items
 
     for item in items:
-        assert "text" in item
         assert "platform" in item
         assert "sourceId" in item
         assert "sourceType" in item
@@ -100,8 +99,9 @@ def test_fetch_v2_response_formats_text_only(monkeypatch):
     assert isinstance(items, list)
     assert items
     for item in items:
-        assert "text" in item
-        assert "markdown" not in item
+        assert "recordContent" in item
+        assert "text" in item["recordContent"]
+        assert "markdown" not in item["recordContent"]
 
 
 def test_fetch_v2_response_formats_markdown_only(monkeypatch):
@@ -120,8 +120,9 @@ def test_fetch_v2_response_formats_markdown_only(monkeypatch):
     assert isinstance(items, list)
     assert items
     for item in items:
-        assert "text" not in item
-        assert "markdown" in item
+        assert "recordContent" in item
+        assert "text" not in item["recordContent"]
+        assert "markdown" in item["recordContent"]
 
 
 def test_fetch_v2_driver_options_without_legacy_config(monkeypatch):
@@ -140,7 +141,8 @@ def test_fetch_v2_driver_options_without_legacy_config(monkeypatch):
     items = response.json()
     assert isinstance(items, list)
     assert items
-    assert "text" in items[0]
+    assert "recordContent" in items[0]
+    assert "text" in items[0]["recordContent"]
 
 
 def test_fetch_v1_endpoint_removed():

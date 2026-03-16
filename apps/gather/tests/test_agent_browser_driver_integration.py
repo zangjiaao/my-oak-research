@@ -63,8 +63,8 @@ def test_v2_fetch_agent_browser_driver_returns_captures(monkeypatch):
     assert isinstance(payload, list)
     assert payload
     assert payload[0]["driver"] == "agent-browser"
-    assert payload[0]["title"] == "agent-browser capture: messages"
-    assert "hello world" in payload[0]["text"]
+    assert payload[0]["recordType"] == "capture"
+    assert "hello world" in payload[0]["recordContent"]["text"]
     assert payload[0]["instanceId"] == "ab-demo123"
     assert payload[0]["tabId"] == "tab-main01"
     assert payload[0]["instanceActive"] is True

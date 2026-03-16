@@ -160,10 +160,10 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
 `driver` 为可选扩展字段；可选值为 `xhttp`、`playwright`、`agent-browser`。未传时默认走 `playwright`。
-`output.formats` 为可选字段，可选值：`"text"`、`"markdown"`：
+`output.formats` 为可选字段，可选值：`"text"`、`"markdown"`，用于控制 `recordContent` 中输出哪些正文字段：
 
-- `["text"]`：仅返回 `text`
-- `["markdown"]`：仅返回 `markdown`
+- `["text"]`：仅返回 `recordContent.text`
+- `["markdown"]`：仅返回 `recordContent.markdown`
 - `["text", "markdown"]`：同时返回两种（默认行为）
 
 `/v2/fetch` 只接受新字段：`sourceId`、`authData`、`driverOptions`、`output`。旧字段（如 `config`、`responseFormats`、`source_id`）会返回校验错误。
