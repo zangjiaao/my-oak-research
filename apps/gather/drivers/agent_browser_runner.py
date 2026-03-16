@@ -5,6 +5,7 @@ import subprocess
 import threading
 import time
 import re
+import os
 from urllib.parse import quote, urlparse, urlunparse
 from uuid import uuid4
 from dataclasses import dataclass
@@ -53,6 +54,7 @@ class AgentBrowserInstanceState:
     tab_id: str
     command_prefix: list[str]
     command_prefix_with_state: list[str]
+    state_file: str | None
     state_applied: bool
     owner_id: str | None
     session_key: str | None
@@ -589,6 +591,7 @@ def _execute_steps_batch(
         for attempt in range(1, repeat + 1):
             is_close_command = bool(command_parts) and command_parts[0] == "close"
             used_state_prefix = False
+            state_applied_this_command = False
             if is_close_command:
                 args = ["agent-browser", "close"]
                 should_close_by_step = True
@@ -650,13 +653,20 @@ def _execute_steps_batch(
                 verbose,
                 f"{batch_label} step={step_index} attempt={attempt} exit={completed.returncode} elapsed={elapsed_ms}ms",
             )
+            if completed.returncode == 0 and used_state_prefix:
+                state_applied_this_command = True
             if completed.returncode != 0:
                 detail = stderr.strip() or stdout.strip() or f"exit code {completed.returncode}"
                 if used_state_prefix and _supports_state_flag_error(detail):
                     fallback_args = instance.command_prefix + command_parts
+                    fallback_env = None
+                    if instance.state_file:
+                        fallback_env = os.environ.copy()
+                        fallback_env["AGENT_BROWSER_STATE"] = instance.state_file
                     _emit_log(
                         verbose,
-                        f"{batch_label} state flag unsupported, retry command without --state",
+                        f"{batch_label} state flag unsupported, retry command without --state"
+                        + (" (use AGENT_BROWSER_STATE env)" if fallback_env else ""),
                     )
                     fallback_started_at = time.monotonic()
                     try:
@@ -666,6 +676,7 @@ def _execute_steps_batch(
                             text=True,
                             timeout=command_timeout_ms / 1000,
                             check=False,
+                            env=fallback_env,
                         )
                     except subprocess.TimeoutExpired as error:
                         raise AgentBrowserScriptError(
@@ -696,6 +707,9 @@ def _execute_steps_batch(
                         f"{batch_label} step={step_index} attempt={attempt} fallback-no-state exit={completed.returncode} elapsed={elapsed_ms}ms",
                     )
                     detail = stderr.strip() or stdout.strip() or f"exit code {completed.returncode}"
+                    if completed.returncode == 0 and fallback_env:
+                        state_applied_this_command = True
+                        _emit_log(verbose, f"{batch_label} state applied via AGENT_BROWSER_STATE env")
 
                 if completed.returncode != 0:
                     _emit_log(
@@ -713,7 +727,7 @@ def _execute_steps_batch(
                         debug_context={"steps": debug_steps},
                     )
 
-            if used_state_prefix:
+            if state_applied_this_command:
                 instance.state_applied = True
             step_results.append(
                 AgentBrowserStepResult(
@@ -783,6 +797,7 @@ def _execute_loop_block(
 
 def _create_instance(options: dict[str, Any], *, verbose: bool) -> AgentBrowserInstanceState:
     command_prefix, command_prefix_with_state = _build_command_prefixes(options)
+    state_file = options.get("stateFile")
     owner_id = _normalize_optional_str(options.get("ownerId"), "ownerId")
     session_key = _normalize_optional_str(options.get("sessionKey"), "sessionKey")
     ttl_seconds = _read_int(options.get("instanceTtlSeconds", 900), field_name="instanceTtlSeconds", minimum=1)
@@ -791,6 +806,7 @@ def _create_instance(options: dict[str, Any], *, verbose: bool) -> AgentBrowserI
         tab_id=f"tab-{uuid4().hex[:8]}",
         command_prefix=command_prefix,
         command_prefix_with_state=command_prefix_with_state,
+        state_file=str(state_file).strip() if isinstance(state_file, str) and state_file.strip() else None,
         state_applied=False,
         owner_id=owner_id,
         session_key=session_key,
