@@ -530,28 +530,19 @@ for item in response.json():
 ```
 apps/gather/
 ├── main.py                 # FastAPI 服务入口
+├── schemas.py              # 请求/响应模型
+├── fetch_processing.py     # 结构化记录解析与关键词过滤
 ├── export_chrome_cookies.py # 浏览器认证数据导出脚本
-├── clients/
-│   ├── __init__.py
-│   ├── base_playwright.py  # Playwright 基类
-│   ├── x_client.py         # X.com 客户端
-│   ├── xiaohongshu_client.py # 小红书客户端
-│   ├── reddit_client.py    # Reddit 客户端
-│   ├── douyin_client.py    # 抖音客户端
-│   ├── tiktok_client.py    # TikTok 客户端
-│   ├── weibo_client.py     # 微博客户端
-│   ├── telegram_client.py  # Telegram 客户端
-│   └── whatsapp_client.py  # WhatsApp 客户端
 ├── pyproject.toml          # Python 依赖
 └── README.md               # 本文档
 ```
 
 ### 添加新平台
 
-1. 在 `clients/` 目录创建新的客户端类，继承 `BasePlaywrightClient`
-2. 实现 `verify_auth()` 和 `fetch_data()` 方法
-3. 在 `main.py` 中添加平台处理逻辑
-4. 在 `export_chrome_cookies.py` 中添加平台配置
+1. 优先在 `site_scripts/<platform>/`（或 bb-site）提供 `me.ts/me.js` 验证脚本
+2. 采集逻辑优先走 `driver=agent-browser` 或 `config.playwright.mode=eval-js`
+3. 在 `main.py` 中添加平台映射与校验逻辑
+4. 在 `export_chrome_cookies.py` 中添加平台配置（如需）
 
 ## 注意事项
 
