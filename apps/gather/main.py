@@ -869,11 +869,17 @@ def _to_clean_item_from_eval_value(value: Any, request: FetchRequest, target_url
             platform=str(value.get("platform") or request.platform),
             url=value.get("url") or target_url,
             time=parsed_time or datetime.now(),
+            recordTime=parsed_time or datetime.now(),
             sourceId=request.source_id,
             sourceType="SOCIAL_MEDIA",
-            recordId=value.get("recordId") or value.get("id"),
+            recordId=str(value.get("recordId") or value.get("id") or f"{request.source_id}:{index}"),
             recordType=str(value.get("recordType") or value.get("type") or "eval-js"),
             recordIndex=value.get("recordIndex") if isinstance(value.get("recordIndex"), int) else index,
+            recordContent={
+                "text": str(text),
+                "markdown": str(markdown),
+                "url": value.get("url") or target_url,
+            },
         )
 
     text_value = str(value)
@@ -884,10 +890,13 @@ def _to_clean_item_from_eval_value(value: Any, request: FetchRequest, target_url
         platform=request.platform,
         url=target_url,
         time=datetime.now(),
+        recordTime=datetime.now(),
         sourceId=request.source_id,
         sourceType="SOCIAL_MEDIA",
+        recordId=f"{request.source_id}:{index}",
         recordType="eval-js",
         recordIndex=index,
+        recordContent={"text": text_value, "markdown": text_value, "url": target_url},
     )
 
 

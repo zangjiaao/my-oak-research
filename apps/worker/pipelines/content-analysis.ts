@@ -3,7 +3,7 @@ import { z } from "zod";
 import { createHash } from "crypto";
 
 import prisma from "@/lib/prisma";
-import { SourceType, ContentType, CrawlerEngine } from "@/app/generated/prisma";
+import { Prisma, SourceType, ContentType, CrawlerEngine } from "@/app/generated/prisma";
 import {
   SourceWithRelations,
   SocialMediaSource,
@@ -38,6 +38,9 @@ type CleanItem = {
   keywordMatchScore?: number;
   recordId?: string;
   recordType?: string;
+  recordTime?: Date;
+  recordContent?: Record<string, unknown>;
+  schemaVersion?: string;
   recordIndex?: number;
 };
 
@@ -193,7 +196,7 @@ export async function runFocusCollector(runId: string, queryId: string) {
         markdown: item.markdown,
         platform: item.platform,
         type: mapContentType(item.sourceType),
-        time: item.time ?? new Date(),
+        time: item.recordTime ?? item.time ?? new Date(),
         url: item.url,
         meta: {
           queryId,
@@ -204,6 +207,10 @@ export async function runFocusCollector(runId: string, queryId: string) {
           keywordMatchScore: item.keywordMatchScore ?? null,
           recordId: item.recordId ?? null,
           recordType: item.recordType ?? null,
+          recordTime: (item.recordTime ?? item.time ?? new Date()).toISOString(),
+          recordContent:
+            ((item.recordContent ?? { text: item.text, markdown: item.markdown }) as Prisma.InputJsonValue),
+          schemaVersion: item.schemaVersion ?? "content.v1",
           recordIndex: item.recordIndex ?? null,
           keywords: expandedKeywords,
           summaryRelevance: summary.relevance,
@@ -1069,22 +1076,36 @@ function normalizeGatherItems(payload: unknown, source: SocialMediaSource): Clea
   for (const item of payload) {
     if (!item || typeof item !== "object") continue;
     const row = item as Record<string, unknown>;
+    const recordContent = asObject(row.recordContent);
     const text =
-      typeof row.text === "string"
-        ? row.text
-        : typeof row.markdown === "string"
-          ? row.markdown
-          : "";
+      typeof recordContent.text === "string"
+        ? recordContent.text
+        : typeof row.text === "string"
+          ? row.text
+          : typeof row.markdown === "string"
+            ? row.markdown
+            : "";
     if (!text) continue;
 
     const markdown =
-      typeof row.markdown === "string" && row.markdown.trim()
-        ? row.markdown
+      typeof recordContent.markdown === "string" && recordContent.markdown.trim()
+        ? recordContent.markdown
+        : typeof row.markdown === "string" && row.markdown.trim()
+          ? row.markdown
         : text;
+    const recordTimeRaw = row.recordTime ?? row.time;
     const parsedTime =
-      typeof row.time === "string" || row.time instanceof Date
-        ? new Date(row.time)
+      typeof recordTimeRaw === "string" || recordTimeRaw instanceof Date
+        ? new Date(recordTimeRaw)
         : null;
+    const recordId =
+      typeof row.recordId === "string" && row.recordId.trim()
+        ? row.recordId.trim()
+        : undefined;
+    const recordType =
+      typeof row.recordType === "string" && row.recordType.trim()
+        ? row.recordType.trim()
+        : undefined;
 
     normalized.push({
       title: typeof row.title === "string" ? row.title : undefined,
@@ -1109,8 +1130,16 @@ function normalizeGatherItems(payload: unknown, source: SocialMediaSource): Clea
         typeof row.keywordMatchScore === "number"
           ? row.keywordMatchScore
           : undefined,
-      recordId: typeof row.recordId === "string" ? row.recordId : undefined,
-      recordType: typeof row.recordType === "string" ? row.recordType : undefined,
+      recordId,
+      recordType,
+      recordTime:
+        parsedTime && !Number.isNaN(parsedTime.getTime()) ? parsedTime : new Date(),
+      recordContent: {
+        ...recordContent,
+        text,
+        markdown,
+      },
+      schemaVersion: typeof row.schemaVersion === "string" ? row.schemaVersion : undefined,
       recordIndex: typeof row.recordIndex === "number" ? row.recordIndex : undefined,
     });
   }

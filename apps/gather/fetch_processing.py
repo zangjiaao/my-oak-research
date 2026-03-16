@@ -257,11 +257,14 @@ def _capture_outputs_to_clean_items(
                 sourceId=request.source_id,
                 sourceType="SOCIAL_MEDIA",
                 time=now,
+                recordTime=now,
                 driver="agent-browser",
                 instanceId=script_result.instance_id,
                 tabId=script_result.tab_id,
                 instanceActive=script_result.instance_active,
+                recordId=f"{request.source_id}:{capture_key}:1",
                 recordType="capture",
+                recordContent={"text": text},
             )
         ]
 
@@ -285,11 +288,14 @@ def _capture_outputs_to_clean_items(
                 sourceId=request.source_id,
                 sourceType="SOCIAL_MEDIA",
                 time=now,
+                recordTime=now,
                 driver="agent-browser",
                 instanceId=script_result.instance_id,
                 tabId=script_result.tab_id,
                 instanceActive=script_result.instance_active,
+                recordId=f"{request.source_id}:{capture_key}:1",
                 recordType="capture",
+                recordContent={"text": text},
             )
         ]
 
@@ -322,13 +328,20 @@ def _capture_outputs_to_clean_items(
                 sourceId=request.source_id,
                 sourceType="SOCIAL_MEDIA",
                 time=record_time,
+                recordTime=record_time,
                 driver="agent-browser",
                 instanceId=script_result.instance_id,
                 tabId=script_result.tab_id,
                 instanceActive=script_result.instance_active,
-                recordId=record["record_id"],
+                recordId=record["record_id"] or f"{request.source_id}:{capture_key}:{record['record_index']}",
                 recordType=record.get("record_type", "message"),
                 recordIndex=record["record_index"],
+                recordContent={
+                    "text": record["body"],
+                    "url": record.get("url"),
+                    "meta": record.get("meta"),
+                    "author": record.get("author"),
+                },
             )
         )
     return items
@@ -371,10 +384,14 @@ def agent_browser_results_to_clean_items(request: FetchRequest, script_result: A
             sourceId=request.source_id,
             sourceType="SOCIAL_MEDIA",
             time=now,
+            recordTime=now,
             driver="agent-browser",
             instanceId=script_result.instance_id,
             tabId=script_result.tab_id,
             instanceActive=script_result.instance_active,
+            recordId=f"{request.source_id}:execution-summary",
+            recordType="execution-summary",
+            recordContent={"text": summary_text},
         )
     ]
 

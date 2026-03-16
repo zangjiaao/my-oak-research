@@ -1,7 +1,7 @@
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any, Dict, List, Literal, Optional
 
-from pydantic import AliasChoices, BaseModel, ConfigDict, Field
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, model_validator
 
 
 class FetchRequest(BaseModel):
@@ -73,15 +73,75 @@ class CleanItem(BaseModel):
     time: Optional[datetime] = None
     sourceId: str
     sourceType: str
+    recordId: str
+    recordType: str
+    recordTime: datetime
+    recordContent: Dict[str, Any]
+    schemaVersion: str = "content.v1"
     driver: Optional[str] = "python-gather"
     instanceId: Optional[str] = None
     tabId: Optional[str] = None
     instanceActive: Optional[bool] = None
     matchedKeywords: Optional[List[str]] = None
     keywordMatchScore: Optional[float] = None
-    recordId: Optional[str] = None
-    recordType: Optional[str] = None
     recordIndex: Optional[int] = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _normalize_record_payload(cls, raw: Any) -> Any:
+        if not isinstance(raw, dict):
+            return raw
+
+        payload = dict(raw)
+        text = payload.get("text")
+        markdown = payload.get("markdown")
+        if text is None and isinstance(payload.get("recordContent"), dict):
+            content_text = payload["recordContent"].get("text")
+            if isinstance(content_text, str):
+                text = content_text
+        if markdown is None and isinstance(payload.get("recordContent"), dict):
+            content_markdown = payload["recordContent"].get("markdown")
+            if isinstance(content_markdown, str):
+                markdown = content_markdown
+        if text is None and isinstance(markdown, str):
+            text = markdown
+        if markdown is None and isinstance(text, str):
+            markdown = text
+        if isinstance(text, str):
+            payload["text"] = text
+        if isinstance(markdown, str):
+            payload["markdown"] = markdown
+
+        record_time = payload.get("recordTime", payload.get("time"))
+        if record_time is None:
+            record_time = datetime.now(UTC)
+        payload["recordTime"] = record_time
+        payload["time"] = payload.get("time") or record_time
+
+        record_content = payload.get("recordContent")
+        if not isinstance(record_content, dict):
+            record_content = {}
+        if isinstance(text, str) and text.strip():
+            record_content["text"] = text
+        if isinstance(markdown, str) and markdown.strip():
+            record_content.setdefault("markdown", markdown)
+        if isinstance(payload.get("url"), str) and payload["url"].strip():
+            record_content.setdefault("url", payload["url"])
+        payload["recordContent"] = record_content
+
+        if payload.get("recordId") is None and payload.get("sourceId"):
+            source_id = str(payload.get("sourceId")).strip() or "source"
+            record_index = payload.get("recordIndex")
+            if isinstance(record_index, int) and record_index > 0:
+                payload["recordId"] = f"{source_id}:{record_index}"
+            else:
+                payload["recordId"] = f"{source_id}:{int(datetime.now(UTC).timestamp() * 1000)}"
+
+        if payload.get("recordType") is None:
+            payload["recordType"] = "message"
+
+        payload.setdefault("schemaVersion", "content.v1")
+        return payload
 
 
 class ErrorDetail(BaseModel):

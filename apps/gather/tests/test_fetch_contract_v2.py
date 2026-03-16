@@ -59,6 +59,11 @@ def test_fetch_v2_happy_path(monkeypatch):
         assert "platform" in item
         assert "sourceId" in item
         assert "sourceType" in item
+        assert "recordId" in item
+        assert "recordType" in item
+        assert "recordTime" in item
+        assert "recordContent" in item
+        assert item["recordContent"]["text"]
 
 
 def test_fetch_v2_validation_error():
