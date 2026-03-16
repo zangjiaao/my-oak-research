@@ -810,6 +810,14 @@ function normalizeAgentBrowserGatherConfig(
     sessionKey,
     closeOnComplete: false,
   };
+  const captureFilter = asObject(normalizedAgentBrowser.captureFilter);
+  const captureKeys = normalizeStringArray(captureFilter.keys);
+  if (captureKeys.length > 0) {
+    normalizedAgentBrowser.captureFilter = {
+      ...captureFilter,
+      keys: captureKeys,
+    };
+  }
   if (
     typeof normalizedAgentBrowser.stateFile !== "string" ||
     !normalizedAgentBrowser.stateFile.trim()
@@ -926,6 +934,29 @@ function asObject(value: unknown): Record<string, unknown> {
     return value as Record<string, unknown>;
   }
   return {};
+}
+
+function normalizeStringArray(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return Array.from(
+      new Set(
+        value
+          .map((item) => (typeof item === "string" ? item.trim() : ""))
+          .filter(Boolean)
+      )
+    );
+  }
+  if (typeof value === "string") {
+    return Array.from(
+      new Set(
+        value
+          .split(/[,\n\r，、;；\t]+/g)
+          .map((item) => item.trim())
+          .filter(Boolean)
+      )
+    );
+  }
+  return [];
 }
 
 function resolveSourceCredentialId(
