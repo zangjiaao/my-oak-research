@@ -47,6 +47,11 @@ import {
 } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  getDefaultDriver,
+  getSupportedDrivers,
+  supportsDriver,
+} from "@/lib/social-driver-support";
 
 interface SocialMediaFieldsProps {
   register: UseFormRegister<z.infer<typeof SourceCreateSchema>>;
@@ -225,8 +230,16 @@ export const SocialMediaFields = ({
   setValue,
 }: SocialMediaFieldsProps) => {
   const socialPlatform = watch("social.platform") as SocialPlatform | undefined;
-  const xDriver = watch("social.config.driver") as string | undefined;
+  const selectedDriver = watch("social.config.driver") as string | undefined;
   const currentCredentialId = watch("social.credentialId") as string | null | undefined;
+  const supportedDrivers = socialPlatform
+    ? getSupportedDrivers(socialPlatform)
+    : [];
+  const resolvedDriver = socialPlatform
+    ? supportsDriver(socialPlatform, selectedDriver || "")
+      ? selectedDriver
+      : getDefaultDriver(socialPlatform)
+    : "playwright";
 
   const socialErrors = errors as FieldErrors<
     z.infer<typeof SocialMediaSourceCreateSchema>
@@ -290,7 +303,7 @@ export const SocialMediaFields = ({
   const needsCookieAuth = socialPlatform &&
     COOKIE_AUTH_PLATFORMS.includes(socialPlatform as typeof COOKIE_AUTH_PLATFORMS[number]);
   const supportsCredentialForDriver =
-    socialPlatform !== "X" || xDriver !== "xhttp";
+    resolvedDriver !== "xhttp";
   const canUseCredential = Boolean(needsCookieAuth && supportsCredentialForDriver);
 
   // Fetch existing credentials when platform changes
@@ -321,13 +334,13 @@ export const SocialMediaFields = ({
 
   useEffect(() => {
     if (!setValue) return;
-    if (socialPlatform === "X" && xDriver === "xhttp") {
+    if (socialPlatform && resolvedDriver === "xhttp") {
       setValue("social.credentialId", null, { shouldDirty: true });
       setShowUploadForm(false);
       setSelectedFile(null);
       setAuthStatus({ status: "idle" });
     }
-  }, [setValue, socialPlatform, xDriver]);
+  }, [setValue, socialPlatform, resolvedDriver]);
 
   const syncArgsToForm = useCallback(
     (rows: PlaywrightArgRow[]) => {
@@ -371,10 +384,11 @@ export const SocialMediaFields = ({
 
   useEffect(() => {
     if (!setValue) return;
-    if (socialPlatform === "X" && !xDriver) {
-      setValue("social.config.driver", "playwright");
+    if (!socialPlatform) return;
+    if (!supportsDriver(socialPlatform, selectedDriver || "")) {
+      setValue("social.config.driver", getDefaultDriver(socialPlatform));
     }
-  }, [setValue, socialPlatform, xDriver]);
+  }, [setValue, socialPlatform, selectedDriver]);
 
   useEffect(() => {
     if (socialPlatform !== "X") return;
@@ -641,7 +655,7 @@ export const SocialMediaFields = ({
                 if (setValue) {
                   setValue("social.credentialId", null);
                   if (value === "X") {
-                    setValue("social.config.driver", "playwright");
+                    setValue("social.config.driver", getDefaultDriver("X"));
                     setValue("social.config.playwright.mode", "eval-js");
                     setValue("social.config.playwright.headless", false);
                     setValue("social.config.playwright.targetUrl", "");
@@ -650,6 +664,11 @@ export const SocialMediaFields = ({
                       DEFAULT_X_SCRIPT.scriptPath
                     );
                     setValue("social.config.playwright.args", {});
+                  } else {
+                    setValue(
+                      "social.config.driver",
+                      getDefaultDriver(value as SocialPlatform)
+                    );
                   }
                 }
               }}
@@ -668,7 +687,7 @@ export const SocialMediaFields = ({
         </ErrorMessage>
       </div>
 
-      {socialPlatform === "X" && (
+      {socialPlatform && supportedDrivers.length > 0 && (
         <div className="grid gap-3">
           <Label>Driver</Label>
           <Controller
@@ -676,15 +695,20 @@ export const SocialMediaFields = ({
             control={control}
             render={({ field }) => (
               <Tabs
-                value={(field.value as string) || "playwright"}
+                value={resolvedDriver}
                 onValueChange={(value) => {
                   field.onChange(value);
                 }}
               >
-                <TabsList className="grid w-full grid-cols-3">
-                  <TabsTrigger value="xhttp">xhttp</TabsTrigger>
-                  <TabsTrigger value="playwright">playwright</TabsTrigger>
-                  <TabsTrigger value="agent-browser">agent-browser</TabsTrigger>
+                <TabsList
+                  className="grid w-full"
+                  style={{ gridTemplateColumns: `repeat(${supportedDrivers.length}, minmax(0, 1fr))` }}
+                >
+                  {supportedDrivers.map((driver) => (
+                    <TabsTrigger key={driver} value={driver}>
+                      {driver}
+                    </TabsTrigger>
+                  ))}
                 </TabsList>
               </Tabs>
             )}
@@ -896,7 +920,7 @@ export const SocialMediaFields = ({
 
       {socialPlatform === "X" && (
         <>
-          {xDriver === "playwright" && (
+          {resolvedDriver === "playwright" && (
             <div className="grid gap-4 p-4 border rounded-lg bg-muted/30">
               <Label className="text-base font-medium">Playwright Task Params (Required)</Label>
 
@@ -1036,13 +1060,13 @@ export const SocialMediaFields = ({
             </div>
           )}
 
-          {xDriver === "xhttp" && (
+          {resolvedDriver === "xhttp" && (
             <div className="rounded-lg border bg-muted/30 p-4 text-sm text-muted-foreground">
               xhttp 驱动不需要浏览器参数，也不支持凭据上传/选择；将直接按 API 方式抓取。
             </div>
           )}
 
-          {xDriver === "agent-browser" && (
+          {resolvedDriver === "agent-browser" && (
             <div className="grid gap-3 rounded-lg border bg-muted/30 p-4">
               <Label htmlFor="social.config.agentBrowser">Agent Browser Config (JSON)</Label>
               <Textarea
@@ -1055,6 +1079,25 @@ export const SocialMediaFields = ({
             </div>
           )}
         </>
+      )}
+
+      {socialPlatform && socialPlatform !== "X" && resolvedDriver === "xhttp" && (
+        <div className="rounded-lg border bg-muted/30 p-4 text-sm text-muted-foreground">
+          xhttp 驱动不需要浏览器参数，也不支持凭据上传/选择；将直接按 API 方式抓取。
+        </div>
+      )}
+
+      {socialPlatform && socialPlatform !== "X" && resolvedDriver === "agent-browser" && (
+        <div className="grid gap-3 rounded-lg border bg-muted/30 p-4">
+          <Label htmlFor="social.config.agentBrowser">Agent Browser Config (JSON)</Label>
+          <Textarea
+            id="social.config.agentBrowser"
+            placeholder='{"agentBrowser":{"script":[{"command":"open https://example.com"}]}}'
+            rows={8}
+            {...register("social.config.agentBrowser")}
+          />
+          <ErrorMessage>{getConfigErrorMessage("agentBrowser")}</ErrorMessage>
+        </div>
       )}
 
       {socialPlatform === "REDDIT" && (

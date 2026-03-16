@@ -41,6 +41,21 @@ type CleanItem = {
   recordIndex?: number;
 };
 
+type GatherSocialDriver = "playwright" | "xhttp" | "agent-browser";
+
+const SOCIAL_PLATFORM_DRIVER_SUPPORT: Record<string, readonly GatherSocialDriver[]> = {
+  X: ["playwright", "xhttp", "agent-browser"],
+  REDDIT: ["playwright", "xhttp", "agent-browser"],
+  XIAOHONGSHU: ["playwright", "xhttp", "agent-browser"],
+  DOUYIN: ["playwright", "xhttp", "agent-browser"],
+  TIKTOK: ["playwright", "xhttp", "agent-browser"],
+  WEIBO: ["playwright", "xhttp", "agent-browser"],
+  TELEGRAM: ["playwright", "xhttp", "agent-browser"],
+  WHATSAPP: ["playwright", "xhttp", "agent-browser"],
+  INSTAGRAM: ["playwright", "xhttp", "agent-browser"],
+  FACEBOOK: ["playwright", "xhttp", "agent-browser"],
+};
+
 function isWebSource(source: SourceWithRelations): source is WebSource {
   return source.type === SourceType.WEB;
 }
@@ -593,7 +608,10 @@ async function fetchSocialSource(
   const gatherPlatform = mapGatherPlatform(source.social?.platform);
   const sourceConfig = source.social?.config || {};
   const sourceConfigObj = asObject(sourceConfig);
-  const gatherDriver = resolveGatherDriver(sourceConfigObj);
+  const gatherDriver = resolveGatherDriver(
+    sourceConfigObj,
+    source.social?.platform
+  );
   const authData = resolveGatherAuthData(source, gatherDriver);
   const proxyUrl =
     source.social?.proxy?.url ??
@@ -654,13 +672,21 @@ async function fetchSocialSource(
 }
 
 function resolveGatherDriver(
-  config: Record<string, unknown>
-): "playwright" | "xhttp" | "agent-browser" {
+  config: Record<string, unknown>,
+  platform?: string | null
+): GatherSocialDriver {
+  const normalizedPlatform = (platform || "").toUpperCase();
+  const supportedDrivers =
+    SOCIAL_PLATFORM_DRIVER_SUPPORT[normalizedPlatform] ??
+    (["playwright"] as const);
   const rawDriver = typeof config.driver === "string" ? config.driver.trim().toLowerCase() : "";
-  if (rawDriver === "xhttp" || rawDriver === "agent-browser" || rawDriver === "playwright") {
+  if (
+    (rawDriver === "xhttp" || rawDriver === "agent-browser" || rawDriver === "playwright") &&
+    supportedDrivers.includes(rawDriver)
+  ) {
     return rawDriver;
   }
-  return "playwright";
+  return supportedDrivers[0] ?? "playwright";
 }
 
 function mapGatherPlatform(platform?: string | null): string {
@@ -677,7 +703,7 @@ function normalizeGatherSocialConfig(
     return config;
   }
 
-  const driver = resolveGatherDriver(config);
+  const driver = resolveGatherDriver(config, platform);
   if (driver !== "playwright") {
     return {
       ...config,
@@ -773,7 +799,7 @@ function resolveSourceCredentialId(
 
 function resolveGatherAuthData(
   source: SocialMediaSource,
-  driver: "playwright" | "xhttp" | "agent-browser"
+  driver: GatherSocialDriver
 ): Record<string, unknown> | null {
   if (driver === "xhttp") {
     return null;
