@@ -9,7 +9,13 @@ class FetchRequest(BaseModel):
     config: Dict[str, Any]
     source_id: str
     auth_data: Optional[Dict[str, Any]] = None
+    keywords: List[str] = Field(default_factory=list)
     output_fields: Optional[List[str]] = None
+
+
+class FetchV2Output(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    field: List[str]
 
 
 class FetchV2Request(BaseModel):
@@ -17,13 +23,10 @@ class FetchV2Request(BaseModel):
 
     platform: str
     source_id: str = Field(validation_alias=AliasChoices("sourceId"))
-    auth_data: Optional[Dict[str, Any]] = Field(
-        default=None,
-        validation_alias=AliasChoices("authData"),
-    )
-    driver: Optional[str] = None
-    output: Optional[Dict[str, Any]] = None
-    driver_options: Optional[Dict[str, Any]] = Field(
+    keywords: List[str] = Field(default_factory=list)
+    driver: str
+    output: FetchV2Output
+    driver_options: Dict[str, Any] = Field(
         validation_alias=AliasChoices("driverOptions"),
     )
 

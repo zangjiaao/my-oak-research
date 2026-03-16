@@ -631,15 +631,14 @@ async function fetchSocialSource(
   );
   const baseConfig = applyGatherProxyConfig(normalizedSocialConfig, proxyUrl);
   const existingKeywordFilter = resolveGatherKeywordFilter(baseConfig, gatherDriver);
-  const hasConfiguredKeywords =
-    Array.isArray(existingKeywordFilter.keywords) &&
-    existingKeywordFilter.keywords.length > 0;
+  const keywordFilterOptions = { ...existingKeywordFilter };
+  delete keywordFilterOptions.keywords;
   const driverOptions =
-    keywordFilterTerms.length > 0 && !hasConfiguredKeywords
-      ? injectGatherKeywordFilter(baseConfig, gatherDriver, {
-          ...existingKeywordFilter,
-          keywords: keywordFilterTerms,
-        })
+    Object.keys(keywordFilterOptions).length > 0
+      ? {
+          ...baseConfig,
+          filter: keywordFilterOptions,
+        }
       : baseConfig;
 
   try {
@@ -648,6 +647,7 @@ async function fetchSocialSource(
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         platform: gatherPlatform,
+        keywords: keywordFilterTerms,
         driverOptions,
         sourceId: source.id,
         output,
@@ -928,7 +928,7 @@ function sanitizeGatherConfig(
 
 function resolveGatherOutput(
   config: Record<string, unknown>
-): { fields: string[] } {
+): { field: string[] } {
   const configuredOutput = asObject(config.output);
   const rawFields = configuredOutput.fields ?? configuredOutput.field;
   if (Array.isArray(rawFields)) {
@@ -941,7 +941,7 @@ function resolveGatherOutput(
       )
     );
     if (normalized.length > 0) {
-      return { fields: normalized };
+      return { field: normalized };
     }
   }
 
@@ -959,10 +959,10 @@ function resolveGatherOutput(
       )
     );
     if (mapped.length > 0) {
-      return { fields: mapped };
+      return { field: mapped };
     }
   }
-  return { fields: ["text", "markdown", "url"] };
+  return { field: ["text", "markdown", "url"] };
 }
 
 function resolveAgentBrowserOwnerId(
@@ -992,27 +992,6 @@ function resolveGatherKeywordFilter(
   }
   const filters = asObject(driverOptions.filters);
   return asObject(filters.keyword);
-}
-
-function injectGatherKeywordFilter(
-  driverOptions: Record<string, unknown>,
-  driver: GatherSocialDriver,
-  keywordFilter: Record<string, unknown>
-): Record<string, unknown> {
-  if (driver !== "agent-browser") {
-    return {
-      ...driverOptions,
-      keywordFilter,
-    };
-  }
-  const filters = asObject(driverOptions.filters);
-  return {
-    ...driverOptions,
-    filters: {
-      ...filters,
-      keyword: keywordFilter,
-    },
-  };
 }
 
 function applyGatherProxyConfig(

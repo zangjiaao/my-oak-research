@@ -1266,31 +1266,43 @@ def _normalize_agent_browser_driver_options(
 
 
 def _normalize_v2_fetch_request(request: FetchV2Request) -> FetchRequest:
-    normalized_driver = request.driver.strip().lower() if isinstance(request.driver, str) else ""
-    config = dict(request.driver_options or {})
+    normalized_driver = request.driver.strip().lower()
+    config = dict(request.driver_options)
 
     if normalized_driver == "agent-browser":
         config = _normalize_agent_browser_driver_options(request.source_id, {}, config)
 
-    output = _as_dict(request.output)
+    output = request.output.model_dump()
     output_fields: list[str] = []
-    raw_fields = output.get("fields", output.get("field"))
+    raw_fields = output.get("field")
     if isinstance(raw_fields, list):
         output_fields = [value for value in raw_fields if isinstance(value, str) and value.strip()]
-    elif isinstance(raw_fields, str) and raw_fields.strip():
-        output_fields = [raw_fields.strip()]
-    elif isinstance(output.get("formats"), list):
-        output_fields = [
-            value
-            for value in output["formats"]
-            if isinstance(value, str) and value in {"text", "markdown"}
-        ]
+
+    raw_filter = config.pop("filter", None)
+    filter_options = raw_filter if isinstance(raw_filter, dict) else {}
+    if not filter_options:
+        agent_browser_options = _as_dict(config.get("agentBrowser"))
+        nested_filter = agent_browser_options.pop("filter", None)
+        if isinstance(nested_filter, dict):
+            filter_options = nested_filter
+        if agent_browser_options:
+            config["agentBrowser"] = agent_browser_options
+    if request.keywords:
+        existing_filters = _as_dict(config.get("filters"))
+        config["filters"] = {
+            **existing_filters,
+            "keyword": {
+                **_as_dict(existing_filters.get("keyword")),
+                **filter_options,
+                "keywords": request.keywords,
+            },
+        }
 
     return FetchRequest(
         platform=request.platform,
         config=config,
         source_id=request.source_id,
-        auth_data=request.auth_data,
+        keywords=request.keywords,
         output_fields=output_fields or None,
     )
 

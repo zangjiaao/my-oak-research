@@ -36,7 +36,9 @@ def test_fetch_v2_playwright_eval_mode_uses_eval_runner(monkeypatch):
         json={
             "platform": "x",
             "sourceId": "source-eval-1",
+            "keywords": ["keyword"],
             "driver": "playwright",
+            "output": {"field": ["text", "markdown", "url"]},
             "driverOptions": {
                 "playwright": {
                     "mode": "eval-js",
@@ -44,7 +46,7 @@ def test_fetch_v2_playwright_eval_mode_uses_eval_runner(monkeypatch):
                     "scriptBody": "(args) => ({ text: 'ok', title: 'ok' })",
                     "args": {"query": "hello"},
                 },
-                "keywordFilter": {"keywords": ["keyword"]},
+                "filter": {},
             },
         },
     )
@@ -65,7 +67,9 @@ def test_fetch_v2_playwright_eval_mode_allows_missing_target_url():
         json={
             "platform": "x",
             "sourceId": "source-eval-2",
+            "keywords": [],
             "driver": "playwright",
+            "output": {"field": ["text", "markdown"]},
             "driverOptions": {
                 "playwright": {
                     "mode": "eval-js",

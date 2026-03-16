@@ -45,6 +45,9 @@ def test_fetch_v2_happy_path(monkeypatch):
         json={
             "platform": "contract-test-platform",
             "sourceId": "source_123",
+            "keywords": [],
+            "driver": "playwright",
+            "output": {"field": ["text", "markdown"]},
             "driverOptions": {},
         },
     )
@@ -89,7 +92,9 @@ def test_fetch_v2_output_fields_text_only(monkeypatch):
         json={
             "platform": "contract-test-platform",
             "sourceId": "source_123",
-            "output": {"fields": ["text"]},
+            "keywords": [],
+            "driver": "playwright",
+            "output": {"field": ["text"]},
             "driverOptions": {},
         },
     )
@@ -110,7 +115,9 @@ def test_fetch_v2_output_fields_markdown_only(monkeypatch):
         json={
             "platform": "contract-test-platform",
             "sourceId": "source_123",
-            "output": {"fields": ["markdown"]},
+            "keywords": [],
+            "driver": "playwright",
+            "output": {"field": ["markdown"]},
             "driverOptions": {},
         },
     )
@@ -131,8 +138,9 @@ def test_fetch_v2_driver_options_without_legacy_config(monkeypatch):
         json={
             "platform": "contract-test-platform",
             "sourceId": "source_123",
+            "keywords": [],
             "driver": "playwright",
-            "output": {"fields": ["text"]},
+            "output": {"field": ["text"]},
             "driverOptions": {"query": "AI"},
         },
     )
@@ -151,7 +159,9 @@ def test_fetch_v2_output_fields_keep_requested_content_only(monkeypatch):
         json={
             "platform": "contract-test-platform",
             "sourceId": "source_123",
-            "output": {"fields": ["text", "url"]},
+            "keywords": [],
+            "driver": "playwright",
+            "output": {"field": ["text", "url"]},
             "driverOptions": {},
         },
     )

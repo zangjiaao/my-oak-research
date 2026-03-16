@@ -92,7 +92,10 @@ def test_keyword_hit_content_persisted(monkeypatch):
         json={
             "platform": "hit-only",
             "sourceId": "source-hit",
-            "driverOptions": {"filters": {"keyword": {"keywords": ["ai", "regulation"]}}},
+            "keywords": ["ai", "regulation"],
+            "driver": "playwright",
+            "output": {"field": ["text", "markdown"]},
+            "driverOptions": {"filter": {}},
         },
     )
 
@@ -110,7 +113,10 @@ def test_keyword_miss_content_not_persisted(monkeypatch, capsys):
         json={
             "platform": "miss-only",
             "sourceId": "source-miss",
-            "driverOptions": {"filters": {"keyword": {"keywords": ["ai"]}}},
+            "keywords": ["ai"],
+            "driver": "playwright",
+            "output": {"field": ["text", "markdown"]},
+            "driverOptions": {"filter": {}},
         },
     )
 
@@ -127,7 +133,10 @@ def test_keyword_hit_only_persisted_miss_audit_only(monkeypatch, capsys):
         json={
             "platform": "mixed",
             "sourceId": "source-mixed",
-            "driverOptions": {"filters": {"keyword": {"keywords": ["ai"]}}},
+            "keywords": ["ai"],
+            "driver": "playwright",
+            "output": {"field": ["text", "markdown"]},
+            "driverOptions": {"filter": {}},
         },
     )
 
@@ -146,7 +155,10 @@ def test_keyword_filter_metrics_emitted(monkeypatch, capsys):
         json={
             "platform": "mixed",
             "sourceId": "source-metrics",
-            "driverOptions": {"filters": {"keyword": {"keywords": ["ai"]}}},
+            "keywords": ["ai"],
+            "driver": "playwright",
+            "output": {"field": ["text", "markdown"]},
+            "driverOptions": {"filter": {}},
         },
     )
 
@@ -166,7 +178,10 @@ def test_keyword_filter_invalid_config_fails_closed(monkeypatch, capsys):
         json={
             "platform": "mixed",
             "sourceId": "source-invalid",
-            "driverOptions": {"filters": {"keyword": {"keywords": []}}},
+            "keywords": ["ai"],
+            "driver": "playwright",
+            "output": {"field": ["text", "markdown"]},
+            "driverOptions": {"filter": {"minChars": 0}},
         },
     )
 
@@ -184,13 +199,13 @@ def test_keyword_segment_scope_keeps_only_matched_segments(monkeypatch):
         json={
             "platform": "chat-batch",
             "sourceId": "source-chat-segment",
+            "keywords": ["alpha"],
+            "driver": "playwright",
+            "output": {"field": ["text", "markdown"]},
             "driverOptions": {
-                "filters": {
-                    "keyword": {
-                        "keywords": ["alpha"],
-                        "matchScope": "segment",
-                        "splitMode": "line",
-                    }
+                "filter": {
+                    "matchScope": "segment",
+                    "splitMode": "line",
                 }
             },
         },
@@ -211,14 +226,14 @@ def test_keyword_segment_scope_supports_min_segment_chars(monkeypatch):
         json={
             "platform": "chat-batch",
             "sourceId": "source-chat-min-chars",
+            "keywords": ["alpha"],
+            "driver": "playwright",
+            "output": {"field": ["text", "markdown"]},
             "driverOptions": {
-                "filters": {
-                    "keyword": {
-                        "keywords": ["alpha"],
-                        "matchScope": "segment",
-                        "splitMode": "line",
-                        "minChars": 30,
-                    }
+                "filter": {
+                    "matchScope": "segment",
+                    "splitMode": "line",
+                    "minChars": 30,
                 }
             },
         },

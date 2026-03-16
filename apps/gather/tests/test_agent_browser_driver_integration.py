@@ -46,7 +46,9 @@ def test_v2_fetch_agent_browser_driver_returns_captures(monkeypatch):
         json={
             "platform": "telegram",
             "sourceId": "source-telegram-1",
+            "keywords": [],
             "driver": "agent-browser",
+            "output": {"field": ["text", "markdown", "url"]},
             "driverOptions": {
                 "script": [{"command": "open https://web.telegram.org/a/"}],
                 "filters": {
@@ -86,7 +88,9 @@ def test_v2_fetch_agent_browser_driver_surfaces_config_error(monkeypatch):
         json={
             "platform": "telegram",
             "sourceId": "source-telegram-2",
+            "keywords": [],
             "driver": "agent-browser",
+            "output": {"field": ["text", "markdown"]},
             "driverOptions": {},
         },
     )
@@ -113,7 +117,9 @@ def test_v2_fetch_agent_browser_driver_maps_owner_mismatch_to_403(monkeypatch):
         json={
             "platform": "telegram",
             "sourceId": "source-telegram-3",
+            "keywords": [],
             "driver": "agent-browser",
+            "output": {"field": ["text", "markdown"]},
             "driverOptions": {"instanceId": "ab-test", "ownerId": "user-b", "script": []},
         },
     )
@@ -147,17 +153,14 @@ def test_v2_fetch_agent_browser_driver_options_maps_auth_and_filters(monkeypatch
         json={
             "platform": "telegram",
             "sourceId": "source-telegram-4",
+            "keywords": ["alpha"],
             "driver": "agent-browser",
+            "output": {"field": ["text", "markdown", "url"]},
             "driverOptions": {
                 "sessionKey": "source-telegram-4",
                 "auth": {"stateFile": ".auth/demo.json"},
                 "script": [{"command": "open https://web.telegram.org/a/"}],
-                "filters": {
-                    "keyword": {
-                        "keywords": ["alpha"],
-                        "minChars": 8,
-                    }
-                },
+                "filter": {"minChars": 8},
             },
         },
     )
@@ -165,7 +168,8 @@ def test_v2_fetch_agent_browser_driver_options_maps_auth_and_filters(monkeypatch
     assert response.status_code == 200
     assert "sessionKey" not in captured_config["agentBrowser"]
     assert captured_config["agentBrowser"]["stateFile"] == ".auth/demo.json"
-    assert captured_config["keywordFilter"]["keywords"] == ["alpha"]
+    assert captured_config["filters"]["keyword"]["keywords"] == ["alpha"]
+    assert captured_config["filters"]["keyword"]["minChars"] == 8
 
 
 def test_agent_browser_heartbeat_endpoint(monkeypatch):

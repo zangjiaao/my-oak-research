@@ -144,29 +144,36 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 {
   "platform": "x",
   "sourceId": "source_123",
+  "keywords": ["openai"],
+  "driver": "playwright",
   "output": {
-    "fields": ["text", "meta.image", "url", "comments"]
-  },
-  "authData": {
-    "cookies": [...],
-    "origins": []
+    "field": ["text", "meta.image", "url", "comments"]
   },
   "driverOptions": {
-    "query": "AI",
-    "maxResults": 10
-  },
-  "driver": "playwright"
+    "playwright": {
+      "mode": "eval-js",
+      "scriptPath": "/path/to/script.js"
+    },
+    "network": {
+      "proxy": {
+        "url": "socks5h://127.0.0.1:9050"
+      }
+    },
+    "filter": {
+      "minChars": 8
+    }
+  }
 }
 ```
 
-`driver` 为可选扩展字段；可选值为 `xhttp`、`playwright`、`agent-browser`。未传时默认走 `playwright`。
-`output.fields` 为可选字段，控制 `recordContent` 输出字段（支持点路径）：
+`driver` 必填，可选值为 `xhttp`、`playwright`、`agent-browser`。
+`output.field` 必填，控制 `recordContent` 输出字段（支持点路径）：
 
 - `["text"]`：只返回 `recordContent.text`
 - `["text", "url"]`：返回 `recordContent.text` + `recordContent.url`
 - `["meta.image"]`：返回嵌套字段 `recordContent.meta.image`
 
-`/v2/fetch` 只接受新字段：`sourceId`、`authData`、`driverOptions`、`output`。旧字段（如 `config`、`responseFormats`、`source_id`）会返回校验错误。
+`/v2/fetch` 只接受新字段：`sourceId`、`platform`、`keywords`、`driver`、`driverOptions`、`output.field`。不再兼容旧字段。
 
 ### 通用网络代理配置（支持 HTTP/SOCKS/Tor）
 
@@ -506,8 +513,13 @@ response = requests.post(
     json={
         "platform": "x",
         "sourceId": "test",
-        "authData": {"cookies": [...], "origins": []},
-        "driverOptions": {"query": "AI news", "maxResults": 5}
+        "keywords": ["ai", "openai"],
+        "driver": "playwright",
+        "driverOptions": {
+            "playwright": {"mode": "eval-js", "scriptPath": "/path/to/script.js"},
+            "filter": {"minChars": 8}
+        },
+        "output": {"field": ["text", "url"]}
     }
 )
 for item in response.json():
@@ -540,7 +552,7 @@ apps/gather/
 ### 添加新平台
 
 1. 优先在 `site_scripts/<platform>/`（或 bb-site）提供 `me.ts/me.js` 验证脚本
-2. 采集逻辑优先走 `driver=agent-browser` 或 `config.playwright.mode=eval-js`
+2. 采集逻辑优先走 `driver=agent-browser` 或 `driverOptions.playwright.mode=eval-js`
 3. 在 `main.py` 中添加平台映射与校验逻辑
 4. 在 `export_chrome_cookies.py` 中添加平台配置（如需）
 
