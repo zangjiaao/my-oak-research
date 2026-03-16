@@ -454,10 +454,11 @@ async def _verify_auth_with_bb_site_script(request: VerifyAuthRequest) -> Verify
     if isinstance(result, dict):
         error_message = result.get("error")
         if error_message:
-            if str(error_message).strip().lower() == "cannot confirm logged-in state":
+            hint = result.get("hint") if isinstance(result.get("hint"), str) else None
+            if _is_inconclusive_bb_script_error(str(error_message), hint):
                 print(
                     f"[gather] bb-site verify inconclusive for {platform} "
-                    f"(error={error_message}), fallback to legacy verify"
+                    f"(error={error_message}, hint={hint}), fallback to legacy verify"
                 )
                 return None
             return VerifyAuthResponse(
@@ -577,6 +578,16 @@ def _resolve_verify_auth_data(request: VerifyAuthRequest) -> tuple[dict[str, Any
         message="auth_data or stateFile is required",
         details={"error": "missing_auth_data"},
     )
+
+
+def _is_inconclusive_bb_script_error(message: str, hint: str | None = None) -> bool:
+    normalized_message = message.strip().lower()
+    normalized_hint = (hint or "").strip().lower()
+    if normalized_message == "cannot confirm logged-in state":
+        return True
+    if normalized_message == "failed to get user info" and "not logged in" in normalized_hint:
+        return True
+    return False
 
 
 async def _playwright_verify_auth_legacy(request: VerifyAuthRequest):
