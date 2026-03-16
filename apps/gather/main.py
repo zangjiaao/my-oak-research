@@ -524,6 +524,13 @@ async def _playwright_verify_auth(request: VerifyAuthRequest):
     )
 
 
+async def _agent_browser_verify_auth(_request: VerifyAuthRequest):
+    return VerifyAuthResponse(
+        valid=True,
+        message="agent-browser authentication is configured through fetch config (profile/session/state).",
+    )
+
+
 async def _playwright_fetch_data(request: FetchRequest):
     platform = request.platform.lower()
     config = request.config
