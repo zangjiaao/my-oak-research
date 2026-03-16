@@ -1707,8 +1707,8 @@ async def _run_playwright_eval_script(request: FetchRequest) -> list[CleanItem]:
                             if options["post_navigation_wait_ms"] > 0:
                                 await page.wait_for_timeout(options["post_navigation_wait_ms"])
                             eval_result = await page.evaluate(script_to_run)
-                    else:
-                        raise
+                        else:
+                            raise
                     eval_result = await _apply_xiaohongshu_user_me_fallback(page, eval_result, request)
             else:
                 context_options: dict[str, Any] = {}

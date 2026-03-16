@@ -1,4 +1,6 @@
+import asyncio
 import sys
+from types import SimpleNamespace
 from pathlib import Path
 
 import pytest
@@ -193,3 +195,72 @@ def test_playwright_pool_key_changes_when_session_changes():
     )
 
     assert key1 != key2
+
+
+def test_run_playwright_eval_script_pooled_success_does_not_reraise(monkeypatch):
+    options = {
+        "target_url": "https://www.xiaohongshu.com",
+        "script_body": "(args) => ({ text: 'ok', title: 'ok' })",
+        "wait_until": "domcontentloaded",
+        "navigation_timeout_ms": 60000,
+        "post_navigation_wait_ms": 0,
+        "wait_selector": None,
+        "args_json": "{}",
+        "headless": True,
+        "storage_state": None,
+        "proxy": None,
+        "pool_enabled": True,
+        "pool_idle_timeout_ms": 120000,
+        "pool_user_id": "user-1",
+        "pool_session_id": "session-1",
+        "pool_driver": "playwright",
+    }
+
+    class _DummyLock:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+    class _DummyPage:
+        async def evaluate(self, script):
+            return {"text": "ok", "title": "ok"}
+
+    pooled_entry = SimpleNamespace(lock=_DummyLock(), browser=object())
+
+    async def fake_get_playwright_runtime():
+        return object()
+
+    async def fake_acquire_pooled_entry(*args, **kwargs):
+        return None, pooled_entry
+
+    async def fake_ensure_pooled_page(*args, **kwargs):
+        return _DummyPage()
+
+    async def fake_apply_fallback(page, result, request):
+        return result
+
+    monkeypatch.setattr(main, "_extract_playwright_eval_options", lambda config: options)
+    monkeypatch.setattr(main, "_get_playwright_runtime", fake_get_playwright_runtime)
+    monkeypatch.setattr(main, "_acquire_pooled_playwright_entry", fake_acquire_pooled_entry)
+    monkeypatch.setattr(main, "_ensure_pooled_playwright_page", fake_ensure_pooled_page)
+    monkeypatch.setattr(main, "_apply_xiaohongshu_user_me_fallback", fake_apply_fallback)
+
+    expected_items = [
+        CleanItem(
+            title="ok",
+            text="ok",
+            markdown="ok",
+            platform="xhs",
+            sourceId="source-x-001",
+            sourceType="SOCIAL_MEDIA",
+            recordType="eval-js",
+        )
+    ]
+    monkeypatch.setattr(main, "_normalize_playwright_eval_result", lambda *args, **kwargs: expected_items)
+
+    request = main.FetchRequest(platform="xhs", source_id="source-x-001", config={})
+    items = asyncio.run(main._run_playwright_eval_script(request))
+
+    assert items == expected_items
