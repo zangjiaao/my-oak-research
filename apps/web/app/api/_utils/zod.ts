@@ -177,6 +177,7 @@ export const SocialConfigByPlatform = z.discriminatedUnion("platform", [
     platform: z.literal("X"),
     config: z
       .object({
+        driver: z.enum(["xhttp", "playwright", "agent-browser"]).default("playwright"),
         playwright: z.object({
           mode: z.enum(["eval-js"]).default("eval-js"),
           headless: z.boolean().default(false),
@@ -197,10 +198,17 @@ export const SocialConfigByPlatform = z.discriminatedUnion("platform", [
               )
             );
           }, z.record(z.string().min(1), z.string()).default({})),
-        }),
+        }).optional(),
+        agentBrowser: z.preprocess((val) => parseJson(val), z.record(z.string(), z.any()).optional().nullable()),
       })
-      .refine((v) => Boolean(v.playwright.scriptPath), {
-        message: "X: playwright scriptPath is required",
+      .superRefine((v, ctx) => {
+        if (v.driver === "playwright" && !v.playwright?.scriptPath) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["playwright", "scriptPath"],
+            message: "X: playwright scriptPath is required",
+          });
+        }
       }),
     credentialId: cuidOpt,
     proxyId: cuidOpt,

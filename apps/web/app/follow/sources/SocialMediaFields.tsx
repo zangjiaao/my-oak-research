@@ -11,6 +11,7 @@ import { z } from "zod";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { ErrorMessage } from "@/components/business";
 import SelectProxy from "./SelectProxy";
 import { Proxy } from "@/app/generated/prisma";
@@ -45,6 +46,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface SocialMediaFieldsProps {
   register: UseFormRegister<z.infer<typeof SourceCreateSchema>>;
@@ -223,6 +225,7 @@ export const SocialMediaFields = ({
   setValue,
 }: SocialMediaFieldsProps) => {
   const socialPlatform = watch("social.platform") as SocialPlatform | undefined;
+  const xDriver = watch("social.config.driver") as string | undefined;
   const currentCredentialId = watch("social.credentialId") as string | null | undefined;
 
   const socialErrors = errors as FieldErrors<
@@ -286,10 +289,13 @@ export const SocialMediaFields = ({
   // Check if current platform requires cookie auth
   const needsCookieAuth = socialPlatform &&
     COOKIE_AUTH_PLATFORMS.includes(socialPlatform as typeof COOKIE_AUTH_PLATFORMS[number]);
+  const supportsCredentialForDriver =
+    socialPlatform !== "X" || xDriver !== "xhttp";
+  const canUseCredential = Boolean(needsCookieAuth && supportsCredentialForDriver);
 
   // Fetch existing credentials when platform changes
   useEffect(() => {
-    if (!needsCookieAuth || !socialPlatform) {
+    if (!canUseCredential || !socialPlatform) {
       setCredentials([]);
       return;
     }
@@ -311,7 +317,17 @@ export const SocialMediaFields = ({
     };
 
     fetchCredentials();
-  }, [socialPlatform, needsCookieAuth]);
+  }, [socialPlatform, canUseCredential]);
+
+  useEffect(() => {
+    if (!setValue) return;
+    if (socialPlatform === "X" && xDriver === "xhttp") {
+      setValue("social.credentialId", null, { shouldDirty: true });
+      setShowUploadForm(false);
+      setSelectedFile(null);
+      setAuthStatus({ status: "idle" });
+    }
+  }, [setValue, socialPlatform, xDriver]);
 
   const syncArgsToForm = useCallback(
     (rows: PlaywrightArgRow[]) => {
@@ -352,6 +368,13 @@ export const SocialMediaFields = ({
     },
     [setValue]
   );
+
+  useEffect(() => {
+    if (!setValue) return;
+    if (socialPlatform === "X" && !xDriver) {
+      setValue("social.config.driver", "playwright");
+    }
+  }, [setValue, socialPlatform, xDriver]);
 
   useEffect(() => {
     if (socialPlatform !== "X") return;
@@ -618,6 +641,7 @@ export const SocialMediaFields = ({
                 if (setValue) {
                   setValue("social.credentialId", null);
                   if (value === "X") {
+                    setValue("social.config.driver", "playwright");
                     setValue("social.config.playwright.mode", "eval-js");
                     setValue("social.config.playwright.headless", false);
                     setValue("social.config.playwright.targetUrl", "");
@@ -644,8 +668,35 @@ export const SocialMediaFields = ({
         </ErrorMessage>
       </div>
 
+      {socialPlatform === "X" && (
+        <div className="grid gap-3">
+          <Label>Driver</Label>
+          <Controller
+            name="social.config.driver"
+            control={control}
+            render={({ field }) => (
+              <Tabs
+                value={(field.value as string) || "playwright"}
+                onValueChange={(value) => {
+                  field.onChange(value);
+                }}
+              >
+                <TabsList className="grid w-full grid-cols-3">
+                  <TabsTrigger value="xhttp">xhttp</TabsTrigger>
+                  <TabsTrigger value="playwright">playwright</TabsTrigger>
+                  <TabsTrigger value="agent-browser">agent-browser</TabsTrigger>
+                </TabsList>
+              </Tabs>
+            )}
+          />
+          <p className="text-xs text-muted-foreground">
+            xhttp 不支持认证凭据；playwright / agent-browser 支持凭据。
+          </p>
+        </div>
+      )}
+
       {/* Cookie Auth Selection Section */}
-      {needsCookieAuth && (
+      {canUseCredential && (
         <div className="grid gap-3 p-4 border rounded-lg bg-muted/30">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -845,143 +896,164 @@ export const SocialMediaFields = ({
 
       {socialPlatform === "X" && (
         <>
-          <div className="grid gap-4 p-4 border rounded-lg bg-muted/30">
-            <Label className="text-base font-medium">Playwright Task Params (Required)</Label>
+          {xDriver === "playwright" && (
+            <div className="grid gap-4 p-4 border rounded-lg bg-muted/30">
+              <Label className="text-base font-medium">Playwright Task Params (Required)</Label>
 
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="grid gap-3">
-                <Label htmlFor="social.config.playwright.mode">Mode</Label>
-                <Controller
-                  name="social.config.playwright.mode"
-                  control={control}
-                  render={({ field }) => (
-                    <ControlledSelect
-                      value={(field.value as string) || "eval-js"}
-                      onValueChange={field.onChange}
-                      placeholder="Select mode"
-                    >
-                      <SelectItem value="eval-js">eval-js</SelectItem>
-                    </ControlledSelect>
-                  )}
-                />
-              </div>
-
-              <div className="flex items-center gap-3 pt-8">
-                <Controller
-                  name="social.config.playwright.headless"
-                  control={control}
-                  render={({ field }) => (
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={Boolean(field.value)}
-                        onChange={(e) => field.onChange(e.target.checked)}
-                        className="rounded border-gray-300"
-                      />
-                      <span className="text-sm">Headless</span>
-                    </label>
-                  )}
-                />
-              </div>
-
-              <div className="grid gap-3">
-                <Label htmlFor="social.config.playwright.targetUrl">Target URL (Optional)</Label>
-                <Input
-                  id="social.config.playwright.targetUrl"
-                  placeholder="留空则不执行 page.goto()"
-                  {...register("social.config.playwright.targetUrl")}
-                />
-                <ErrorMessage>{getConfigErrorMessage("playwright.targetUrl")}</ErrorMessage>
-              </div>
-
-              <div className="grid gap-3 md:col-span-2">
-                <Label htmlFor="social.config.playwright.scriptPath">Script Template</Label>
-                <Controller
-                  name="social.config.playwright.scriptPath"
-                  control={control}
-                  render={({ field }) => (
-                    <ControlledSelect
-                      value={(field.value as string) || DEFAULT_X_SCRIPT.scriptPath}
-                      onValueChange={(value) => {
-                        const nextScriptPath = value || DEFAULT_X_SCRIPT.scriptPath;
-                        field.onChange(nextScriptPath);
-                        const args = watch("social.config.playwright.args");
-                        applyXScriptDefaults(nextScriptPath, args, { markDirty: true });
-                      }}
-                      placeholder="Select script path"
-                    >
-                      {X_SCRIPT_OPTIONS.map((option) => (
-                        <SelectItem key={option.scriptPath} value={option.scriptPath}>
-                          {option.name}
-                        </SelectItem>
-                      ))}
-                    </ControlledSelect>
-                  )}
-                />
-                <ErrorMessage>{getConfigErrorMessage("playwright.scriptPath")}</ErrorMessage>
-                <p className="text-xs text-muted-foreground">
-                  {selectedXScript.description}
-                </p>
-                <div className="grid gap-2">
-                  <Label htmlFor="social.config.playwright.scriptPath-input">
-                    Script Path (Editable)
-                  </Label>
-                  <Input
-                    id="social.config.playwright.scriptPath-input"
-                    placeholder="/Users/zangjiaao/Reference/bb-sites/twitter/tweets.js"
-                    {...register("social.config.playwright.scriptPath")}
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="grid gap-3">
+                  <Label htmlFor="social.config.playwright.mode">Mode</Label>
+                  <Controller
+                    name="social.config.playwright.mode"
+                    control={control}
+                    render={({ field }) => (
+                      <ControlledSelect
+                        value={(field.value as string) || "eval-js"}
+                        onValueChange={field.onChange}
+                        placeholder="Select mode"
+                      >
+                        <SelectItem value="eval-js">eval-js</SelectItem>
+                      </ControlledSelect>
+                    )}
                   />
                 </div>
-              </div>
-            </div>
 
-            <div className="grid gap-3 border rounded-md p-3 bg-background">
-              <div className="flex items-center justify-between">
-                <Label className="text-sm font-medium">Args (key:value)</Label>
-                <Button type="button" variant="outline" size="sm" onClick={addArgRow}>
-                  <Plus className="h-3.5 w-3.5 mr-1" />
-                  Add
-                </Button>
-              </div>
-              <div className="grid gap-2 max-h-56 overflow-y-auto pr-1">
-                {xArgRows.map((row) => (
-                  <div key={row.id} className="grid grid-cols-[1fr_1fr_auto] gap-2 items-center">
-                    <Input
-                      value={row.key}
-                      onChange={(e) => updateArgRow(row.id, "key", e.target.value)}
-                      placeholder="key (e.g. screen_name)"
-                      disabled={Boolean(row.preset)}
-                    />
-                    <Input
-                      value={row.value}
-                      onChange={(e) => updateArgRow(row.id, "value", e.target.value)}
-                      placeholder={row.description || "value"}
-                    />
-                    {!row.preset && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => removeArgRow(row.id)}
-                        aria-label="Remove arg row"
+                <div className="flex items-center gap-3 pt-8">
+                  <Controller
+                    name="social.config.playwright.headless"
+                    control={control}
+                    render={({ field }) => (
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={Boolean(field.value)}
+                          onChange={(e) => field.onChange(e.target.checked)}
+                          className="rounded border-gray-300"
+                        />
+                        <span className="text-sm">Headless</span>
+                      </label>
+                    )}
+                  />
+                </div>
+
+                <div className="grid gap-3">
+                  <Label htmlFor="social.config.playwright.targetUrl">Target URL (Optional)</Label>
+                  <Input
+                    id="social.config.playwright.targetUrl"
+                    placeholder="留空则不执行 page.goto()"
+                    {...register("social.config.playwright.targetUrl")}
+                  />
+                  <ErrorMessage>{getConfigErrorMessage("playwright.targetUrl")}</ErrorMessage>
+                </div>
+
+                <div className="grid gap-3 md:col-span-2">
+                  <Label htmlFor="social.config.playwright.scriptPath">Script Template</Label>
+                  <Controller
+                    name="social.config.playwright.scriptPath"
+                    control={control}
+                    render={({ field }) => (
+                      <ControlledSelect
+                        value={(field.value as string) || DEFAULT_X_SCRIPT.scriptPath}
+                        onValueChange={(value) => {
+                          const nextScriptPath = value || DEFAULT_X_SCRIPT.scriptPath;
+                          field.onChange(nextScriptPath);
+                          const args = watch("social.config.playwright.args");
+                          applyXScriptDefaults(nextScriptPath, args, { markDirty: true });
+                        }}
+                        placeholder="Select script path"
                       >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                        {X_SCRIPT_OPTIONS.map((option) => (
+                          <SelectItem key={option.scriptPath} value={option.scriptPath}>
+                            {option.name}
+                          </SelectItem>
+                        ))}
+                      </ControlledSelect>
                     )}
-                    {row.preset && (
-                      <span className="text-xs text-muted-foreground text-right">
-                        {row.required ? "required" : "optional"}
-                      </span>
-                    )}
+                  />
+                  <ErrorMessage>{getConfigErrorMessage("playwright.scriptPath")}</ErrorMessage>
+                  <p className="text-xs text-muted-foreground">
+                    {selectedXScript.description}
+                  </p>
+                  <div className="grid gap-2">
+                    <Label htmlFor="social.config.playwright.scriptPath-input">
+                      Script Path (Editable)
+                    </Label>
+                    <Input
+                      id="social.config.playwright.scriptPath-input"
+                      placeholder="/Users/zangjiaao/Reference/bb-sites/twitter/tweets.js"
+                      {...register("social.config.playwright.scriptPath")}
+                    />
                   </div>
-                ))}
+                </div>
               </div>
-              <p className="text-xs text-muted-foreground">
-                预设参数随脚本切换自动调整；你也可以新增自定义 key:value。
-              </p>
-              <ErrorMessage>{getConfigErrorMessage("playwright.args")}</ErrorMessage>
+
+              <div className="grid gap-3 border rounded-md p-3 bg-background">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-medium">Args (key:value)</Label>
+                  <Button type="button" variant="outline" size="sm" onClick={addArgRow}>
+                    <Plus className="h-3.5 w-3.5 mr-1" />
+                    Add
+                  </Button>
+                </div>
+                <div className="grid gap-2 max-h-56 overflow-y-auto pr-1">
+                  {xArgRows.map((row) => (
+                    <div key={row.id} className="grid grid-cols-[1fr_1fr_auto] gap-2 items-center">
+                      <Input
+                        value={row.key}
+                        onChange={(e) => updateArgRow(row.id, "key", e.target.value)}
+                        placeholder="key (e.g. screen_name)"
+                        disabled={Boolean(row.preset)}
+                      />
+                      <Input
+                        value={row.value}
+                        onChange={(e) => updateArgRow(row.id, "value", e.target.value)}
+                        placeholder={row.description || "value"}
+                      />
+                      {!row.preset && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => removeArgRow(row.id)}
+                          aria-label="Remove arg row"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                      {row.preset && (
+                        <span className="text-xs text-muted-foreground text-right">
+                          {row.required ? "required" : "optional"}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  预设参数随脚本切换自动调整；你也可以新增自定义 key:value。
+                </p>
+                <ErrorMessage>{getConfigErrorMessage("playwright.args")}</ErrorMessage>
+              </div>
             </div>
-          </div>
+          )}
+
+          {xDriver === "xhttp" && (
+            <div className="rounded-lg border bg-muted/30 p-4 text-sm text-muted-foreground">
+              xhttp 驱动不需要浏览器参数，也不支持凭据上传/选择；将直接按 API 方式抓取。
+            </div>
+          )}
+
+          {xDriver === "agent-browser" && (
+            <div className="grid gap-3 rounded-lg border bg-muted/30 p-4">
+              <Label htmlFor="social.config.agentBrowser">Agent Browser Config (JSON)</Label>
+              <Textarea
+                id="social.config.agentBrowser"
+                placeholder='{"agentBrowser":{"script":[{"command":"open https://x.com"}]}}'
+                rows={8}
+                {...register("social.config.agentBrowser")}
+              />
+              <ErrorMessage>{getConfigErrorMessage("agentBrowser")}</ErrorMessage>
+            </div>
+          )}
         </>
       )}
 

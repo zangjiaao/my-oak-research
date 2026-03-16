@@ -593,7 +593,8 @@ async function fetchSocialSource(
   const gatherPlatform = mapGatherPlatform(source.social?.platform);
   const sourceConfig = source.social?.config || {};
   const sourceConfigObj = asObject(sourceConfig);
-  const authData = resolveGatherAuthData(source);
+  const gatherDriver = resolveGatherDriver(sourceConfigObj);
+  const authData = resolveGatherAuthData(source, gatherDriver);
   const proxyUrl =
     source.social?.proxy?.url ??
     source.proxy?.url ??
@@ -624,7 +625,7 @@ async function fetchSocialSource(
         sourceId: source.id,
         authData,
         responseFormats: ["text", "markdown"],
-        driver: "playwright",
+        driver: gatherDriver,
       }),
     });
 
@@ -652,6 +653,16 @@ async function fetchSocialSource(
   }
 }
 
+function resolveGatherDriver(
+  config: Record<string, unknown>
+): "playwright" | "xhttp" | "agent-browser" {
+  const rawDriver = typeof config.driver === "string" ? config.driver.trim().toLowerCase() : "";
+  if (rawDriver === "xhttp" || rawDriver === "agent-browser" || rawDriver === "playwright") {
+    return rawDriver;
+  }
+  return "playwright";
+}
+
 function mapGatherPlatform(platform?: string | null): string {
   if (!platform) return "unknown";
   return platform.toLowerCase();
@@ -664,6 +675,14 @@ function normalizeGatherSocialConfig(
   const platform = source.social?.platform;
   if ((platform || "").toUpperCase() !== "X") {
     return config;
+  }
+
+  const driver = resolveGatherDriver(config);
+  if (driver !== "playwright") {
+    return {
+      ...config,
+      driver,
+    };
   }
 
   const playwright = asObject(config.playwright);
@@ -752,7 +771,13 @@ function resolveSourceCredentialId(
   return null;
 }
 
-function resolveGatherAuthData(source: SocialMediaSource): Record<string, unknown> | null {
+function resolveGatherAuthData(
+  source: SocialMediaSource,
+  driver: "playwright" | "xhttp" | "agent-browser"
+): Record<string, unknown> | null {
+  if (driver === "xhttp") {
+    return null;
+  }
   const socialCredential = source.social?.credential?.data;
   if (socialCredential && typeof socialCredential === "object" && !Array.isArray(socialCredential)) {
     return socialCredential as Record<string, unknown>;

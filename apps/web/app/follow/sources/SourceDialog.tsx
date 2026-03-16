@@ -170,19 +170,27 @@ const getDefaultValues = (
     }
     case "SOCIAL_MEDIA": {
       if (isSocialSource(source)) {
+        const socialConfig = (source.social.config || {}) as Record<string, unknown>;
+        if (source.social.platform === "X" && typeof socialConfig.driver !== "string") {
+          socialConfig.driver = "playwright";
+        }
         return {
           ...base,
           type: "SOCIAL_MEDIA",
-          social: source.social as unknown as SocialFormValues["social"],
+          social: {
+            ...source.social,
+            config: socialConfig,
+          } as unknown as SocialFormValues["social"],
         } as SourceFormValues;
       }
       const defaultSocial: SocialFormValues["social"] = {
         platform: "X",
         config: {
+          driver: "playwright",
           playwright: {
             mode: "eval-js",
             headless: false,
-            targetUrl: "https://x.com",
+            targetUrl: "",
           },
         } as any,
         credentialId: null,
