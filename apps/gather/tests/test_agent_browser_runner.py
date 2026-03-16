@@ -16,6 +16,11 @@ from drivers.agent_browser_runner import (
 from drivers import agent_browser_runner as runner_module
 
 
+@pytest.fixture(autouse=True)
+def _pin_agent_browser_bin(monkeypatch):
+    monkeypatch.setattr(runner_module, "_AGENT_BROWSER_BIN", "agent-browser")
+
+
 def test_execute_agent_browser_script_supports_repeat_and_capture(monkeypatch, tmp_path):
     runner_module._INSTANCES.clear()
     calls = []
@@ -51,17 +56,20 @@ def test_execute_agent_browser_script_supports_repeat_and_capture(monkeypatch, t
     assert len(result.step_results) == 3
     assert result.captures["poll_click"] == ["ran:click @e1", "ran:click @e1"]
     assert sleep_calls == [0.005]
-    assert calls[0][:8] == [
+    # calls[0] is the "close" from _safe_close_daemon (stateFile triggers fresh daemon)
+    assert calls[0] == ["agent-browser", "close"]
+    # First script command includes prefix + command + trailing --state
+    first_cmd = calls[1]
+    assert first_cmd[:6] == [
         "agent-browser",
         "--headed",
         "--profile",
         ".auth/demo-profile",
         "--session-name",
         "demo-session",
-        "--state",
-        str(state_file),
     ]
-    assert "--state" not in calls[1]
+    assert first_cmd[-2:] == ["--state", str(state_file)]
+    assert "--state" not in calls[2]
     assert result.instance_id.startswith("ab-")
     assert result.tab_id.startswith("tab-")
     assert result.instance_active is True

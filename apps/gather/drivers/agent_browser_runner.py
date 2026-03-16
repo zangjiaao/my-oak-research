@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import os
 import shlex
+import shutil
 import subprocess
 import threading
 import time
@@ -10,6 +12,31 @@ from uuid import uuid4
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+
+
+def _resolve_agent_browser_bin() -> str:
+    """Resolve the agent-browser binary, preferring the system-installed version
+    over any node_modules/.bin version which may be outdated."""
+    env_override = os.environ.get("AGENT_BROWSER_BIN")
+    if env_override:
+        return env_override
+
+    original_path = os.environ.get("PATH", "")
+    filtered_dirs = [
+        d for d in original_path.split(os.pathsep)
+        if "node_modules" not in d
+    ]
+    system_bin = shutil.which("agent-browser", path=os.pathsep.join(filtered_dirs))
+    if system_bin:
+        return system_bin
+
+    default_bin = shutil.which("agent-browser")
+    if default_bin:
+        return default_bin
+    return "agent-browser"
+
+
+_AGENT_BROWSER_BIN = _resolve_agent_browser_bin()
 
 
 @dataclass(slots=True)
@@ -243,7 +270,7 @@ def _resolve_proxy_options(options: dict[str, Any]) -> tuple[str | None, str | N
 
 
 def _build_command_prefixes(options: dict[str, Any]) -> tuple[list[str], str | None]:
-    command_prefix = ["agent-browser"]
+    command_prefix = [_AGENT_BROWSER_BIN]
     if bool(options.get("headed", False)):
         command_prefix.append("--headed")
 
@@ -278,7 +305,7 @@ def _safe_close_daemon(verbose: bool) -> None:
     _emit_log(verbose, "close daemon")
     try:
         subprocess.run(
-            ["agent-browser", "close"],
+            [_AGENT_BROWSER_BIN, "close"],
             capture_output=True,
             text=True,
             timeout=10,
@@ -607,7 +634,7 @@ def _execute_steps_batch(
             used_state_prefix = False
             state_applied_this_command = False
             if is_close_command:
-                args = ["agent-browser", "close"]
+                args = [_AGENT_BROWSER_BIN, "close"]
                 should_close_by_step = True
             else:
                 can_use_state_prefix = bool(instance.state_file) and not instance.state_applied
@@ -810,6 +837,7 @@ def _execute_loop_block(
 
 def _create_instance(options: dict[str, Any], *, verbose: bool) -> AgentBrowserInstanceState:
     command_prefix, resolved_state_file = _build_command_prefixes(options)
+    _emit_log(verbose, f"using binary: {_AGENT_BROWSER_BIN}")
     if resolved_state_file:
         _emit_log(verbose, "ensure fresh daemon before applying stateFile")
         _safe_close_daemon(verbose)
