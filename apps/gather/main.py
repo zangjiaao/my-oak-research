@@ -2746,7 +2746,18 @@ if __name__ == "__main__":
     host = os.getenv("GATHER_HOST", "0.0.0.0")
     port = int(os.getenv("GATHER_PORT", "8000"))
     reload = os.getenv("GATHER_RELOAD", "false").lower() == "true"
+    reload_excludes: list[str] = []
+    if _API_IO_LOG_ENABLED:
+        reload_excludes.append(str(_API_IO_LOG_DIR))
     
     print(f"[gather] Starting service on {host}:{port} (reload={reload})")
+    if reload_excludes:
+        print(f"[gather] reload excludes: {', '.join(reload_excludes)}")
     # Using string import "main:app" to support reload
-    uvicorn.run("main:app", host=host, port=port, reload=reload)
+    uvicorn.run(
+        "main:app",
+        host=host,
+        port=port,
+        reload=reload,
+        reload_excludes=reload_excludes,
+    )
