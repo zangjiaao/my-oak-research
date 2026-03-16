@@ -188,43 +188,14 @@ export async function POST(
 
     const { authData, sourceId, name: providedName } = parsed.data;
 
-    // Step 1: Verify auth with gather service
-    console.log(`[auth] Verifying ${platform} auth with gather service...`);
-
-    const verifyResponse = await fetch(`${GATHER_SERVICE_URL}/verify-auth`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        platform: platformNormalized,
-        auth_data: authData,
-        headless: false, // Set to false for debugging, true for production
-      }),
-    });
-
-    if (!verifyResponse.ok) {
-      const errorText = await verifyResponse.text();
-      console.error(`[auth] Gather service error: ${errorText}`);
-      return serverError(new Error(`Gather service error: ${errorText}`));
-    }
-
-    const verifyResult = await verifyResponse.json();
-
-    if (!verifyResult.valid) {
-      return json({
-        success: false,
-        verified: false,
-        message: verifyResult.message,
-        details: verifyResult.details,
-      }, 400);
-    }
-
+    const credentialName = credentialNameFromInput(providedName, platform.toUpperCase());
     const persistStateResponse = await fetch(`${GATHER_SERVICE_URL}/auth/state-file`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         platform: platformNormalized,
         auth_data: authData,
-        name: credentialNameFromInput(providedName, platform.toUpperCase()),
+        name: credentialName,
       }),
     });
     if (!persistStateResponse.ok) {
@@ -237,9 +208,40 @@ export async function POST(
     if (typeof stateFile !== "string" || !stateFile.trim()) {
       return serverError(new Error("Failed to persist auth state file: missing stateFile"));
     }
+    console.log(`[auth] Verifying ${platform} auth with gather service via stateFile...`);
+    const verifyResponse = await fetch(`${GATHER_SERVICE_URL}/verify-auth`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        platform: platformNormalized,
+        state_file: stateFile,
+        headless: false,
+      }),
+    });
+    if (!verifyResponse.ok) {
+      const errorText = await verifyResponse.text();
+      console.error(`[auth] Gather service error: ${errorText}`);
+      return serverError(new Error(`Gather service error: ${errorText}`));
+    }
+    const verifyResult = await verifyResponse.json();
+    if (!verifyResult.valid) {
+      await fetch(`${GATHER_SERVICE_URL}/auth/state-file`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ stateFile }),
+      }).catch(() => undefined);
+      return json(
+        {
+          success: false,
+          verified: false,
+          message: verifyResult.message,
+          details: verifyResult.details,
+        },
+        400
+      );
+    }
 
     // Step 2: Create or update Credential
-    const credentialName = credentialNameFromInput(providedName, platform.toUpperCase());
     const credentialKind = `${platformNormalized}-cookie`;
 
     console.log(`[auth] Using credential name: "${credentialName}" for kind: "${credentialKind}"`);

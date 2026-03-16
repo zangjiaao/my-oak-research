@@ -75,6 +75,35 @@ def _truncate_for_log(value: Any, max_chars: int) -> Any:
     return value
 
 
+def _redact_sensitive_for_log(value: Any) -> Any:
+    if isinstance(value, list):
+        return [_redact_sensitive_for_log(item) for item in value]
+    if not isinstance(value, dict):
+        return value
+
+    redacted: dict[str, Any] = {}
+    for raw_key, raw_val in value.items():
+        key = str(raw_key)
+        lowered = key.lower()
+        if lowered in {"auth_data", "authdata"} and isinstance(raw_val, dict):
+            cookies = raw_val.get("cookies")
+            origins = raw_val.get("origins")
+            redacted[key] = {
+                "redacted": True,
+                "cookiesCount": len(cookies) if isinstance(cookies, list) else 0,
+                "originsCount": len(origins) if isinstance(origins, list) else 0,
+            }
+            continue
+        if lowered in {"cookies", "origins", "localstorage"}:
+            if isinstance(raw_val, list):
+                redacted[key] = f"<redacted list, len={len(raw_val)}>"
+            else:
+                redacted[key] = "<redacted>"
+            continue
+        redacted[key] = _redact_sensitive_for_log(raw_val)
+    return redacted
+
+
 def _log_api_io(route: str, request_body: Any, response_body: Any, status_code: int) -> None:
     if not _API_IO_LOG_ENABLED:
         return
@@ -86,7 +115,10 @@ def _log_api_io(route: str, request_body: Any, response_body: Any, status_code: 
             "time": now.isoformat(),
             "route": route,
             "statusCode": status_code,
-            "request": _truncate_for_log(request_body, _API_IO_LOG_MAX_CHARS),
+            "request": _truncate_for_log(
+                _redact_sensitive_for_log(request_body),
+                _API_IO_LOG_MAX_CHARS,
+            ),
             "response": _truncate_for_log(response_body, _API_IO_LOG_MAX_CHARS),
         }
         with file_path.open("a", encoding="utf-8") as f:
@@ -497,15 +529,9 @@ async def _verify_auth_with_bb_site_script(request: VerifyAuthRequest) -> Verify
         )
 
     if result is False:
-        return VerifyAuthResponse(
-            valid=False,
-            message=f"{request.platform} authentication is invalid or expired",
-            details={
-                "platform": request.platform,
-                "verifyMethod": "bb-site-script",
-                "scriptPath": str(script_path),
-            },
-        )
+        print(f"[gather] bb-site verify returned false for {platform}, fallback to legacy verify")
+        return None
+    print(f"[gather] bb-site verify inconclusive for {platform}, fallback to legacy verify")
     return None
 
 
