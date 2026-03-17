@@ -192,19 +192,19 @@ def test_keyword_filter_invalid_config_fails_closed(monkeypatch, capsys):
     assert "error" in capsys.readouterr().out
 
 
-def test_keyword_split_mode_keeps_only_matched_segments(monkeypatch):
+def test_keyword_min_chars_keeps_record_when_content_is_long_enough(monkeypatch):
     client = _client_with_stub_driver(monkeypatch)
     response = client.post(
         "/v2/fetch",
         json={
             "platform": "chat-batch",
-            "sourceId": "source-chat-segment",
+            "sourceId": "source-chat-min",
             "keywords": ["alpha"],
             "driver": "playwright",
             "output": {"field": ["text", "markdown"]},
             "driverOptions": {
                 "filter": {
-                    "splitMode": "line",
+                    "minChars": 20,
                 }
             },
         },
@@ -215,29 +215,49 @@ def test_keyword_split_mode_keeps_only_matched_segments(monkeypatch):
     assert len(items) == 1
     assert "alpha launch is live" in items[0]["recordContent"]["text"]
     assert items[0]["matchedKeywords"] == ["alpha"]
-    assert items[0]["recordType"] == "message"
 
 
-def test_keyword_split_mode_supports_min_segment_chars(monkeypatch):
+def test_keyword_min_chars_filters_out_short_content(monkeypatch):
     client = _client_with_stub_driver(monkeypatch)
     response = client.post(
         "/v2/fetch",
         json={
             "platform": "chat-batch",
-            "sourceId": "source-chat-min-chars",
+            "sourceId": "source-chat-too-short",
             "keywords": ["alpha"],
             "driver": "playwright",
             "output": {"field": ["text", "markdown"]},
             "driverOptions": {
                 "filter": {
-                    "splitMode": "line",
-                    "minChars": 30,
+                    "minChars": 500,
                 }
             },
         },
     )
 
     assert response.status_code == 200
-    items = response.json()
-    assert len(items) == 1
-    assert "alpha launch is live" in items[0]["recordContent"]["text"]
+    assert response.json() == []
+
+
+def test_keyword_filter_rejects_split_mode(monkeypatch):
+    client = _client_with_stub_driver(monkeypatch)
+    response = client.post(
+        "/v2/fetch",
+        json={
+            "platform": "chat-batch",
+            "sourceId": "source-chat-split-mode",
+            "keywords": ["alpha"],
+            "driver": "playwright",
+            "output": {"field": ["text", "markdown"]},
+            "driverOptions": {
+                "filter": {
+                    "splitMode": "line",
+                }
+            },
+        },
+    )
+
+    assert response.status_code == 400
+    payload = response.json()
+    assert payload["error"]["code"] == "FETCH_BAD_REQUEST"
+    assert "splitMode has been removed" in payload["error"]["message"]
