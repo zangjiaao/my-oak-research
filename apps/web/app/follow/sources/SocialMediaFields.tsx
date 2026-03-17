@@ -48,6 +48,15 @@ import {
 import { cn } from "@/lib/utils";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
   getDefaultDriver,
   getSupportedDrivers,
   supportsDriver,
@@ -313,12 +322,6 @@ export const SocialMediaFields = ({
   const currentRecordFormat = watch(
     "social.config.agentBrowser.recordSchema.format"
   ) as string | undefined;
-  const currentMatchScope = watch(
-    "social.config.keywordFilter.matchScope"
-  ) as string | undefined;
-  const currentSplitMode = watch(
-    "social.config.keywordFilter.splitMode"
-  ) as string | undefined;
   const supportedDrivers = socialPlatform
     ? getSupportedDrivers(socialPlatform)
     : [];
@@ -561,23 +564,11 @@ export const SocialMediaFields = ({
         shouldDirty: false,
       });
     }
-    if (!currentMatchScope) {
-      setValue("social.config.keywordFilter.matchScope", "segment", {
-        shouldDirty: false,
-      });
-    }
-    if (!currentSplitMode) {
-      setValue("social.config.keywordFilter.splitMode", "line", {
-        shouldDirty: false,
-      });
-    }
   }, [
     setValue,
     socialPlatform,
     resolvedDriver,
     currentRecordFormat,
-    currentMatchScope,
-    currentSplitMode,
   ]);
 
   const syncArgsToForm = useCallback(
@@ -918,9 +909,7 @@ export const SocialMediaFields = ({
     scriptOptions.length > 0
       ? getScriptOptionByPath(scriptOptions, selectedScriptPath)
       : null;
-  const keywordFilterError =
-    getConfigErrorMessage("keywordFilter.keywords") ??
-    getConfigErrorMessage("keywordFilter");
+  const keywordFilterError = getConfigErrorMessage("keywordFilter");
   const responseFormatsError = getConfigErrorMessage("responseFormats");
 
   // Render auth status indicator
@@ -954,41 +943,40 @@ export const SocialMediaFields = ({
   };
 
   const renderAgentBrowserFields = () => (
-    <div className="grid gap-4 rounded-lg border bg-muted/30 p-4">
-      <Label className="text-base font-medium">Agent Browser Params</Label>
-      <p className="text-xs text-muted-foreground">
-        ownerId / sessionKey 由系统统一维护，表单无需填写。
-      </p>
+    <Card className="gap-4 bg-muted/30">
+      <CardHeader>
+        <CardTitle>Agent Browser Params</CardTitle>
+        <CardDescription>
+          ownerId / sessionKey 由系统统一维护，表单无需填写。
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="grid gap-4">
 
       <div className="flex flex-wrap items-center gap-5">
         <Controller
           name="social.config.agentBrowser.headed"
           control={control}
           render={({ field }) => (
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
+            <div className="flex items-center gap-2">
+              <Switch
                 checked={Boolean(field.value)}
-                onChange={(e) => field.onChange(e.target.checked)}
-                className="rounded border-gray-300"
+                onCheckedChange={field.onChange}
               />
               <span className="text-sm">Headed</span>
-            </label>
+            </div>
           )}
         />
         <Controller
           name="social.config.agentBrowser.closeOnComplete"
           control={control}
           render={({ field }) => (
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
+            <div className="flex items-center gap-2">
+              <Switch
                 checked={Boolean(field.value)}
-                onChange={(e) => field.onChange(e.target.checked)}
-                className="rounded border-gray-300"
+                onCheckedChange={field.onChange}
               />
               <span className="text-sm">Close On Complete</span>
-            </label>
+            </div>
           )}
         />
       </div>
@@ -1083,34 +1071,31 @@ export const SocialMediaFields = ({
           name="social.config.agentBrowser.captureFilter.perLine"
           control={control}
           render={({ field }) => (
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
+            <div className="flex items-center gap-2">
+              <Switch
                 checked={Boolean(field.value)}
-                onChange={(e) => field.onChange(e.target.checked)}
-                className="rounded border-gray-300"
+                onCheckedChange={field.onChange}
               />
               <span className="text-sm">Capture Per Line</span>
-            </label>
+            </div>
           )}
         />
         <Controller
           name="social.config.agentBrowser.captureFilter.dedupe"
           control={control}
           render={({ field }) => (
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
+            <div className="flex items-center gap-2">
+              <Switch
                 checked={Boolean(field.value)}
-                onChange={(e) => field.onChange(e.target.checked)}
-                className="rounded border-gray-300"
+                onCheckedChange={field.onChange}
               />
               <span className="text-sm">Capture Dedupe</span>
-            </label>
+            </div>
           )}
         />
       </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 
   const getPlatformOptionLabel = (platform: string) => {
@@ -1122,8 +1107,14 @@ export const SocialMediaFields = ({
   };
 
   const renderGatherOutputAndFilterFields = () => (
-    <div className="grid gap-4 rounded-lg border bg-muted/30 p-4">
-      <Label className="text-base font-medium">Gather Output & Keyword Filter</Label>
+    <Card className="gap-4 bg-muted/30">
+      <CardHeader>
+        <CardTitle>Output & Filter</CardTitle>
+        <CardDescription>
+          source 仅配置输出和最小内容长度；关键词由 Query 统一注入。
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="grid gap-4">
 
       <div className="grid gap-2">
         <Label>Response Formats</Label>
@@ -1143,20 +1134,18 @@ export const SocialMediaFields = ({
             return (
               <div className="flex flex-wrap items-center gap-5">
                 <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
+                  <Checkbox
                     checked={selected.includes("text")}
-                    onChange={(e) => toggle("text", e.target.checked)}
-                    className="rounded border-gray-300"
+                    onCheckedChange={(checked) => toggle("text", checked === true)}
                   />
                   <span className="text-sm">text</span>
                 </label>
                 <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
+                  <Checkbox
                     checked={selected.includes("markdown")}
-                    onChange={(e) => toggle("markdown", e.target.checked)}
-                    className="rounded border-gray-300"
+                    onCheckedChange={(checked) =>
+                      toggle("markdown", checked === true)
+                    }
                   />
                   <span className="text-sm">markdown</span>
                 </label>
@@ -1167,166 +1156,116 @@ export const SocialMediaFields = ({
         <ErrorMessage>{responseFormatsError}</ErrorMessage>
       </div>
 
-      <div className="grid gap-2">
-        <Label htmlFor="social.config.keywordFilter.keywords">Keywords</Label>
-        <Controller
-          name="social.config.keywordFilter.keywords"
-          control={control}
-          render={({ field }) => (
-            <Textarea
-              id="social.config.keywordFilter.keywords"
-              rows={3}
-              placeholder="关键词，使用逗号或换行分隔"
-              value={
-                Array.isArray(field.value)
-                  ? field.value.join("\n")
-                  : typeof field.value === "string"
-                    ? field.value
-                    : ""
-              }
-              onChange={(e) => field.onChange(e.target.value)}
-            />
-          )}
+      <div className="grid gap-2 md:max-w-xs">
+        <Label htmlFor="social.config.keywordFilter.minSegmentChars">
+          Filter Min Chars
+        </Label>
+        <Input
+          id="social.config.keywordFilter.minSegmentChars"
+          type="number"
+          min={0}
+          {...register("social.config.keywordFilter.minSegmentChars", {
+            setValueAs: (value) => (value === "" ? undefined : Number(value)),
+          })}
         />
         <ErrorMessage>{keywordFilterError}</ErrorMessage>
       </div>
-
-      <div className="grid gap-4 md:grid-cols-3">
-        <div className="grid gap-2">
-          <Label>Match Scope</Label>
-          <Controller
-            name="social.config.keywordFilter.matchScope"
-            control={control}
-            render={({ field }) => (
-              <ControlledSelect
-                value={(field.value as string) || "segment"}
-                onValueChange={field.onChange}
-                placeholder="Select match scope"
-              >
-                <SelectItem value="segment">segment</SelectItem>
-                <SelectItem value="full">full</SelectItem>
-              </ControlledSelect>
-            )}
-          />
-        </div>
-        <div className="grid gap-2">
-          <Label>Split Mode</Label>
-          <Controller
-            name="social.config.keywordFilter.splitMode"
-            control={control}
-            render={({ field }) => (
-              <ControlledSelect
-                value={(field.value as string) || "line"}
-                onValueChange={field.onChange}
-                placeholder="Select split mode"
-              >
-                <SelectItem value="line">line</SelectItem>
-                <SelectItem value="paragraph">paragraph</SelectItem>
-                <SelectItem value="auto">auto</SelectItem>
-              </ControlledSelect>
-            )}
-          />
-        </div>
-        <div className="grid gap-2">
-          <Label htmlFor="social.config.keywordFilter.minSegmentChars">
-            Min Segment Chars
-          </Label>
-          <Input
-            id="social.config.keywordFilter.minSegmentChars"
-            type="number"
-            min={0}
-            {...register("social.config.keywordFilter.minSegmentChars", {
-              setValueAs: (value) => (value === "" ? undefined : Number(value)),
-            })}
-          />
-        </div>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 
   return (
     <>
-      <div className="grid gap-3">
-        <Label htmlFor="social.platform">Platform</Label>
-        <Controller
-          name="social.platform"
-          control={control}
-          render={({ field }) => (
-            <ControlledSelect
-              value={field.value as string}
-              onValueChange={(value) => {
-                field.onChange(value);
-                // Reset auth status and credential when platform changes
-                setAuthStatus({ status: "idle" });
-                setSelectedFile(null);
-                setShowUploadForm(false);
-                if (setValue) {
-                  setValue("social.credentialId", null);
-                  setValue(
-                    "social.config.driver",
-                    getDefaultDriver(value as SocialPlatform)
-                  );
-                  setValue("social.config.playwright.mode", "eval-js");
-                  setValue("social.config.playwright.headless", false);
-                  setValue("social.config.playwright.targetUrl", "");
-                  setValue("social.config.playwright.args", {});
-                }
-              }}
-              placeholder="Select a social media platform"
-            >
-              {availablePlatforms.map((platform) => (
-                <SelectItem key={platform} value={platform}>
-                  {getPlatformOptionLabel(platform)}
-                </SelectItem>
-              ))}
-            </ControlledSelect>
-          )}
-        />
-        <ErrorMessage>
-          {socialErrors.social?.platform?.message?.toString()}
-        </ErrorMessage>
-        {socialPlatform && (
-          <p className="text-xs text-muted-foreground">
-            {currentPlatformStats?.active
-              ? `该平台有 ${currentPlatformStats.active} 个可用 bb-site 脚本，可在 Playwright 中直接选择。`
-              : currentPlatformStats?.deprecated || currentPlatformStats?.broken
-                ? "该平台 bb-site 脚本当前不可用（DEPRECATED/BROKEN），你仍可使用自定义 driver 配置。"
-                : "该平台当前无 bb-site 脚本，使用自定义 driver 配置。"}
-          </p>
-        )}
-      </div>
-
-      {socialPlatform && supportedDrivers.length > 0 && (
-        <div className="grid gap-3">
-          <Label>Driver</Label>
-          <Controller
-            name="social.config.driver"
-            control={control}
-            render={({ field }) => (
-              <Tabs
-                value={resolvedDriver}
-                onValueChange={(value) => {
-                  field.onChange(value);
-                }}
-              >
-                <TabsList
-                  className="grid w-full"
-                  style={{ gridTemplateColumns: `repeat(${supportedDrivers.length}, minmax(0, 1fr))` }}
+      <Card className="gap-4 bg-muted/30">
+        <CardHeader>
+          <CardTitle>Social Driver</CardTitle>
+          <CardDescription>
+            配置 source 级别的平台和驱动；name / description 在基础信息中保留。
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-4">
+          <div className="grid gap-3">
+            <Label htmlFor="social.platform">Platform</Label>
+            <Controller
+              name="social.platform"
+              control={control}
+              render={({ field }) => (
+                <ControlledSelect
+                  value={field.value as string}
+                  onValueChange={(value) => {
+                    field.onChange(value);
+                    setAuthStatus({ status: "idle" });
+                    setSelectedFile(null);
+                    setShowUploadForm(false);
+                    if (setValue) {
+                      setValue("social.credentialId", null);
+                      setValue(
+                        "social.config.driver",
+                        getDefaultDriver(value as SocialPlatform)
+                      );
+                      setValue("social.config.playwright.mode", "eval-js");
+                      setValue("social.config.playwright.headless", false);
+                      setValue("social.config.playwright.targetUrl", "");
+                      setValue("social.config.playwright.args", {});
+                    }
+                  }}
+                  placeholder="Select a social media platform"
                 >
-                  {supportedDrivers.map((driver) => (
-                    <TabsTrigger key={driver} value={driver}>
-                      {driver}
-                    </TabsTrigger>
+                  {availablePlatforms.map((platform) => (
+                    <SelectItem key={platform} value={platform}>
+                      {getPlatformOptionLabel(platform)}
+                    </SelectItem>
                   ))}
-                </TabsList>
-              </Tabs>
+                </ControlledSelect>
+              )}
+            />
+            <ErrorMessage>
+              {socialErrors.social?.platform?.message?.toString()}
+            </ErrorMessage>
+            {socialPlatform && (
+              <p className="text-xs text-muted-foreground">
+                {currentPlatformStats?.active
+                  ? `该平台有 ${currentPlatformStats.active} 个可用 bb-site 脚本，可在 Playwright 中直接选择。`
+                  : currentPlatformStats?.deprecated || currentPlatformStats?.broken
+                    ? "该平台 bb-site 脚本当前不可用（DEPRECATED/BROKEN），你仍可使用自定义 driver 配置。"
+                    : "该平台当前无 bb-site 脚本，使用自定义 driver 配置。"}
+              </p>
             )}
-          />
-          <p className="text-xs text-muted-foreground">
-            xhttp 不支持认证凭据；playwright / agent-browser 支持凭据。
-          </p>
-        </div>
-      )}
+          </div>
+
+          {socialPlatform && supportedDrivers.length > 0 && (
+            <div className="grid gap-3">
+              <Label>Driver</Label>
+              <Controller
+                name="social.config.driver"
+                control={control}
+                render={({ field }) => (
+                  <Tabs
+                    value={resolvedDriver}
+                    onValueChange={(value) => {
+                      field.onChange(value);
+                    }}
+                  >
+                    <TabsList
+                      className="grid w-full"
+                      style={{ gridTemplateColumns: `repeat(${supportedDrivers.length}, minmax(0, 1fr))` }}
+                    >
+                      {supportedDrivers.map((driver) => (
+                        <TabsTrigger key={driver} value={driver}>
+                          {driver}
+                        </TabsTrigger>
+                      ))}
+                    </TabsList>
+                  </Tabs>
+                )}
+              />
+              <p className="text-xs text-muted-foreground">
+                xhttp 不支持认证凭据；playwright / agent-browser 支持凭据。
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Cookie Auth Selection Section */}
       {canUseCredential && (
@@ -1530,8 +1469,14 @@ export const SocialMediaFields = ({
       {socialPlatform && (
         <>
           {resolvedDriver === "playwright" && (
-            <div className="grid gap-4 p-4 border rounded-lg bg-muted/30">
-              <Label className="text-base font-medium">Playwright Task Params (Required)</Label>
+            <Card className="gap-4 bg-muted/30">
+              <CardHeader>
+                <CardTitle>Playwright Params</CardTitle>
+                <CardDescription>
+                  可直接选择 bb-site preset 并自动填充 scriptPath 与 args。
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="grid gap-4">
 
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="grid gap-3">
@@ -1557,11 +1502,9 @@ export const SocialMediaFields = ({
                     control={control}
                     render={({ field }) => (
                       <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="checkbox"
+                        <Switch
                           checked={Boolean(field.value)}
-                          onChange={(e) => field.onChange(e.target.checked)}
-                          className="rounded border-gray-300"
+                          onCheckedChange={field.onChange}
                         />
                         <span className="text-sm">Headless</span>
                       </label>
@@ -1680,7 +1623,8 @@ export const SocialMediaFields = ({
                 </p>
                 <ErrorMessage>{getConfigErrorMessage("playwright.args")}</ErrorMessage>
               </div>
-            </div>
+              </CardContent>
+            </Card>
           )}
 
           {resolvedDriver === "xhttp" && (
@@ -1842,11 +1786,9 @@ export const SocialMediaFields = ({
               control={control}
               render={({ field }) => (
                 <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
+                  <Switch
                     checked={field.value || false}
-                    onChange={(e) => field.onChange(e.target.checked)}
-                    className="rounded border-gray-300"
+                    onCheckedChange={field.onChange}
                   />
                   <span className="text-sm">获取热门话题</span>
                 </label>
