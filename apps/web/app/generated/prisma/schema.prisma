@@ -55,6 +55,17 @@ enum SourceType {
   SOCIAL_MEDIA
 }
 
+enum BbPresetStatus {
+  ACTIVE
+  DEPRECATED
+  BROKEN
+}
+
+enum BbPresetSyncStatus {
+  SUCCEEDED
+  FAILED
+}
+
 enum CrawlerEngine {
   FETCH // node-fetch/undici
   CHEERIO // 轻量解析
@@ -77,19 +88,6 @@ enum SearchEngineKind {
   DDG
   SEARXNG
   CUSTOM
-}
-
-enum SocialPlatform {
-  X
-  TELEGRAM
-  REDDIT
-  XIAOHONGSHU
-  DOUYIN
-  TIKTOK
-  WEIBO
-  WHATSAPP
-  INSTAGRAM
-  FACEBOOK
 }
 
 model Proxy {
@@ -148,14 +146,68 @@ model Source {
   updatedAt DateTime @updatedAt
 
   // 1:1 configs（按类型存在其一）
-  web     WebSourceConfig?
-  darknet DarknetSourceConfig?
-  search  SearchEngineSourceConfig?
-  social  SocialMediaSourceConfig?
-  queries Query[]
+  web            WebSourceConfig?
+  darknet        DarknetSourceConfig?
+  search         SearchEngineSourceConfig?
+  social         SocialMediaSourceConfig?
+  presetBindings SourcePresetBinding[]
+  queries        Query[]
 
   @@unique([name])
   @@index([type])
+}
+
+model BbPreset {
+  id                String                @id @default(cuid())
+  key               String
+  version           String
+  name              String
+  description       String?
+  platform          String
+  scriptRelPath     String
+  scriptHash        String
+  scriptSnapshotKey String?
+  argsSchema        Json
+  outputSchema      Json
+  status            BbPresetStatus        @default(ACTIVE)
+  isActive          Boolean               @default(true)
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+  sourceBindings    SourcePresetBinding[]
+
+  @@unique([key, version])
+  @@index([platform, status])
+  @@index([key, isActive])
+}
+
+model SourcePresetBinding {
+  id        String   @id @default(cuid())
+  sourceId  String
+  presetId  String
+  args      Json
+  enabled   Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  source    Source   @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  preset    BbPreset @relation(fields: [presetId], references: [id], onDelete: Restrict)
+
+  @@unique([sourceId, presetId])
+  @@index([sourceId, enabled])
+}
+
+model BbPresetSyncLog {
+  id           String             @id @default(cuid())
+  rootPath     String
+  status       BbPresetSyncStatus
+  startedAt    DateTime           @default(now())
+  finishedAt   DateTime?
+  scannedCount Int                @default(0)
+  createdCount Int                @default(0)
+  changedCount Int                @default(0)
+  brokenCount  Int                @default(0)
+  skippedCount Int                @default(0)
+  diff         Json?
+  error        String?
 }
 
 model WebSourceConfig {
@@ -222,7 +274,7 @@ model SocialMediaSourceConfig {
   sourceId String @id
   source   Source @relation(fields: [sourceId], references: [id])
 
-  platform SocialPlatform
+  platform String
 
   // 为减少多列空值，这里用 Json 承载平台特定字段：
   // X: { user?: "...", listId?: "...", query?: "..." }

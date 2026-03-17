@@ -1,4 +1,5 @@
 import {
+  BbPreset,
   Query,
   Keyword,
   Source,
@@ -6,6 +7,7 @@ import {
   DarknetSourceConfig,
   SocialMediaSourceConfig,
   SearchEngineSourceConfig,
+  SourcePresetBinding,
   Proxy,
   Credential,
   QueryRun,
@@ -25,28 +27,33 @@ export type QueryWithAggregations = Query & {
   latestRun?: QueryRunSummary;
 };
 
-export type WebSource = Source & {
+type SourcePresetBindingWithPreset = SourcePresetBinding & {
+  preset: Pick<
+    BbPreset,
+    "id" | "key" | "version" | "name" | "platform" | "scriptRelPath" | "status" | "isActive"
+  >;
+};
+
+type SourceBaseWithRelations = Source & {
+  proxy?: Proxy | null;
+  credential?: Credential | null;
+  presetBindings?: SourcePresetBindingWithPreset[];
+};
+
+export type WebSource = SourceBaseWithRelations & {
   web: WebSourceConfig;
-  proxy?: Proxy | null;
-  credential?: Credential | null;
 };
-export type DarknetSource = Source & {
+export type DarknetSource = SourceBaseWithRelations & {
   darknet: DarknetSourceConfig;
-  proxy?: Proxy | null;
-  credential?: Credential | null;
 };
-export type SocialMediaSource = Source & {
+export type SocialMediaSource = SourceBaseWithRelations & {
   social: SocialMediaSourceConfig & {
     proxy?: Proxy | null;
     credential?: Credential | null;
   };
-  proxy?: Proxy | null;
-  credential?: Credential | null;
 };
-export type SearchEngineSource = Source & {
+export type SearchEngineSource = SourceBaseWithRelations & {
   search: SearchEngineSourceConfig;
-  proxy?: Proxy | null;
-  credential?: Credential | null;
 };
 
 export type SourceWithRelations =

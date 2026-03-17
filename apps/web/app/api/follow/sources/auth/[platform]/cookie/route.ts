@@ -3,7 +3,11 @@ import prisma from "@/lib/prisma";
 import { z } from "zod";
 
 const UploadAuthSchema = z.object({
-  platform: z.enum(["X", "TELEGRAM", "REDDIT", "XIAOHONGSHU", "DOUYIN", "TIKTOK", "WEIBO", "WHATSAPP", "INSTAGRAM", "FACEBOOK"]),
+  platform: z
+    .string()
+    .trim()
+    .min(1)
+    .transform((value) => value.toUpperCase()),
   sourceId: z.string().cuid().optional(), // If provided, associate with existing source
   name: z.string().min(1, "Credential name is required").optional(),
   authData: z.object({
@@ -31,6 +35,23 @@ const UploadAuthSchema = z.object({
 });
 
 const GATHER_SERVICE_URL = process.env.GATHER_SERVICE_URL || "http://localhost:8000";
+
+function resolveVerifyPlatform(platform: string) {
+  const normalized = platform.trim().toLowerCase();
+  if (normalized === "twitter") return "x";
+  return normalized;
+}
+
+function resolveCredentialKind(platform: string) {
+  const normalized = platform.trim().toLowerCase();
+  if (normalized === "x" || normalized === "twitter") {
+    return "x-cookie";
+  }
+  if (normalized === "whatsapp") {
+    return "whatsapp-profile";
+  }
+  return `${normalized}-cookie`;
+}
 
 function extractStateFilePath(data: unknown): string | null {
   if (!data || typeof data !== "object" || Array.isArray(data)) {
@@ -60,6 +81,7 @@ export async function POST(
   try {
     const { platform } = await params;
     const platformNormalized = platform.toLowerCase();
+    const verifyPlatform = resolveVerifyPlatform(platformNormalized);
     const contentType = req.headers.get("content-type") || "";
 
     // Special handling for WhatsApp profile (multipart/form-data)
@@ -193,7 +215,7 @@ export async function POST(
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        platform: platformNormalized,
+        platform: verifyPlatform,
         auth_data: authData,
         name: credentialName,
       }),
@@ -213,7 +235,7 @@ export async function POST(
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        platform: platformNormalized,
+        platform: verifyPlatform,
         state_file: stateFile,
         headless: false,
       }),
@@ -242,7 +264,7 @@ export async function POST(
     }
 
     // Step 2: Create or update Credential
-    const credentialKind = `${platformNormalized}-cookie`;
+    const credentialKind = resolveCredentialKind(platformNormalized);
 
     console.log(`[auth] Using credential name: "${credentialName}" for kind: "${credentialKind}"`);
 
@@ -332,7 +354,8 @@ export async function GET(
   try {
     const { platform } = await params;
     const platformNormalized = platform.toLowerCase();
-    const credentialKind = `${platformNormalized}-cookie`;
+    const verifyPlatform = resolveVerifyPlatform(platformNormalized);
+    const credentialKind = resolveCredentialKind(platformNormalized);
 
     const credential = await prisma.credential.findFirst({
       where: { kind: credentialKind },
@@ -357,7 +380,7 @@ export async function GET(
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          platform: platformNormalized,
+          platform: verifyPlatform,
           ...(stateFile
             ? { state_file: stateFile }
             : { auth_data: credential.data }),
@@ -401,7 +424,7 @@ export async function DELETE(
   try {
     const { platform } = await params;
     const platformNormalized = platform.toLowerCase();
-    const credentialKind = `${platformNormalized}-cookie`;
+    const credentialKind = resolveCredentialKind(platformNormalized);
 
     const deleted = await prisma.credential.deleteMany({
       where: { kind: credentialKind },

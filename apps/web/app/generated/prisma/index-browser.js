@@ -177,6 +177,49 @@ exports.Prisma.SourceScalarFieldEnum = {
   updatedAt: 'updatedAt'
 };
 
+exports.Prisma.BbPresetScalarFieldEnum = {
+  id: 'id',
+  key: 'key',
+  version: 'version',
+  name: 'name',
+  description: 'description',
+  platform: 'platform',
+  scriptRelPath: 'scriptRelPath',
+  scriptHash: 'scriptHash',
+  scriptSnapshotKey: 'scriptSnapshotKey',
+  argsSchema: 'argsSchema',
+  outputSchema: 'outputSchema',
+  status: 'status',
+  isActive: 'isActive',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.SourcePresetBindingScalarFieldEnum = {
+  id: 'id',
+  sourceId: 'sourceId',
+  presetId: 'presetId',
+  args: 'args',
+  enabled: 'enabled',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.BbPresetSyncLogScalarFieldEnum = {
+  id: 'id',
+  rootPath: 'rootPath',
+  status: 'status',
+  startedAt: 'startedAt',
+  finishedAt: 'finishedAt',
+  scannedCount: 'scannedCount',
+  createdCount: 'createdCount',
+  changedCount: 'changedCount',
+  brokenCount: 'brokenCount',
+  skippedCount: 'skippedCount',
+  diff: 'diff',
+  error: 'error'
+};
+
 exports.Prisma.WebSourceConfigScalarFieldEnum = {
   sourceId: 'sourceId',
   url: 'url',
@@ -424,6 +467,17 @@ exports.SourceType = exports.$Enums.SourceType = {
   SOCIAL_MEDIA: 'SOCIAL_MEDIA'
 };
 
+exports.BbPresetStatus = exports.$Enums.BbPresetStatus = {
+  ACTIVE: 'ACTIVE',
+  DEPRECATED: 'DEPRECATED',
+  BROKEN: 'BROKEN'
+};
+
+exports.BbPresetSyncStatus = exports.$Enums.BbPresetSyncStatus = {
+  SUCCEEDED: 'SUCCEEDED',
+  FAILED: 'FAILED'
+};
+
 exports.CrawlerEngine = exports.$Enums.CrawlerEngine = {
   FETCH: 'FETCH',
   CHEERIO: 'CHEERIO',
@@ -438,19 +492,6 @@ exports.SearchEngineKind = exports.$Enums.SearchEngineKind = {
   DDG: 'DDG',
   SEARXNG: 'SEARXNG',
   CUSTOM: 'CUSTOM'
-};
-
-exports.SocialPlatform = exports.$Enums.SocialPlatform = {
-  X: 'X',
-  TELEGRAM: 'TELEGRAM',
-  REDDIT: 'REDDIT',
-  XIAOHONGSHU: 'XIAOHONGSHU',
-  DOUYIN: 'DOUYIN',
-  TIKTOK: 'TIKTOK',
-  WEIBO: 'WEIBO',
-  WHATSAPP: 'WHATSAPP',
-  INSTAGRAM: 'INSTAGRAM',
-  FACEBOOK: 'FACEBOOK'
 };
 
 exports.QueryFrequency = exports.$Enums.QueryFrequency = {
@@ -493,6 +534,9 @@ exports.Prisma.ModelName = {
   Proxy: 'Proxy',
   Credential: 'Credential',
   Source: 'Source',
+  BbPreset: 'BbPreset',
+  SourcePresetBinding: 'SourcePresetBinding',
+  BbPresetSyncLog: 'BbPresetSyncLog',
   WebSourceConfig: 'WebSourceConfig',
   DarknetSourceConfig: 'DarknetSourceConfig',
   SearchEngineSourceConfig: 'SearchEngineSourceConfig',

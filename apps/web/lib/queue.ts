@@ -27,6 +27,11 @@ export type KnowledgeProcessPayload = {
   chunkSize: number;
 };
 
+export type BbPresetSyncPayload = {
+  rootPath?: string;
+  trigger?: "manual" | "scheduled";
+};
+
 export const defaultJobOpts: JobsOptions = {
   attempts: 3,
   backoff: { type: "exponential", delay: 2000 },
@@ -46,6 +51,13 @@ export const knowledgeQueue = new Queue<KnowledgeProcessPayload>("knowledge-proc
   defaultJobOptions: defaultJobOpts,
 });
 export const knowledgeQueueEvents = new QueueEvents("knowledge-process", {
+  connection: bullConnection,
+});
+export const bbPresetSyncQueue = new Queue<BbPresetSyncPayload>("bb-preset-sync", {
+  connection: bullConnection,
+  defaultJobOptions: defaultJobOpts,
+});
+export const bbPresetSyncQueueEvents = new QueueEvents("bb-preset-sync", {
   connection: bullConnection,
 });
 
@@ -157,5 +169,15 @@ export function createKnowledgeWorker(
     connection: bullConnection,
     concurrency,
     lockDuration: 1800000, // 30 minutes for massive files
+  });
+}
+
+export function createBbPresetSyncWorker(
+  processor: (job: { data: BbPresetSyncPayload }) => Promise<unknown>,
+  concurrency = 1
+) {
+  return new Worker<BbPresetSyncPayload>("bb-preset-sync", processor, {
+    connection: bullConnection,
+    concurrency,
   });
 }

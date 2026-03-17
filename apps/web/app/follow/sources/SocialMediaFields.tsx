@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import {
   Control,
   UseFormRegister,
@@ -15,7 +15,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { ErrorMessage } from "@/components/business";
 import SelectProxy from "./SelectProxy";
 import { Proxy } from "@/app/generated/prisma";
-import { SocialPlatform } from "@/app/generated/prisma";
 import {
   SocialPlatformEnum,
   SocialMediaSourceCreateSchema,
@@ -48,6 +47,15 @@ import {
 import { cn } from "@/lib/utils";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
   getDefaultDriver,
   getSupportedDrivers,
   supportsDriver,
@@ -60,6 +68,7 @@ interface SocialMediaFieldsProps {
   proxies: Proxy[];
   watch: UseFormWatch<z.infer<typeof SourceCreateSchema>>;
   setValue?: UseFormSetValue<z.infer<typeof SourceCreateSchema>>;
+  sourceId?: string;
 }
 
 interface AuthStatus {
@@ -76,41 +85,56 @@ interface CredentialInfo {
   updatedAt: string;
 }
 
-// Platforms that require cookie-based authentication
-const COOKIE_AUTH_PLATFORMS = ["X", "XIAOHONGSHU", "REDDIT", "DOUYIN", "TIKTOK", "WEIBO", "TELEGRAM", "WHATSAPP", "INSTAGRAM", "FACEBOOK"] as const;
-
-// Map platform to credential kind
-const PLATFORM_TO_KIND: Record<string, string> = {
-  "X": "x-cookie",
-  "XIAOHONGSHU": "xiaohongshu-cookie",
-  "REDDIT": "reddit-cookie",
-  "DOUYIN": "douyin-cookie",
-  "TIKTOK": "tiktok-cookie",
-  "WEIBO": "weibo-cookie",
-  "TELEGRAM": "telegram-cookie",
-  "WHATSAPP": "whatsapp-profile",
-  "INSTAGRAM": "instagram-cookie",
-  "FACEBOOK": "facebook-cookie",
+const getCredentialKind = (platform: string) => {
+  const normalized = platform.trim().toLowerCase();
+  if (!normalized) return "unknown-cookie";
+  if (normalized === "x" || normalized === "twitter") return "x-cookie";
+  if (normalized === "whatsapp") return "whatsapp-profile";
+  return `${normalized}-cookie`;
 };
 
-type XScriptArg = {
+type ScriptArgRule = {
   required: boolean;
   description: string;
 };
 
-type XScriptOption = {
+type ScriptOption = {
+  id: string;
   name: string;
   description: string;
-  domain: string;
+  key: string;
+  version?: string;
+  platform: string;
   scriptPath: string;
-  args: Record<string, XScriptArg>;
+  args: Record<string, ScriptArgRule>;
 };
 
-const X_SCRIPT_OPTIONS: XScriptOption[] = [
+type BbPresetApiItem = {
+  id: string;
+  key: string;
+  version: string;
+  name: string;
+  description: string | null;
+  platform: string;
+  scriptRelPath: string;
+  argsSchema: Record<string, unknown> | null;
+  status: "ACTIVE" | "DEPRECATED" | "BROKEN";
+  isActive: boolean;
+};
+
+type PlatformPresetStats = {
+  active: number;
+  deprecated: number;
+  broken: number;
+};
+
+const LEGACY_X_SCRIPT_OPTIONS: ScriptOption[] = [
   {
+    id: "legacy-twitter-tweets",
     name: "twitter/tweets",
     description: "获取用户最近的推文（时间线）",
-    domain: "x.com",
+    key: "twitter/tweets",
+    platform: "X",
     scriptPath: "/Users/zangjiaao/Reference/bb-sites/twitter/tweets.js",
     args: {
       screen_name: {
@@ -124,9 +148,11 @@ const X_SCRIPT_OPTIONS: XScriptOption[] = [
     },
   },
   {
+    id: "legacy-twitter-thread",
     name: "twitter/thread",
     description: "获取推文对话线程（原文 + 所有回复）",
-    domain: "x.com",
+    key: "twitter/thread",
+    platform: "X",
     scriptPath: "/Users/zangjiaao/Reference/bb-sites/twitter/thread.js",
     args: {
       tweet_id: {
@@ -136,9 +162,11 @@ const X_SCRIPT_OPTIONS: XScriptOption[] = [
     },
   },
   {
+    id: "legacy-twitter-search",
     name: "twitter/search",
     description: "搜索推文",
-    domain: "x.com",
+    key: "twitter/search",
+    platform: "X",
     scriptPath: "/Users/zangjiaao/Reference/bb-sites/twitter/search.js",
     args: {
       query: {
@@ -156,8 +184,6 @@ const X_SCRIPT_OPTIONS: XScriptOption[] = [
     },
   },
 ];
-
-const DEFAULT_X_SCRIPT = X_SCRIPT_OPTIONS[0];
 
 type PlaywrightArgRow = {
   id: string;
@@ -219,12 +245,21 @@ const normalizeArgs = (input: unknown): Record<string, string> => {
   );
 };
 
-const getXScriptOptionByPath = (scriptPath?: string | null) =>
-  X_SCRIPT_OPTIONS.find((item) => item.scriptPath === scriptPath) ?? DEFAULT_X_SCRIPT;
+const asRecord = (value: unknown): Record<string, unknown> => {
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    return value as Record<string, unknown>;
+  }
+  return {};
+};
+
+const getScriptOptionByPath = (
+  options: ScriptOption[],
+  scriptPath?: string | null
+) => options.find((item) => item.scriptPath === scriptPath) ?? options[0];
 
 const buildXArgRows = (
   args: Record<string, string>,
-  script: XScriptOption
+  script: ScriptOption
 ): PlaywrightArgRow[] => {
   const rows: PlaywrightArgRow[] = [];
   const included = new Set<string>();
@@ -254,6 +289,23 @@ const buildXArgRows = (
   return rows.length > 0 ? rows : [createEmptyArgRow()];
 };
 
+const toScriptArgRules = (
+  input: Record<string, unknown> | null | undefined
+): Record<string, ScriptArgRule> => {
+  if (!input || typeof input !== "object") return {};
+  const output: Record<string, ScriptArgRule> = {};
+  for (const [key, value] of Object.entries(input)) {
+    if (!value || typeof value !== "object" || Array.isArray(value)) continue;
+    const raw = value as Record<string, unknown>;
+    output[key] = {
+      required: Boolean(raw.required),
+      description:
+        typeof raw.description === "string" ? raw.description : "",
+    };
+  }
+  return output;
+};
+
 export const SocialMediaFields = ({
   register,
   control,
@@ -261,18 +313,13 @@ export const SocialMediaFields = ({
   proxies,
   watch,
   setValue,
+  sourceId,
 }: SocialMediaFieldsProps) => {
-  const socialPlatform = watch("social.platform") as SocialPlatform | undefined;
+  const socialPlatform = watch("social.platform") as string | undefined;
   const selectedDriver = watch("social.config.driver") as string | undefined;
   const currentCredentialId = watch("social.credentialId") as string | null | undefined;
   const currentRecordFormat = watch(
     "social.config.agentBrowser.recordSchema.format"
-  ) as string | undefined;
-  const currentMatchScope = watch(
-    "social.config.keywordFilter.matchScope"
-  ) as string | undefined;
-  const currentSplitMode = watch(
-    "social.config.keywordFilter.splitMode"
   ) as string | undefined;
   const supportedDrivers = socialPlatform
     ? getSupportedDrivers(socialPlatform)
@@ -301,6 +348,32 @@ export const SocialMediaFields = ({
   const [agentScriptRows, setAgentScriptRows] = useState<AgentScriptRow[]>([
     createEmptyAgentScriptRow(),
   ]);
+  const [bbPresetOptions, setBbPresetOptions] = useState<ScriptOption[]>([]);
+  const [loadingBbPresets, setLoadingBbPresets] = useState(false);
+  const [platformPresetStats, setPlatformPresetStats] = useState<
+    Record<string, PlatformPresetStats>
+  >({});
+  const scriptOptions = useMemo(
+    () =>
+      bbPresetOptions.length > 0
+        ? bbPresetOptions
+        : socialPlatform === "X"
+          ? LEGACY_X_SCRIPT_OPTIONS
+          : [],
+    [bbPresetOptions, socialPlatform]
+  );
+  const availablePlatforms = useMemo(() => {
+    const base = new Set<string>(SocialPlatformEnum.options);
+    for (const [platform, stats] of Object.entries(platformPresetStats)) {
+      if (stats.active > 0) {
+        base.add(platform);
+      }
+    }
+    return Array.from(base);
+  }, [platformPresetStats]);
+  const currentPlatformStats = socialPlatform
+    ? platformPresetStats[socialPlatform]
+    : undefined;
 
   // Credentials list
   const [credentials, setCredentials] = useState<CredentialInfo[]>([]);
@@ -345,11 +418,53 @@ export const SocialMediaFields = ({
   };
 
   // Check if current platform requires cookie auth
-  const needsCookieAuth = socialPlatform &&
-    COOKIE_AUTH_PLATFORMS.includes(socialPlatform as typeof COOKIE_AUTH_PLATFORMS[number]);
+  const needsCookieAuth = Boolean(socialPlatform);
   const supportsCredentialForDriver =
     resolvedDriver !== "xhttp";
   const canUseCredential = Boolean(needsCookieAuth && supportsCredentialForDriver);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    const fetchPlatformPresetStats = async () => {
+      try {
+        const response = await fetch(
+          "/api/follow/bb-presets?latestOnly=true&includeInactive=true&pageSize=200",
+          { signal: controller.signal }
+        );
+        if (!response.ok) return;
+        const data = await response.json();
+        const items = Array.isArray(data?.items)
+          ? (data.items as BbPresetApiItem[])
+          : [];
+
+        const stats: Record<string, PlatformPresetStats> = {};
+        for (const item of items) {
+          const platform = item.platform?.toUpperCase?.() ?? "";
+          if (!platform) continue;
+          if (!stats[platform]) {
+            stats[platform] = { active: 0, deprecated: 0, broken: 0 };
+          }
+          if (!item.isActive || item.status === "BROKEN") {
+            stats[platform].broken += 1;
+          } else if (item.status === "DEPRECATED") {
+            stats[platform].deprecated += 1;
+          } else {
+            stats[platform].active += 1;
+          }
+        }
+
+        setPlatformPresetStats(stats);
+      } catch (error) {
+        if ((error as { name?: string })?.name !== "AbortError") {
+          console.error("Failed to fetch bb preset platform stats:", error);
+        }
+      }
+    };
+
+    fetchPlatformPresetStats();
+    return () => controller.abort();
+  }, []);
 
   // Fetch existing credentials when platform changes
   useEffect(() => {
@@ -361,7 +476,7 @@ export const SocialMediaFields = ({
     const fetchCredentials = async () => {
       setLoadingCredentials(true);
       try {
-        const kind = PLATFORM_TO_KIND[socialPlatform];
+        const kind = getCredentialKind(socialPlatform);
         const response = await fetch(`/api/follow/credentials?kind=${kind}`);
         if (response.ok) {
           const data = await response.json();
@@ -376,6 +491,54 @@ export const SocialMediaFields = ({
 
     fetchCredentials();
   }, [socialPlatform, canUseCredential]);
+
+  useEffect(() => {
+    if (!socialPlatform || resolvedDriver !== "playwright") {
+      setBbPresetOptions([]);
+      return;
+    }
+
+    const controller = new AbortController();
+    const fetchBbPresets = async () => {
+      setLoadingBbPresets(true);
+      try {
+        const response = await fetch(
+          `/api/follow/bb-presets?latestOnly=true&platform=${encodeURIComponent(
+            socialPlatform
+          )}`,
+          { signal: controller.signal }
+        );
+        if (!response.ok) return;
+        const data = await response.json();
+        const items = Array.isArray(data?.items) ? (data.items as BbPresetApiItem[]) : [];
+        const nextOptions: ScriptOption[] = items
+          .filter((item) => item.isActive && item.status === "ACTIVE")
+          .map((item) => ({
+            id: item.id,
+            key: item.key,
+            name: item.name || item.key,
+            version: item.version,
+            platform: item.platform,
+            description: item.description || item.key,
+            scriptPath: item.scriptRelPath.startsWith("/")
+              ? item.scriptRelPath
+              : `/Users/zangjiaao/Reference/bb-sites/${item.scriptRelPath}`,
+            args: toScriptArgRules(item.argsSchema),
+          }))
+          .filter((item) => item.scriptPath.trim().length > 0);
+        setBbPresetOptions(nextOptions);
+      } catch (error) {
+        if ((error as { name?: string })?.name !== "AbortError") {
+          console.error("Failed to fetch bb presets:", error);
+        }
+      } finally {
+        setLoadingBbPresets(false);
+      }
+    };
+
+    fetchBbPresets();
+    return () => controller.abort();
+  }, [socialPlatform, resolvedDriver]);
 
   useEffect(() => {
     if (!setValue) return;
@@ -396,23 +559,11 @@ export const SocialMediaFields = ({
         shouldDirty: false,
       });
     }
-    if (!currentMatchScope) {
-      setValue("social.config.keywordFilter.matchScope", "segment", {
-        shouldDirty: false,
-      });
-    }
-    if (!currentSplitMode) {
-      setValue("social.config.keywordFilter.splitMode", "line", {
-        shouldDirty: false,
-      });
-    }
   }, [
     setValue,
     socialPlatform,
     resolvedDriver,
     currentRecordFormat,
-    currentMatchScope,
-    currentSplitMode,
   ]);
 
   const syncArgsToForm = useCallback(
@@ -429,26 +580,28 @@ export const SocialMediaFields = ({
     [setValue]
   );
 
-  const applyXScriptDefaults = useCallback(
+  const applyScriptDefaults = useCallback(
     (
       scriptPath: string,
+      scriptOptions: ScriptOption[],
       incomingArgs: unknown,
-      options?: {
+      config?: {
         markDirty?: boolean;
       }
     ) => {
       if (!setValue) return;
-      const script = getXScriptOptionByPath(scriptPath);
+      const script = getScriptOptionByPath(scriptOptions, scriptPath);
+      if (!script) return;
       const currentArgs = normalizeArgs(incomingArgs);
       const nextArgs = Object.fromEntries(
         Object.keys(script.args).map((argKey) => [argKey, currentArgs[argKey] ?? ""])
       );
       const rows = buildXArgRows(nextArgs, script);
       setValue("social.config.playwright.scriptPath", script.scriptPath, {
-        shouldDirty: options?.markDirty ?? false,
+        shouldDirty: config?.markDirty ?? false,
       });
       setValue("social.config.playwright.args", nextArgs, {
-        shouldDirty: options?.markDirty ?? false,
+        shouldDirty: config?.markDirty ?? false,
       });
       setXArgRows(rows);
     },
@@ -489,12 +642,13 @@ export const SocialMediaFields = ({
   }, [setValue, socialPlatform, selectedDriver]);
 
   useEffect(() => {
-    if (socialPlatform !== "X") return;
+    if (resolvedDriver !== "playwright") return;
+    if (scriptOptions.length === 0) return;
     const scriptPath = watch("social.config.playwright.scriptPath");
-    const normalizedScriptPath = scriptPath || DEFAULT_X_SCRIPT.scriptPath;
+    const normalizedScriptPath = scriptPath || scriptOptions[0].scriptPath;
     const rawArgs = watch("social.config.playwright.args");
-    applyXScriptDefaults(normalizedScriptPath, rawArgs);
-  }, [socialPlatform, watch, applyXScriptDefaults]);
+    applyScriptDefaults(normalizedScriptPath, scriptOptions, rawArgs);
+  }, [resolvedDriver, scriptOptions, watch, applyScriptDefaults]);
 
   useEffect(() => {
     if (resolvedDriver !== "agent-browser") return;
@@ -639,7 +793,7 @@ export const SocialMediaFields = ({
         }
 
         // Refresh credentials list
-        const kind = PLATFORM_TO_KIND[socialPlatform];
+        const kind = getCredentialKind(socialPlatform);
         const credResponse = await fetch(`/api/follow/credentials?kind=${kind}`);
         if (credResponse.ok) {
           const data = await credResponse.json();
@@ -712,7 +866,7 @@ export const SocialMediaFields = ({
       }
 
       // Refresh credentials list
-      const kind = PLATFORM_TO_KIND[socialPlatform];
+      const kind = getCredentialKind(socialPlatform);
       const credResponse = await fetch(`/api/follow/credentials?kind=${kind}`);
       if (credResponse.ok) {
         const data = await credResponse.json();
@@ -743,14 +897,80 @@ export const SocialMediaFields = ({
 
   // Get selected credential info
   const selectedCredential = credentials.find(c => c.id === currentCredentialId);
-  const selectedXScriptPath = watch("social.config.playwright.scriptPath") as
+  const selectedScriptPath = watch("social.config.playwright.scriptPath") as
     | string
     | undefined;
-  const selectedXScript = getXScriptOptionByPath(selectedXScriptPath);
-  const keywordFilterError =
-    getConfigErrorMessage("keywordFilter.keywords") ??
-    getConfigErrorMessage("keywordFilter");
+  const selectedScript =
+    scriptOptions.length > 0
+      ? getScriptOptionByPath(scriptOptions, selectedScriptPath)
+      : null;
+  const keywordFilterError = getConfigErrorMessage("keywordFilter");
   const responseFormatsError = getConfigErrorMessage("responseFormats");
+  const requestPreview = useMemo(() => {
+    if (!socialPlatform) return null;
+    const config = asRecord(watch("social.config"));
+    const keywordFilter = asRecord(config.keywordFilter);
+    const outputConfig = asRecord(config.output);
+
+    const rawOutputField = outputConfig.field ?? outputConfig.fields;
+    let outputField: string[] = [];
+    if (Array.isArray(rawOutputField)) {
+      outputField = rawOutputField
+        .filter((item): item is string => typeof item === "string")
+        .map((item) => item.trim())
+        .filter(Boolean);
+    } else {
+      const responseFormats = config.responseFormats;
+      if (Array.isArray(responseFormats)) {
+        outputField = responseFormats
+          .filter((item): item is string => typeof item === "string")
+          .map((item) => item.trim())
+          .filter(Boolean);
+      }
+    }
+    if (outputField.length === 0) {
+      outputField = ["text"];
+    }
+
+    const output: Record<string, unknown> = { field: outputField };
+    if (typeof outputConfig.type === "string" && outputConfig.type.trim()) {
+      output.type = outputConfig.type.trim();
+    }
+    if (Array.isArray(outputConfig.keywordScope)) {
+      output.keywordScope = outputConfig.keywordScope;
+    }
+
+    const driverOption = asRecord(
+      resolvedDriver === "playwright"
+        ? config.playwright
+        : resolvedDriver === "agent-browser"
+          ? config.agentBrowser
+          : config
+    );
+    const filter: Record<string, unknown> = {};
+    if (typeof keywordFilter.minSegmentChars === "number") {
+      filter.minChars = keywordFilter.minSegmentChars;
+    }
+    if (typeof keywordFilter.minChars === "number") {
+      filter.minChars = keywordFilter.minChars;
+    }
+
+    const driver: Record<string, unknown> = {
+      name: resolvedDriver,
+      option: driverOption,
+    };
+    if (Object.keys(filter).length > 0) {
+      driver.filter = filter;
+    }
+
+    return {
+      sourceId: sourceId ?? "__SOURCE_ID__",
+      platform: socialPlatform.toLowerCase(),
+      keywords: [],
+      driver,
+      output,
+    };
+  }, [socialPlatform, sourceId, resolvedDriver, watch]);
 
   // Render auth status indicator
   const renderAuthStatus = () => {
@@ -783,41 +1003,40 @@ export const SocialMediaFields = ({
   };
 
   const renderAgentBrowserFields = () => (
-    <div className="grid gap-4 rounded-lg border bg-muted/30 p-4">
-      <Label className="text-base font-medium">Agent Browser Params</Label>
-      <p className="text-xs text-muted-foreground">
-        ownerId / sessionKey 由系统统一维护，表单无需填写。
-      </p>
+    <Card className="gap-4 bg-muted/30">
+      <CardHeader>
+        <CardTitle>Agent Browser Params</CardTitle>
+        <CardDescription>
+          ownerId / sessionKey 由系统统一维护，表单无需填写。
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="grid gap-4">
 
       <div className="flex flex-wrap items-center gap-5">
         <Controller
           name="social.config.agentBrowser.headed"
           control={control}
           render={({ field }) => (
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
+            <div className="flex items-center gap-2">
+              <Switch
                 checked={Boolean(field.value)}
-                onChange={(e) => field.onChange(e.target.checked)}
-                className="rounded border-gray-300"
+                onCheckedChange={field.onChange}
               />
               <span className="text-sm">Headed</span>
-            </label>
+            </div>
           )}
         />
         <Controller
           name="social.config.agentBrowser.closeOnComplete"
           control={control}
           render={({ field }) => (
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
+            <div className="flex items-center gap-2">
+              <Switch
                 checked={Boolean(field.value)}
-                onChange={(e) => field.onChange(e.target.checked)}
-                className="rounded border-gray-300"
+                onCheckedChange={field.onChange}
               />
               <span className="text-sm">Close On Complete</span>
-            </label>
+            </div>
           )}
         />
       </div>
@@ -912,39 +1131,52 @@ export const SocialMediaFields = ({
           name="social.config.agentBrowser.captureFilter.perLine"
           control={control}
           render={({ field }) => (
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
+            <div className="flex items-center gap-2">
+              <Switch
                 checked={Boolean(field.value)}
-                onChange={(e) => field.onChange(e.target.checked)}
-                className="rounded border-gray-300"
+                onCheckedChange={field.onChange}
               />
               <span className="text-sm">Capture Per Line</span>
-            </label>
+            </div>
           )}
         />
         <Controller
           name="social.config.agentBrowser.captureFilter.dedupe"
           control={control}
           render={({ field }) => (
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
+            <div className="flex items-center gap-2">
+              <Switch
                 checked={Boolean(field.value)}
-                onChange={(e) => field.onChange(e.target.checked)}
-                className="rounded border-gray-300"
+                onCheckedChange={field.onChange}
               />
               <span className="text-sm">Capture Dedupe</span>
-            </label>
+            </div>
           )}
         />
       </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 
+  const getPlatformOptionLabel = (platform: string) => {
+    const stats = platformPresetStats[platform];
+    const isBbOnly = !SocialPlatformEnum.options.includes(platform as (typeof SocialPlatformEnum.options)[number]);
+    const bbOnlyTag = isBbOnly ? " [bb-site only]" : "";
+    if (!stats) return `${platform}${bbOnlyTag}`;
+    if (stats.active > 0) return `${platform} (bb:${stats.active})${bbOnlyTag}`;
+    if (stats.deprecated > 0 || stats.broken > 0) return `${platform} (bb unavailable)${bbOnlyTag}`;
+    return `${platform}${bbOnlyTag}`;
+  };
+
   const renderGatherOutputAndFilterFields = () => (
-    <div className="grid gap-4 rounded-lg border bg-muted/30 p-4">
-      <Label className="text-base font-medium">Gather Output & Keyword Filter</Label>
+    <Card className="gap-4 bg-muted/30">
+      <CardHeader>
+        <CardTitle>Output & Filter</CardTitle>
+        <CardDescription>
+          source 仅配置输出和最小内容长度；关键词由 Query 统一注入。
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="grid gap-4">
 
       <div className="grid gap-2">
         <Label>Response Formats</Label>
@@ -964,20 +1196,18 @@ export const SocialMediaFields = ({
             return (
               <div className="flex flex-wrap items-center gap-5">
                 <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
+                  <Checkbox
                     checked={selected.includes("text")}
-                    onChange={(e) => toggle("text", e.target.checked)}
-                    className="rounded border-gray-300"
+                    onCheckedChange={(checked) => toggle("text", checked === true)}
                   />
                   <span className="text-sm">text</span>
                 </label>
                 <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
+                  <Checkbox
                     checked={selected.includes("markdown")}
-                    onChange={(e) => toggle("markdown", e.target.checked)}
-                    className="rounded border-gray-300"
+                    onCheckedChange={(checked) =>
+                      toggle("markdown", checked === true)
+                    }
                   />
                   <span className="text-sm">markdown</span>
                 </label>
@@ -988,165 +1218,117 @@ export const SocialMediaFields = ({
         <ErrorMessage>{responseFormatsError}</ErrorMessage>
       </div>
 
-      <div className="grid gap-2">
-        <Label htmlFor="social.config.keywordFilter.keywords">Keywords</Label>
-        <Controller
-          name="social.config.keywordFilter.keywords"
-          control={control}
-          render={({ field }) => (
-            <Textarea
-              id="social.config.keywordFilter.keywords"
-              rows={3}
-              placeholder="关键词，使用逗号或换行分隔"
-              value={
-                Array.isArray(field.value)
-                  ? field.value.join("\n")
-                  : typeof field.value === "string"
-                    ? field.value
-                    : ""
-              }
-              onChange={(e) => field.onChange(e.target.value)}
-            />
-          )}
+      <div className="grid gap-2 md:max-w-xs">
+        <Label htmlFor="social.config.keywordFilter.minSegmentChars">
+          Filter Min Chars
+        </Label>
+        <Input
+          id="social.config.keywordFilter.minSegmentChars"
+          type="number"
+          min={0}
+          {...register("social.config.keywordFilter.minSegmentChars", {
+            setValueAs: (value) => (value === "" ? undefined : Number(value)),
+          })}
         />
         <ErrorMessage>{keywordFilterError}</ErrorMessage>
       </div>
-
-      <div className="grid gap-4 md:grid-cols-3">
-        <div className="grid gap-2">
-          <Label>Match Scope</Label>
-          <Controller
-            name="social.config.keywordFilter.matchScope"
-            control={control}
-            render={({ field }) => (
-              <ControlledSelect
-                value={(field.value as string) || "segment"}
-                onValueChange={field.onChange}
-                placeholder="Select match scope"
-              >
-                <SelectItem value="segment">segment</SelectItem>
-                <SelectItem value="full">full</SelectItem>
-              </ControlledSelect>
-            )}
-          />
-        </div>
-        <div className="grid gap-2">
-          <Label>Split Mode</Label>
-          <Controller
-            name="social.config.keywordFilter.splitMode"
-            control={control}
-            render={({ field }) => (
-              <ControlledSelect
-                value={(field.value as string) || "line"}
-                onValueChange={field.onChange}
-                placeholder="Select split mode"
-              >
-                <SelectItem value="line">line</SelectItem>
-                <SelectItem value="paragraph">paragraph</SelectItem>
-                <SelectItem value="auto">auto</SelectItem>
-              </ControlledSelect>
-            )}
-          />
-        </div>
-        <div className="grid gap-2">
-          <Label htmlFor="social.config.keywordFilter.minSegmentChars">
-            Min Segment Chars
-          </Label>
-          <Input
-            id="social.config.keywordFilter.minSegmentChars"
-            type="number"
-            min={0}
-            {...register("social.config.keywordFilter.minSegmentChars", {
-              setValueAs: (value) => (value === "" ? undefined : Number(value)),
-            })}
-          />
-        </div>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 
   return (
     <>
-      <div className="grid gap-3">
-        <Label htmlFor="social.platform">Platform</Label>
-        <Controller
-          name="social.platform"
-          control={control}
-          render={({ field }) => (
-            <ControlledSelect
-              value={field.value as string}
-              onValueChange={(value) => {
-                field.onChange(value);
-                // Reset auth status and credential when platform changes
-                setAuthStatus({ status: "idle" });
-                setSelectedFile(null);
-                setShowUploadForm(false);
-                if (setValue) {
-                  setValue("social.credentialId", null);
-                  if (value === "X") {
-                    setValue("social.config.driver", getDefaultDriver("X"));
-                    setValue("social.config.playwright.mode", "eval-js");
-                    setValue("social.config.playwright.headless", false);
-                    setValue("social.config.playwright.targetUrl", "");
-                    setValue(
-                      "social.config.playwright.scriptPath",
-                      DEFAULT_X_SCRIPT.scriptPath
-                    );
-                    setValue("social.config.playwright.args", {});
-                  } else {
-                    setValue(
-                      "social.config.driver",
-                      getDefaultDriver(value as SocialPlatform)
-                    );
-                  }
-                }
-              }}
-              placeholder="Select a social media platform"
-            >
-              {SocialPlatformEnum.options.map((platform) => (
-                <SelectItem key={platform} value={platform}>
-                  {platform}
-                </SelectItem>
-              ))}
-            </ControlledSelect>
-          )}
-        />
-        <ErrorMessage>
-          {socialErrors.social?.platform?.message?.toString()}
-        </ErrorMessage>
-      </div>
-
-      {socialPlatform && supportedDrivers.length > 0 && (
-        <div className="grid gap-3">
-          <Label>Driver</Label>
-          <Controller
-            name="social.config.driver"
-            control={control}
-            render={({ field }) => (
-              <Tabs
-                value={resolvedDriver}
-                onValueChange={(value) => {
-                  field.onChange(value);
-                }}
-              >
-                <TabsList
-                  className="grid w-full"
-                  style={{ gridTemplateColumns: `repeat(${supportedDrivers.length}, minmax(0, 1fr))` }}
+      <Card className="gap-4 bg-muted/30">
+        <CardHeader>
+          <CardTitle>Social Driver</CardTitle>
+          <CardDescription>
+            配置 source 级别的平台和驱动；name / description 在基础信息中保留。
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-4">
+          <div className="grid gap-3">
+            <Label htmlFor="social.platform">Platform</Label>
+            <Controller
+              name="social.platform"
+              control={control}
+              render={({ field }) => (
+                <ControlledSelect
+                  value={field.value as string}
+                  onValueChange={(value) => {
+                    const nextPlatform = value || "X";
+                    field.onChange(nextPlatform);
+                    setAuthStatus({ status: "idle" });
+                    setSelectedFile(null);
+                    setShowUploadForm(false);
+                    if (setValue) {
+                      setValue("social.credentialId", null);
+                      setValue(
+                        "social.config.driver",
+                        getDefaultDriver(nextPlatform)
+                      );
+                      setValue("social.config.playwright.mode", "eval-js");
+                      setValue("social.config.playwright.headless", false);
+                      setValue("social.config.playwright.targetUrl", "");
+                      setValue("social.config.playwright.args", {});
+                    }
+                  }}
+                  placeholder="Select a social media platform"
                 >
-                  {supportedDrivers.map((driver) => (
-                    <TabsTrigger key={driver} value={driver}>
-                      {driver}
-                    </TabsTrigger>
+                  {availablePlatforms.map((platform) => (
+                    <SelectItem key={platform} value={platform}>
+                      {getPlatformOptionLabel(platform)}
+                    </SelectItem>
                   ))}
-                </TabsList>
-              </Tabs>
+                </ControlledSelect>
+              )}
+            />
+            <ErrorMessage>
+              {socialErrors.social?.platform?.message?.toString()}
+            </ErrorMessage>
+            {socialPlatform && (
+              <p className="text-xs text-muted-foreground">
+                {currentPlatformStats?.active
+                  ? `该平台有 ${currentPlatformStats.active} 个可用 bb-site 脚本，可在 Playwright 中直接选择。`
+                  : currentPlatformStats?.deprecated || currentPlatformStats?.broken
+                    ? "该平台 bb-site 脚本当前不可用（DEPRECATED/BROKEN），你仍可使用自定义 driver 配置。"
+                    : "该平台当前无 bb-site 脚本，使用自定义 driver 配置。"}
+              </p>
             )}
-          />
-          <p className="text-xs text-muted-foreground">
-            xhttp 不支持认证凭据；playwright / agent-browser 支持凭据。
-          </p>
-        </div>
-      )}
+          </div>
+
+          {socialPlatform && supportedDrivers.length > 0 && (
+            <div className="grid gap-3">
+              <Label>Driver</Label>
+              <Controller
+                name="social.config.driver"
+                control={control}
+                render={({ field }) => (
+                  <Tabs
+                    value={resolvedDriver}
+                    onValueChange={(value) => {
+                      field.onChange(value);
+                    }}
+                  >
+                    <TabsList
+                      className="grid w-full"
+                      style={{ gridTemplateColumns: `repeat(${supportedDrivers.length}, minmax(0, 1fr))` }}
+                    >
+                      {supportedDrivers.map((driver) => (
+                        <TabsTrigger key={driver} value={driver}>
+                          {driver}
+                        </TabsTrigger>
+                      ))}
+                    </TabsList>
+                  </Tabs>
+                )}
+              />
+              <p className="text-xs text-muted-foreground">
+                xhttp 不支持认证凭据；playwright / agent-browser 支持凭据。
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Cookie Auth Selection Section */}
       {canUseCredential && (
@@ -1347,11 +1529,17 @@ export const SocialMediaFields = ({
         </div>
       )}
 
-      {socialPlatform === "X" && (
+      {socialPlatform && (
         <>
           {resolvedDriver === "playwright" && (
-            <div className="grid gap-4 p-4 border rounded-lg bg-muted/30">
-              <Label className="text-base font-medium">Playwright Task Params (Required)</Label>
+            <Card className="gap-4 bg-muted/30">
+              <CardHeader>
+                <CardTitle>Playwright Params</CardTitle>
+                <CardDescription>
+                  可直接选择 bb-site preset 并自动填充 scriptPath 与 args。
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="grid gap-4">
 
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="grid gap-3">
@@ -1377,11 +1565,9 @@ export const SocialMediaFields = ({
                     control={control}
                     render={({ field }) => (
                       <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="checkbox"
+                        <Switch
                           checked={Boolean(field.value)}
-                          onChange={(e) => field.onChange(e.target.checked)}
-                          className="rounded border-gray-300"
+                          onCheckedChange={field.onChange}
                         />
                         <span className="text-sm">Headless</span>
                       </label>
@@ -1401,32 +1587,46 @@ export const SocialMediaFields = ({
 
                 <div className="grid gap-3 md:col-span-2">
                   <Label htmlFor="social.config.playwright.scriptPath">Script Template</Label>
-                  <Controller
-                    name="social.config.playwright.scriptPath"
-                    control={control}
-                    render={({ field }) => (
-                      <ControlledSelect
-                        value={(field.value as string) || DEFAULT_X_SCRIPT.scriptPath}
-                        onValueChange={(value) => {
-                          const nextScriptPath = value || DEFAULT_X_SCRIPT.scriptPath;
-                          field.onChange(nextScriptPath);
-                          const args = watch("social.config.playwright.args");
-                          applyXScriptDefaults(nextScriptPath, args, { markDirty: true });
-                        }}
-                        placeholder="Select script path"
-                      >
-                        {X_SCRIPT_OPTIONS.map((option) => (
-                          <SelectItem key={option.scriptPath} value={option.scriptPath}>
-                            {option.name}
-                          </SelectItem>
-                        ))}
-                      </ControlledSelect>
-                    )}
-                  />
+                  {scriptOptions.length > 0 && (
+                    <Controller
+                      name="social.config.playwright.scriptPath"
+                      control={control}
+                      render={({ field }) => (
+                        <ControlledSelect
+                          value={(field.value as string) || scriptOptions[0].scriptPath}
+                          onValueChange={(value) => {
+                            const nextScriptPath = value || scriptOptions[0].scriptPath;
+                            field.onChange(nextScriptPath);
+                            const args = watch("social.config.playwright.args");
+                            applyScriptDefaults(nextScriptPath, scriptOptions, args, {
+                              markDirty: true,
+                            });
+                          }}
+                          placeholder="Select script template"
+                        >
+                          {scriptOptions.map((option) => (
+                            <SelectItem key={option.id} value={option.scriptPath}>
+                              {option.version ? `${option.key}@${option.version}` : option.name}
+                            </SelectItem>
+                          ))}
+                        </ControlledSelect>
+                      )}
+                    />
+                  )}
+                  {loadingBbPresets && (
+                    <p className="text-xs text-muted-foreground">Loading bb-site presets...</p>
+                  )}
                   <ErrorMessage>{getConfigErrorMessage("playwright.scriptPath")}</ErrorMessage>
-                  <p className="text-xs text-muted-foreground">
-                    {selectedXScript.description}
-                  </p>
+                  {selectedScript && (
+                    <p className="text-xs text-muted-foreground">
+                      {selectedScript.description}
+                    </p>
+                  )}
+                  {scriptOptions.length === 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      当前平台暂无可用 bb-site 脚本，可手动填写 scriptPath。
+                    </p>
+                  )}
                   <div className="grid gap-2">
                     <Label htmlFor="social.config.playwright.scriptPath-input">
                       Script Path (Editable)
@@ -1482,11 +1682,12 @@ export const SocialMediaFields = ({
                   ))}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  预设参数随脚本切换自动调整；你也可以新增自定义 key:value。
+                  选择 bb-site preset 后会自动填充参数；你也可以新增自定义 key:value。
                 </p>
                 <ErrorMessage>{getConfigErrorMessage("playwright.args")}</ErrorMessage>
               </div>
-            </div>
+              </CardContent>
+            </Card>
           )}
 
           {resolvedDriver === "xhttp" && (
@@ -1501,17 +1702,23 @@ export const SocialMediaFields = ({
         </>
       )}
 
-      {socialPlatform && socialPlatform !== "X" && resolvedDriver === "xhttp" && (
-        <div className="rounded-lg border bg-muted/30 p-4 text-sm text-muted-foreground">
-          xhttp 驱动不需要浏览器参数，也不支持凭据上传/选择；将直接按 API 方式抓取。
-        </div>
-      )}
-
-      {socialPlatform && socialPlatform !== "X" && resolvedDriver === "agent-browser" && (
-        renderAgentBrowserFields()
-      )}
-
       {socialPlatform && renderGatherOutputAndFilterFields()}
+
+      {socialPlatform && requestPreview && (
+        <Card className="gap-4 border-dashed bg-muted/20">
+          <CardHeader>
+            <CardTitle>Gather Request Preview</CardTitle>
+            <CardDescription>
+              当前表单将按这个请求体发送给 gather（keywords 由 Query 注入）。
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <pre className="max-h-80 overflow-auto rounded-md bg-background p-3 text-xs leading-5">
+              {JSON.stringify(requestPreview, null, 2)}
+            </pre>
+          </CardContent>
+        </Card>
+      )}
 
       {socialPlatform === "REDDIT" && resolvedDriver !== "agent-browser" && (
         <>
@@ -1658,11 +1865,9 @@ export const SocialMediaFields = ({
               control={control}
               render={({ field }) => (
                 <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
+                  <Switch
                     checked={field.value || false}
-                    onChange={(e) => field.onChange(e.target.checked)}
-                    className="rounded border-gray-300"
+                    onCheckedChange={field.onChange}
                   />
                   <span className="text-sm">获取热门话题</span>
                 </label>

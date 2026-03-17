@@ -1,8 +1,17 @@
-import type { SocialPlatform } from "@/app/generated/prisma";
-
 export type SocialDriver = "xhttp" | "playwright" | "agent-browser";
+export type KnownSocialPlatform =
+  | "X"
+  | "REDDIT"
+  | "XIAOHONGSHU"
+  | "DOUYIN"
+  | "TIKTOK"
+  | "WEIBO"
+  | "TELEGRAM"
+  | "WHATSAPP"
+  | "INSTAGRAM"
+  | "FACEBOOK";
 
-export const SOCIAL_PLATFORM_DRIVER_SUPPORT: Record<SocialPlatform, readonly SocialDriver[]> = {
+export const SOCIAL_PLATFORM_DRIVER_SUPPORT: Record<KnownSocialPlatform, readonly SocialDriver[]> = {
   X: ["playwright", "agent-browser"],
   REDDIT: ["playwright", "xhttp", "agent-browser"],
   XIAOHONGSHU: ["agent-browser"],
@@ -15,14 +24,15 @@ export const SOCIAL_PLATFORM_DRIVER_SUPPORT: Record<SocialPlatform, readonly Soc
   FACEBOOK: ["playwright", "xhttp", "agent-browser"],
 };
 
-export function getSupportedDrivers(platform: SocialPlatform): readonly SocialDriver[] {
-  return SOCIAL_PLATFORM_DRIVER_SUPPORT[platform] ?? ["playwright"];
+export function getSupportedDrivers(platform: string): readonly SocialDriver[] {
+  const normalized = platform.toUpperCase() as KnownSocialPlatform;
+  return SOCIAL_PLATFORM_DRIVER_SUPPORT[normalized] ?? ["playwright"];
 }
 
-export function getDefaultDriver(platform: SocialPlatform): SocialDriver {
+export function getDefaultDriver(platform: string): SocialDriver {
   return getSupportedDrivers(platform)[0] ?? "playwright";
 }
 
-export function supportsDriver(platform: SocialPlatform, driver: string): driver is SocialDriver {
+export function supportsDriver(platform: string, driver: string): driver is SocialDriver {
   return getSupportedDrivers(platform).includes(driver as SocialDriver);
 }
