@@ -118,6 +118,14 @@ type BbPresetApiItem = {
   platform: string;
   scriptRelPath: string;
   argsSchema: Record<string, unknown> | null;
+  status: "ACTIVE" | "DEPRECATED" | "BROKEN";
+  isActive: boolean;
+};
+
+type PlatformPresetStats = {
+  active: number;
+  deprecated: number;
+  broken: number;
 };
 
 const LEGACY_X_SCRIPT_OPTIONS: ScriptOption[] = [
@@ -340,6 +348,9 @@ export const SocialMediaFields = ({
   ]);
   const [bbPresetOptions, setBbPresetOptions] = useState<ScriptOption[]>([]);
   const [loadingBbPresets, setLoadingBbPresets] = useState(false);
+  const [platformPresetStats, setPlatformPresetStats] = useState<
+    Record<string, PlatformPresetStats>
+  >({});
   const scriptOptions = useMemo(
     () =>
       bbPresetOptions.length > 0
@@ -351,13 +362,19 @@ export const SocialMediaFields = ({
   );
   const availablePlatforms = useMemo(() => {
     const base = new Set<string>(SocialPlatformEnum.options);
-    for (const item of bbPresetOptions) {
-      if (SocialPlatformEnum.options.includes(item.platform as SocialPlatform)) {
-        base.add(item.platform);
+    for (const [platform, stats] of Object.entries(platformPresetStats)) {
+      if (
+        stats.active > 0 &&
+        SocialPlatformEnum.options.includes(platform as SocialPlatform)
+      ) {
+        base.add(platform);
       }
     }
     return Array.from(base);
-  }, [bbPresetOptions]);
+  }, [platformPresetStats]);
+  const currentPlatformStats = socialPlatform
+    ? platformPresetStats[socialPlatform]
+    : undefined;
 
   // Credentials list
   const [credentials, setCredentials] = useState<CredentialInfo[]>([]);
@@ -408,6 +425,49 @@ export const SocialMediaFields = ({
     resolvedDriver !== "xhttp";
   const canUseCredential = Boolean(needsCookieAuth && supportsCredentialForDriver);
 
+  useEffect(() => {
+    const controller = new AbortController();
+
+    const fetchPlatformPresetStats = async () => {
+      try {
+        const response = await fetch(
+          "/api/follow/bb-presets?latestOnly=true&includeInactive=true&pageSize=500",
+          { signal: controller.signal }
+        );
+        if (!response.ok) return;
+        const data = await response.json();
+        const items = Array.isArray(data?.items)
+          ? (data.items as BbPresetApiItem[])
+          : [];
+
+        const stats: Record<string, PlatformPresetStats> = {};
+        for (const item of items) {
+          const platform = item.platform?.toUpperCase?.() ?? "";
+          if (!platform) continue;
+          if (!stats[platform]) {
+            stats[platform] = { active: 0, deprecated: 0, broken: 0 };
+          }
+          if (!item.isActive || item.status === "BROKEN") {
+            stats[platform].broken += 1;
+          } else if (item.status === "DEPRECATED") {
+            stats[platform].deprecated += 1;
+          } else {
+            stats[platform].active += 1;
+          }
+        }
+
+        setPlatformPresetStats(stats);
+      } catch (error) {
+        if ((error as { name?: string })?.name !== "AbortError") {
+          console.error("Failed to fetch bb preset platform stats:", error);
+        }
+      }
+    };
+
+    fetchPlatformPresetStats();
+    return () => controller.abort();
+  }, []);
+
   // Fetch existing credentials when platform changes
   useEffect(() => {
     if (!canUseCredential || !socialPlatform) {
@@ -454,6 +514,7 @@ export const SocialMediaFields = ({
         const data = await response.json();
         const items = Array.isArray(data?.items) ? (data.items as BbPresetApiItem[]) : [];
         const nextOptions: ScriptOption[] = items
+          .filter((item) => item.isActive && item.status === "ACTIVE")
           .map((item) => ({
             id: item.id,
             key: item.key,
@@ -1052,6 +1113,14 @@ export const SocialMediaFields = ({
     </div>
   );
 
+  const getPlatformOptionLabel = (platform: string) => {
+    const stats = platformPresetStats[platform];
+    if (!stats) return platform;
+    if (stats.active > 0) return `${platform} (bb:${stats.active})`;
+    if (stats.deprecated > 0 || stats.broken > 0) return `${platform} (bb unavailable)`;
+    return platform;
+  };
+
   const renderGatherOutputAndFilterFields = () => (
     <div className="grid gap-4 rounded-lg border bg-muted/30 p-4">
       <Label className="text-base font-medium">Gather Output & Keyword Filter</Label>
@@ -1207,7 +1276,7 @@ export const SocialMediaFields = ({
             >
               {availablePlatforms.map((platform) => (
                 <SelectItem key={platform} value={platform}>
-                  {platform}
+                  {getPlatformOptionLabel(platform)}
                 </SelectItem>
               ))}
             </ControlledSelect>
@@ -1216,6 +1285,15 @@ export const SocialMediaFields = ({
         <ErrorMessage>
           {socialErrors.social?.platform?.message?.toString()}
         </ErrorMessage>
+        {socialPlatform && (
+          <p className="text-xs text-muted-foreground">
+            {currentPlatformStats?.active
+              ? `该平台有 ${currentPlatformStats.active} 个可用 bb-site 脚本，可在 Playwright 中直接选择。`
+              : currentPlatformStats?.deprecated || currentPlatformStats?.broken
+                ? "该平台 bb-site 脚本当前不可用（DEPRECATED/BROKEN），你仍可使用自定义 driver 配置。"
+                : "该平台当前无 bb-site 脚本，使用自定义 driver 配置。"}
+          </p>
+        )}
       </div>
 
       {socialPlatform && supportedDrivers.length > 0 && (
