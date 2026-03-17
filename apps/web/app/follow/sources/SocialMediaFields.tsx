@@ -85,21 +85,12 @@ interface CredentialInfo {
   updatedAt: string;
 }
 
-// Platforms that require cookie-based authentication
-const COOKIE_AUTH_PLATFORMS = ["X", "XIAOHONGSHU", "REDDIT", "DOUYIN", "TIKTOK", "WEIBO", "TELEGRAM", "WHATSAPP", "INSTAGRAM", "FACEBOOK"] as const;
-
-// Map platform to credential kind
-const PLATFORM_TO_KIND: Record<string, string> = {
-  "X": "x-cookie",
-  "XIAOHONGSHU": "xiaohongshu-cookie",
-  "REDDIT": "reddit-cookie",
-  "DOUYIN": "douyin-cookie",
-  "TIKTOK": "tiktok-cookie",
-  "WEIBO": "weibo-cookie",
-  "TELEGRAM": "telegram-cookie",
-  "WHATSAPP": "whatsapp-profile",
-  "INSTAGRAM": "instagram-cookie",
-  "FACEBOOK": "facebook-cookie",
+const getCredentialKind = (platform: string) => {
+  const normalized = platform.trim().toLowerCase();
+  if (!normalized) return "unknown-cookie";
+  if (normalized === "x" || normalized === "twitter") return "x-cookie";
+  if (normalized === "whatsapp") return "whatsapp-profile";
+  return `${normalized}-cookie`;
 };
 
 type ScriptArgRule = {
@@ -427,8 +418,7 @@ export const SocialMediaFields = ({
   };
 
   // Check if current platform requires cookie auth
-  const needsCookieAuth = socialPlatform &&
-    COOKIE_AUTH_PLATFORMS.includes(socialPlatform as typeof COOKIE_AUTH_PLATFORMS[number]);
+  const needsCookieAuth = Boolean(socialPlatform);
   const supportsCredentialForDriver =
     resolvedDriver !== "xhttp";
   const canUseCredential = Boolean(needsCookieAuth && supportsCredentialForDriver);
@@ -486,7 +476,7 @@ export const SocialMediaFields = ({
     const fetchCredentials = async () => {
       setLoadingCredentials(true);
       try {
-        const kind = PLATFORM_TO_KIND[socialPlatform];
+        const kind = getCredentialKind(socialPlatform);
         const response = await fetch(`/api/follow/credentials?kind=${kind}`);
         if (response.ok) {
           const data = await response.json();
@@ -803,7 +793,7 @@ export const SocialMediaFields = ({
         }
 
         // Refresh credentials list
-        const kind = PLATFORM_TO_KIND[socialPlatform];
+        const kind = getCredentialKind(socialPlatform);
         const credResponse = await fetch(`/api/follow/credentials?kind=${kind}`);
         if (credResponse.ok) {
           const data = await credResponse.json();
@@ -876,7 +866,7 @@ export const SocialMediaFields = ({
       }
 
       // Refresh credentials list
-      const kind = PLATFORM_TO_KIND[socialPlatform];
+      const kind = getCredentialKind(socialPlatform);
       const credResponse = await fetch(`/api/follow/credentials?kind=${kind}`);
       if (credResponse.ok) {
         const data = await credResponse.json();
@@ -1170,10 +1160,12 @@ export const SocialMediaFields = ({
 
   const getPlatformOptionLabel = (platform: string) => {
     const stats = platformPresetStats[platform];
-    if (!stats) return platform;
-    if (stats.active > 0) return `${platform} (bb:${stats.active})`;
-    if (stats.deprecated > 0 || stats.broken > 0) return `${platform} (bb unavailable)`;
-    return platform;
+    const isBbOnly = !SocialPlatformEnum.options.includes(platform as (typeof SocialPlatformEnum.options)[number]);
+    const bbOnlyTag = isBbOnly ? " [bb-site only]" : "";
+    if (!stats) return `${platform}${bbOnlyTag}`;
+    if (stats.active > 0) return `${platform} (bb:${stats.active})${bbOnlyTag}`;
+    if (stats.deprecated > 0 || stats.broken > 0) return `${platform} (bb unavailable)${bbOnlyTag}`;
+    return `${platform}${bbOnlyTag}`;
   };
 
   const renderGatherOutputAndFilterFields = () => (
