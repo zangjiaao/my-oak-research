@@ -1176,10 +1176,6 @@ export const SocialMediaFields = ({
   );
 
   const getPlatformOptionLabel = (platform: string) => {
-    const stats = platformPresetStats[platform];
-    if (!stats) return platform;
-    if (stats.active > 0) return `${platform} (bb:${stats.active})`;
-    if (stats.deprecated > 0 || stats.broken > 0) return `${platform} (bb unavailable)`;
     return platform;
   };
 
@@ -1193,6 +1189,11 @@ export const SocialMediaFields = ({
         {stats?.active ? (
           <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">
             bb:{stats.active}
+          </Badge>
+        ) : null}
+        {stats && !stats.active && (stats.deprecated > 0 || stats.broken > 0) ? (
+          <Badge variant="outline" className="h-5 px-1.5 text-[10px]">
+            bb unavailable
           </Badge>
         ) : null}
         {isBbOnly ? (
@@ -1312,10 +1313,10 @@ export const SocialMediaFields = ({
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
-                    <Command>
+                    <Command className="max-h-80">
                       <CommandInput placeholder="Search platform..." />
                       <CommandEmpty>No platform found.</CommandEmpty>
-                      <CommandList className="max-h-64">
+                      <CommandList className="h-64 overflow-y-auto">
                         <CommandGroup>
                           {availablePlatforms.map((platform) => (
                             <CommandItem
