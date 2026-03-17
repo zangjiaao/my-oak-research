@@ -431,7 +431,7 @@ export const SocialMediaFields = ({
     const fetchPlatformPresetStats = async () => {
       try {
         const response = await fetch(
-          "/api/follow/bb-presets?latestOnly=true&includeInactive=true&pageSize=500",
+          "/api/follow/bb-presets?latestOnly=true&includeInactive=true&pageSize=200",
           { signal: controller.signal }
         );
         if (!response.ok) return;
