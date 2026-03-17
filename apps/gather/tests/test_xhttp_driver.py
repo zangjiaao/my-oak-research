@@ -109,12 +109,14 @@ def test_v2_fetch_xhttp_supports_top_level_keywords(monkeypatch):
             "platform": "x",
             "sourceId": "source-1",
             "keywords": ["keyword"],
-            "driver": "xhttp",
-            "output": {"field": ["text", "markdown", "url"]},
-            "driverOptions": {
-                "url": "https://example.com",
+            "driver": {
+                "name": "xhttp",
+                "option": {
+                    "url": "https://example.com",
+                },
                 "filter": {},
             },
+            "output": {"field": ["text", "markdown", "url"]},
         },
     )
 

@@ -77,10 +77,9 @@ def test_fetch_v2_driver_selected(monkeypatch):
         json={
             "platform": "x",
             "keywords": [],
-            "driverOptions": {},
+            "driver": {"name": "stub", "option": {}},
             "output": {"field": ["text", "markdown"]},
             "sourceId": "source-1",
-            "driver": "stub",
         },
     )
 

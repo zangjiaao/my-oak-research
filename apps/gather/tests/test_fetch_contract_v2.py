@@ -132,9 +132,8 @@ def test_fetch_v2_happy_path(monkeypatch):
             "platform": "contract-test-platform",
             "sourceId": "source_123",
             "keywords": [],
-            "driver": "playwright",
+            "driver": {"name": "playwright", "option": {}},
             "output": {"field": ["text", "markdown"]},
-            "driverOptions": {},
         },
     )
 
@@ -159,7 +158,7 @@ def test_fetch_v2_validation_error():
         "/v2/fetch",
         json={
             "sourceId": "source_123",
-            "driverOptions": {},
+            "driver": {"name": "playwright", "option": {}},
         },
     )
 
@@ -179,9 +178,8 @@ def test_fetch_v2_output_fields_text_only(monkeypatch):
             "platform": "contract-test-platform",
             "sourceId": "source_123",
             "keywords": [],
-            "driver": "playwright",
+            "driver": {"name": "playwright", "option": {}},
             "output": {"field": ["text"]},
-            "driverOptions": {},
         },
     )
 
@@ -202,9 +200,8 @@ def test_fetch_v2_output_fields_markdown_only(monkeypatch):
             "platform": "contract-test-platform",
             "sourceId": "source_123",
             "keywords": [],
-            "driver": "playwright",
+            "driver": {"name": "playwright", "option": {}},
             "output": {"field": ["markdown"]},
-            "driverOptions": {},
         },
     )
 
@@ -225,9 +222,8 @@ def test_fetch_v2_driver_options_without_legacy_config(monkeypatch):
             "platform": "contract-test-platform",
             "sourceId": "source_123",
             "keywords": [],
-            "driver": "playwright",
+            "driver": {"name": "playwright", "option": {"query": "AI"}},
             "output": {"field": ["text"]},
-            "driverOptions": {"query": "AI"},
         },
     )
 
@@ -246,9 +242,8 @@ def test_fetch_v2_output_fields_keep_requested_content_only(monkeypatch):
             "platform": "contract-test-platform",
             "sourceId": "source_123",
             "keywords": [],
-            "driver": "playwright",
+            "driver": {"name": "playwright", "option": {}},
             "output": {"field": ["text", "url"]},
-            "driverOptions": {},
         },
     )
 
@@ -266,9 +261,8 @@ def test_fetch_v2_output_type_overrides_record_type(monkeypatch):
             "platform": "contract-test-platform",
             "sourceId": "source_123",
             "keywords": [],
-            "driver": "playwright",
+            "driver": {"name": "playwright", "option": {}},
             "output": {"field": ["text"], "type": "x.post"},
-            "driverOptions": {},
         },
     )
 
@@ -285,9 +279,8 @@ def test_fetch_v2_output_field_mapping(monkeypatch):
             "platform": "contract-test-platform",
             "sourceId": "source_123",
             "keywords": [],
-            "driver": "playwright",
+            "driver": {"name": "playwright", "option": {}},
             "output": {"field": {"query": "text", "body": "markdown"}},
-            "driverOptions": {},
         },
     )
 
@@ -304,7 +297,7 @@ def test_fetch_v2_output_field_mapping_expands_list_records(monkeypatch):
             "platform": "x",
             "sourceId": "source-x-001",
             "keywords": [],
-            "driver": "playwright",
+            "driver": {"name": "playwright", "option": {}},
             "output": {
                 "field": {
                     "id": "text.id",
@@ -316,7 +309,6 @@ def test_fetch_v2_output_field_mapping_expands_list_records(monkeypatch):
                 },
                 "type": "text",
             },
-            "driverOptions": {},
         },
     )
 
@@ -337,7 +329,7 @@ def test_fetch_v2_output_field_mapping_supports_text_alias_for_tweets(monkeypatc
             "platform": "x",
             "sourceId": "source-x-001",
             "keywords": [],
-            "driver": "playwright",
+            "driver": {"name": "playwright", "option": {}},
             "output": {
                 "field": {
                     "id": "text.id",
@@ -349,7 +341,6 @@ def test_fetch_v2_output_field_mapping_supports_text_alias_for_tweets(monkeypatc
                 },
                 "type": "text",
             },
-            "driverOptions": {},
         },
     )
 

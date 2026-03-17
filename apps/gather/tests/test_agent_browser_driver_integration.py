@@ -47,16 +47,18 @@ def test_v2_fetch_agent_browser_driver_returns_captures(monkeypatch):
             "platform": "telegram",
             "sourceId": "source-telegram-1",
             "keywords": [],
-            "driver": "agent-browser",
-            "output": {"field": ["text", "markdown", "url"]},
-            "driverOptions": {
-                "script": [{"command": "open https://web.telegram.org/a/"}],
-                "filters": {
-                    "capture": {
-                        "keys": ["messages"],
-                    }
-                }
+            "driver": {
+                "name": "agent-browser",
+                "option": {
+                    "script": [{"command": "open https://web.telegram.org/a/"}],
+                    "filters": {
+                        "capture": {
+                            "keys": ["messages"],
+                        }
+                    },
+                },
             },
+            "output": {"field": ["text", "markdown", "url"]},
         },
     )
 
@@ -89,9 +91,8 @@ def test_v2_fetch_agent_browser_driver_surfaces_config_error(monkeypatch):
             "platform": "telegram",
             "sourceId": "source-telegram-2",
             "keywords": [],
-            "driver": "agent-browser",
+            "driver": {"name": "agent-browser", "option": {}},
             "output": {"field": ["text", "markdown"]},
-            "driverOptions": {},
         },
     )
 
@@ -118,9 +119,11 @@ def test_v2_fetch_agent_browser_driver_maps_owner_mismatch_to_403(monkeypatch):
             "platform": "telegram",
             "sourceId": "source-telegram-3",
             "keywords": [],
-            "driver": "agent-browser",
+            "driver": {
+                "name": "agent-browser",
+                "option": {"instanceId": "ab-test", "ownerId": "user-b", "script": []},
+            },
             "output": {"field": ["text", "markdown"]},
-            "driverOptions": {"instanceId": "ab-test", "ownerId": "user-b", "script": []},
         },
     )
 
@@ -154,14 +157,16 @@ def test_v2_fetch_agent_browser_driver_options_maps_auth_and_filters(monkeypatch
             "platform": "telegram",
             "sourceId": "source-telegram-4",
             "keywords": ["alpha"],
-            "driver": "agent-browser",
-            "output": {"field": ["text", "markdown", "url"]},
-            "driverOptions": {
-                "sessionKey": "source-telegram-4",
-                "auth": {"stateFile": ".auth/demo.json"},
-                "script": [{"command": "open https://web.telegram.org/a/"}],
+            "driver": {
+                "name": "agent-browser",
+                "option": {
+                    "sessionKey": "source-telegram-4",
+                    "auth": {"stateFile": ".auth/demo.json"},
+                    "script": [{"command": "open https://web.telegram.org/a/"}],
+                },
                 "filter": {"minChars": 8},
             },
+            "output": {"field": ["text", "markdown", "url"]},
         },
     )
 

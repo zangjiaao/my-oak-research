@@ -108,9 +108,8 @@ def test_keyword_hit_content_persisted(monkeypatch):
             "platform": "hit-only",
             "sourceId": "source-hit",
             "keywords": ["ai", "regulation"],
-            "driver": "playwright",
+            "driver": {"name": "playwright", "option": {}, "filter": {}},
             "output": {"field": ["text", "markdown"]},
-            "driverOptions": {"filter": {}},
         },
     )
 
@@ -129,9 +128,8 @@ def test_keyword_miss_content_not_persisted(monkeypatch, capsys):
             "platform": "miss-only",
             "sourceId": "source-miss",
             "keywords": ["ai"],
-            "driver": "playwright",
+            "driver": {"name": "playwright", "option": {}, "filter": {}},
             "output": {"field": ["text", "markdown"]},
-            "driverOptions": {"filter": {}},
         },
     )
 
@@ -149,9 +147,8 @@ def test_keyword_hit_only_persisted_miss_audit_only(monkeypatch, capsys):
             "platform": "mixed",
             "sourceId": "source-mixed",
             "keywords": ["ai"],
-            "driver": "playwright",
+            "driver": {"name": "playwright", "option": {}, "filter": {}},
             "output": {"field": ["text", "markdown"]},
-            "driverOptions": {"filter": {}},
         },
     )
 
@@ -171,9 +168,8 @@ def test_keyword_filter_metrics_emitted(monkeypatch, capsys):
             "platform": "mixed",
             "sourceId": "source-metrics",
             "keywords": ["ai"],
-            "driver": "playwright",
+            "driver": {"name": "playwright", "option": {}, "filter": {}},
             "output": {"field": ["text", "markdown"]},
-            "driverOptions": {"filter": {}},
         },
     )
 
@@ -194,9 +190,8 @@ def test_keyword_filter_invalid_config_fails_closed(monkeypatch, capsys):
             "platform": "mixed",
             "sourceId": "source-invalid",
             "keywords": ["ai"],
-            "driver": "playwright",
+            "driver": {"name": "playwright", "option": {}, "filter": {"minChars": 0}},
             "output": {"field": ["text", "markdown"]},
-            "driverOptions": {"filter": {"minChars": 0}},
         },
     )
 
@@ -215,13 +210,14 @@ def test_keyword_min_chars_keeps_record_when_content_is_long_enough(monkeypatch)
             "platform": "chat-batch",
             "sourceId": "source-chat-min",
             "keywords": ["alpha"],
-            "driver": "playwright",
-            "output": {"field": ["text", "markdown"]},
-            "driverOptions": {
+            "driver": {
+                "name": "playwright",
+                "option": {},
                 "filter": {
                     "minChars": 20,
-                }
+                },
             },
+            "output": {"field": ["text", "markdown"]},
         },
     )
 
@@ -240,13 +236,14 @@ def test_keyword_min_chars_filters_out_short_content(monkeypatch):
             "platform": "chat-batch",
             "sourceId": "source-chat-too-short",
             "keywords": ["alpha"],
-            "driver": "playwright",
-            "output": {"field": ["text", "markdown"]},
-            "driverOptions": {
+            "driver": {
+                "name": "playwright",
+                "option": {},
                 "filter": {
                     "minChars": 500,
-                }
+                },
             },
+            "output": {"field": ["text", "markdown"]},
         },
     )
 
@@ -262,13 +259,14 @@ def test_keyword_filter_rejects_split_mode(monkeypatch):
             "platform": "chat-batch",
             "sourceId": "source-chat-split-mode",
             "keywords": ["alpha"],
-            "driver": "playwright",
-            "output": {"field": ["text", "markdown"]},
-            "driverOptions": {
+            "driver": {
+                "name": "playwright",
+                "option": {},
                 "filter": {
                     "splitMode": "line",
-                }
+                },
             },
+            "output": {"field": ["text", "markdown"]},
         },
     )
 
@@ -286,9 +284,8 @@ def test_keyword_scope_fields_limit_matching(monkeypatch):
             "platform": "scope-case",
             "sourceId": "source-scope",
             "keywords": ["polymarket"],
-            "driver": "playwright",
+            "driver": {"name": "playwright", "option": {}, "filter": {"minChars": 3}},
             "output": {"field": ["query", "text"], "keywordScope": ["text"]},
-            "driverOptions": {"filter": {"minChars": 3}},
         },
     )
 

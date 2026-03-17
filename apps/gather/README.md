@@ -145,29 +145,32 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
   "platform": "x",
   "sourceId": "source_123",
   "keywords": ["openai"],
-  "driver": "playwright",
-  "output": {
-    "field": ["text", "meta.image", "url", "comments"],
-    "type": "x.post"
-  },
-  "driverOptions": {
-    "playwright": {
-      "mode": "eval-js",
-      "scriptPath": "/path/to/script.js"
-    },
-    "network": {
-      "proxy": {
-        "url": "socks5h://127.0.0.1:9050"
+  "driver": {
+    "name": "playwright",
+    "option": {
+      "playwright": {
+        "mode": "eval-js",
+        "scriptPath": "/path/to/script.js"
+      },
+      "network": {
+        "proxy": {
+          "url": "socks5h://127.0.0.1:9050"
+        }
       }
     },
     "filter": {
       "minChars": 8
     }
+  },
+  "output": {
+    "field": ["text", "meta.image", "url", "comments"],
+    "type": "x.post"
   }
 }
 ```
 
-`driver` 必填，可选值为 `xhttp`、`playwright`、`agent-browser`。
+`driver.name` 必填，可选值为 `xhttp`、`playwright`、`agent-browser`。
+`driver.option` 透传给对应 driver；`driver.filter` 为关键词过滤参数（如 `minChars`）。
 `output.field` 必填，控制 `recordContent` 输出字段（支持点路径）：
 
 - `["text"]`：只返回 `recordContent.text`
@@ -180,21 +183,24 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 `output.type` 可选，用于覆盖输出 record 的 `recordType`（例如统一指定为 `x.post`）。
 `output.keywordScope` 可选，限制关键词过滤只检查 `recordContent` 指定字段（例如 `["text"]`）。
 
-`/v2/fetch` 只接受新字段：`sourceId`、`platform`、`keywords`、`driver`、`driverOptions`、`output.field`。不再兼容旧字段。
+`/v2/fetch` 只接受新字段：`sourceId`、`platform`、`keywords`、`driver.name`、`driver.option`、`driver.filter`、`output.field`。不再兼容旧字段。
 
 ### 通用网络代理配置（支持 HTTP/SOCKS/Tor）
 
-三个 driver（`xhttp` / `playwright` / `agent-browser`）都支持在 `driverOptions.network.proxy` 下统一配置代理：
+三个 driver（`xhttp` / `playwright` / `agent-browser`）都支持在 `driver.option.network.proxy` 下统一配置代理：
 
 ```json
 {
-  "driverOptions": {
-    "network": {
-      "proxy": {
-        "url": "socks5h://127.0.0.1:9050",
-        "username": "optional-user",
-        "password": "optional-pass",
-        "bypass": "localhost,127.0.0.1"
+  "driver": {
+    "name": "playwright",
+    "option": {
+      "network": {
+        "proxy": {
+          "url": "socks5h://127.0.0.1:9050",
+          "username": "optional-user",
+          "password": "optional-pass",
+          "bypass": "localhost,127.0.0.1"
+        }
       }
     }
   }
@@ -206,7 +212,7 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 - `bypass`: 可选，主要用于浏览器类 driver（Playwright / agent-browser）
 - Tor 推荐使用 `socks5h://127.0.0.1:9050`（DNS 也走 Tor）
 
-### xhttp 驱动（`driver: "xhttp"`）
+### xhttp 驱动（`driver.name: "xhttp"`）
 
 适用于直接调用搜索 API 或普通 HTTP 页面，不依赖浏览器环境。
 
@@ -214,33 +220,35 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 {
   "platform": "search",
   "sourceId": "source_search_demo",
-  "driver": "xhttp",
-  "driverOptions": {
-    "url": "https://api.example.com/search",
-    "method": "POST",
-    "headers": {
-      "Content-Type": "application/json"
-    },
-    "params": {
-      "q": "openai"
-    },
-    "json": {
-      "query": "openai",
-      "count": 20
-    },
-    "signature": {
-      "secretEnv": "SEARCH_API_SECRET",
-      "source": "query",
-      "timestampField": "ts",
-      "nonceField": "nonce",
-      "fields": ["q", "ts", "nonce"],
-      "algorithm": "hmac-sha256",
-      "digest": "hex",
-      "target": "header",
-      "header": "X-Signature"
-    },
-    "timeoutSeconds": 20,
-    "maxChars": 50000
+  "driver": {
+    "name": "xhttp",
+    "option": {
+      "url": "https://api.example.com/search",
+      "method": "POST",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "params": {
+        "q": "openai"
+      },
+      "json": {
+        "query": "openai",
+        "count": 20
+      },
+      "signature": {
+        "secretEnv": "SEARCH_API_SECRET",
+        "source": "query",
+        "timestampField": "ts",
+        "nonceField": "nonce",
+        "fields": ["q", "ts", "nonce"],
+        "algorithm": "hmac-sha256",
+        "digest": "hex",
+        "target": "header",
+        "header": "X-Signature"
+      },
+      "timeoutSeconds": 20,
+      "maxChars": 50000
+    }
   }
 }
 ```
@@ -256,7 +264,7 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 - `timeoutSeconds`: 可选，超时时间，默认 `15`
 - `maxChars`: 可选，返回 `text/markdown` 最大长度，默认 `20000`
 
-### Agent Browser 脚本化 PoC（`driver: "agent-browser"`）
+### Agent Browser 脚本化 PoC（`driver.name: "agent-browser"`）
 
 用于复杂交互场景（登录后页面、轮询点击、按脚本采集内容），通过 `agent-browser` CLI 执行步骤。
 
@@ -292,7 +300,7 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 }
 ```
 
-`driverOptions`（agent-browser）常用参数：
+`driver.option`（agent-browser）常用参数：
 
 - `script`: 必填，步骤数组（每步至少包含 `command`）
 - `headed`: 可选，`true` 时可视化执行（等价于 `agent-browser --headed`）
@@ -310,7 +318,7 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
 > 并发建议：需要多实例并行时，不要在脚本中显式执行 `close`，由 worker 在任务结束时关闭；同时依赖空闲 TTL 做兜底回收。
 
-`driver: "agent-browser"` 的返回项会附带：
+`driver.name: "agent-browser"` 的返回项会附带：
 
 - `instanceId`: 浏览器实例 ID（用于下一次请求复用）
 - `tabId`: 当前 tab 的逻辑 ID
@@ -493,9 +501,9 @@ Worker 侧建议统一调用 `/v2/fetch`，并显式传 `driver`，避免默认�
 
 对于社媒抓取可按 source 配置切换：
 
-- API 直连：`driver: "xhttp"`
-- 登录态接口/脚本：`driver: "playwright"`
-- 复杂交互兜底：`driver: "agent-browser"`
+- API 直连：`driver.name: "xhttp"`
+- 登录态接口/脚本：`driver.name: "playwright"`
+- 复杂交互兜底：`driver.name: "agent-browser"`
 
 ### Python 调用
 
@@ -557,7 +565,7 @@ apps/gather/
 ### 添加新平台
 
 1. 优先在 `site_scripts/<platform>/`（或 bb-site）提供 `me.ts/me.js` 验证脚本
-2. 采集逻辑优先走 `driver=agent-browser` 或 `driverOptions.playwright.mode=eval-js`
+2. 采集逻辑优先走 `driver.name=agent-browser` 或 `driver.option.playwright.mode=eval-js`
 3. 在 `main.py` 中添加平台映射与校验逻辑
 4. 在 `export_chrome_cookies.py` 中添加平台配置（如需）
 

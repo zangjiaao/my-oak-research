@@ -37,17 +37,19 @@ def test_fetch_v2_playwright_eval_mode_uses_eval_runner(monkeypatch):
             "platform": "x",
             "sourceId": "source-eval-1",
             "keywords": ["keyword"],
-            "driver": "playwright",
-            "output": {"field": ["text", "markdown", "url"]},
-            "driverOptions": {
-                "playwright": {
-                    "mode": "eval-js",
-                    "targetUrl": "https://x.com",
-                    "scriptBody": "(args) => ({ text: 'ok', title: 'ok' })",
-                    "args": {"query": "hello"},
+            "driver": {
+                "name": "playwright",
+                "option": {
+                    "playwright": {
+                        "mode": "eval-js",
+                        "targetUrl": "https://x.com",
+                        "scriptBody": "(args) => ({ text: 'ok', title: 'ok' })",
+                        "args": {"query": "hello"},
+                    }
                 },
                 "filter": {},
             },
+            "output": {"field": ["text", "markdown", "url"]},
         },
     )
 
@@ -68,14 +70,16 @@ def test_fetch_v2_playwright_eval_mode_allows_missing_target_url():
             "platform": "x",
             "sourceId": "source-eval-2",
             "keywords": [],
-            "driver": "playwright",
-            "output": {"field": ["text", "markdown"]},
-            "driverOptions": {
-                "playwright": {
-                    "mode": "eval-js",
-                    "scriptBody": "(args) => ({ text: 'ok' })",
-                }
+            "driver": {
+                "name": "playwright",
+                "option": {
+                    "playwright": {
+                        "mode": "eval-js",
+                        "scriptBody": "(args) => ({ text: 'ok' })",
+                    }
+                },
             },
+            "output": {"field": ["text", "markdown"]},
         },
     )
 

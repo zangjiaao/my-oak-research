@@ -633,13 +633,17 @@ async function fetchSocialSource(
   const existingKeywordFilter = resolveGatherKeywordFilter(baseConfig, gatherDriver);
   const keywordFilterOptions = { ...existingKeywordFilter };
   delete keywordFilterOptions.keywords;
-  const driverOptions =
+  const driver =
     Object.keys(keywordFilterOptions).length > 0
       ? {
-          ...baseConfig,
+          name: gatherDriver,
+          option: baseConfig,
           filter: keywordFilterOptions,
         }
-      : baseConfig;
+      : {
+          name: gatherDriver,
+          option: baseConfig,
+        };
 
   try {
     const response = await fetch(`${gatherUrl}/v2/fetch`, {
@@ -648,10 +652,9 @@ async function fetchSocialSource(
       body: JSON.stringify({
         platform: gatherPlatform,
         keywords: keywordFilterTerms,
-        driverOptions,
+        driver,
         sourceId: source.id,
         output,
-        driver: gatherDriver,
       }),
     });
 
@@ -687,7 +690,13 @@ function resolveGatherDriver(
   const supportedDrivers =
     SOCIAL_PLATFORM_DRIVER_SUPPORT[normalizedPlatform] ??
     (["playwright"] as const);
-  const rawDriver = typeof config.driver === "string" ? config.driver.trim().toLowerCase() : "";
+  const driverConfig = asObject(config.driver);
+  const rawDriver =
+    typeof config.driver === "string"
+      ? config.driver.trim().toLowerCase()
+      : typeof driverConfig.name === "string"
+        ? driverConfig.name.trim().toLowerCase()
+        : "";
   if (
     (rawDriver === "xhttp" || rawDriver === "agent-browser" || rawDriver === "playwright") &&
     supportedDrivers.includes(rawDriver)

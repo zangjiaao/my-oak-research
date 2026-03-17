@@ -23,17 +23,21 @@ class FetchV2Output(BaseModel):
     keywordScope: Optional[List[str]] = None
 
 
+class FetchV2Driver(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    name: str
+    option: Dict[str, Any] = Field(default_factory=dict)
+    filter: Dict[str, Any] = Field(default_factory=dict)
+
+
 class FetchV2Request(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     platform: str
     source_id: str = Field(validation_alias=AliasChoices("sourceId"))
     keywords: List[str] = Field(default_factory=list)
-    driver: str
+    driver: FetchV2Driver
     output: FetchV2Output
-    driver_options: Dict[str, Any] = Field(
-        validation_alias=AliasChoices("driverOptions"),
-    )
 
 
 class VerifyAuthRequest(BaseModel):

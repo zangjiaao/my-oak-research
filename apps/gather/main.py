@@ -1383,8 +1383,8 @@ def _normalize_agent_browser_driver_options(
 
 
 def _normalize_v2_fetch_request(request: FetchV2Request) -> FetchRequest:
-    normalized_driver = request.driver.strip().lower()
-    config = dict(request.driver_options)
+    normalized_driver = request.driver.name.strip().lower()
+    config = dict(request.driver.option)
 
     if normalized_driver == "agent-browser":
         config = _normalize_agent_browser_driver_options(request.source_id, {}, config)
@@ -1418,15 +1418,7 @@ def _normalize_v2_fetch_request(request: FetchV2Request) -> FetchRequest:
             if isinstance(value, str) and value.strip()
         ]
 
-    raw_filter = config.pop("filter", None)
-    filter_options = raw_filter if isinstance(raw_filter, dict) else {}
-    if not filter_options:
-        agent_browser_options = _as_dict(config.get("agentBrowser"))
-        nested_filter = agent_browser_options.pop("filter", None)
-        if isinstance(nested_filter, dict):
-            filter_options = nested_filter
-        if agent_browser_options:
-            config["agentBrowser"] = agent_browser_options
+    filter_options = dict(request.driver.filter)
     if request.keywords:
         existing_filters = _as_dict(config.get("filters"))
         keyword_filter = {
@@ -1585,16 +1577,16 @@ async def fetch_data_v2(payload: Dict[str, Any]):
     v1_request = _normalize_v2_fetch_request(request)
 
     try:
-        raw_results = await driver_registry.fetch(v1_request, driver_name=request.driver)
+        raw_results = await driver_registry.fetch(v1_request, driver_name=request.driver.name)
         results = _normalize_clean_items(raw_results)
         if v1_request.output_record_type:
             for item in results:
                 item.recordType = v1_request.output_record_type
         results = _apply_output_fields(results, v1_request.output_fields, v1_request.output_field_map)
         results = apply_keyword_hard_filter(v1_request, results)
-        if request.driver:
+        if request.driver.name:
             for item in results:
-                item.driver = request.driver
+                item.driver = request.driver.name
         response_payload = results
         _log_api_io(
             "/v2/fetch",
