@@ -64,6 +64,7 @@ import {
   CommandGroup,
   CommandInput,
   CommandItem,
+  CommandList,
 } from "@/components/ui/command";
 import {
   Popover,
@@ -1314,44 +1315,46 @@ export const SocialMediaFields = ({
                     <Command>
                       <CommandInput placeholder="Search platform..." />
                       <CommandEmpty>No platform found.</CommandEmpty>
-                      <CommandGroup className="max-h-64 overflow-auto">
-                        {availablePlatforms.map((platform) => (
-                          <CommandItem
-                            key={platform}
-                            value={platform}
-                            onSelect={() => {
-                              const nextPlatform = platform || "X";
-                              field.onChange(nextPlatform);
-                              setPlatformPopoverOpen(false);
-                              setAuthStatus({ status: "idle" });
-                              setSelectedFile(null);
-                              setShowUploadForm(false);
-                              if (setValue) {
-                                setValue("social.credentialId", null);
-                                setValue(
-                                  "social.config.driver",
-                                  getDefaultDriver(nextPlatform)
-                                );
-                                setValue("social.config.playwright.mode", "eval-js");
-                                setValue("social.config.playwright.headless", false);
-                                setValue("social.config.playwright.targetUrl", "");
-                                setValue("social.config.playwright.args", {});
-                              }
-                            }}
-                          >
-                            <Check
-                              className={cn(
-                                "mr-2 h-4 w-4",
-                                field.value === platform ? "opacity-100" : "opacity-0"
-                              )}
-                            />
-                            <div className="flex w-full items-center justify-between gap-2">
-                              <span>{getPlatformOptionLabel(platform)}</span>
-                              {renderPlatformBadges(platform)}
-                            </div>
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
+                      <CommandList className="max-h-64">
+                        <CommandGroup>
+                          {availablePlatforms.map((platform) => (
+                            <CommandItem
+                              key={platform}
+                              value={platform}
+                              onSelect={() => {
+                                const nextPlatform = platform || "X";
+                                field.onChange(nextPlatform);
+                                setPlatformPopoverOpen(false);
+                                setAuthStatus({ status: "idle" });
+                                setSelectedFile(null);
+                                setShowUploadForm(false);
+                                if (setValue) {
+                                  setValue("social.credentialId", null);
+                                  setValue(
+                                    "social.config.driver",
+                                    getDefaultDriver(nextPlatform)
+                                  );
+                                  setValue("social.config.playwright.mode", "eval-js");
+                                  setValue("social.config.playwright.headless", false);
+                                  setValue("social.config.playwright.targetUrl", "");
+                                  setValue("social.config.playwright.args", {});
+                                }
+                              }}
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  field.value === platform ? "opacity-100" : "opacity-0"
+                                )}
+                              />
+                              <div className="flex w-full items-center justify-between gap-2">
+                                <span>{getPlatformOptionLabel(platform)}</span>
+                                {renderPlatformBadges(platform)}
+                              </div>
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
                     </Command>
                   </PopoverContent>
                 </Popover>
