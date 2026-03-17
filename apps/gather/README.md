@@ -174,6 +174,7 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 - `["text", "url"]`：返回 `recordContent.text` + `recordContent.url`
 - `["meta.image"]`：返回嵌套字段 `recordContent.meta.image`
 - `{"query":"query","product":"product","text":"tweets"}`：按映射重组输出字段（左侧是输出字段名，右侧是原始输出字段路径）
+- 当映射路径命中数组字段（如 `text.id`、`text.author`）时，会按数组元素自动拆分为多条 record 输出
 
 `output.type` 可选，用于覆盖输出 record 的 `recordType`（例如统一指定为 `x.post`）。
 

@@ -1207,6 +1207,91 @@ def _write_nested_field(payload: dict[str, Any], path: list[str], value: Any) ->
     current[path[-1]] = value
 
 
+def _parse_record_time(value: Any) -> datetime | None:
+    if isinstance(value, datetime):
+        return value
+    if isinstance(value, str):
+        for candidate in (value, value.replace("Z", "+00:00")):
+            try:
+                return datetime.fromisoformat(candidate)
+            except ValueError:
+                continue
+        try:
+            return datetime.strptime(value, "%a %b %d %H:%M:%S %z %Y")
+        except ValueError:
+            return None
+    return None
+
+
+def _apply_output_field_map(item: CleanItem, source: dict[str, Any], output_field_map: dict[str, str]) -> list[CleanItem]:
+    mappings: list[tuple[list[str], list[str]]] = []
+    for target_field, source_field in output_field_map.items():
+        if not isinstance(target_field, str) or not target_field.strip():
+            continue
+        if not isinstance(source_field, str) or not source_field.strip():
+            continue
+        target_path = [segment for segment in target_field.strip().split(".") if segment]
+        source_path = [segment for segment in source_field.strip().split(".") if segment]
+        if not target_path or not source_path:
+            continue
+        mappings.append((target_path, source_path))
+
+    if not mappings:
+        item.recordContent = {}
+        return [item]
+
+    list_prefixes = {
+        source_path[0]
+        for _, source_path in mappings
+        if len(source_path) > 1 and isinstance(source.get(source_path[0]), list)
+    }
+    can_expand_list = (
+        len(list_prefixes) == 1
+        and all(len(source_path) > 1 and source_path[0] in list_prefixes for _, source_path in mappings)
+    )
+    if can_expand_list:
+        list_key = next(iter(list_prefixes))
+        raw_rows = source.get(list_key, [])
+        if isinstance(raw_rows, list):
+            expanded: list[CleanItem] = []
+            for index, row in enumerate(raw_rows, start=1):
+                if not isinstance(row, dict):
+                    continue
+                mapped_content: dict[str, Any] = {}
+                for target_path, source_path in mappings:
+                    value = _read_nested_field(row, source_path[1:])
+                    if value is _MISSING:
+                        continue
+                    _write_nested_field(mapped_content, target_path, value)
+                if not mapped_content:
+                    continue
+                cloned = item.model_copy(deep=True)
+                cloned.recordContent = mapped_content
+                mapped_id = mapped_content.get("id")
+                if isinstance(mapped_id, str) and mapped_id.strip():
+                    cloned.recordId = mapped_id.strip()
+                mapped_time = mapped_content.get("time", mapped_content.get("created_at"))
+                parsed_time = _parse_record_time(mapped_time)
+                if parsed_time is not None:
+                    cloned.recordTime = parsed_time
+                mapped_url = mapped_content.get("url")
+                if isinstance(mapped_url, str) and mapped_url.strip():
+                    cloned.url = mapped_url.strip()
+                cloned.recordIndex = index
+                expanded.append(cloned)
+            if expanded:
+                return expanded
+
+    mapped_content: dict[str, Any] = {}
+    for target_path, source_path in mappings:
+        value = _read_nested_field(source, source_path)
+        if value is _MISSING:
+            continue
+        _write_nested_field(mapped_content, target_path, value)
+    item.recordContent = mapped_content
+    return [item]
+
+
 def _apply_output_fields(
     items: list[CleanItem],
     output_fields: Optional[List[str]],
@@ -1215,26 +1300,11 @@ def _apply_output_fields(
     if not output_fields and not output_field_map:
         return items
 
+    transformed_items: list[CleanItem] = []
     for item in items:
         source = item.recordContent if isinstance(item.recordContent, dict) else {}
         if output_field_map:
-            filtered_map: dict[str, Any] = {}
-            for target_field, source_field in output_field_map.items():
-                if not isinstance(target_field, str) or not target_field.strip():
-                    continue
-                if not isinstance(source_field, str) or not source_field.strip():
-                    continue
-                source_path = [segment for segment in source_field.split(".") if segment]
-                if not source_path:
-                    continue
-                value = _read_nested_field(source, source_path)
-                if value is _MISSING:
-                    continue
-                target_path = [segment for segment in target_field.strip().split(".") if segment]
-                if not target_path:
-                    continue
-                _write_nested_field(filtered_map, target_path, value)
-            item.recordContent = filtered_map
+            transformed_items.extend(_apply_output_field_map(item, source, output_field_map))
             continue
 
         filtered: dict[str, Any] = {}
@@ -1255,7 +1325,8 @@ def _apply_output_fields(
                 continue
             _write_nested_field(filtered, path, value)
         item.recordContent = filtered
-    return items
+        transformed_items.append(item)
+    return transformed_items
 
 
 def _as_dict(value: Any) -> dict[str, Any]:

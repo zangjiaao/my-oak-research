@@ -32,9 +32,52 @@ class StubFetchDriver(BaseDriver):
         ]
 
 
+class StubListMappingDriver(BaseDriver):
+    async def verify_auth(self, _request):
+        return {"valid": True}
+
+    async def fetch(self, request):
+        return [
+            CleanItem(
+                platform=request.platform,
+                sourceId=request.source_id,
+                sourceType="SOCIAL_MEDIA",
+                recordContent={
+                    "query": "openai",
+                    "product": "Latest",
+                    "text": [
+                        {
+                            "id": "1",
+                            "author": "alice",
+                            "name": "Alice",
+                            "url": "https://x.com/alice/status/1",
+                            "text": "hello openai",
+                            "created_at": "Tue Mar 17 02:45:00 +0000 2026",
+                        },
+                        {
+                            "id": "2",
+                            "author": "bob",
+                            "name": "Bob",
+                            "url": "https://x.com/bob/status/2",
+                            "text": "openai rocks",
+                            "created_at": "Tue Mar 17 02:46:00 +0000 2026",
+                        },
+                    ],
+                },
+            )
+        ]
+
+
 def _client_with_stub_driver(monkeypatch) -> TestClient:
     registry = DriverRegistry(default_driver="playwright")
     registry.register("playwright", StubFetchDriver())
+    monkeypatch.setattr(main, "driver_registry", registry)
+    return TestClient(main.app)
+
+
+def _client_with_list_mapping_driver(monkeypatch) -> TestClient:
+    registry = DriverRegistry(default_driver="playwright")
+    registry.register("playwright", StubListMappingDriver())
     monkeypatch.setattr(main, "driver_registry", registry)
     return TestClient(main.app)
 
@@ -209,6 +252,39 @@ def test_fetch_v2_output_field_mapping(monkeypatch):
     items = response.json()
     assert items
     assert items[0]["recordContent"] == {"query": "stub text", "body": "stub markdown"}
+
+
+def test_fetch_v2_output_field_mapping_expands_list_records(monkeypatch):
+    response = _client_with_list_mapping_driver(monkeypatch).post(
+        "/v2/fetch",
+        json={
+            "platform": "x",
+            "sourceId": "source-x-001",
+            "keywords": [],
+            "driver": "playwright",
+            "output": {
+                "field": {
+                    "id": "text.id",
+                    "author": "text.author",
+                    "name": "text.name",
+                    "url": "text.url",
+                    "text": "text.text",
+                    "created_at": "text.created_at",
+                },
+                "type": "text",
+            },
+            "driverOptions": {},
+        },
+    )
+
+    assert response.status_code == 200
+    items = response.json()
+    assert len(items) == 2
+    assert items[0]["recordId"] == "1"
+    assert items[0]["recordType"] == "text"
+    assert items[0]["recordContent"]["author"] == "alice"
+    assert items[1]["recordId"] == "2"
+    assert items[1]["recordContent"]["text"] == "openai rocks"
 
 
 def test_fetch_v1_endpoint_removed():
