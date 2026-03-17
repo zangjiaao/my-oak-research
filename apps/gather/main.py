@@ -1392,6 +1392,7 @@ def _normalize_v2_fetch_request(request: FetchV2Request) -> FetchRequest:
     output = request.output.model_dump()
     output_fields: list[str] = []
     output_field_map: dict[str, str] = {}
+    output_keyword_scope: list[str] = []
     raw_fields = output.get("field")
     if isinstance(raw_fields, dict):
         output_field_map = {
@@ -1409,6 +1410,13 @@ def _normalize_v2_fetch_request(request: FetchV2Request) -> FetchRequest:
         output_record_type = None
     else:
         output_record_type = output_record_type.strip()
+    raw_keyword_scope = output.get("keywordScope")
+    if isinstance(raw_keyword_scope, list):
+        output_keyword_scope = [
+            value.strip()
+            for value in raw_keyword_scope
+            if isinstance(value, str) and value.strip()
+        ]
 
     raw_filter = config.pop("filter", None)
     filter_options = raw_filter if isinstance(raw_filter, dict) else {}
@@ -1421,13 +1429,16 @@ def _normalize_v2_fetch_request(request: FetchV2Request) -> FetchRequest:
             config["agentBrowser"] = agent_browser_options
     if request.keywords:
         existing_filters = _as_dict(config.get("filters"))
+        keyword_filter = {
+            **_as_dict(existing_filters.get("keyword")),
+            **filter_options,
+            "keywords": request.keywords,
+        }
+        if output_keyword_scope:
+            keyword_filter["scopeFields"] = output_keyword_scope
         config["filters"] = {
             **existing_filters,
-            "keyword": {
-                **_as_dict(existing_filters.get("keyword")),
-                **filter_options,
-                "keywords": request.keywords,
-            },
+            "keyword": keyword_filter,
         }
 
     return FetchRequest(
@@ -1437,6 +1448,7 @@ def _normalize_v2_fetch_request(request: FetchV2Request) -> FetchRequest:
         keywords=request.keywords,
         output_fields=output_fields or None,
         output_field_map=output_field_map or None,
+        output_keyword_scope=output_keyword_scope or None,
         output_record_type=output_record_type,
     )
 
@@ -1575,14 +1587,15 @@ async def fetch_data_v2(payload: Dict[str, Any]):
     try:
         raw_results = await driver_registry.fetch(v1_request, driver_name=request.driver)
         results = _normalize_clean_items(raw_results)
-        results = apply_keyword_hard_filter(v1_request, results)
         if v1_request.output_record_type:
             for item in results:
                 item.recordType = v1_request.output_record_type
+        results = _apply_output_fields(results, v1_request.output_fields, v1_request.output_field_map)
+        results = apply_keyword_hard_filter(v1_request, results)
         if request.driver:
             for item in results:
                 item.driver = request.driver
-        response_payload = _apply_output_fields(results, v1_request.output_fields, v1_request.output_field_map)
+        response_payload = results
         _log_api_io(
             "/v2/fetch",
             payload,

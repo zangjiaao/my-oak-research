@@ -58,6 +58,21 @@ class StubKeywordDriver(BaseDriver):
                     sourceType="SOCIAL_MEDIA",
                 )
             ]
+        if request.platform == "scope-case":
+            return [
+                CleanItem(
+                    title="Scope case",
+                    text="no keyword here",
+                    markdown="no keyword here",
+                    platform="X",
+                    sourceId=request.source_id,
+                    sourceType="SOCIAL_MEDIA",
+                    recordContent={
+                        "query": "polymarket forecast",
+                        "text": "no keyword here",
+                    },
+                )
+            ]
         return [
             CleanItem(
                 title="AI signal",
@@ -261,3 +276,21 @@ def test_keyword_filter_rejects_split_mode(monkeypatch):
     payload = response.json()
     assert payload["error"]["code"] == "FETCH_BAD_REQUEST"
     assert "splitMode has been removed" in payload["error"]["message"]
+
+
+def test_keyword_scope_fields_limit_matching(monkeypatch):
+    client = _client_with_stub_driver(monkeypatch)
+    response = client.post(
+        "/v2/fetch",
+        json={
+            "platform": "scope-case",
+            "sourceId": "source-scope",
+            "keywords": ["polymarket"],
+            "driver": "playwright",
+            "output": {"field": ["query", "text"], "keywordScope": ["text"]},
+            "driverOptions": {"filter": {"minChars": 3}},
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json() == []

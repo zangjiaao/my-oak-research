@@ -458,8 +458,17 @@ def _extract_keyword_filter_options(config: Dict[str, Any]) -> dict[str, Any]:
     min_chars = raw_filter.get("minChars", raw_filter.get("minSegmentChars", 1))
     if not isinstance(min_chars, int) or min_chars < 1:
         raise KeywordFilterConfigError("keyword filter minChars must be a positive integer")
+    raw_scope_fields = raw_filter.get("scopeFields", raw_filter.get("keywordScope"))
+    scope_fields: list[str] = []
+    if raw_scope_fields is not None:
+        if not isinstance(raw_scope_fields, list):
+            raise KeywordFilterConfigError("keyword filter scopeFields must be a string array")
+        for index, value in enumerate(raw_scope_fields):
+            if not isinstance(value, str) or not value.strip():
+                raise KeywordFilterConfigError(f"keyword filter scopeFields[{index}] must be non-empty string")
+            scope_fields.append(value.strip())
 
-    return {"min_chars": min_chars}
+    return {"min_chars": min_chars, "scope_fields": scope_fields}
 
 
 def _collect_record_content_strings(value: Any) -> list[str]:
@@ -479,9 +488,29 @@ def _collect_record_content_strings(value: Any) -> list[str]:
     return []
 
 
-def _keyword_filter_text(item: CleanItem) -> str:
+def _read_nested_value(payload: dict[str, Any], path: list[str]) -> Any:
+    current: Any = payload
+    for segment in path:
+        if not isinstance(current, dict) or segment not in current:
+            return None
+        current = current[segment]
+    return current
+
+
+def _keyword_filter_text(item: CleanItem, scope_fields: list[str]) -> str:
     record_content = item.recordContent if isinstance(item.recordContent, dict) else {}
-    parts = _collect_record_content_strings(record_content)
+    if scope_fields:
+        parts: list[str] = []
+        for field in scope_fields:
+            path = [segment for segment in field.split(".") if segment]
+            if not path:
+                continue
+            value = _read_nested_value(record_content, path)
+            if value is None:
+                continue
+            parts.extend(_collect_record_content_strings(value))
+    else:
+        parts = _collect_record_content_strings(record_content)
     return " ".join(parts).lower()
 
 
@@ -503,7 +532,7 @@ def apply_keyword_hard_filter(request: FetchRequest, items: List[CleanItem]) -> 
     miss = 0
     fetched = len(items)
     for item in items:
-        haystack = _keyword_filter_text(item)
+        haystack = _keyword_filter_text(item, options["scope_fields"])
         if len(haystack.strip()) < options["min_chars"]:
             miss += 1
             print(
@@ -526,6 +555,6 @@ def apply_keyword_hard_filter(request: FetchRequest, items: List[CleanItem]) -> 
 
     print(
         f"[gather][keyword-filter][metrics] "
-        f"{json.dumps({'sourceId': request.source_id, 'platform': request.platform, 'fetched': fetched, 'hit': hit, 'miss': miss, 'persisted': len(filtered), 'minChars': options['min_chars']}, ensure_ascii=False)}"
+        f"{json.dumps({'sourceId': request.source_id, 'platform': request.platform, 'fetched': fetched, 'hit': hit, 'miss': miss, 'persisted': len(filtered), 'minChars': options['min_chars'], 'scopeFields': options['scope_fields']}, ensure_ascii=False)}"
     )
     return filtered
