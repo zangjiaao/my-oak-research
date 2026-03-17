@@ -58,6 +58,21 @@ class StubKeywordDriver(BaseDriver):
                     sourceType="SOCIAL_MEDIA",
                 )
             ]
+        if request.platform == "scope-case":
+            return [
+                CleanItem(
+                    title="Scope case",
+                    text="no keyword here",
+                    markdown="no keyword here",
+                    platform="X",
+                    sourceId=request.source_id,
+                    sourceType="SOCIAL_MEDIA",
+                    recordContent={
+                        "query": "polymarket forecast",
+                        "text": "no keyword here",
+                    },
+                )
+            ]
         return [
             CleanItem(
                 title="AI signal",
@@ -92,7 +107,9 @@ def test_keyword_hit_content_persisted(monkeypatch):
         json={
             "platform": "hit-only",
             "sourceId": "source-hit",
-            "config": {"keywordFilter": {"keywords": ["ai", "regulation"]}},
+            "keywords": ["ai", "regulation"],
+            "driver": {"name": "playwright", "option": {}, "filter": {}},
+            "output": {"field": ["text", "markdown"]},
         },
     )
 
@@ -110,7 +127,9 @@ def test_keyword_miss_content_not_persisted(monkeypatch, capsys):
         json={
             "platform": "miss-only",
             "sourceId": "source-miss",
-            "config": {"keywordFilter": {"keywords": ["ai"]}},
+            "keywords": ["ai"],
+            "driver": {"name": "playwright", "option": {}, "filter": {}},
+            "output": {"field": ["text", "markdown"]},
         },
     )
 
@@ -127,14 +146,16 @@ def test_keyword_hit_only_persisted_miss_audit_only(monkeypatch, capsys):
         json={
             "platform": "mixed",
             "sourceId": "source-mixed",
-            "config": {"keywordFilter": {"keywords": ["ai"]}},
+            "keywords": ["ai"],
+            "driver": {"name": "playwright", "option": {}, "filter": {}},
+            "output": {"field": ["text", "markdown"]},
         },
     )
 
     assert response.status_code == 200
     items = response.json()
     assert len(items) == 1
-    assert items[0]["title"] == "AI signal"
+    assert "ai intelligence market" in items[0]["recordContent"]["text"]
     output = capsys.readouterr().out
     assert "[gather][keyword-filter][audit]" in output
 
@@ -146,7 +167,9 @@ def test_keyword_filter_metrics_emitted(monkeypatch, capsys):
         json={
             "platform": "mixed",
             "sourceId": "source-metrics",
-            "config": {"keywordFilter": {"keywords": ["ai"]}},
+            "keywords": ["ai"],
+            "driver": {"name": "playwright", "option": {}, "filter": {}},
+            "output": {"field": ["text", "markdown"]},
         },
     )
 
@@ -166,7 +189,9 @@ def test_keyword_filter_invalid_config_fails_closed(monkeypatch, capsys):
         json={
             "platform": "mixed",
             "sourceId": "source-invalid",
-            "config": {"keywordFilter": {"keywords": []}},
+            "keywords": ["ai"],
+            "driver": {"name": "playwright", "option": {}, "filter": {"minChars": 0}},
+            "output": {"field": ["text", "markdown"]},
         },
     )
 
@@ -177,50 +202,92 @@ def test_keyword_filter_invalid_config_fails_closed(monkeypatch, capsys):
     assert "error" in capsys.readouterr().out
 
 
-def test_keyword_segment_scope_keeps_only_matched_segments(monkeypatch):
+def test_keyword_min_chars_keeps_record_when_content_is_long_enough(monkeypatch):
     client = _client_with_stub_driver(monkeypatch)
     response = client.post(
         "/v2/fetch",
         json={
             "platform": "chat-batch",
-            "sourceId": "source-chat-segment",
-            "config": {
-                "keywordFilter": {
-                    "keywords": ["alpha"],
-                    "matchScope": "segment",
-                    "splitMode": "line",
-                }
+            "sourceId": "source-chat-min",
+            "keywords": ["alpha"],
+            "driver": {
+                "name": "playwright",
+                "option": {},
+                "filter": {
+                    "minChars": 20,
+                },
             },
+            "output": {"field": ["text", "markdown"]},
         },
     )
 
     assert response.status_code == 200
     items = response.json()
     assert len(items) == 1
-    assert "alpha launch is live" in items[0]["text"]
+    assert "alpha launch is live" in items[0]["recordContent"]["text"]
     assert items[0]["matchedKeywords"] == ["alpha"]
-    assert items[0]["title"].endswith("[segment 3]")
 
 
-def test_keyword_segment_scope_supports_min_segment_chars(monkeypatch):
+def test_keyword_min_chars_filters_out_short_content(monkeypatch):
     client = _client_with_stub_driver(monkeypatch)
     response = client.post(
         "/v2/fetch",
         json={
             "platform": "chat-batch",
-            "sourceId": "source-chat-min-chars",
-            "config": {
-                "keywordFilter": {
-                    "keywords": ["alpha"],
-                    "matchScope": "segment",
-                    "splitMode": "line",
-                    "minSegmentChars": 30,
-                }
+            "sourceId": "source-chat-too-short",
+            "keywords": ["alpha"],
+            "driver": {
+                "name": "playwright",
+                "option": {},
+                "filter": {
+                    "minChars": 500,
+                },
             },
+            "output": {"field": ["text", "markdown"]},
         },
     )
 
     assert response.status_code == 200
-    items = response.json()
-    assert len(items) == 1
-    assert "alpha launch is live" in items[0]["text"]
+    assert response.json() == []
+
+
+def test_keyword_filter_rejects_split_mode(monkeypatch):
+    client = _client_with_stub_driver(monkeypatch)
+    response = client.post(
+        "/v2/fetch",
+        json={
+            "platform": "chat-batch",
+            "sourceId": "source-chat-split-mode",
+            "keywords": ["alpha"],
+            "driver": {
+                "name": "playwright",
+                "option": {},
+                "filter": {
+                    "splitMode": "line",
+                },
+            },
+            "output": {"field": ["text", "markdown"]},
+        },
+    )
+
+    assert response.status_code == 400
+    payload = response.json()
+    assert payload["error"]["code"] == "FETCH_BAD_REQUEST"
+    assert "splitMode has been removed" in payload["error"]["message"]
+
+
+def test_keyword_scope_fields_limit_matching(monkeypatch):
+    client = _client_with_stub_driver(monkeypatch)
+    response = client.post(
+        "/v2/fetch",
+        json={
+            "platform": "scope-case",
+            "sourceId": "source-scope",
+            "keywords": ["polymarket"],
+            "driver": {"name": "playwright", "option": {}, "filter": {"minChars": 3}},
+            "output": {"field": ["query", "text"], "keywordScope": ["text"]},
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json() == []

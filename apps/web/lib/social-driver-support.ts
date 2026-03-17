@@ -5,7 +5,7 @@ export type SocialDriver = "xhttp" | "playwright" | "agent-browser";
 export const SOCIAL_PLATFORM_DRIVER_SUPPORT: Record<SocialPlatform, readonly SocialDriver[]> = {
   X: ["playwright", "agent-browser"],
   REDDIT: ["playwright", "xhttp", "agent-browser"],
-  XIAOHONGSHU: ["playwright", "xhttp", "agent-browser"],
+  XIAOHONGSHU: ["agent-browser"],
   DOUYIN: ["playwright", "xhttp", "agent-browser"],
   TIKTOK: ["playwright", "xhttp", "agent-browser"],
   WEIBO: ["playwright", "xhttp", "agent-browser"],

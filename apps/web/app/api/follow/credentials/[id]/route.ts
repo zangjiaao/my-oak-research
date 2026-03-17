@@ -1,6 +1,17 @@
 import { json, serverError, notFound } from "@/app/api/_utils/http";
 import prisma from "@/lib/prisma";
 
+function extractStateFilePath(data: unknown): string | null {
+  if (!data || typeof data !== "object" || Array.isArray(data)) {
+    return null;
+  }
+  const stateFile = (data as Record<string, unknown>).stateFile;
+  if (typeof stateFile === "string" && stateFile.trim()) {
+    return stateFile.trim();
+  }
+  return null;
+}
+
 /**
  * DELETE /api/follow/credentials/[id]
  * 
@@ -42,6 +53,23 @@ export async function DELETE(
         }
       } catch (err) {
         console.error("[credentials] Error notifying gather service for profile deletion:", err);
+      }
+    }
+
+    const stateFile = extractStateFilePath(credential.data);
+    if (stateFile) {
+      try {
+        const response = await fetch(`${GATHER_SERVICE_URL}/auth/state-file`, {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ stateFile }),
+        });
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.warn(`[credentials] Failed to delete auth state file ${stateFile}: ${errorText}`);
+        }
+      } catch (err) {
+        console.error("[credentials] Error deleting auth state file from gather:", err);
       }
     }
 

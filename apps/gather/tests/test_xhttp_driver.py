@@ -76,7 +76,7 @@ def test_xhttp_fetch_data_extracts_html_text(monkeypatch):
     assert calls and calls[0]["method"] == "GET"
 
 
-def test_v2_fetch_xhttp_keeps_keyword_filter_compat(monkeypatch):
+def test_v2_fetch_xhttp_supports_top_level_keywords(monkeypatch):
     class FakeResponse:
         def __init__(self):
             self.headers = {"content-type": "text/html"}
@@ -108,11 +108,15 @@ def test_v2_fetch_xhttp_keeps_keyword_filter_compat(monkeypatch):
         json={
             "platform": "x",
             "sourceId": "source-1",
-            "driver": "xhttp",
-            "config": {
-                "url": "https://example.com",
-                "keywordFilter": {"keywords": ["keyword"]},
+            "keywords": ["keyword"],
+            "driver": {
+                "name": "xhttp",
+                "option": {
+                    "url": "https://example.com",
+                },
+                "filter": {},
             },
+            "output": {"field": ["text", "markdown", "url"]},
         },
     )
 

@@ -15,8 +15,8 @@ from urllib.parse import quote, urlparse, urlunparse
 from dataclasses import dataclass, field
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from fastapi.responses import JSONResponse
-from pydantic import AliasChoices, BaseModel, ConfigDict, Field, ValidationError
-from typing import List, Optional, Any, Dict, Literal
+from pydantic import BaseModel, ValidationError
+from typing import List, Optional, Any, Dict
 from datetime import datetime, timezone
 from dotenv import load_dotenv
 from drivers.agent_browser_runner import (
@@ -27,6 +27,24 @@ from drivers.agent_browser_runner import (
 from drivers.playwright_driver import PlaywrightDriver
 from drivers.registry import DriverRegistry, DriverNotFoundError
 from drivers.xhttp_driver import XHttpDriver
+from fetch_processing import agent_browser_results_to_clean_items, apply_keyword_hard_filter
+from schemas import (
+    AgentBrowserHeartbeatRequest,
+    AgentBrowserHeartbeatResponse,
+    CleanItem,
+    DeleteAuthStateRequest,
+    ErrorResponse,
+    FetchRequest,
+    FetchV2Request,
+    SaveAuthStateRequest,
+    SaveAuthStateResponse,
+    UploadProfileResponse,
+    VerifyAuthRequest,
+    VerifyAuthResponse,
+)
+
+_agent_browser_results_to_clean_items = agent_browser_results_to_clean_items
+_apply_keyword_hard_filter = apply_keyword_hard_filter
 
 # Load environment variables from .env file
 load_dotenv()
@@ -75,6 +93,35 @@ def _truncate_for_log(value: Any, max_chars: int) -> Any:
     return value
 
 
+def _redact_sensitive_for_log(value: Any) -> Any:
+    if isinstance(value, list):
+        return [_redact_sensitive_for_log(item) for item in value]
+    if not isinstance(value, dict):
+        return value
+
+    redacted: dict[str, Any] = {}
+    for raw_key, raw_val in value.items():
+        key = str(raw_key)
+        lowered = key.lower()
+        if lowered in {"auth_data", "authdata"} and isinstance(raw_val, dict):
+            cookies = raw_val.get("cookies")
+            origins = raw_val.get("origins")
+            redacted[key] = {
+                "redacted": True,
+                "cookiesCount": len(cookies) if isinstance(cookies, list) else 0,
+                "originsCount": len(origins) if isinstance(origins, list) else 0,
+            }
+            continue
+        if lowered in {"cookies", "origins", "localstorage"}:
+            if isinstance(raw_val, list):
+                redacted[key] = f"<redacted list, len={len(raw_val)}>"
+            else:
+                redacted[key] = "<redacted>"
+            continue
+        redacted[key] = _redact_sensitive_for_log(raw_val)
+    return redacted
+
+
 def _log_api_io(route: str, request_body: Any, response_body: Any, status_code: int) -> None:
     if not _API_IO_LOG_ENABLED:
         return
@@ -86,7 +133,10 @@ def _log_api_io(route: str, request_body: Any, response_body: Any, status_code: 
             "time": now.isoformat(),
             "route": route,
             "statusCode": status_code,
-            "request": _truncate_for_log(request_body, _API_IO_LOG_MAX_CHARS),
+            "request": _truncate_for_log(
+                _redact_sensitive_for_log(request_body),
+                _API_IO_LOG_MAX_CHARS,
+            ),
             "response": _truncate_for_log(response_body, _API_IO_LOG_MAX_CHARS),
         }
         with file_path.open("a", encoding="utf-8") as f:
@@ -94,118 +144,6 @@ def _log_api_io(route: str, request_body: Any, response_body: Any, status_code: 
             f.write("\n")
     except Exception as error:  # pragma: no cover - logging must never break api
         print(f"[gather] failed to write api io log for {route}: {error}")
-
-
-class FetchRequest(BaseModel):
-    platform: str
-    config: Dict[str, Any]
-    source_id: str
-    auth_data: Optional[Dict[str, Any]] = None  # Playwright storage_state format
-    response_formats: Optional[List[Literal["text", "markdown"]]] = None
-
-
-class FetchV2Request(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    platform: str
-    config: Dict[str, Any]
-    source_id: str = Field(validation_alias=AliasChoices("sourceId", "source_id"))
-    auth_data: Optional[Dict[str, Any]] = Field(
-        default=None,
-        validation_alias=AliasChoices("authData", "auth_data")
-    )
-    driver: Optional[str] = None
-    response_formats: Optional[List[Literal["text", "markdown"]]] = Field(
-        default=None,
-        validation_alias=AliasChoices("responseFormats", "response_formats"),
-    )
-
-
-class VerifyAuthRequest(BaseModel):
-    platform: str
-    auth_data: Optional[Dict[str, Any]] = None  # Playwright storage_state format (cookies + origins)
-    state_file: Optional[str] = Field(
-        default=None,
-        validation_alias=AliasChoices("stateFile", "state_file"),
-    )
-    verify_script_path: Optional[str] = Field(
-        default=None,
-        validation_alias=AliasChoices("verifyScriptPath", "verify_script_path"),
-    )
-    verify_args: Optional[Dict[str, Any]] = Field(
-        default=None,
-        validation_alias=AliasChoices("verifyArgs", "verify_args"),
-    )
-    verify_target_url: Optional[str] = Field(
-        default=None,
-        validation_alias=AliasChoices("verifyTargetUrl", "verify_target_url"),
-    )
-    verify_timeout_ms: int = Field(
-        default=60000,
-        validation_alias=AliasChoices("verifyTimeoutMs", "verify_timeout_ms"),
-    )
-    verify_post_wait_ms: int = Field(
-        default=3000,
-        validation_alias=AliasChoices("verifyPostWaitMs", "verify_post_wait_ms"),
-    )
-    headless: bool = False  # Set to False for debugging, True for production
-
-
-class VerifyAuthResponse(BaseModel):
-    valid: bool
-    message: str
-    details: Optional[Dict[str, Any]] = None
-
-
-class CleanItem(BaseModel):
-    title: Optional[str] = None
-    text: Optional[str] = None
-    markdown: Optional[str] = None
-    platform: str
-    url: Optional[str] = None
-    time: Optional[datetime] = None
-    sourceId: str
-    sourceType: str
-    driver: Optional[str] = "python-gather"
-    instanceId: Optional[str] = None
-    tabId: Optional[str] = None
-    instanceActive: Optional[bool] = None
-    matchedKeywords: Optional[List[str]] = None
-    keywordMatchScore: Optional[float] = None
-    recordId: Optional[str] = None
-    recordType: Optional[str] = None
-    recordIndex: Optional[int] = None
-
-
-class ErrorDetail(BaseModel):
-    code: str
-    message: str
-    retryable: bool
-
-
-class ErrorResponse(BaseModel):
-    error: ErrorDetail
-
-
-class AgentBrowserHeartbeatRequest(BaseModel):
-    platform: str
-    source_id: str = Field(validation_alias=AliasChoices("sourceId", "source_id"))
-    owner_id: Optional[str] = Field(default=None, validation_alias=AliasChoices("ownerId", "owner_id"))
-    session_key: Optional[str] = Field(default=None, validation_alias=AliasChoices("sessionKey", "session_key"))
-    instance_id: str = Field(validation_alias=AliasChoices("instanceId", "instance_id"))
-    verbose: bool = True
-
-
-class AgentBrowserHeartbeatResponse(BaseModel):
-    instanceId: str
-    tabId: str
-    instanceActive: bool
-    ttlSeconds: int
-    expiresAt: datetime
-
-
-class KeywordFilterConfigError(ValueError):
-    pass
 
 
 _BB_SITE_PLATFORM_ALIAS = {
@@ -422,6 +360,13 @@ async def _verify_auth_with_bb_site_script(request: VerifyAuthRequest) -> Verify
     if isinstance(result, dict):
         error_message = result.get("error")
         if error_message:
+            hint = result.get("hint") if isinstance(result.get("hint"), str) else None
+            if _is_inconclusive_bb_script_error(str(error_message), hint):
+                print(
+                    f"[gather] bb-site verify inconclusive for {platform} "
+                    f"(error={error_message}, hint={hint}), fallback to legacy verify"
+                )
+                return None
             return VerifyAuthResponse(
                 valid=False,
                 message=str(error_message),
@@ -497,15 +442,9 @@ async def _verify_auth_with_bb_site_script(request: VerifyAuthRequest) -> Verify
         )
 
     if result is False:
-        return VerifyAuthResponse(
-            valid=False,
-            message=f"{request.platform} authentication is invalid or expired",
-            details={
-                "platform": request.platform,
-                "verifyMethod": "bb-site-script",
-                "scriptPath": str(script_path),
-            },
-        )
+        print(f"[gather] bb-site verify returned false for {platform}, fallback to legacy verify")
+        return None
+    print(f"[gather] bb-site verify inconclusive for {platform}, fallback to legacy verify")
     return None
 
 
@@ -547,247 +486,22 @@ def _resolve_verify_auth_data(request: VerifyAuthRequest) -> tuple[dict[str, Any
     )
 
 
+def _is_inconclusive_bb_script_error(message: str, hint: str | None = None) -> bool:
+    normalized_message = message.strip().lower()
+    normalized_hint = (hint or "").strip().lower()
+    if normalized_message == "cannot confirm logged-in state":
+        return True
+    if normalized_message == "failed to get user info" and "not logged in" in normalized_hint:
+        return True
+    return False
+
+
 async def _playwright_verify_auth_legacy(request: VerifyAuthRequest):
-    """
-    Verify if the provided authentication data (cookies) is valid for the specified platform.
-    This endpoint is used when users upload auth.json files to check if they're still valid.
-    """
-    platform = request.platform.lower()
-    auth_data = request.auth_data
-    headless = request.headless
-    
-    print(f"[gather] Verifying auth for {platform} (headless={headless})")
-    
-    # Validate auth_data structure (skip for WhatsApp which uses persistent profile)
-    if platform != "whatsapp":
-        has_cookies = auth_data.get("cookies") and len(auth_data.get("cookies", [])) > 0
-        has_origins = auth_data.get("origins") and len(auth_data.get("origins", [])) > 0
-        
-        if not has_cookies and not has_origins:
-            return VerifyAuthResponse(
-                valid=False,
-                message="Invalid auth data: missing 'cookies' or 'origins' field",
-                details={"error": "auth_data must contain 'cookies' array or 'origins' with localStorage"}
-            )
-    
-    try:
-        if platform == "x" or platform == "twitter":
-            from clients.x_client import XPlaywrightClient
-            
-            async with XPlaywrightClient(auth_data=auth_data, headless=headless) as client:
-                is_valid = await client.verify_auth()
-                
-            if is_valid:
-                return VerifyAuthResponse(
-                    valid=True,
-                    message="X.com authentication is valid",
-                    details={"platform": "X", "cookies_count": len(auth_data.get("cookies", []))}
-                )
-            else:
-                return VerifyAuthResponse(
-                    valid=False,
-                    message="X.com authentication is invalid or expired",
-                    details={"platform": "X", "suggestion": "Please re-export cookies from Chrome"}
-                )
-                
-        elif platform == "xiaohongshu" or platform == "xhs":
-            from clients.xiaohongshu_client import XiaohongshuPlaywrightClient
-            
-            async with XiaohongshuPlaywrightClient(auth_data=auth_data, headless=headless) as client:
-                is_valid = await client.verify_auth()
-                
-            if is_valid:
-                return VerifyAuthResponse(
-                    valid=True,
-                    message="Xiaohongshu authentication is valid",
-                    details={"platform": "Xiaohongshu", "cookies_count": len(auth_data.get("cookies", []))}
-                )
-            else:
-                return VerifyAuthResponse(
-                    valid=False,
-                    message="Xiaohongshu authentication is invalid or expired",
-                    details={"platform": "Xiaohongshu", "suggestion": "Please re-export cookies from Chrome"}
-                )
-                
-        elif platform == "reddit":
-            from clients.reddit_client import RedditPlaywrightClient
-            
-            async with RedditPlaywrightClient(auth_data=auth_data, headless=headless) as client:
-                is_valid = await client.verify_auth()
-                
-            if is_valid:
-                return VerifyAuthResponse(
-                    valid=True,
-                    message="Reddit authentication is valid",
-                    details={"platform": "Reddit", "cookies_count": len(auth_data.get("cookies", []))}
-                )
-            else:
-                return VerifyAuthResponse(
-                    valid=False,
-                    message="Reddit authentication is invalid or expired",
-                    details={"platform": "Reddit", "suggestion": "Please re-export cookies from Chrome"}
-                )
-                
-        elif platform == "douyin":
-            from clients.douyin_client import DouyinPlaywrightClient
-            
-            async with DouyinPlaywrightClient(auth_data=auth_data, headless=headless) as client:
-                is_valid = await client.verify_auth()
-                
-            if is_valid:
-                return VerifyAuthResponse(
-                    valid=True,
-                    message="Douyin authentication is valid",
-                    details={"platform": "Douyin", "cookies_count": len(auth_data.get("cookies", []))}
-                )
-            else:
-                return VerifyAuthResponse(
-                    valid=False,
-                    message="Douyin authentication is invalid or expired",
-                    details={"platform": "Douyin", "suggestion": "Please re-export cookies from Chrome"}
-                )
-                
-        elif platform == "tiktok":
-            from clients.tiktok_client import TikTokPlaywrightClient
-            
-            async with TikTokPlaywrightClient(auth_data=auth_data, headless=headless) as client:
-                is_valid = await client.verify_auth()
-                
-            if is_valid:
-                return VerifyAuthResponse(
-                    valid=True,
-                    message="TikTok authentication is valid",
-                    details={"platform": "TikTok", "cookies_count": len(auth_data.get("cookies", []))}
-                )
-            else:
-                return VerifyAuthResponse(
-                    valid=False,
-                    message="TikTok authentication is invalid or expired",
-                    details={"platform": "TikTok", "suggestion": "Please re-export cookies from Chrome"}
-                )
-                
-        elif platform == "weibo":
-            from clients.weibo_client import WeiboPlaywrightClient
-            
-            async with WeiboPlaywrightClient(auth_data=auth_data, headless=headless) as client:
-                is_valid = await client.verify_auth()
-                
-            if is_valid:
-                return VerifyAuthResponse(
-                    valid=True,
-                    message="Weibo authentication is valid",
-                    details={"platform": "Weibo", "cookies_count": len(auth_data.get("cookies", []))}
-                )
-            else:
-                return VerifyAuthResponse(
-                    valid=False,
-                    message="Weibo authentication is invalid or expired",
-                    details={"platform": "Weibo", "suggestion": "Please re-export cookies from Chrome"}
-                )
-                
-        elif platform == "telegram":
-            from clients.telegram_client import TelegramPlaywrightClient
-            
-            async with TelegramPlaywrightClient(auth_data=auth_data, headless=headless) as client:
-                is_valid = await client.verify_auth()
-                
-            if is_valid:
-                return VerifyAuthResponse(
-                    valid=True,
-                    message="Telegram authentication is valid",
-                    details={"platform": "Telegram", "cookies_count": len(auth_data.get("cookies", []))}
-                )
-            else:
-                return VerifyAuthResponse(
-                    valid=False,
-                    message="Telegram authentication is invalid or expired",
-                    details={"platform": "Telegram", "suggestion": "Please re-export cookies and localStorage from Chrome"}
-                )
-                
-        elif platform == "whatsapp":
-            # WhatsApp uses persistent context, not cookie-based auth
-            from clients.whatsapp_client import WhatsAppPlaywrightClient
-            
-            # Check for specific profile directory in auth_data
-            profile_path = None
-            if auth_data and "profileName" in auth_data:
-                profile_path = AUTH_DIR / auth_data["profileName"]
-                print(f"[gather] Using custom WhatsApp profile: {profile_path}")
-            
-            async with WhatsAppPlaywrightClient(headless=headless, profile_path=profile_path) as client:
-                is_valid = await client.verify_auth()
-                
-            if is_valid:
-                return VerifyAuthResponse(
-                    valid=True,
-                    message="WhatsApp authentication is valid",
-                    details={"platform": "WhatsApp", "auth_type": "persistent_profile", "profile": auth_data.get("profileName") if auth_data else "default"}
-                )
-            else:
-                return VerifyAuthResponse(
-                    valid=False,
-                    message="WhatsApp authentication is invalid or expired",
-                    details={"platform": "WhatsApp", "suggestion": "Please re-export and upload the profile zip"}
-                )
-                
-        elif platform == "instagram":
-            from clients.instagram_client import InstagramPlaywrightClient
-            
-            async with InstagramPlaywrightClient(auth_data=auth_data, headless=headless) as client:
-                is_valid = await client.verify_auth()
-                
-            if is_valid:
-                return VerifyAuthResponse(
-                    valid=True,
-                    message="Instagram authentication is valid",
-                    details={"platform": "Instagram", "cookies_count": len(auth_data.get("cookies", []))}
-                )
-            else:
-                return VerifyAuthResponse(
-                    valid=False,
-                    message="Instagram authentication is invalid or expired",
-                    details={"platform": "Instagram", "suggestion": "Please re-export cookies from Chrome"}
-                )
-                
-        elif platform == "facebook":
-            from clients.facebook_client import FacebookPlaywrightClient
-            
-            async with FacebookPlaywrightClient(auth_data=auth_data, headless=headless) as client:
-                is_valid = await client.verify_auth()
-                
-            if is_valid:
-                return VerifyAuthResponse(
-                    valid=True,
-                    message="Facebook authentication is valid",
-                    details={"platform": "Facebook", "cookies_count": len(auth_data.get("cookies", []))}
-                )
-            else:
-                return VerifyAuthResponse(
-                    valid=False,
-                    message="Facebook authentication is invalid or expired",
-                    details={"platform": "Facebook", "suggestion": "Please re-export cookies from Chrome"}
-                )
-                
-        else:
-            return VerifyAuthResponse(
-                valid=False,
-                message=f"Platform '{platform}' is not supported for auth verification",
-                details={"supported_platforms": ["x", "twitter", "xiaohongshu", "xhs", "reddit", "douyin", "tiktok", "weibo", "telegram", "whatsapp", "instagram"]}
-            )
-            
-    except ImportError as e:
-        return VerifyAuthResponse(
-            valid=False,
-            message=f"Client module not found: {e}",
-            details={"error": "Internal server configuration error"}
-        )
-    except Exception as e:
-        print(f"[gather] Auth verification error for {platform}: {e}")
-        return VerifyAuthResponse(
-            valid=False,
-            message=f"Error during verification: {str(e)}",
-            details={"error": str(e)}
-        )
+    return VerifyAuthResponse(
+        valid=False,
+        message="Legacy playwright client verification has been removed; please configure verify script or agent-browser.",
+        details={"verifyMethod": "removed-legacy-client"},
+    )
 
 
 async def _playwright_verify_auth(request: VerifyAuthRequest):
@@ -803,344 +517,36 @@ async def _playwright_verify_auth(request: VerifyAuthRequest):
     scripted_result = await _verify_auth_with_bb_site_script(normalized_request)
     if scripted_result is not None:
         return scripted_result
-    return await _playwright_verify_auth_legacy(normalized_request)
+    return VerifyAuthResponse(
+        valid=False,
+        message="No verify script available for this platform. Configure verifyScriptPath or bb-site me.ts/me.js.",
+        details={"verifyMethod": "script-required"},
+    )
+
+
+async def _agent_browser_verify_auth(_request: VerifyAuthRequest):
+    return VerifyAuthResponse(
+        valid=True,
+        message="agent-browser authentication is configured through fetch config (profile/session/state).",
+    )
 
 
 async def _playwright_fetch_data(request: FetchRequest):
-    """
-    Unified entry point for social media data fetching.
-    Uses Playwright with cookie-based authentication.
-    """
     platform = request.platform.lower()
     config = request.config
-    auth_data = request.auth_data
-
     playwright_options = config.get("playwright")
     if isinstance(playwright_options, dict):
         mode = str(playwright_options.get("mode", "")).lower()
         if mode in {"eval-js", "evaljs", "eval"}:
             return await _run_playwright_eval_script(request)
-    
-    print(f"[gather] Fetching data for {platform} with config {config}")
-    
-    results = []
-    
-    try:
-        if platform == "x" or platform == "twitter":
-            if not auth_data:
-                raise HTTPException(
-                    status_code=400, 
-                    detail="auth_data is required for X.com. Please provide valid cookies."
-                )
-            
-            from clients.x_client import XPlaywrightClient
-            
-            async with XPlaywrightClient(auth_data=auth_data, headless=True) as client:
-                async for tweet in client.fetch_data(config):
-                    results.append(CleanItem(
-                        title=tweet.get("display_name"),
-                        text=tweet.get("text", ""),
-                        markdown=f"**@{tweet.get('username', 'unknown')}**: {tweet.get('text', '')}",
-                        platform="X",
-                        url=tweet.get("url"),
-                        sourceId=request.source_id,
-                        sourceType="SOCIAL_MEDIA",
-                        time=datetime.fromisoformat(tweet["timestamp"]) if tweet.get("timestamp") else datetime.now(),
-                        recordId=_extract_x_status_id(tweet.get("url")),
-                        recordType="tweet",
-                    ))
-                    
-        elif platform == "xiaohongshu" or platform == "xhs":
-            if not auth_data:
-                raise HTTPException(
-                    status_code=400,
-                    detail="auth_data is required for Xiaohongshu. Please provide valid cookies."
-                )
-            
-            from clients.xiaohongshu_client import XiaohongshuPlaywrightClient
-            
-            async with XiaohongshuPlaywrightClient(auth_data=auth_data, headless=True) as client:
-                async for note in client.fetch_data(config):
-                    results.append(CleanItem(
-                        title=note.get("title"),
-                        text=note.get("content", note.get("title", "")),
-                        markdown=f"# {note.get('title', '')}\n\n{note.get('content', '')}",
-                        platform="Xiaohongshu",
-                        url=note.get("url"),
-                        sourceId=request.source_id,
-                        sourceType="SOCIAL_MEDIA",
-                        time=datetime.now(),
-                        recordId=note.get("id"),
-                        recordType="note",
-                    ))
-        
-        elif platform == "reddit":
-            if not auth_data:
-                raise HTTPException(
-                    status_code=400,
-                    detail="auth_data is required for Reddit. Please provide valid cookies."
-                )
-            
-            from clients.reddit_client import RedditPlaywrightClient
-            
-            async with RedditPlaywrightClient(auth_data=auth_data, headless=True) as client:
-                async for post in client.fetch_data(config):
-                    # Build markdown content
-                    md_parts = [f"# {post.get('title', '')}"]
-                    if post.get('subreddit'):
-                        md_parts.append(f"\n**Subreddit:** {post.get('subreddit')}")
-                    if post.get('author'):
-                        md_parts.append(f"**Author:** {post.get('author')}")
-                    if post.get('score'):
-                        md_parts.append(f"**Score:** {post.get('score')}")
-                    
-                    results.append(CleanItem(
-                        title=post.get("title"),
-                        text=post.get("title", ""),
-                        markdown="\n".join(md_parts),
-                        platform="Reddit",
-                        url=post.get("url"),
-                        sourceId=request.source_id,
-                        sourceType="SOCIAL_MEDIA",
-                        time=datetime.fromisoformat(post["timestamp"]) if post.get("timestamp") and "T" in str(post.get("timestamp", "")) else datetime.now()
-                    ))
-        
-        elif platform == "douyin":
-            if not auth_data:
-                raise HTTPException(
-                    status_code=400,
-                    detail="auth_data is required for Douyin. Please provide valid cookies."
-                )
-            
-            from clients.douyin_client import DouyinPlaywrightClient
-            
-            async with DouyinPlaywrightClient(auth_data=auth_data, headless=True) as client:
-                async for video in client.fetch_data(config):
-                    # Build markdown content
-                    md_parts = []
-                    if video.get('title') or video.get('description'):
-                        md_parts.append(f"# {video.get('title', video.get('description', ''))}")
-                    if video.get('author'):
-                        md_parts.append(f"\n**Author:** {video.get('author')}")
-                    if video.get('likes'):
-                        md_parts.append(f"**Likes:** {video.get('likes')}")
-                    
-                    results.append(CleanItem(
-                        title=video.get("title", video.get("description")),
-                        text=video.get("description", video.get("title", "")),
-                        markdown="\n".join(md_parts) if md_parts else "Douyin video",
-                        platform="Douyin",
-                        url=video.get("url"),
-                        sourceId=request.source_id,
-                        sourceType="SOCIAL_MEDIA",
-                        time=datetime.now()
-                    ))
-        
-        elif platform == "tiktok":
-            if not auth_data:
-                raise HTTPException(
-                    status_code=400,
-                    detail="auth_data is required for TikTok. Please provide valid cookies."
-                )
-            
-            from clients.tiktok_client import TikTokPlaywrightClient
-            
-            async with TikTokPlaywrightClient(auth_data=auth_data, headless=True) as client:
-                async for video in client.fetch_data(config):
-                    # Build markdown content
-                    md_parts = []
-                    if video.get('description'):
-                        md_parts.append(f"# {video.get('description', '')[:100]}")
-                    if video.get('author'):
-                        md_parts.append(f"\n**Author:** {video.get('author')}")
-                    if video.get('likes'):
-                        md_parts.append(f"**Likes:** {video.get('likes')}")
-                    if video.get('views'):
-                        md_parts.append(f"**Views:** {video.get('views')}")
-                    
-                    results.append(CleanItem(
-                        title=video.get("description", "")[:100] if video.get("description") else None,
-                        text=video.get("description", ""),
-                        markdown="\n".join(md_parts) if md_parts else "TikTok video",
-                        platform="TikTok",
-                        url=video.get("url"),
-                        sourceId=request.source_id,
-                        sourceType="SOCIAL_MEDIA",
-                        time=datetime.now()
-                    ))
-        
-        elif platform == "weibo":
-            if not auth_data:
-                raise HTTPException(
-                    status_code=400,
-                    detail="auth_data is required for Weibo. Please provide valid cookies."
-                )
-            
-            from clients.weibo_client import WeiboPlaywrightClient
-            
-            async with WeiboPlaywrightClient(auth_data=auth_data, headless=True) as client:
-                async for post in client.fetch_data(config):
-                    # Build markdown content
-                    md_parts = []
-                    if post.get('content'):
-                        md_parts.append(post.get('content', ''))
-                    if post.get('author'):
-                        md_parts.insert(0, f"**@{post.get('author')}**\n")
-                    if post.get('reposts'):
-                        md_parts.append(f"\n转发: {post.get('reposts')}")
-                    if post.get('comments'):
-                        md_parts.append(f"评论: {post.get('comments')}")
-                    if post.get('likes'):
-                        md_parts.append(f"点赞: {post.get('likes')}")
-                    
-                    results.append(CleanItem(
-                        title=post.get("title", post.get("content", "")[:50] if post.get("content") else None),
-                        text=post.get("content", ""),
-                        markdown="\n".join(md_parts) if md_parts else "Weibo post",
-                        platform="Weibo",
-                        url=post.get("url"),
-                        sourceId=request.source_id,
-                        sourceType="SOCIAL_MEDIA",
-                        time=datetime.now()
-                    ))
-                    
-        elif platform == "telegram":
-            if not auth_data:
-                raise HTTPException(
-                    status_code=400,
-                    detail="auth_data is required for Telegram. Please provide valid cookies and localStorage."
-                )
-            
-            from clients.telegram_client import TelegramPlaywrightClient
-            
-            async with TelegramPlaywrightClient(auth_data=auth_data, headless=True) as client:
-                async for msg in client.fetch_data(config):
-                    # Build markdown content
-                    md_parts = []
-                    if msg.get('sender'):
-                        md_parts.append(f"**{msg.get('sender')}**")
-                    if msg.get('text'):
-                        md_parts.append(msg.get('text', ''))
-                    if msg.get('timestamp'):
-                        md_parts.append(f"\n_{msg.get('timestamp')}_")
-                    
-                    results.append(CleanItem(
-                        title=f"Telegram: {msg.get('sender', 'Message')}",
-                        text=msg.get("text", ""),
-                        markdown="\n".join(md_parts) if md_parts else "Telegram message",
-                        platform="Telegram",
-                        sourceId=request.source_id,
-                        sourceType="SOCIAL_MEDIA",
-                        time=datetime.now()
-                    ))
-                    
-        elif platform == "whatsapp":
-            from clients.whatsapp_client import WhatsAppPlaywrightClient
-            
-            # Check for specific profile directory in auth_data
-            profile_path = None
-            if request.auth_data and "profileName" in request.auth_data:
-                profile_path = AUTH_DIR / request.auth_data["profileName"]
-                print(f"[gather] Using custom WhatsApp profile for fetch: {profile_path}")
-                
-            async with WhatsAppPlaywrightClient(headless=True, profile_path=profile_path) as client:
-                async for msg in client.fetch_data(config):
-                    # Build markdown content
-                    md_parts = []
-                    if msg.get('text'):
-                        md_parts.append(msg.get('text', ''))
-                    if msg.get('direction'):
-                        direction = "→" if msg.get('direction') == 'outgoing' else "←"
-                        md_parts.insert(0, f"{direction} ")
-                    if msg.get('timestamp'):
-                        md_parts.append(f"\n_{msg.get('timestamp')}_")
-                    
-                    results.append(CleanItem(
-                        title=f"WhatsApp Message",
-                        text=msg.get("text", ""),
-                        markdown="".join(md_parts) if md_parts else "WhatsApp message",
-                        platform="WhatsApp",
-                        sourceId=request.source_id,
-                        sourceType="SOCIAL_MEDIA",
-                        time=datetime.now()
-                    ))
-            
-        elif platform == "instagram":
-            if not auth_data:
-                raise HTTPException(
-                    status_code=400,
-                    detail="auth_data is required for Instagram. Please provide valid cookies."
-                )
-            
-            from clients.instagram_client import InstagramPlaywrightClient
-            
-            async with InstagramPlaywrightClient(auth_data=auth_data, headless=True) as client:
-                async for post in client.fetch_data(config):
-                    # Build markdown content
-                    md_parts = []
-                    if post.get('text'):
-                        md_parts.append(post.get('text', ''))
-                    if post.get('author'):
-                        md_parts.insert(0, f"**@{post.get('author')}**\n")
-                    
-                    results.append(CleanItem(
-                        title=f"Instagram Post",
-                        text=post.get("text", ""),
-                        markdown="\n".join(md_parts) if md_parts else "Instagram post",
-                        platform="Instagram",
-                        url=post.get("url"),
-                        sourceId=request.source_id,
-                        sourceType="SOCIAL_MEDIA",
-                        time=datetime.now()
-                    ))
-                    
-        elif platform == "facebook":
-            if not auth_data:
-                raise HTTPException(
-                    status_code=400,
-                    detail="auth_data is required for Facebook. Please provide valid cookies."
-                )
-            
-            from clients.facebook_client import FacebookPlaywrightClient
-            
-            async with FacebookPlaywrightClient(auth_data=auth_data, headless=True) as client:
-                async for post in client.fetch_data(config):
-                    # Build markdown content
-                    md_parts = []
-                    if post.get('text'):
-                        md_parts.append(post.get('text', ''))
-                    if post.get('author'):
-                        md_parts.insert(0, f"**{post.get('author')}**\n")
-                    
-                    results.append(CleanItem(
-                        title=f"Facebook Post",
-                        text=post.get("text", ""),
-                        markdown="\n".join(md_parts) if md_parts else "Facebook post",
-                        platform="Facebook",
-                        url=post.get("url"),
-                        sourceId=request.source_id,
-                        sourceType="SOCIAL_MEDIA",
-                        time=datetime.now()
-                    ))
-            
-        else:
-            # Fallback or generic logic
-            results.append(CleanItem(
-                text=f"Generic social media placeholder for {platform}",
-                markdown=f"Generic content for {platform}",
-                platform=platform,
-                sourceId=request.source_id,
-                sourceType="SOCIAL_MEDIA",
-                time=datetime.now()
-            ))
-            
-        return results
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        print(f"[gather] Error fetching {platform}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+
+    raise HTTPException(
+        status_code=400,
+        detail=(
+            f"playwright legacy clients have been removed for platform '{platform}'. "
+            "Use driver='agent-browser' or set config.playwright.mode='eval-js'."
+        ),
+    )
 
 
 def _strip_playwright_meta_block(script: str) -> str:
@@ -1456,6 +862,11 @@ def _to_clean_item_from_eval_value(value: Any, request: FetchRequest, target_url
         elif markdown is None:
             author = value.get("author")
             markdown = f"@{author}: {text}" if isinstance(author, str) and author else str(text)
+        record_content = dict(value)
+        record_content["text"] = str(text)
+        record_content["markdown"] = str(markdown)
+        if value.get("url") or target_url:
+            record_content["url"] = value.get("url") or target_url
         return CleanItem(
             title=value.get("title") or value.get("name"),
             text=str(text),
@@ -1463,11 +874,13 @@ def _to_clean_item_from_eval_value(value: Any, request: FetchRequest, target_url
             platform=str(value.get("platform") or request.platform),
             url=value.get("url") or target_url,
             time=parsed_time or datetime.now(),
+            recordTime=parsed_time or datetime.now(),
             sourceId=request.source_id,
             sourceType="SOCIAL_MEDIA",
-            recordId=value.get("recordId") or value.get("id"),
+            recordId=str(value.get("recordId") or value.get("id") or f"{request.source_id}:{index}"),
             recordType=str(value.get("recordType") or value.get("type") or "eval-js"),
             recordIndex=value.get("recordIndex") if isinstance(value.get("recordIndex"), int) else index,
+            recordContent=record_content,
         )
 
     text_value = str(value)
@@ -1478,10 +891,13 @@ def _to_clean_item_from_eval_value(value: Any, request: FetchRequest, target_url
         platform=request.platform,
         url=target_url,
         time=datetime.now(),
+        recordTime=datetime.now(),
         sourceId=request.source_id,
         sourceType="SOCIAL_MEDIA",
+        recordId=f"{request.source_id}:{index}",
         recordType="eval-js",
         recordIndex=index,
+        recordContent={"text": text_value, "markdown": text_value, "url": target_url},
     )
 
 
@@ -1498,6 +914,14 @@ def _normalize_playwright_eval_result(result: Any, request: FetchRequest, target
         for key in ("tweets", "posts", "notes", "items", "results", "data"):
             nested = candidate.get(key)
             if isinstance(nested, list):
+                if request.output_field_map:
+                    mapped_sources = {
+                        source_path.split(".", 1)[0]
+                        for source_path in request.output_field_map.values()
+                        if isinstance(source_path, str) and source_path.strip()
+                    }
+                    if key in mapped_sources:
+                        break
                 candidate = nested
                 break
     if isinstance(candidate, list):
@@ -1522,6 +946,100 @@ def _looks_like_origin_security_error(error: Exception) -> bool:
         or "failed to read the 'localstorage' property" in message
         or "securityerror" in message
     )
+
+
+def _is_xiaohongshu_auth_probe_miss(result: Any, platform: str) -> bool:
+    if not isinstance(result, dict):
+        return False
+    normalized_platform = platform.lower().strip()
+    if normalized_platform not in {"xhs", "xiaohongshu"}:
+        return False
+    raw_error = result.get("error")
+    if not isinstance(raw_error, str):
+        return False
+    if raw_error.strip().lower() != "failed to get user info":
+        return False
+    raw_hint = result.get("hint")
+    if not isinstance(raw_hint, str):
+        return False
+    normalized_hint = raw_hint.strip().lower()
+    return "user/me" in normalized_hint and "captured" in normalized_hint
+
+
+async def _run_xiaohongshu_direct_user_me_probe(page: Any) -> dict[str, Any]:
+    return await page.evaluate(
+        """
+        (async () => {
+          try {
+            const candidates = [
+              "/api/sns/web/v1/user/me",
+              "https://www.xiaohongshu.com/api/sns/web/v1/user/me"
+            ];
+            let lastStatus = null;
+            let lastBody = "";
+            for (const endpoint of candidates) {
+              const response = await fetch(endpoint, { credentials: "include" });
+              const text = await response.text();
+              lastStatus = response.status;
+              lastBody = text;
+              let payload = null;
+              try {
+                payload = JSON.parse(text);
+              } catch (_) {}
+              if (response.ok && payload && payload.success && payload.data) {
+                const user = payload.data;
+                return {
+                  nickname: user.nickname,
+                  red_id: user.red_id,
+                  desc: user.desc,
+                  gender: user.gender,
+                  userid: user.user_id,
+                  url: user.user_id
+                    ? `https://www.xiaohongshu.com/user/profile/${user.user_id}`
+                    : "https://www.xiaohongshu.com",
+                  _debug: {
+                    probe: "direct-user-me",
+                    endpoint
+                  }
+                };
+              }
+            }
+            return {
+              error: "Failed to get user info",
+              hint: `Direct /user/me probe failed (status=${lastStatus})`,
+              debug: {
+                probe: "direct-user-me",
+                responseStatus: lastStatus,
+                responseSnippet: String(lastBody || "").slice(0, 400)
+              }
+            };
+          } catch (error) {
+            return {
+              error: "Failed to get user info",
+              hint: `Direct /user/me probe exception: ${String(error)}`
+            };
+          }
+        })()
+        """
+    )
+
+
+async def _apply_xiaohongshu_user_me_fallback(
+    page: Any, eval_result: Any, request: FetchRequest
+) -> Any:
+    if not _is_xiaohongshu_auth_probe_miss(eval_result, request.platform):
+        return eval_result
+    fallback_result = await _run_xiaohongshu_direct_user_me_probe(page)
+    if isinstance(fallback_result, dict):
+        fallback_error = fallback_result.get("error")
+        if not (isinstance(fallback_error, str) and fallback_error.strip()):
+            return fallback_result
+        if isinstance(eval_result, dict):
+            original_hint = eval_result.get("hint")
+            fallback_hint = fallback_result.get("hint")
+            if isinstance(original_hint, str) and isinstance(fallback_hint, str):
+                fallback_result["hint"] = f"{original_hint}; {fallback_hint}"
+    return eval_result
 
 
 async def _run_playwright_eval_script(request: FetchRequest) -> list[CleanItem]:
@@ -1572,6 +1090,7 @@ async def _run_playwright_eval_script(request: FetchRequest) -> list[CleanItem]:
                             eval_result = await page.evaluate(script_to_run)
                         else:
                             raise
+                    eval_result = await _apply_xiaohongshu_user_me_fallback(page, eval_result, request)
             else:
                 context_options: dict[str, Any] = {}
                 if request.auth_data:
@@ -1611,6 +1130,7 @@ async def _run_playwright_eval_script(request: FetchRequest) -> list[CleanItem]:
                         eval_result = await page.evaluate(script_to_run)
                     else:
                         raise
+                eval_result = await _apply_xiaohongshu_user_me_fallback(page, eval_result, request)
         finally:
             if context is not None:
                 await context.close()
@@ -1648,551 +1168,6 @@ def _extract_x_status_id(url: Optional[str]) -> Optional[str]:
     return matched.group(1) if matched else None
 
 
-def _normalize_capture_text(value: str) -> str:
-    normalized = value.strip()
-    if normalized.startswith('"""') and normalized.endswith('"""'):
-        normalized = normalized[3:-3]
-    for _ in range(2):
-        if normalized.startswith('"') and normalized.endswith('"'):
-            try:
-                decoded = json.loads(normalized)
-            except json.JSONDecodeError:
-                break
-            if isinstance(decoded, str):
-                normalized = decoded.strip()
-                continue
-        break
-    normalized = normalized.replace("\\r\\n", "\n").replace("\\n", "\n")
-    return normalized.strip()
-
-
-def _resolve_record_schema(config: Dict[str, Any]) -> dict[str, Any]:
-    default_schema = {
-        "format": "auto",
-        "record_separator": "\n",
-        "pair_separator": "｜",
-        "field_map": {
-            "id": "MSGID",
-            "text": "MSG",
-            "url": "LINK",
-            "time": "DATE",
-            "meta": "META",
-            "author": "AUTH",
-            "type": "TYPE",
-        },
-    }
-    raw = config.get("recordSchema")
-    if raw is None and isinstance(config.get("agentBrowser"), dict):
-        raw = config["agentBrowser"].get("recordSchema")
-    if not isinstance(raw, dict):
-        return default_schema
-
-    schema = dict(default_schema)
-    schema["format"] = str(raw.get("format", schema["format"])).lower()
-    if isinstance(raw.get("recordSeparator"), str) and raw["recordSeparator"]:
-        schema["record_separator"] = raw["recordSeparator"]
-    if isinstance(raw.get("pairSeparator"), str) and raw["pairSeparator"]:
-        schema["pair_separator"] = raw["pairSeparator"]
-    field_map = raw.get("fieldMap")
-    if isinstance(field_map, dict):
-        normalized_map: dict[str, str] = {}
-        for key, value in field_map.items():
-            if isinstance(key, str) and isinstance(value, str) and key and value:
-                normalized_map[key.lower()] = value.upper()
-        if normalized_map:
-            schema["field_map"] = {**schema["field_map"], **normalized_map}
-    return schema
-
-
-def _extract_jsonl_records(text: str) -> list[dict[str, Any]]:
-    def parse_object_line(raw_line: str) -> Optional[dict[str, Any]]:
-        try:
-            payload = json.loads(raw_line)
-        except json.JSONDecodeError:
-            return None
-        if not isinstance(payload, dict):
-            return None
-        body = payload.get("text", payload.get("content", ""))
-        if not isinstance(body, str) or not body.strip():
-            return None
-        record_id = payload.get("recordId", payload.get("id"))
-        record_type = payload.get("recordType", payload.get("type", "message"))
-        return {
-            "record_id": str(record_id).strip() if record_id else None,
-            "record_type": str(record_type).strip() if record_type else "message",
-            "body": body.strip(),
-            "url": str(payload["url"]).strip() if isinstance(payload.get("url"), str) else None,
-            "time": str(payload["time"]).strip() if isinstance(payload.get("time"), str) else None,
-            "meta": str(payload["meta"]).strip() if isinstance(payload.get("meta"), str) else None,
-            "author": str(payload["author"]).strip() if isinstance(payload.get("author"), str) else None,
-        }
-
-    def expand_line_candidates(raw_line: str) -> list[str]:
-        candidates: list[str] = []
-        queue = [raw_line.strip()]
-        seen: set[str] = set()
-        while queue:
-            current = queue.pop(0).strip()
-            if not current or current in seen:
-                continue
-            seen.add(current)
-            candidates.append(current)
-
-            if current == '""':
-                continue
-
-            if current.startswith('"') and current.endswith('"'):
-                try:
-                    decoded = json.loads(current)
-                except json.JSONDecodeError:
-                    decoded = current[1:-1]
-                if isinstance(decoded, str):
-                    queue.extend(part.strip() for part in decoded.splitlines() if part.strip())
-
-            if "\\n" in current:
-                queue.extend(part.strip() for part in current.split("\\n") if part.strip())
-            if "\n" in current:
-                queue.extend(part.strip() for part in current.splitlines() if part.strip())
-
-        return candidates
-
-    candidates = [text]
-    if '\\"' in text:
-        candidates.append(text.replace('\\"', '"'))
-
-    for candidate in candidates:
-        records: list[dict[str, Any]] = []
-        seen_signatures: set[tuple[Optional[str], str]] = set()
-
-        def append_parsed(parsed: dict[str, Any]) -> None:
-            signature = (parsed["record_id"], parsed["body"])
-            if signature in seen_signatures:
-                return
-            seen_signatures.add(signature)
-            parsed["record_index"] = len(records) + 1
-            records.append(parsed)
-
-        for quoted in re.finditer(r'"(?:\\.|[^"\\])*"', candidate, re.S):
-            wrapped = quoted.group(0)
-            try:
-                decoded = json.loads(wrapped)
-            except json.JSONDecodeError:
-                decoded = wrapped[1:-1]
-                decoded = decoded.replace('\\"', '"').replace("\\r\\n", "\n").replace("\\n", "\n")
-            if not isinstance(decoded, str) or not decoded.strip():
-                continue
-            for fragment in expand_line_candidates(decoded):
-                if not (fragment.startswith("{") and fragment.endswith("}")):
-                    continue
-                parsed = parse_object_line(fragment)
-                if parsed:
-                    append_parsed(parsed)
-
-        for line in candidate.splitlines():
-            for expanded_line in expand_line_candidates(line):
-                if not (expanded_line.startswith("{") and expanded_line.endswith("}")):
-                    continue
-                parsed = parse_object_line(expanded_line)
-                if not parsed:
-                    continue
-                append_parsed(parsed)
-
-        relaxed = candidate.replace('\\"', '"')
-        for matched in re.finditer(r"\{[^{}]+\}", relaxed):
-            parsed = parse_object_line(matched.group(0))
-            if parsed:
-                append_parsed(parsed)
-        if records:
-            return records
-    return []
-
-
-def _extract_tagged_records(text: str, schema: dict[str, Any]) -> list[dict[str, Any]]:
-    field_map = schema["field_map"]
-    id_key = field_map.get("id", "MSGID")
-    text_key = field_map.get("text", "MSG")
-    url_key = field_map.get("url", "LINK")
-    time_key = field_map.get("time", "DATE")
-    meta_key = field_map.get("meta", "META")
-    type_key = field_map.get("type", "TYPE")
-    author_key = field_map.get("author", "AUTH")
-    pair_separator = schema["pair_separator"]
-    lines = [part.strip() for part in text.split(schema["record_separator"]) if part.strip()]
-    records: list[dict[str, Any]] = []
-
-    for line in lines:
-        fields: dict[str, str] = {}
-        chunks = [chunk.strip() for chunk in line.split(pair_separator) if chunk.strip()]
-        for chunk in chunks:
-            for delimiter in ("：", ":"):
-                if delimiter in chunk:
-                    key, value = chunk.split(delimiter, 1)
-                    fields[key.strip().upper()] = value.strip()
-                    break
-        body = fields.get(text_key, "")
-        if not body:
-            continue
-        records.append(
-            {
-                "record_id": fields.get(id_key),
-                "record_type": fields.get(type_key, "message"),
-                "record_index": len(records) + 1,
-                "body": body,
-                "url": fields.get(url_key),
-                "time": fields.get(time_key),
-                "meta": fields.get(meta_key),
-                "author": fields.get(author_key),
-            }
-        )
-    return records
-
-
-def _extract_structured_records(text: str) -> list[dict[str, Any]]:
-    pattern = re.compile(
-        r"(?:(?<=\n)|^)(?P<record_id>[a-zA-Z][\w-]*-\d+):\s*(?P<body>.*?)(?=(?:\n[a-zA-Z][\w-]*-\d+:)|\Z)",
-        re.S,
-    )
-    records = []
-    for index, matched in enumerate(pattern.finditer(text), start=1):
-        body = matched.group("body").strip()
-        if not body:
-            continue
-        records.append(
-            {
-                "record_id": matched.group("record_id"),
-                "body": body,
-                "record_index": index,
-                "record_type": "message",
-                "url": None,
-                "time": None,
-                "meta": None,
-                "author": None,
-            }
-        )
-    return records
-
-
-def _capture_outputs_to_clean_items(
-    request: FetchRequest,
-    script_result: Any,
-    capture_key: str,
-    outputs: list[str],
-    now: datetime,
-) -> list[CleanItem]:
-    text = _truncate_text("\n".join(output for output in outputs if output))
-    if not text:
-        text = f"Capture '{capture_key}' completed with {len(outputs)} executions"
-        return [
-            CleanItem(
-                title=f"agent-browser capture: {capture_key}",
-                text=text,
-                markdown=f"### {capture_key}\n\n```\n{text}\n```",
-                platform=request.platform,
-                sourceId=request.source_id,
-                sourceType="SOCIAL_MEDIA",
-                time=now,
-                driver="agent-browser",
-                instanceId=script_result.instance_id,
-                tabId=script_result.tab_id,
-                instanceActive=script_result.instance_active,
-                recordType="capture",
-            )
-        ]
-
-    normalized = _normalize_capture_text(text)
-    schema = _resolve_record_schema(request.config)
-    records: list[dict[str, Any]] = []
-    if schema["format"] in {"auto", "jsonl"}:
-        records = _extract_jsonl_records(normalized)
-    if not records and schema["format"] in {"auto", "tagged"}:
-        records = _extract_tagged_records(normalized, schema)
-    if not records and schema["format"] in {"auto", "legacy"}:
-        records = _extract_structured_records(normalized)
-
-    if not records:
-        return [
-            CleanItem(
-                title=f"agent-browser capture: {capture_key}",
-                text=text,
-                markdown=f"### {capture_key}\n\n```\n{text}\n```",
-                platform=request.platform,
-                sourceId=request.source_id,
-                sourceType="SOCIAL_MEDIA",
-                time=now,
-                driver="agent-browser",
-                instanceId=script_result.instance_id,
-                tabId=script_result.tab_id,
-                instanceActive=script_result.instance_active,
-                recordType="capture",
-            )
-        ]
-
-    items: list[CleanItem] = []
-    for record in records:
-        record_title = record["record_id"] or f"{capture_key} #{record['record_index']}"
-        markdown = f"### {record_title}\n\n{record['body']}"
-        if record.get("meta"):
-            markdown = f"{markdown}\n\n> meta: {record['meta']}"
-        record_time = now
-        raw_time = record.get("time")
-        if isinstance(raw_time, str):
-            parsed_time = None
-            for candidate in (raw_time, raw_time.replace("Z", "+00:00")):
-                try:
-                    parsed_time = datetime.fromisoformat(candidate)
-                    break
-                except ValueError:
-                    continue
-            if parsed_time is not None:
-                record_time = parsed_time
-
-        items.append(
-            CleanItem(
-                title=f"agent-browser {capture_key}: {record_title}",
-                text=record["body"],
-                markdown=markdown,
-                platform=request.platform,
-                url=record.get("url"),
-                sourceId=request.source_id,
-                sourceType="SOCIAL_MEDIA",
-                time=record_time,
-                driver="agent-browser",
-                instanceId=script_result.instance_id,
-                tabId=script_result.tab_id,
-                instanceActive=script_result.instance_active,
-                recordId=record["record_id"],
-                recordType=record.get("record_type", "message"),
-                recordIndex=record["record_index"],
-            )
-        )
-    return items
-
-
-def _agent_browser_results_to_clean_items(
-    request: FetchRequest,
-    script_result: Any,
-) -> list[CleanItem]:
-    now = datetime.now()
-    items: list[CleanItem] = []
-    captures = script_result.captures
-
-    if captures:
-        for capture_key, outputs in captures.items():
-            items.extend(
-                _capture_outputs_to_clean_items(
-                    request=request,
-                    script_result=script_result,
-                    capture_key=capture_key,
-                    outputs=outputs,
-                    now=now,
-                )
-            )
-
-    if items:
-        return items
-
-    step_summary = [
-        {
-            "step_index": result.step_index,
-            "attempt": result.attempt,
-            "command": result.command,
-            "stdout": _truncate_text(result.stdout.strip(), 2000),
-        }
-        for result in script_result.step_results
-    ]
-    summary_text = _truncate_text(json.dumps(step_summary, ensure_ascii=False))
-    return [
-        CleanItem(
-            title="agent-browser execution summary",
-            text=summary_text,
-            markdown=f"```json\n{summary_text}\n```",
-            platform=request.platform,
-            sourceId=request.source_id,
-            sourceType="SOCIAL_MEDIA",
-            time=now,
-            driver="agent-browser",
-            instanceId=script_result.instance_id,
-            tabId=script_result.tab_id,
-            instanceActive=script_result.instance_active,
-        )
-    ]
-
-
-async def _agent_browser_verify_auth(_request: VerifyAuthRequest):
-    return VerifyAuthResponse(
-        valid=True,
-        message="agent-browser authentication is configured through fetch config (profile/session/state).",
-    )
-
-
-def _extract_keyword_filter_keywords(config: Dict[str, Any]) -> Optional[List[str]]:
-    raw_filter = config.get("keywordFilter")
-    raw_keywords: Any = None
-
-    if raw_filter is None:
-        raw_keywords = config.get("keywords")
-        if raw_keywords is None:
-            return None
-    elif isinstance(raw_filter, dict):
-        if raw_filter.get("enabled", True) is False:
-            return None
-        raw_keywords = raw_filter.get("keywords", raw_filter.get("terms"))
-    else:
-        raise KeywordFilterConfigError("config.keywordFilter must be an object")
-
-    if not isinstance(raw_keywords, list):
-        raise KeywordFilterConfigError("keyword filter keywords must be a string array")
-
-    normalized: list[str] = []
-    for index, value in enumerate(raw_keywords):
-        if not isinstance(value, str):
-            raise KeywordFilterConfigError(f"keyword filter keywords[{index}] must be string")
-        keyword = value.strip()
-        if not keyword:
-            raise KeywordFilterConfigError(f"keyword filter keywords[{index}] must not be empty")
-        normalized.append(keyword.lower())
-
-    unique_keywords = list(dict.fromkeys(normalized))
-    if not unique_keywords:
-        raise KeywordFilterConfigError("keyword filter keywords must not be empty")
-    return unique_keywords
-
-
-def _extract_keyword_filter_options(config: Dict[str, Any]) -> dict[str, Any]:
-    raw_filter = config.get("keywordFilter")
-    if raw_filter is None:
-        return {"match_scope": "item", "split_mode": "auto"}
-    if not isinstance(raw_filter, dict):
-        raise KeywordFilterConfigError("config.keywordFilter must be an object")
-
-    raw_scope = raw_filter.get("matchScope", raw_filter.get("scope", "item"))
-    if raw_scope not in {"item", "segment"}:
-        raise KeywordFilterConfigError("keyword filter matchScope must be item or segment")
-
-    raw_split_mode = raw_filter.get("splitMode", raw_filter.get("segmentSplit", "auto"))
-    if raw_split_mode not in {"auto", "line", "paragraph"}:
-        raise KeywordFilterConfigError("keyword filter splitMode must be auto, line, or paragraph")
-
-    min_segment_chars = raw_filter.get("minSegmentChars", 1)
-    if not isinstance(min_segment_chars, int) or min_segment_chars < 1:
-        raise KeywordFilterConfigError("keyword filter minSegmentChars must be a positive integer")
-
-    return {
-        "match_scope": raw_scope,
-        "split_mode": raw_split_mode,
-        "min_segment_chars": min_segment_chars,
-    }
-
-
-def _keyword_filter_text(item: CleanItem) -> str:
-    parts = [
-        item.title or "",
-        item.text or "",
-        item.markdown or "",
-        item.url or "",
-    ]
-    return " ".join(part for part in parts if part).lower()
-
-
-def _split_text_segments(text: str, split_mode: str, min_segment_chars: int) -> list[str]:
-    if split_mode == "line":
-        raw_segments = text.splitlines()
-    elif split_mode == "paragraph":
-        raw_segments = re.split(r"\n\s*\n+", text)
-    else:
-        if "\n\n" in text:
-            raw_segments = re.split(r"\n\s*\n+", text)
-        else:
-            raw_segments = text.splitlines()
-
-    segments: list[str] = []
-    for segment in raw_segments:
-        normalized = segment.strip()
-        if len(normalized) >= min_segment_chars:
-            segments.append(normalized)
-    return segments
-
-
-def _apply_keyword_segment_filter(item: CleanItem, keywords: list[str], options: dict[str, Any]) -> list[CleanItem]:
-    segments = _split_text_segments(
-        item.text or item.markdown or "",
-        split_mode=options["split_mode"],
-        min_segment_chars=options["min_segment_chars"],
-    )
-    if not segments:
-        return []
-
-    matched_items: list[CleanItem] = []
-    for index, segment in enumerate(segments, start=1):
-        haystack = segment.lower()
-        matched = [keyword for keyword in keywords if keyword in haystack]
-        if not matched:
-            continue
-
-        matched_items.append(
-            item.model_copy(
-                update={
-                    "title": f"{item.title or item.platform} [segment {index}]",
-                    "text": segment,
-                    "markdown": segment,
-                    "matchedKeywords": matched,
-                    "keywordMatchScore": round(len(matched) / len(keywords), 4),
-                }
-            )
-        )
-    return matched_items
-
-
-def _apply_keyword_hard_filter(request: FetchRequest, items: List[CleanItem]) -> List[CleanItem]:
-    try:
-        keywords = _extract_keyword_filter_keywords(request.config)
-        options = _extract_keyword_filter_options(request.config)
-    except KeywordFilterConfigError as error:
-        print(
-            f"[gather][keyword-filter][error] "
-            f"{json.dumps({'sourceId': request.source_id, 'platform': request.platform, 'error': str(error)}, ensure_ascii=False)}"
-        )
-        raise HTTPException(status_code=400, detail=f"keyword filter invalid config: {error}") from error
-
-    if not keywords:
-        return items
-
-    filtered: list[CleanItem] = []
-    hit = 0
-    miss = 0
-    fetched = len(items)
-
-    for item in items:
-        if options["match_scope"] == "segment":
-            segment_hits = _apply_keyword_segment_filter(item, keywords, options)
-            if segment_hits:
-                filtered.extend(segment_hits)
-                hit += 1
-                continue
-        else:
-            haystack = _keyword_filter_text(item)
-            matched = [keyword for keyword in keywords if keyword in haystack]
-            if matched:
-                item.matchedKeywords = matched
-                item.keywordMatchScore = round(len(matched) / len(keywords), 4)
-                filtered.append(item)
-                hit += 1
-                continue
-
-        miss += 1
-        print(
-            f"[gather][keyword-filter][audit] "
-            f"{json.dumps({'sourceId': item.sourceId, 'platform': item.platform, 'url': item.url, 'reason': 'keyword_miss'}, ensure_ascii=False)}"
-        )
-
-    print(
-        f"[gather][keyword-filter][metrics] "
-        f"{json.dumps({'sourceId': request.source_id, 'platform': request.platform, 'fetched': fetched, 'hit': hit, 'miss': miss, 'persisted': len(filtered), 'matchScope': options['match_scope']}, ensure_ascii=False)}"
-    )
-
-    return filtered
-
-
 def _normalize_clean_items(raw_items: list[Any]) -> list[CleanItem]:
     normalized: list[CleanItem] = []
     for item in raw_items:
@@ -2209,26 +1184,294 @@ def _normalize_clean_items(raw_items: list[Any]) -> list[CleanItem]:
     return normalized
 
 
-def _apply_response_formats(items: list[CleanItem], response_formats: Optional[List[str]]) -> list[CleanItem]:
-    if not response_formats:
+_MISSING = object()
+
+
+def _read_nested_field(payload: dict[str, Any], path: list[str]) -> Any:
+    current: Any = payload
+    for segment in path:
+        if not isinstance(current, dict) or segment not in current:
+            return _MISSING
+        current = current[segment]
+    return current
+
+
+def _write_nested_field(payload: dict[str, Any], path: list[str], value: Any) -> None:
+    current = payload
+    for segment in path[:-1]:
+        next_value = current.get(segment)
+        if not isinstance(next_value, dict):
+            next_value = {}
+            current[segment] = next_value
+        current = next_value
+    current[path[-1]] = value
+
+
+def _parse_record_time(value: Any) -> datetime | None:
+    if isinstance(value, datetime):
+        return value
+    if isinstance(value, str):
+        for candidate in (value, value.replace("Z", "+00:00")):
+            try:
+                return datetime.fromisoformat(candidate)
+            except ValueError:
+                continue
+        try:
+            return datetime.strptime(value, "%a %b %d %H:%M:%S %z %Y")
+        except ValueError:
+            return None
+    return None
+
+
+def _resolve_source_path(source: dict[str, Any], source_path: list[str]) -> list[str]:
+    if not source_path:
+        return source_path
+    if source_path[0] in source:
+        return source_path
+    if source_path[0] == "text":
+        candidate_keys = ("tweets", "items", "posts", "results", "data", "notes")
+        for key in candidate_keys:
+            if isinstance(source.get(key), list):
+                return [key, *source_path[1:]]
+    return source_path
+
+
+def _apply_output_field_map(item: CleanItem, source: dict[str, Any], output_field_map: dict[str, str]) -> list[CleanItem]:
+    mappings: list[tuple[list[str], list[str]]] = []
+    for target_field, source_field in output_field_map.items():
+        if not isinstance(target_field, str) or not target_field.strip():
+            continue
+        if not isinstance(source_field, str) or not source_field.strip():
+            continue
+        target_path = [segment for segment in target_field.strip().split(".") if segment]
+        source_path = [segment for segment in source_field.strip().split(".") if segment]
+        if not target_path or not source_path:
+            continue
+        mappings.append((target_path, _resolve_source_path(source, source_path)))
+
+    if not mappings:
+        item.recordContent = {}
+        return [item]
+
+    list_prefixes = {
+        source_path[0]
+        for _, source_path in mappings
+        if len(source_path) > 1 and isinstance(source.get(source_path[0]), list)
+    }
+    can_expand_list = (
+        len(list_prefixes) == 1
+        and all(len(source_path) > 1 and source_path[0] in list_prefixes for _, source_path in mappings)
+    )
+    if can_expand_list:
+        list_key = next(iter(list_prefixes))
+        raw_rows = source.get(list_key, [])
+        if isinstance(raw_rows, list):
+            expanded: list[CleanItem] = []
+            for index, row in enumerate(raw_rows, start=1):
+                if not isinstance(row, dict):
+                    continue
+                mapped_content: dict[str, Any] = {}
+                for target_path, source_path in mappings:
+                    value = _read_nested_field(row, source_path[1:])
+                    if value is _MISSING:
+                        continue
+                    _write_nested_field(mapped_content, target_path, value)
+                if not mapped_content:
+                    continue
+                cloned = item.model_copy(deep=True)
+                cloned.recordContent = mapped_content
+                mapped_id = mapped_content.get("id")
+                if isinstance(mapped_id, str) and mapped_id.strip():
+                    cloned.recordId = mapped_id.strip()
+                mapped_time = mapped_content.get("time", mapped_content.get("created_at"))
+                parsed_time = _parse_record_time(mapped_time)
+                if parsed_time is not None:
+                    cloned.recordTime = parsed_time
+                mapped_url = mapped_content.get("url")
+                if isinstance(mapped_url, str) and mapped_url.strip():
+                    cloned.url = mapped_url.strip()
+                cloned.recordIndex = index
+                expanded.append(cloned)
+            if expanded:
+                return expanded
+
+    mapped_content: dict[str, Any] = {}
+    for target_path, source_path in mappings:
+        value = _read_nested_field(source, source_path)
+        if value is _MISSING:
+            continue
+        _write_nested_field(mapped_content, target_path, value)
+    item.recordContent = mapped_content
+    return [item]
+
+
+def _apply_output_fields(
+    items: list[CleanItem],
+    output_fields: Optional[List[str]],
+    output_field_map: Optional[dict[str, str]],
+) -> list[CleanItem]:
+    if not output_fields and not output_field_map:
         return items
 
-    allowed = set(response_formats)
-    include_text = "text" in allowed
-    include_markdown = "markdown" in allowed
-
+    transformed_items: list[CleanItem] = []
     for item in items:
-        if not include_text:
-            item.text = None
-        if not include_markdown:
-            item.markdown = None
-    return items
+        source = item.recordContent if isinstance(item.recordContent, dict) else {}
+        if output_field_map:
+            transformed_items.extend(_apply_output_field_map(item, source, output_field_map))
+            continue
+
+        filtered: dict[str, Any] = {}
+        for raw_field in output_fields or []:
+            if not isinstance(raw_field, str):
+                continue
+            field = raw_field.strip()
+            if not field:
+                continue
+            if field == "*":
+                filtered = dict(source)
+                break
+            path = [segment for segment in field.split(".") if segment]
+            if not path:
+                continue
+            value = _read_nested_field(source, path)
+            if value is _MISSING:
+                continue
+            _write_nested_field(filtered, path, value)
+        item.recordContent = filtered
+        transformed_items.append(item)
+    return transformed_items
+
+
+def _as_dict(value: Any) -> dict[str, Any]:
+    return value if isinstance(value, dict) else {}
+
+
+def _normalize_agent_browser_driver_options(
+    source_id: str,
+    base_config: dict[str, Any],
+    driver_options: dict[str, Any],
+) -> dict[str, Any]:
+    normalized_config = dict(base_config)
+    existing_options = _as_dict(normalized_config.get("agentBrowser"))
+    merged_options = {**existing_options, **driver_options}
+
+    auth_options = _as_dict(merged_options.pop("auth", None))
+    state_file = auth_options.get("stateFile", auth_options.get("state_file"))
+    if isinstance(state_file, str) and state_file.strip() and not merged_options.get("stateFile"):
+        merged_options["stateFile"] = state_file.strip()
+
+    raw_filters = _as_dict(merged_options.pop("filters", None))
+    capture_filter = _as_dict(raw_filters.get("capture"))
+    if capture_filter:
+        merged_options["captureFilter"] = {
+            **_as_dict(merged_options.get("captureFilter")),
+            **capture_filter,
+        }
+    keyword_filter = _as_dict(raw_filters.get("keyword"))
+    if keyword_filter and not _as_dict(normalized_config.get("keywordFilter")):
+        normalized_config["keywordFilter"] = keyword_filter
+
+    session_key = merged_options.get("sessionKey")
+    if isinstance(session_key, str) and session_key.strip() == source_id:
+        merged_options.pop("sessionKey", None)
+    session_key_legacy = merged_options.get("session_key")
+    if isinstance(session_key_legacy, str) and session_key_legacy.strip() == source_id:
+        merged_options.pop("session_key", None)
+
+    normalized_config["agentBrowser"] = merged_options
+    return normalized_config
+
+
+def _normalize_v2_fetch_request(request: FetchV2Request) -> FetchRequest:
+    normalized_driver = request.driver.name.strip().lower()
+    raw_option = dict(request.driver.option)
+    config = raw_option
+
+    if normalized_driver == "playwright":
+        if "playwright" in raw_option:
+            raise HTTPException(
+                status_code=400,
+                detail="driver.option.playwright has been removed; put playwright fields directly under driver.option",
+            )
+        network = raw_option.get("network")
+        playwright_option = {k: v for k, v in raw_option.items() if k != "network"}
+        config = {"playwright": playwright_option}
+        if network is not None:
+            config["network"] = network
+    elif normalized_driver == "agent-browser" and "agentBrowser" in raw_option:
+        raise HTTPException(
+            status_code=400,
+            detail="driver.option.agentBrowser has been removed; put agent-browser fields directly under driver.option",
+        )
+    elif normalized_driver == "xhttp" and "xhttp" in raw_option:
+        raise HTTPException(
+            status_code=400,
+            detail="driver.option.xhttp has been removed; put xhttp fields directly under driver.option",
+        )
+
+    if normalized_driver == "agent-browser":
+        config = _normalize_agent_browser_driver_options(request.source_id, {}, config)
+
+    output = request.output.model_dump()
+    output_fields: list[str] = []
+    output_field_map: dict[str, str] = {}
+    output_keyword_scope: list[str] = []
+    raw_fields = output.get("field")
+    if isinstance(raw_fields, dict):
+        output_field_map = {
+            key.strip(): value.strip()
+            for key, value in raw_fields.items()
+            if isinstance(key, str)
+            and key.strip()
+            and isinstance(value, str)
+            and value.strip()
+        }
+    elif isinstance(raw_fields, list):
+        output_fields = [value for value in raw_fields if isinstance(value, str) and value.strip()]
+    output_record_type = output.get("type")
+    if not isinstance(output_record_type, str) or not output_record_type.strip():
+        output_record_type = None
+    else:
+        output_record_type = output_record_type.strip()
+    raw_keyword_scope = output.get("keywordScope")
+    if isinstance(raw_keyword_scope, list):
+        output_keyword_scope = [
+            value.strip()
+            for value in raw_keyword_scope
+            if isinstance(value, str) and value.strip()
+        ]
+
+    filter_options = dict(request.driver.filter)
+    if request.keywords:
+        existing_filters = _as_dict(config.get("filters"))
+        keyword_filter = {
+            **_as_dict(existing_filters.get("keyword")),
+            **filter_options,
+            "keywords": request.keywords,
+        }
+        if output_keyword_scope:
+            keyword_filter["scopeFields"] = output_keyword_scope
+        config["filters"] = {
+            **existing_filters,
+            "keyword": keyword_filter,
+        }
+
+    return FetchRequest(
+        platform=request.platform,
+        config=config,
+        source_id=request.source_id,
+        keywords=request.keywords,
+        output_fields=output_fields or None,
+        output_field_map=output_field_map or None,
+        output_keyword_scope=output_keyword_scope or None,
+        output_record_type=output_record_type,
+    )
 
 
 async def _agent_browser_fetch_data(request: FetchRequest):
     try:
         script_result = await asyncio.to_thread(execute_agent_browser_script, request.config)
-        items = _agent_browser_results_to_clean_items(request, script_result)
+        items = agent_browser_results_to_clean_items(request, script_result)
         if not items:
             raise HTTPException(
                 status_code=500,
@@ -2326,30 +1569,6 @@ async def verify_auth(request: VerifyAuthRequest):
         raise _to_driver_http_exception(error)
 
 
-@app.post("/fetch", response_model=List[CleanItem], response_model_exclude_none=True)
-async def fetch_data(request: FetchRequest):
-    try:
-        raw_results = await driver_registry.fetch(request)
-        results = _normalize_clean_items(raw_results)
-        results = _apply_keyword_hard_filter(request, results)
-        response_payload = _apply_response_formats(results, request.response_formats)
-        _log_api_io(
-            "/fetch",
-            request.model_dump(mode="json", by_alias=True),
-            [item.model_dump(mode="json", exclude_none=True) for item in response_payload],
-            200,
-        )
-        return response_payload
-    except DriverNotFoundError as error:
-        _log_api_io(
-            "/fetch",
-            request.model_dump(mode="json", by_alias=True),
-            error.to_detail(),
-            400,
-        )
-        raise _to_driver_http_exception(error)
-
-
 @app.post(
     "/v2/fetch",
     response_model=List[CleanItem],
@@ -2378,22 +1597,19 @@ async def fetch_data_v2(payload: Dict[str, Any]):
         _log_api_io("/v2/fetch", payload, response.body.decode("utf-8"), 422)
         return response
 
-    v1_request = FetchRequest(
-        platform=request.platform,
-        config=request.config,
-        source_id=request.source_id,
-        auth_data=request.auth_data,
-        response_formats=request.response_formats,
-    )
-
     try:
-        raw_results = await driver_registry.fetch(v1_request, driver_name=request.driver)
+        v1_request = _normalize_v2_fetch_request(request)
+        raw_results = await driver_registry.fetch(v1_request, driver_name=request.driver.name)
         results = _normalize_clean_items(raw_results)
-        results = _apply_keyword_hard_filter(v1_request, results)
-        if request.driver:
+        if v1_request.output_record_type:
             for item in results:
-                item.driver = request.driver
-        response_payload = _apply_response_formats(results, request.response_formats)
+                item.recordType = v1_request.output_record_type
+        results = _apply_output_fields(results, v1_request.output_fields, v1_request.output_field_map)
+        results = apply_keyword_hard_filter(v1_request, results)
+        if request.driver.name:
+            for item in results:
+                item.driver = request.driver.name
+        response_payload = results
         _log_api_io(
             "/v2/fetch",
             payload,
@@ -2508,14 +1724,67 @@ async def agent_browser_heartbeat(payload: Dict[str, Any]):
 AUTH_DIR = Path(__file__).parent / ".auth"
 MAX_PROFILE_SIZE = 100 * 1024 * 1024  # 100MB
 PROFILE_NAME_PATTERN = re.compile(r'^[a-zA-Z0-9_-]{1,64}$')
+STATE_FILE_NAME_PATTERN = re.compile(r"^[a-z0-9_-]{1,64}\.json$")
 
 
-class UploadProfileResponse(BaseModel):
-    success: bool
-    message: str
-    profile_name: str
-    verified: bool = False
-    details: Optional[Dict[str, Any]] = None
+def _build_state_file_name(platform: str, alias: str | None, auth_data: dict[str, Any]) -> str:
+    normalized_platform = re.sub(r"[^a-z0-9_-]+", "-", platform.lower()).strip("-") or "social"
+    normalized_alias = re.sub(r"[^a-z0-9_-]+", "-", (alias or "default").lower()).strip("-") or "default"
+    payload_hash = hashlib.sha256(
+        json.dumps(auth_data, ensure_ascii=False, sort_keys=True).encode("utf-8")
+    ).hexdigest()[:12]
+    return f"{normalized_platform}_{normalized_alias}_{payload_hash}.json"
+
+
+def _validate_auth_data_shape(auth_data: dict[str, Any]) -> None:
+    cookies = auth_data.get("cookies")
+    origins = auth_data.get("origins")
+    has_cookies = isinstance(cookies, list) and len(cookies) > 0
+    has_origins = isinstance(origins, list) and len(origins) > 0
+    if not has_cookies and not has_origins:
+        raise HTTPException(
+            status_code=400,
+            detail="auth_data must contain cookies or origins",
+        )
+
+
+@app.post("/auth/state-file", response_model=SaveAuthStateResponse)
+async def save_auth_state_file(request: SaveAuthStateRequest):
+    auth_data = request.auth_data
+    if not isinstance(auth_data, dict):
+        raise HTTPException(status_code=400, detail="auth_data must be an object")
+    _validate_auth_data_shape(auth_data)
+
+    AUTH_DIR.mkdir(exist_ok=True)
+    file_name = _build_state_file_name(request.platform, request.name, auth_data)
+    if not STATE_FILE_NAME_PATTERN.match(file_name):
+        raise HTTPException(status_code=400, detail="invalid state file name")
+    target_file = (AUTH_DIR / file_name).resolve()
+    if not str(target_file).startswith(str(AUTH_DIR.resolve())):
+        raise HTTPException(status_code=400, detail="invalid state file path")
+
+    with target_file.open("w", encoding="utf-8") as fp:
+        json.dump(auth_data, fp, ensure_ascii=False)
+
+    return SaveAuthStateResponse(
+        success=True,
+        stateFile=f".auth/{file_name}",
+        profileName=file_name,
+    )
+
+
+@app.delete("/auth/state-file")
+async def delete_auth_state_file(request: DeleteAuthStateRequest):
+    raw_state_file = request.state_file.strip()
+    file_name = Path(raw_state_file).name
+    if not STATE_FILE_NAME_PATTERN.match(file_name):
+        raise HTTPException(status_code=400, detail="invalid state file name")
+    target_file = (AUTH_DIR / file_name).resolve()
+    if not str(target_file).startswith(str(AUTH_DIR.resolve())):
+        raise HTTPException(status_code=400, detail="invalid state file path")
+    if target_file.exists():
+        target_file.unlink()
+    return {"success": True, "stateFile": f".auth/{file_name}"}
 
 
 @app.post("/upload-profile", response_model=UploadProfileResponse)
@@ -2666,37 +1935,33 @@ async def upload_profile(
         files = list(target_dir.glob("*"))[:10]
         print(f"[gather] First few files in profile: {[f.name for f in files]}")
     
-    # 6. Verify the profile works
+    # 6. Verify the profile with agent-browser flow
     try:
-        from clients.whatsapp_client import WhatsAppPlaywrightClient
-        
         print(f"[gather] Starting verification for: {profile_name}")
-        # Create client with specific profile path
-        async with WhatsAppPlaywrightClient(
-            headless=False,
-            profile_path=target_dir
-        ) as client:
-            is_valid = await client.verify_auth()
-        
+        verify_result = await _verify_auth_with_agent_browser_for_whatsapp(
+            VerifyAuthRequest(
+                platform="whatsapp",
+                auth_data={"profileName": target_dir.name},
+                headless=False,
+            )
+        )
+        is_valid = bool(verify_result and verify_result.valid)
         print(f"[gather] Verification result for {profile_name}: {is_valid}")
-        
         if is_valid:
             return UploadProfileResponse(
                 success=True,
                 message="Profile uploaded and verified successfully",
                 profile_name=target_dir.name,
                 verified=True,
-                details={"platform": "WhatsApp", "auth_type": "profile"}
+                details={"platform": "WhatsApp", "auth_type": "profile"},
             )
-        else:
-            return UploadProfileResponse(
-                success=True,
-                message="Profile uploaded but authentication is invalid or expired",
-                profile_name=target_dir.name,
-                verified=False,
-                details={"platform": "WhatsApp", "suggestion": "Please re-export the profile after logging in"}
-            )
-            
+        return UploadProfileResponse(
+            success=True,
+            message="Profile uploaded but authentication is invalid or expired",
+            profile_name=target_dir.name,
+            verified=False,
+            details={"platform": "WhatsApp", "suggestion": "Please re-export the profile after logging in"},
+        )
     except Exception as e:
         print(f"[gather] Profile verification error: {e}")
         return UploadProfileResponse(
@@ -2704,7 +1969,7 @@ async def upload_profile(
             message=f"Profile uploaded but verification failed: {str(e)}",
             profile_name=target_dir.name,
             verified=False,
-            details={"error": str(e)}
+            details={"error": str(e)},
         )
 
 

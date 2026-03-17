@@ -88,17 +88,19 @@ def test_agent_browser_capture_parses_tagged_records_with_custom_schema():
         platform="telegram",
         source_id="source-1",
         config={
-            "recordSchema": {
-                "format": "tagged",
-                "recordSeparator": "\n",
-                "pairSeparator": "｜",
-                "fieldMap": {
-                    "id": "MSGID",
-                    "text": "MSG",
-                    "url": "LINK",
-                    "time": "DATE",
-                    "type": "TYPE",
-                },
+            "output": {
+                "record": {
+                    "format": "tagged",
+                    "recordSeparator": "\n",
+                    "pairSeparator": "｜",
+                    "fieldMap": {
+                        "id": "MSGID",
+                        "text": "MSG",
+                        "url": "LINK",
+                        "time": "DATE",
+                        "type": "TYPE",
+                    },
+                }
             }
         },
     )

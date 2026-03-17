@@ -184,6 +184,29 @@ const createEmptyAgentScriptRow = (): AgentScriptRow => ({
   json: "",
 });
 
+const toDelimitedStringArray = (value: unknown): string[] => {
+  if (Array.isArray(value)) {
+    return Array.from(
+      new Set(
+        value
+          .map((item) => (typeof item === "string" ? item.trim() : ""))
+          .filter(Boolean)
+      )
+    );
+  }
+  if (typeof value === "string") {
+    return Array.from(
+      new Set(
+        value
+          .split(/[,\n\r，、;；\t]+/g)
+          .map((item) => item.trim())
+          .filter(Boolean)
+      )
+    );
+  }
+  return [];
+};
+
 const normalizeArgs = (input: unknown): Record<string, string> => {
   if (!input || typeof input !== "object" || Array.isArray(input)) {
     return {};
@@ -242,6 +265,15 @@ export const SocialMediaFields = ({
   const socialPlatform = watch("social.platform") as SocialPlatform | undefined;
   const selectedDriver = watch("social.config.driver") as string | undefined;
   const currentCredentialId = watch("social.credentialId") as string | null | undefined;
+  const currentRecordFormat = watch(
+    "social.config.agentBrowser.recordSchema.format"
+  ) as string | undefined;
+  const currentMatchScope = watch(
+    "social.config.keywordFilter.matchScope"
+  ) as string | undefined;
+  const currentSplitMode = watch(
+    "social.config.keywordFilter.splitMode"
+  ) as string | undefined;
   const supportedDrivers = socialPlatform
     ? getSupportedDrivers(socialPlatform)
     : [];
@@ -354,6 +386,34 @@ export const SocialMediaFields = ({
       setAuthStatus({ status: "idle" });
     }
   }, [setValue, socialPlatform, resolvedDriver]);
+
+  useEffect(() => {
+    if (!setValue) return;
+    if (!socialPlatform || resolvedDriver !== "agent-browser") return;
+
+    if (!currentRecordFormat) {
+      setValue("social.config.agentBrowser.recordSchema.format", "jsonl", {
+        shouldDirty: false,
+      });
+    }
+    if (!currentMatchScope) {
+      setValue("social.config.keywordFilter.matchScope", "segment", {
+        shouldDirty: false,
+      });
+    }
+    if (!currentSplitMode) {
+      setValue("social.config.keywordFilter.splitMode", "line", {
+        shouldDirty: false,
+      });
+    }
+  }, [
+    setValue,
+    socialPlatform,
+    resolvedDriver,
+    currentRecordFormat,
+    currentMatchScope,
+    currentSplitMode,
+  ]);
 
   const syncArgsToForm = useCallback(
     (rows: PlaywrightArgRow[]) => {
@@ -687,6 +747,10 @@ export const SocialMediaFields = ({
     | string
     | undefined;
   const selectedXScript = getXScriptOptionByPath(selectedXScriptPath);
+  const keywordFilterError =
+    getConfigErrorMessage("keywordFilter.keywords") ??
+    getConfigErrorMessage("keywordFilter");
+  const responseFormatsError = getConfigErrorMessage("responseFormats");
 
   // Render auth status indicator
   const renderAuthStatus = () => {
@@ -748,7 +812,7 @@ export const SocialMediaFields = ({
             <label className="flex items-center gap-2 cursor-pointer">
               <input
                 type="checkbox"
-                checked={field.value !== false}
+                checked={Boolean(field.value)}
                 onChange={(e) => field.onChange(e.target.checked)}
                 className="rounded border-gray-300"
               />
@@ -792,9 +856,161 @@ export const SocialMediaFields = ({
         </p>
       </div>
 
-      <p className="text-xs text-muted-foreground">
-        关键词过滤由 Query 关联的 Keywords 模块统一注入，此处无需配置。
-      </p>
+      <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-2">
+          <Label htmlFor="social.config.agentBrowser.recordSchema.format">
+            Record Schema Format
+          </Label>
+          <Controller
+            name="social.config.agentBrowser.recordSchema.format"
+            control={control}
+            render={({ field }) => (
+              <ControlledSelect
+                value={(field.value as string) || "jsonl"}
+                onValueChange={field.onChange}
+                placeholder="Select format"
+              >
+                <SelectItem value="jsonl">jsonl</SelectItem>
+                <SelectItem value="tagged">tagged</SelectItem>
+                <SelectItem value="structured">structured</SelectItem>
+                <SelectItem value="auto">auto</SelectItem>
+              </ControlledSelect>
+            )}
+          />
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor="social.config.agentBrowser.captureFilter.keys">
+            Capture Filter Keys
+          </Label>
+          <Controller
+            name="social.config.agentBrowser.captureFilter.keys"
+            control={control}
+            render={({ field }) => (
+              <Textarea
+                id="social.config.agentBrowser.captureFilter.keys"
+                rows={3}
+                placeholder={"xhs_note_text\nxhs_note_meta"}
+                value={
+                  Array.isArray(field.value)
+                    ? field.value.join("\n")
+                    : typeof field.value === "string"
+                      ? field.value
+                      : ""
+                }
+                onChange={(e) => field.onChange(toDelimitedStringArray(e.target.value))}
+              />
+            )}
+          />
+          <p className="text-xs text-muted-foreground">
+            支持多个 key，使用逗号或换行分隔。
+          </p>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-5">
+        <Controller
+          name="social.config.agentBrowser.captureFilter.perLine"
+          control={control}
+          render={({ field }) => (
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={Boolean(field.value)}
+                onChange={(e) => field.onChange(e.target.checked)}
+                className="rounded border-gray-300"
+              />
+              <span className="text-sm">Capture Per Line</span>
+            </label>
+          )}
+        />
+        <Controller
+          name="social.config.agentBrowser.captureFilter.dedupe"
+          control={control}
+          render={({ field }) => (
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={Boolean(field.value)}
+                onChange={(e) => field.onChange(e.target.checked)}
+                className="rounded border-gray-300"
+              />
+              <span className="text-sm">Capture Dedupe</span>
+            </label>
+          )}
+        />
+      </div>
+    </div>
+  );
+
+  const renderGatherOutputAndFilterFields = () => (
+    <div className="grid gap-4 rounded-lg border bg-muted/30 p-4">
+      <Label className="text-base font-medium">Gather Output & Keyword Filter</Label>
+
+      <div className="grid gap-2">
+        <Label>Response Formats</Label>
+        <Controller
+          name="social.config.responseFormats"
+          control={control}
+          render={({ field }) => {
+            const selected = Array.isArray(field.value) && field.value.length > 0
+              ? field.value
+              : ["text", "markdown"];
+            const toggle = (format: "text" | "markdown", checked: boolean) => {
+              const next = checked
+                ? Array.from(new Set([...selected, format]))
+                : selected.filter((value) => value !== format);
+              field.onChange(next.length > 0 ? next : [format]);
+            };
+            return (
+              <div className="flex flex-wrap items-center gap-5">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={selected.includes("text")}
+                    onChange={(e) => toggle("text", e.target.checked)}
+                    className="rounded border-gray-300"
+                  />
+                  <span className="text-sm">text</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={selected.includes("markdown")}
+                    onChange={(e) => toggle("markdown", e.target.checked)}
+                    className="rounded border-gray-300"
+                  />
+                  <span className="text-sm">markdown</span>
+                </label>
+              </div>
+            );
+          }}
+        />
+        <ErrorMessage>{responseFormatsError}</ErrorMessage>
+      </div>
+
+      <div className="grid gap-2">
+        <Label htmlFor="social.config.keywordFilter.keywords">Keywords</Label>
+        <Controller
+          name="social.config.keywordFilter.keywords"
+          control={control}
+          render={({ field }) => (
+            <Textarea
+              id="social.config.keywordFilter.keywords"
+              rows={3}
+              placeholder="关键词，使用逗号或换行分隔"
+              value={
+                Array.isArray(field.value)
+                  ? field.value.join("\n")
+                  : typeof field.value === "string"
+                    ? field.value
+                    : ""
+              }
+              onChange={(e) => field.onChange(e.target.value)}
+            />
+          )}
+        />
+        <ErrorMessage>{keywordFilterError}</ErrorMessage>
+      </div>
 
       <div className="grid gap-4 md:grid-cols-3">
         <div className="grid gap-2">
@@ -845,73 +1061,6 @@ export const SocialMediaFields = ({
             })}
           />
         </div>
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-2">
-        <div className="grid gap-2">
-          <Label htmlFor="social.config.agentBrowser.recordSchema.format">
-            Record Schema Format
-          </Label>
-          <Controller
-            name="social.config.agentBrowser.recordSchema.format"
-            control={control}
-            render={({ field }) => (
-              <ControlledSelect
-                value={(field.value as string) || "jsonl"}
-                onValueChange={field.onChange}
-                placeholder="Select format"
-              >
-                <SelectItem value="jsonl">jsonl</SelectItem>
-                <SelectItem value="tagged">tagged</SelectItem>
-                <SelectItem value="structured">structured</SelectItem>
-                <SelectItem value="auto">auto</SelectItem>
-              </ControlledSelect>
-            )}
-          />
-        </div>
-        <div className="grid gap-2">
-          <Label htmlFor="social.config.agentBrowser.captureFilter.keys">
-            Capture Filter Keys
-          </Label>
-          <Input
-            id="social.config.agentBrowser.captureFilter.keys"
-            placeholder="messages_text"
-            {...register("social.config.agentBrowser.captureFilter.keys")}
-          />
-        </div>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-5">
-        <Controller
-          name="social.config.agentBrowser.captureFilter.perLine"
-          control={control}
-          render={({ field }) => (
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={Boolean(field.value)}
-                onChange={(e) => field.onChange(e.target.checked)}
-                className="rounded border-gray-300"
-              />
-              <span className="text-sm">Capture Per Line</span>
-            </label>
-          )}
-        />
-        <Controller
-          name="social.config.agentBrowser.captureFilter.dedupe"
-          control={control}
-          render={({ field }) => (
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={Boolean(field.value)}
-                onChange={(e) => field.onChange(e.target.checked)}
-                className="rounded border-gray-300"
-              />
-              <span className="text-sm">Capture Dedupe</span>
-            </label>
-          )}
-        />
       </div>
     </div>
   );
@@ -1361,6 +1510,8 @@ export const SocialMediaFields = ({
       {socialPlatform && socialPlatform !== "X" && resolvedDriver === "agent-browser" && (
         renderAgentBrowserFields()
       )}
+
+      {socialPlatform && renderGatherOutputAndFilterFields()}
 
       {socialPlatform === "REDDIT" && resolvedDriver !== "agent-browser" && (
         <>

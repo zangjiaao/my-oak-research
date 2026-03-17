@@ -3,7 +3,7 @@ import { z } from "zod";
 import { createHash } from "crypto";
 
 import prisma from "@/lib/prisma";
-import { SourceType, ContentType, CrawlerEngine } from "@/app/generated/prisma";
+import { Prisma, SourceType, ContentType, CrawlerEngine } from "@/app/generated/prisma";
 import {
   SourceWithRelations,
   SocialMediaSource,
@@ -38,6 +38,9 @@ type CleanItem = {
   keywordMatchScore?: number;
   recordId?: string;
   recordType?: string;
+  recordTime?: Date;
+  recordContent?: Record<string, unknown>;
+  schemaVersion?: string;
   recordIndex?: number;
 };
 
@@ -193,7 +196,7 @@ export async function runFocusCollector(runId: string, queryId: string) {
         markdown: item.markdown,
         platform: item.platform,
         type: mapContentType(item.sourceType),
-        time: item.time ?? new Date(),
+        time: item.recordTime ?? item.time ?? new Date(),
         url: item.url,
         meta: {
           queryId,
@@ -204,6 +207,10 @@ export async function runFocusCollector(runId: string, queryId: string) {
           keywordMatchScore: item.keywordMatchScore ?? null,
           recordId: item.recordId ?? null,
           recordType: item.recordType ?? null,
+          recordTime: (item.recordTime ?? item.time ?? new Date()).toISOString(),
+          recordContent:
+            ((item.recordContent ?? { text: item.text, markdown: item.markdown }) as Prisma.InputJsonValue),
+          schemaVersion: item.schemaVersion ?? "content.v1",
           recordIndex: item.recordIndex ?? null,
           keywords: expandedKeywords,
           summaryRelevance: summary.relevance,
@@ -612,33 +619,32 @@ async function fetchSocialSource(
     sourceConfigObj,
     source.social?.platform
   );
-  const authData = resolveGatherAuthData(source, gatherDriver);
   const proxyUrl =
     source.social?.proxy?.url ??
     source.proxy?.url ??
     null;
+  const output = resolveGatherOutput(sourceConfigObj);
   const normalizedSocialConfig = normalizeGatherSocialConfig(
     source,
     sourceConfigObj,
     gatherDriver
   );
   const baseConfig = applyGatherProxyConfig(normalizedSocialConfig, proxyUrl);
-  const existingKeywordFilter = asObject(
-    (baseConfig as Record<string, unknown>).keywordFilter
-  );
-  const hasConfiguredKeywords =
-    Array.isArray(existingKeywordFilter.keywords) &&
-    existingKeywordFilter.keywords.length > 0;
-  const config =
-    keywordFilterTerms.length > 0 && !hasConfiguredKeywords
+  const existingKeywordFilter = resolveGatherKeywordFilter(baseConfig, gatherDriver);
+  const keywordFilterOptions = { ...existingKeywordFilter };
+  delete keywordFilterOptions.keywords;
+  const driverOption = normalizeGatherDriverOption(baseConfig, gatherDriver);
+  const driver =
+    Object.keys(keywordFilterOptions).length > 0
       ? {
-          ...baseConfig,
-          keywordFilter: {
-            ...existingKeywordFilter,
-            keywords: keywordFilterTerms,
-          },
+          name: gatherDriver,
+          option: driverOption,
+          filter: keywordFilterOptions,
         }
-      : baseConfig;
+      : {
+          name: gatherDriver,
+          option: driverOption,
+        };
 
   try {
     const response = await fetch(`${gatherUrl}/v2/fetch`, {
@@ -646,11 +652,10 @@ async function fetchSocialSource(
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         platform: gatherPlatform,
-        config: config,
+        keywords: keywordFilterTerms,
+        driver,
         sourceId: source.id,
-        authData,
-        responseFormats: ["text", "markdown"],
-        driver: gatherDriver,
+        output,
       }),
     });
 
@@ -686,7 +691,13 @@ function resolveGatherDriver(
   const supportedDrivers =
     SOCIAL_PLATFORM_DRIVER_SUPPORT[normalizedPlatform] ??
     (["playwright"] as const);
-  const rawDriver = typeof config.driver === "string" ? config.driver.trim().toLowerCase() : "";
+  const driverConfig = asObject(config.driver);
+  const rawDriver =
+    typeof config.driver === "string"
+      ? config.driver.trim().toLowerCase()
+      : typeof driverConfig.name === "string"
+        ? driverConfig.name.trim().toLowerCase()
+        : "";
   if (
     (rawDriver === "xhttp" || rawDriver === "agent-browser" || rawDriver === "playwright") &&
     supportedDrivers.includes(rawDriver)
@@ -706,19 +717,22 @@ function normalizeGatherSocialConfig(
   config: Record<string, unknown>,
   driver: GatherSocialDriver
 ): Record<string, unknown> {
+  const sanitizedConfig = sanitizeGatherConfig(config);
+  const credentialStateFile = resolveCredentialStateFile(source);
   if (driver === "agent-browser") {
-    return normalizeAgentBrowserGatherConfig(source, config);
+    return normalizeAgentBrowserGatherConfig(
+      source,
+      sanitizedConfig,
+      credentialStateFile
+    );
   }
 
   const platform = source.social?.platform;
   if ((platform || "").toUpperCase() !== "X" || driver !== "playwright") {
-    return {
-      ...config,
-      driver,
-    };
+    return sanitizedConfig;
   }
 
-  const playwright = asObject(config.playwright);
+  const playwright = asObject(sanitizedConfig.playwright);
   const args = asObject(playwright.args);
   const authKey =
     resolveSourceCredentialId(source, playwright) ||
@@ -753,6 +767,8 @@ function normalizeGatherSocialConfig(
 
   if (typeof playwright.stateFile === "string" && playwright.stateFile.trim()) {
     normalizedPlaywright.stateFile = playwright.stateFile;
+  } else if (credentialStateFile) {
+    normalizedPlaywright.stateFile = credentialStateFile;
   }
   if (typeof playwright.targetUrl === "string" && playwright.targetUrl.trim()) {
     normalizedPlaywright.targetUrl = playwright.targetUrl.trim();
@@ -763,16 +779,27 @@ function normalizeGatherSocialConfig(
 
 function normalizeAgentBrowserGatherConfig(
   source: SocialMediaSource,
-  config: Record<string, unknown>
+  config: Record<string, unknown>,
+  credentialStateFile: string | null
 ): Record<string, unknown> {
   const topLevelKeywordFilter = asObject(config.keywordFilter);
+  const topLevelFilters = asObject(config.filters);
+  const topLevelFiltersKeyword = asObject(topLevelFilters.keyword);
+  const rawDriverOptions = asObject(config.driverOptions);
   const rawAgentBrowser = asObject(config.agentBrowser);
 
   let agentBrowserOptions = rawAgentBrowser;
   let wrappedKeywordFilter: Record<string, unknown> = {};
 
-  const wrappedConfig = asObject(rawAgentBrowser.config);
-  if (Object.keys(wrappedConfig).length > 0) {
+  const wrappedConfig = asObject(rawDriverOptions.config);
+  if (Object.keys(rawDriverOptions).length > 0) {
+    agentBrowserOptions = rawDriverOptions;
+    const nestedFilters = asObject(rawDriverOptions.filters);
+    const nestedKeywordFilter = asObject(nestedFilters.keyword);
+    if (Object.keys(nestedKeywordFilter).length > 0) {
+      wrappedKeywordFilter = nestedKeywordFilter;
+    }
+  } else if (Object.keys(wrappedConfig).length > 0) {
     const nestedAgentBrowser = asObject(wrappedConfig.agentBrowser);
     if (Object.keys(nestedAgentBrowser).length > 0) {
       agentBrowserOptions = nestedAgentBrowser;
@@ -782,36 +809,174 @@ function normalizeAgentBrowserGatherConfig(
       wrappedKeywordFilter = nestedKeywordFilter;
     }
   } else {
-    const nestedAgentBrowser = asObject(rawAgentBrowser.agentBrowser);
-    if (Object.keys(nestedAgentBrowser).length > 0) {
-      agentBrowserOptions = nestedAgentBrowser;
-    }
-    const directKeywordFilter = asObject(rawAgentBrowser.keywordFilter);
-    if (Object.keys(directKeywordFilter).length > 0) {
-      wrappedKeywordFilter = directKeywordFilter;
+    const wrappedConfig = asObject(rawAgentBrowser.config);
+    if (Object.keys(wrappedConfig).length > 0) {
+      const nestedAgentBrowser = asObject(wrappedConfig.agentBrowser);
+      if (Object.keys(nestedAgentBrowser).length > 0) {
+        agentBrowserOptions = nestedAgentBrowser;
+      }
+      const nestedKeywordFilter = asObject(wrappedConfig.keywordFilter);
+      if (Object.keys(nestedKeywordFilter).length > 0) {
+        wrappedKeywordFilter = nestedKeywordFilter;
+      }
+    } else {
+      const nestedAgentBrowser = asObject(rawAgentBrowser.agentBrowser);
+      if (Object.keys(nestedAgentBrowser).length > 0) {
+        agentBrowserOptions = nestedAgentBrowser;
+      }
+      const directKeywordFilter = asObject(rawAgentBrowser.keywordFilter);
+      if (Object.keys(directKeywordFilter).length > 0) {
+        wrappedKeywordFilter = directKeywordFilter;
+      }
     }
   }
 
   const keywordFilter =
     Object.keys(topLevelKeywordFilter).length > 0
       ? topLevelKeywordFilter
-      : wrappedKeywordFilter;
+      : Object.keys(topLevelFiltersKeyword).length > 0
+        ? topLevelFiltersKeyword
+        : wrappedKeywordFilter;
 
   const ownerId = resolveAgentBrowserOwnerId(source, agentBrowserOptions);
-  const sessionKey = resolveAgentBrowserSessionKey(source, agentBrowserOptions);
-  const normalizedAgentBrowser = {
+  const normalizedAgentBrowser: Record<string, unknown> = {
     ...agentBrowserOptions,
     ownerId,
-    sessionKey,
+    closeOnComplete: false,
   };
+  if (
+    typeof normalizedAgentBrowser.sessionKey === "string" &&
+    normalizedAgentBrowser.sessionKey.trim() === source.id
+  ) {
+    delete normalizedAgentBrowser.sessionKey;
+  }
+  if (
+    typeof normalizedAgentBrowser.session_key === "string" &&
+    normalizedAgentBrowser.session_key.trim() === source.id
+  ) {
+    delete normalizedAgentBrowser.session_key;
+  }
+  const captureFilter = asObject(normalizedAgentBrowser.captureFilter);
+  const captureKeys = normalizeStringArray(captureFilter.keys);
+  if (captureKeys.length > 0) {
+    normalizedAgentBrowser.captureFilter = {
+      ...captureFilter,
+      keys: captureKeys,
+    };
+  }
+  if (
+    typeof normalizedAgentBrowser.stateFile !== "string" ||
+    !normalizedAgentBrowser.stateFile.trim()
+  ) {
+    if (credentialStateFile) {
+      normalizedAgentBrowser.stateFile = credentialStateFile;
+    }
+  }
+  const auth: Record<string, unknown> = {};
+  if (
+    typeof normalizedAgentBrowser.stateFile === "string" &&
+    normalizedAgentBrowser.stateFile.trim()
+  ) {
+    auth.stateFile = normalizedAgentBrowser.stateFile.trim();
+  }
+
+  const filters: Record<string, unknown> = {};
+  if (Object.keys(captureFilter).length > 0) {
+    const normalizedCapture = { ...captureFilter };
+    if (typeof normalizedCapture.minSegmentChars === "number" && normalizedCapture.minChars == null) {
+      normalizedCapture.minChars = normalizedCapture.minSegmentChars;
+      delete normalizedCapture.minSegmentChars;
+    }
+    filters.capture = normalizedCapture;
+  }
+  if (Object.keys(keywordFilter).length > 0) {
+    const normalizedKeywordFilter = { ...keywordFilter };
+    if (
+      typeof normalizedKeywordFilter.minSegmentChars === "number" &&
+      normalizedKeywordFilter.minChars == null
+    ) {
+      normalizedKeywordFilter.minChars = normalizedKeywordFilter.minSegmentChars;
+      delete normalizedKeywordFilter.minSegmentChars;
+    }
+    filters.keyword = normalizedKeywordFilter;
+  }
+
+  delete normalizedAgentBrowser.captureFilter;
+  delete normalizedAgentBrowser.keywordFilter;
 
   return {
-    driver: "agent-browser",
-    agentBrowser: normalizedAgentBrowser,
-    ...(Object.keys(keywordFilter).length > 0
-      ? { keywordFilter }
-      : {}),
+    ...normalizedAgentBrowser,
+    ...(Object.keys(auth).length > 0 ? { auth } : {}),
+    ...(Object.keys(filters).length > 0 ? { filters } : {}),
   };
+}
+
+function resolveCredentialStateFile(source: SocialMediaSource): string | null {
+  const candidates = [source.social?.credential?.data, source.credential?.data];
+  for (const candidate of candidates) {
+    if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) {
+      continue;
+    }
+    const stateFile = (candidate as Record<string, unknown>).stateFile;
+    if (typeof stateFile === "string" && stateFile.trim()) {
+      return stateFile.trim();
+    }
+  }
+  return null;
+}
+
+function sanitizeGatherConfig(
+  config: Record<string, unknown>
+): Record<string, unknown> {
+  const sanitized = { ...config };
+  delete sanitized.driver;
+  delete sanitized.responseFormats;
+  delete sanitized.output;
+  delete sanitized.driverOptions;
+  return sanitized;
+}
+
+function resolveGatherOutput(
+  config: Record<string, unknown>
+): { field: string[]; type?: string } {
+  const configuredOutput = asObject(config.output);
+  const outputType =
+    typeof configuredOutput.type === "string" && configuredOutput.type.trim()
+      ? configuredOutput.type.trim()
+      : undefined;
+  const rawFields = configuredOutput.fields ?? configuredOutput.field;
+  if (Array.isArray(rawFields)) {
+    const normalized = Array.from(
+      new Set(
+        rawFields
+          .filter((value): value is string => typeof value === "string")
+          .map((value) => value.trim())
+          .filter(Boolean)
+      )
+    );
+    if (normalized.length > 0) {
+      return outputType ? { field: normalized, type: outputType } : { field: normalized };
+    }
+  }
+
+  const rawFormats =
+    configuredOutput.formats ??
+    configuredOutput.responseFormats ??
+    config.responseFormats;
+  if (Array.isArray(rawFormats)) {
+    const mapped = Array.from(
+      new Set(
+        rawFormats
+          .filter((value): value is string => typeof value === "string")
+          .map((value) => value.trim().toLowerCase())
+          .filter((value): value is "text" | "markdown" => value === "text" || value === "markdown")
+      )
+    );
+    if (mapped.length > 0) {
+      return outputType ? { field: mapped, type: outputType } : { field: mapped };
+    }
+  }
+  return outputType ? { field: ["text", "markdown", "url"], type: outputType } : { field: ["text", "markdown", "url"] };
 }
 
 function resolveAgentBrowserOwnerId(
@@ -832,21 +997,31 @@ function resolveAgentBrowserOwnerId(
   return `source:${source.id}`;
 }
 
-function resolveAgentBrowserSessionKey(
-  source: SocialMediaSource,
-  options: Record<string, unknown>
-): string {
-  const candidates = [
-    options.sessionKey,
-    options.session_key,
-  ];
-  for (const value of candidates) {
-    if (typeof value === "string" && value.trim()) {
-      return value.trim();
-    }
+function resolveGatherKeywordFilter(
+  driverOptions: Record<string, unknown>,
+  driver: GatherSocialDriver
+): Record<string, unknown> {
+  if (driver !== "agent-browser") {
+    return asObject(driverOptions.keywordFilter);
   }
-  const platform = (source.social?.platform || "social").toLowerCase();
-  return `${platform}:${source.id}:agent-browser`;
+  const filters = asObject(driverOptions.filters);
+  return asObject(filters.keyword);
+}
+
+function normalizeGatherDriverOption(
+  config: Record<string, unknown>,
+  driver: GatherSocialDriver
+): Record<string, unknown> {
+  if (driver !== "playwright") {
+    return config;
+  }
+  const playwright = asObject(config.playwright);
+  const rest = { ...config };
+  delete rest.playwright;
+  return {
+    ...playwright,
+    ...rest,
+  };
 }
 
 function applyGatherProxyConfig(
@@ -874,6 +1049,29 @@ function asObject(value: unknown): Record<string, unknown> {
   return {};
 }
 
+function normalizeStringArray(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return Array.from(
+      new Set(
+        value
+          .map((item) => (typeof item === "string" ? item.trim() : ""))
+          .filter(Boolean)
+      )
+    );
+  }
+  if (typeof value === "string") {
+    return Array.from(
+      new Set(
+        value
+          .split(/[,\n\r，、;；\t]+/g)
+          .map((item) => item.trim())
+          .filter(Boolean)
+      )
+    );
+  }
+  return [];
+}
+
 function resolveSourceCredentialId(
   source: SocialMediaSource,
   playwrightConfig: Record<string, unknown>
@@ -892,24 +1090,6 @@ function resolveSourceCredentialId(
   return null;
 }
 
-function resolveGatherAuthData(
-  source: SocialMediaSource,
-  driver: GatherSocialDriver
-): Record<string, unknown> | null {
-  if (driver === "xhttp") {
-    return null;
-  }
-  const socialCredential = source.social?.credential?.data;
-  if (socialCredential && typeof socialCredential === "object" && !Array.isArray(socialCredential)) {
-    return socialCredential as Record<string, unknown>;
-  }
-  const sourceCredential = source.credential?.data;
-  if (sourceCredential && typeof sourceCredential === "object" && !Array.isArray(sourceCredential)) {
-    return sourceCredential as Record<string, unknown>;
-  }
-  return null;
-}
-
 function normalizeGatherItems(payload: unknown, source: SocialMediaSource): CleanItem[] {
   if (!Array.isArray(payload)) {
     return [];
@@ -918,22 +1098,36 @@ function normalizeGatherItems(payload: unknown, source: SocialMediaSource): Clea
   for (const item of payload) {
     if (!item || typeof item !== "object") continue;
     const row = item as Record<string, unknown>;
+    const recordContent = asObject(row.recordContent);
     const text =
-      typeof row.text === "string"
-        ? row.text
-        : typeof row.markdown === "string"
-          ? row.markdown
-          : "";
+      typeof recordContent.text === "string"
+        ? recordContent.text
+        : typeof row.text === "string"
+          ? row.text
+          : typeof row.markdown === "string"
+            ? row.markdown
+            : "";
     if (!text) continue;
 
     const markdown =
-      typeof row.markdown === "string" && row.markdown.trim()
-        ? row.markdown
+      typeof recordContent.markdown === "string" && recordContent.markdown.trim()
+        ? recordContent.markdown
+        : typeof row.markdown === "string" && row.markdown.trim()
+          ? row.markdown
         : text;
+    const recordTimeRaw = row.recordTime ?? row.time;
     const parsedTime =
-      typeof row.time === "string" || row.time instanceof Date
-        ? new Date(row.time)
+      typeof recordTimeRaw === "string" || recordTimeRaw instanceof Date
+        ? new Date(recordTimeRaw)
         : null;
+    const recordId =
+      typeof row.recordId === "string" && row.recordId.trim()
+        ? row.recordId.trim()
+        : undefined;
+    const recordType =
+      typeof row.recordType === "string" && row.recordType.trim()
+        ? row.recordType.trim()
+        : undefined;
 
     normalized.push({
       title: typeof row.title === "string" ? row.title : undefined,
@@ -958,8 +1152,16 @@ function normalizeGatherItems(payload: unknown, source: SocialMediaSource): Clea
         typeof row.keywordMatchScore === "number"
           ? row.keywordMatchScore
           : undefined,
-      recordId: typeof row.recordId === "string" ? row.recordId : undefined,
-      recordType: typeof row.recordType === "string" ? row.recordType : undefined,
+      recordId,
+      recordType,
+      recordTime:
+        parsedTime && !Number.isNaN(parsedTime.getTime()) ? parsedTime : new Date(),
+      recordContent: {
+        ...recordContent,
+        text,
+        markdown,
+      },
+      schemaVersion: typeof row.schemaVersion === "string" ? row.schemaVersion : undefined,
       recordIndex: typeof row.recordIndex === "number" ? row.recordIndex : undefined,
     });
   }
