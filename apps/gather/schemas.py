@@ -1,5 +1,5 @@
 from datetime import UTC, datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field, model_validator
 
@@ -11,12 +11,13 @@ class FetchRequest(BaseModel):
     auth_data: Optional[Dict[str, Any]] = None
     keywords: List[str] = Field(default_factory=list)
     output_fields: Optional[List[str]] = None
+    output_field_map: Optional[Dict[str, str]] = None
     output_record_type: Optional[str] = None
 
 
 class FetchV2Output(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    field: List[str]
+    field: Union[List[str], Dict[str, str]]
     type: Optional[str] = None
 
 

@@ -862,6 +862,11 @@ def _to_clean_item_from_eval_value(value: Any, request: FetchRequest, target_url
         elif markdown is None:
             author = value.get("author")
             markdown = f"@{author}: {text}" if isinstance(author, str) and author else str(text)
+        record_content = dict(value)
+        record_content["text"] = str(text)
+        record_content["markdown"] = str(markdown)
+        if value.get("url") or target_url:
+            record_content["url"] = value.get("url") or target_url
         return CleanItem(
             title=value.get("title") or value.get("name"),
             text=str(text),
@@ -875,11 +880,7 @@ def _to_clean_item_from_eval_value(value: Any, request: FetchRequest, target_url
             recordId=str(value.get("recordId") or value.get("id") or f"{request.source_id}:{index}"),
             recordType=str(value.get("recordType") or value.get("type") or "eval-js"),
             recordIndex=value.get("recordIndex") if isinstance(value.get("recordIndex"), int) else index,
-            recordContent={
-                "text": str(text),
-                "markdown": str(markdown),
-                "url": value.get("url") or target_url,
-            },
+            recordContent=record_content,
         )
 
     text_value = str(value)
@@ -913,6 +914,14 @@ def _normalize_playwright_eval_result(result: Any, request: FetchRequest, target
         for key in ("tweets", "posts", "notes", "items", "results", "data"):
             nested = candidate.get(key)
             if isinstance(nested, list):
+                if request.output_field_map:
+                    mapped_sources = {
+                        source_path.split(".", 1)[0]
+                        for source_path in request.output_field_map.values()
+                        if isinstance(source_path, str) and source_path.strip()
+                    }
+                    if key in mapped_sources:
+                        break
                 candidate = nested
                 break
     if isinstance(candidate, list):
@@ -1198,14 +1207,38 @@ def _write_nested_field(payload: dict[str, Any], path: list[str], value: Any) ->
     current[path[-1]] = value
 
 
-def _apply_output_fields(items: list[CleanItem], output_fields: Optional[List[str]]) -> list[CleanItem]:
-    if not output_fields:
+def _apply_output_fields(
+    items: list[CleanItem],
+    output_fields: Optional[List[str]],
+    output_field_map: Optional[dict[str, str]],
+) -> list[CleanItem]:
+    if not output_fields and not output_field_map:
         return items
 
     for item in items:
         source = item.recordContent if isinstance(item.recordContent, dict) else {}
+        if output_field_map:
+            filtered_map: dict[str, Any] = {}
+            for target_field, source_field in output_field_map.items():
+                if not isinstance(target_field, str) or not target_field.strip():
+                    continue
+                if not isinstance(source_field, str) or not source_field.strip():
+                    continue
+                source_path = [segment for segment in source_field.split(".") if segment]
+                if not source_path:
+                    continue
+                value = _read_nested_field(source, source_path)
+                if value is _MISSING:
+                    continue
+                target_path = [segment for segment in target_field.strip().split(".") if segment]
+                if not target_path:
+                    continue
+                _write_nested_field(filtered_map, target_path, value)
+            item.recordContent = filtered_map
+            continue
+
         filtered: dict[str, Any] = {}
-        for raw_field in output_fields:
+        for raw_field in output_fields or []:
             if not isinstance(raw_field, str):
                 continue
             field = raw_field.strip()
@@ -1274,8 +1307,18 @@ def _normalize_v2_fetch_request(request: FetchV2Request) -> FetchRequest:
 
     output = request.output.model_dump()
     output_fields: list[str] = []
+    output_field_map: dict[str, str] = {}
     raw_fields = output.get("field")
-    if isinstance(raw_fields, list):
+    if isinstance(raw_fields, dict):
+        output_field_map = {
+            key.strip(): value.strip()
+            for key, value in raw_fields.items()
+            if isinstance(key, str)
+            and key.strip()
+            and isinstance(value, str)
+            and value.strip()
+        }
+    elif isinstance(raw_fields, list):
         output_fields = [value for value in raw_fields if isinstance(value, str) and value.strip()]
     output_record_type = output.get("type")
     if not isinstance(output_record_type, str) or not output_record_type.strip():
@@ -1309,6 +1352,7 @@ def _normalize_v2_fetch_request(request: FetchV2Request) -> FetchRequest:
         source_id=request.source_id,
         keywords=request.keywords,
         output_fields=output_fields or None,
+        output_field_map=output_field_map or None,
         output_record_type=output_record_type,
     )
 
@@ -1454,7 +1498,7 @@ async def fetch_data_v2(payload: Dict[str, Any]):
         if request.driver:
             for item in results:
                 item.driver = request.driver
-        response_payload = _apply_output_fields(results, v1_request.output_fields)
+        response_payload = _apply_output_fields(results, v1_request.output_fields, v1_request.output_field_map)
         _log_api_io(
             "/v2/fetch",
             payload,
