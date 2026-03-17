@@ -90,19 +90,6 @@ enum SearchEngineKind {
   CUSTOM
 }
 
-enum SocialPlatform {
-  X
-  TELEGRAM
-  REDDIT
-  XIAOHONGSHU
-  DOUYIN
-  TIKTOK
-  WEIBO
-  WHATSAPP
-  INSTAGRAM
-  FACEBOOK
-}
-
 model Proxy {
   id        String    @id @default(cuid())
   name      String
@@ -287,7 +274,7 @@ model SocialMediaSourceConfig {
   sourceId String @id
   source   Source @relation(fields: [sourceId], references: [id])
 
-  platform SocialPlatform
+  platform String
 
   // 为减少多列空值，这里用 Json 承载平台特定字段：
   // X: { user?: "...", listId?: "...", query?: "..." }

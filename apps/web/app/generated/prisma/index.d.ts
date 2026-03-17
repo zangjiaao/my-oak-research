@@ -213,22 +213,6 @@ export const SearchEngineKind: {
 export type SearchEngineKind = (typeof SearchEngineKind)[keyof typeof SearchEngineKind]
 
 
-export const SocialPlatform: {
-  X: 'X',
-  TELEGRAM: 'TELEGRAM',
-  REDDIT: 'REDDIT',
-  XIAOHONGSHU: 'XIAOHONGSHU',
-  DOUYIN: 'DOUYIN',
-  TIKTOK: 'TIKTOK',
-  WEIBO: 'WEIBO',
-  WHATSAPP: 'WHATSAPP',
-  INSTAGRAM: 'INSTAGRAM',
-  FACEBOOK: 'FACEBOOK'
-};
-
-export type SocialPlatform = (typeof SocialPlatform)[keyof typeof SocialPlatform]
-
-
 export const QueryFrequency: {
   MANUAL: 'MANUAL',
   HOURLY: 'HOURLY',
@@ -302,10 +286,6 @@ export const ProxyType: typeof $Enums.ProxyType
 export type SearchEngineKind = $Enums.SearchEngineKind
 
 export const SearchEngineKind: typeof $Enums.SearchEngineKind
-
-export type SocialPlatform = $Enums.SocialPlatform
-
-export const SocialPlatform: typeof $Enums.SocialPlatform
 
 export type QueryFrequency = $Enums.QueryFrequency
 
@@ -16714,7 +16694,7 @@ export namespace Prisma {
 
   export type SocialMediaSourceConfigMinAggregateOutputType = {
     sourceId: string | null
-    platform: $Enums.SocialPlatform | null
+    platform: string | null
     credentialId: string | null
     proxyId: string | null
     createdAt: Date | null
@@ -16723,7 +16703,7 @@ export namespace Prisma {
 
   export type SocialMediaSourceConfigMaxAggregateOutputType = {
     sourceId: string | null
-    platform: $Enums.SocialPlatform | null
+    platform: string | null
     credentialId: string | null
     proxyId: string | null
     createdAt: Date | null
@@ -16845,7 +16825,7 @@ export namespace Prisma {
 
   export type SocialMediaSourceConfigGroupByOutputType = {
     sourceId: string
-    platform: $Enums.SocialPlatform
+    platform: string
     config: JsonValue
     credentialId: string | null
     proxyId: string | null
@@ -16945,7 +16925,7 @@ export namespace Prisma {
     }
     scalars: $Extensions.GetPayloadResult<{
       sourceId: string
-      platform: $Enums.SocialPlatform
+      platform: string
       config: Prisma.JsonValue
       credentialId: string | null
       proxyId: string | null
@@ -17378,7 +17358,7 @@ export namespace Prisma {
    */
   interface SocialMediaSourceConfigFieldRefs {
     readonly sourceId: FieldRef<"SocialMediaSourceConfig", 'String'>
-    readonly platform: FieldRef<"SocialMediaSourceConfig", 'SocialPlatform'>
+    readonly platform: FieldRef<"SocialMediaSourceConfig", 'String'>
     readonly config: FieldRef<"SocialMediaSourceConfig", 'Json'>
     readonly credentialId: FieldRef<"SocialMediaSourceConfig", 'String'>
     readonly proxyId: FieldRef<"SocialMediaSourceConfig", 'String'>
@@ -35243,20 +35223,6 @@ export namespace Prisma {
 
 
   /**
-   * Reference to a field of type 'SocialPlatform'
-   */
-  export type EnumSocialPlatformFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'SocialPlatform'>
-    
-
-
-  /**
-   * Reference to a field of type 'SocialPlatform[]'
-   */
-  export type ListEnumSocialPlatformFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'SocialPlatform[]'>
-    
-
-
-  /**
    * Reference to a field of type 'QueryFrequency'
    */
   export type EnumQueryFrequencyFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'QueryFrequency'>
@@ -36260,7 +36226,7 @@ export namespace Prisma {
     OR?: SocialMediaSourceConfigWhereInput[]
     NOT?: SocialMediaSourceConfigWhereInput | SocialMediaSourceConfigWhereInput[]
     sourceId?: StringFilter<"SocialMediaSourceConfig"> | string
-    platform?: EnumSocialPlatformFilter<"SocialMediaSourceConfig"> | $Enums.SocialPlatform
+    platform?: StringFilter<"SocialMediaSourceConfig"> | string
     config?: JsonFilter<"SocialMediaSourceConfig">
     credentialId?: StringNullableFilter<"SocialMediaSourceConfig"> | string | null
     proxyId?: StringNullableFilter<"SocialMediaSourceConfig"> | string | null
@@ -36289,7 +36255,7 @@ export namespace Prisma {
     AND?: SocialMediaSourceConfigWhereInput | SocialMediaSourceConfigWhereInput[]
     OR?: SocialMediaSourceConfigWhereInput[]
     NOT?: SocialMediaSourceConfigWhereInput | SocialMediaSourceConfigWhereInput[]
-    platform?: EnumSocialPlatformFilter<"SocialMediaSourceConfig"> | $Enums.SocialPlatform
+    platform?: StringFilter<"SocialMediaSourceConfig"> | string
     config?: JsonFilter<"SocialMediaSourceConfig">
     credentialId?: StringNullableFilter<"SocialMediaSourceConfig"> | string | null
     proxyId?: StringNullableFilter<"SocialMediaSourceConfig"> | string | null
@@ -36318,7 +36284,7 @@ export namespace Prisma {
     OR?: SocialMediaSourceConfigScalarWhereWithAggregatesInput[]
     NOT?: SocialMediaSourceConfigScalarWhereWithAggregatesInput | SocialMediaSourceConfigScalarWhereWithAggregatesInput[]
     sourceId?: StringWithAggregatesFilter<"SocialMediaSourceConfig"> | string
-    platform?: EnumSocialPlatformWithAggregatesFilter<"SocialMediaSourceConfig"> | $Enums.SocialPlatform
+    platform?: StringWithAggregatesFilter<"SocialMediaSourceConfig"> | string
     config?: JsonWithAggregatesFilter<"SocialMediaSourceConfig">
     credentialId?: StringNullableWithAggregatesFilter<"SocialMediaSourceConfig"> | string | null
     proxyId?: StringNullableWithAggregatesFilter<"SocialMediaSourceConfig"> | string | null
@@ -38396,7 +38362,7 @@ export namespace Prisma {
   }
 
   export type SocialMediaSourceConfigCreateInput = {
-    platform: $Enums.SocialPlatform
+    platform: string
     config: JsonNullValueInput | InputJsonValue
     createdAt?: Date | string
     updatedAt?: Date | string
@@ -38407,7 +38373,7 @@ export namespace Prisma {
 
   export type SocialMediaSourceConfigUncheckedCreateInput = {
     sourceId: string
-    platform: $Enums.SocialPlatform
+    platform: string
     config: JsonNullValueInput | InputJsonValue
     credentialId?: string | null
     proxyId?: string | null
@@ -38416,7 +38382,7 @@ export namespace Prisma {
   }
 
   export type SocialMediaSourceConfigUpdateInput = {
-    platform?: EnumSocialPlatformFieldUpdateOperationsInput | $Enums.SocialPlatform
+    platform?: StringFieldUpdateOperationsInput | string
     config?: JsonNullValueInput | InputJsonValue
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -38427,7 +38393,7 @@ export namespace Prisma {
 
   export type SocialMediaSourceConfigUncheckedUpdateInput = {
     sourceId?: StringFieldUpdateOperationsInput | string
-    platform?: EnumSocialPlatformFieldUpdateOperationsInput | $Enums.SocialPlatform
+    platform?: StringFieldUpdateOperationsInput | string
     config?: JsonNullValueInput | InputJsonValue
     credentialId?: NullableStringFieldUpdateOperationsInput | string | null
     proxyId?: NullableStringFieldUpdateOperationsInput | string | null
@@ -38437,7 +38403,7 @@ export namespace Prisma {
 
   export type SocialMediaSourceConfigCreateManyInput = {
     sourceId: string
-    platform: $Enums.SocialPlatform
+    platform: string
     config: JsonNullValueInput | InputJsonValue
     credentialId?: string | null
     proxyId?: string | null
@@ -38446,7 +38412,7 @@ export namespace Prisma {
   }
 
   export type SocialMediaSourceConfigUpdateManyMutationInput = {
-    platform?: EnumSocialPlatformFieldUpdateOperationsInput | $Enums.SocialPlatform
+    platform?: StringFieldUpdateOperationsInput | string
     config?: JsonNullValueInput | InputJsonValue
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -38454,7 +38420,7 @@ export namespace Prisma {
 
   export type SocialMediaSourceConfigUncheckedUpdateManyInput = {
     sourceId?: StringFieldUpdateOperationsInput | string
-    platform?: EnumSocialPlatformFieldUpdateOperationsInput | $Enums.SocialPlatform
+    platform?: StringFieldUpdateOperationsInput | string
     config?: JsonNullValueInput | InputJsonValue
     credentialId?: NullableStringFieldUpdateOperationsInput | string | null
     proxyId?: NullableStringFieldUpdateOperationsInput | string | null
@@ -40544,13 +40510,6 @@ export namespace Prisma {
     _max?: NestedEnumSearchEngineKindFilter<$PrismaModel>
   }
 
-  export type EnumSocialPlatformFilter<$PrismaModel = never> = {
-    equals?: $Enums.SocialPlatform | EnumSocialPlatformFieldRefInput<$PrismaModel>
-    in?: $Enums.SocialPlatform[] | ListEnumSocialPlatformFieldRefInput<$PrismaModel>
-    notIn?: $Enums.SocialPlatform[] | ListEnumSocialPlatformFieldRefInput<$PrismaModel>
-    not?: NestedEnumSocialPlatformFilter<$PrismaModel> | $Enums.SocialPlatform
-  }
-
   export type SocialMediaSourceConfigCountOrderByAggregateInput = {
     sourceId?: SortOrder
     platform?: SortOrder
@@ -40577,16 +40536,6 @@ export namespace Prisma {
     proxyId?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
-  }
-
-  export type EnumSocialPlatformWithAggregatesFilter<$PrismaModel = never> = {
-    equals?: $Enums.SocialPlatform | EnumSocialPlatformFieldRefInput<$PrismaModel>
-    in?: $Enums.SocialPlatform[] | ListEnumSocialPlatformFieldRefInput<$PrismaModel>
-    notIn?: $Enums.SocialPlatform[] | ListEnumSocialPlatformFieldRefInput<$PrismaModel>
-    not?: NestedEnumSocialPlatformWithAggregatesFilter<$PrismaModel> | $Enums.SocialPlatform
-    _count?: NestedIntFilter<$PrismaModel>
-    _min?: NestedEnumSocialPlatformFilter<$PrismaModel>
-    _max?: NestedEnumSocialPlatformFilter<$PrismaModel>
   }
 
   export type EnumQueryFrequencyFilter<$PrismaModel = never> = {
@@ -42248,10 +42197,6 @@ export namespace Prisma {
     connect?: ProxyWhereUniqueInput
   }
 
-  export type EnumSocialPlatformFieldUpdateOperationsInput = {
-    set?: $Enums.SocialPlatform
-  }
-
   export type SourceUpdateOneRequiredWithoutSocialNestedInput = {
     create?: XOR<SourceCreateWithoutSocialInput, SourceUncheckedCreateWithoutSocialInput>
     connectOrCreate?: SourceCreateOrConnectWithoutSocialInput
@@ -43424,23 +43369,6 @@ export namespace Prisma {
     _max?: NestedEnumSearchEngineKindFilter<$PrismaModel>
   }
 
-  export type NestedEnumSocialPlatformFilter<$PrismaModel = never> = {
-    equals?: $Enums.SocialPlatform | EnumSocialPlatformFieldRefInput<$PrismaModel>
-    in?: $Enums.SocialPlatform[] | ListEnumSocialPlatformFieldRefInput<$PrismaModel>
-    notIn?: $Enums.SocialPlatform[] | ListEnumSocialPlatformFieldRefInput<$PrismaModel>
-    not?: NestedEnumSocialPlatformFilter<$PrismaModel> | $Enums.SocialPlatform
-  }
-
-  export type NestedEnumSocialPlatformWithAggregatesFilter<$PrismaModel = never> = {
-    equals?: $Enums.SocialPlatform | EnumSocialPlatformFieldRefInput<$PrismaModel>
-    in?: $Enums.SocialPlatform[] | ListEnumSocialPlatformFieldRefInput<$PrismaModel>
-    notIn?: $Enums.SocialPlatform[] | ListEnumSocialPlatformFieldRefInput<$PrismaModel>
-    not?: NestedEnumSocialPlatformWithAggregatesFilter<$PrismaModel> | $Enums.SocialPlatform
-    _count?: NestedIntFilter<$PrismaModel>
-    _min?: NestedEnumSocialPlatformFilter<$PrismaModel>
-    _max?: NestedEnumSocialPlatformFilter<$PrismaModel>
-  }
-
   export type NestedEnumQueryFrequencyFilter<$PrismaModel = never> = {
     equals?: $Enums.QueryFrequency | EnumQueryFrequencyFieldRefInput<$PrismaModel>
     in?: $Enums.QueryFrequency[] | ListEnumQueryFrequencyFieldRefInput<$PrismaModel>
@@ -43876,7 +43804,7 @@ export namespace Prisma {
   }
 
   export type SocialMediaSourceConfigCreateWithoutProxyInput = {
-    platform: $Enums.SocialPlatform
+    platform: string
     config: JsonNullValueInput | InputJsonValue
     createdAt?: Date | string
     updatedAt?: Date | string
@@ -43886,7 +43814,7 @@ export namespace Prisma {
 
   export type SocialMediaSourceConfigUncheckedCreateWithoutProxyInput = {
     sourceId: string
-    platform: $Enums.SocialPlatform
+    platform: string
     config: JsonNullValueInput | InputJsonValue
     credentialId?: string | null
     createdAt?: Date | string
@@ -44021,7 +43949,7 @@ export namespace Prisma {
     OR?: SocialMediaSourceConfigScalarWhereInput[]
     NOT?: SocialMediaSourceConfigScalarWhereInput | SocialMediaSourceConfigScalarWhereInput[]
     sourceId?: StringFilter<"SocialMediaSourceConfig"> | string
-    platform?: EnumSocialPlatformFilter<"SocialMediaSourceConfig"> | $Enums.SocialPlatform
+    platform?: StringFilter<"SocialMediaSourceConfig"> | string
     config?: JsonFilter<"SocialMediaSourceConfig">
     credentialId?: StringNullableFilter<"SocialMediaSourceConfig"> | string | null
     proxyId?: StringNullableFilter<"SocialMediaSourceConfig"> | string | null
@@ -44080,7 +44008,7 @@ export namespace Prisma {
   }
 
   export type SocialMediaSourceConfigCreateWithoutCredentialInput = {
-    platform: $Enums.SocialPlatform
+    platform: string
     config: JsonNullValueInput | InputJsonValue
     createdAt?: Date | string
     updatedAt?: Date | string
@@ -44090,7 +44018,7 @@ export namespace Prisma {
 
   export type SocialMediaSourceConfigUncheckedCreateWithoutCredentialInput = {
     sourceId: string
-    platform: $Enums.SocialPlatform
+    platform: string
     config: JsonNullValueInput | InputJsonValue
     proxyId?: string | null
     createdAt?: Date | string
@@ -44349,7 +44277,7 @@ export namespace Prisma {
   }
 
   export type SocialMediaSourceConfigCreateWithoutSourceInput = {
-    platform: $Enums.SocialPlatform
+    platform: string
     config: JsonNullValueInput | InputJsonValue
     createdAt?: Date | string
     updatedAt?: Date | string
@@ -44358,7 +44286,7 @@ export namespace Prisma {
   }
 
   export type SocialMediaSourceConfigUncheckedCreateWithoutSourceInput = {
-    platform: $Enums.SocialPlatform
+    platform: string
     config: JsonNullValueInput | InputJsonValue
     credentialId?: string | null
     proxyId?: string | null
@@ -44617,7 +44545,7 @@ export namespace Prisma {
   }
 
   export type SocialMediaSourceConfigUpdateWithoutSourceInput = {
-    platform?: EnumSocialPlatformFieldUpdateOperationsInput | $Enums.SocialPlatform
+    platform?: StringFieldUpdateOperationsInput | string
     config?: JsonNullValueInput | InputJsonValue
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -44626,7 +44554,7 @@ export namespace Prisma {
   }
 
   export type SocialMediaSourceConfigUncheckedUpdateWithoutSourceInput = {
-    platform?: EnumSocialPlatformFieldUpdateOperationsInput | $Enums.SocialPlatform
+    platform?: StringFieldUpdateOperationsInput | string
     config?: JsonNullValueInput | InputJsonValue
     credentialId?: NullableStringFieldUpdateOperationsInput | string | null
     proxyId?: NullableStringFieldUpdateOperationsInput | string | null
@@ -47456,7 +47384,7 @@ export namespace Prisma {
 
   export type SocialMediaSourceConfigCreateManyProxyInput = {
     sourceId: string
-    platform: $Enums.SocialPlatform
+    platform: string
     config: JsonNullValueInput | InputJsonValue
     credentialId?: string | null
     createdAt?: Date | string
@@ -47587,7 +47515,7 @@ export namespace Prisma {
   }
 
   export type SocialMediaSourceConfigUpdateWithoutProxyInput = {
-    platform?: EnumSocialPlatformFieldUpdateOperationsInput | $Enums.SocialPlatform
+    platform?: StringFieldUpdateOperationsInput | string
     config?: JsonNullValueInput | InputJsonValue
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -47597,7 +47525,7 @@ export namespace Prisma {
 
   export type SocialMediaSourceConfigUncheckedUpdateWithoutProxyInput = {
     sourceId?: StringFieldUpdateOperationsInput | string
-    platform?: EnumSocialPlatformFieldUpdateOperationsInput | $Enums.SocialPlatform
+    platform?: StringFieldUpdateOperationsInput | string
     config?: JsonNullValueInput | InputJsonValue
     credentialId?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -47606,7 +47534,7 @@ export namespace Prisma {
 
   export type SocialMediaSourceConfigUncheckedUpdateManyWithoutProxyInput = {
     sourceId?: StringFieldUpdateOperationsInput | string
-    platform?: EnumSocialPlatformFieldUpdateOperationsInput | $Enums.SocialPlatform
+    platform?: StringFieldUpdateOperationsInput | string
     config?: JsonNullValueInput | InputJsonValue
     credentialId?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -47629,7 +47557,7 @@ export namespace Prisma {
 
   export type SocialMediaSourceConfigCreateManyCredentialInput = {
     sourceId: string
-    platform: $Enums.SocialPlatform
+    platform: string
     config: JsonNullValueInput | InputJsonValue
     proxyId?: string | null
     createdAt?: Date | string
@@ -47703,7 +47631,7 @@ export namespace Prisma {
   }
 
   export type SocialMediaSourceConfigUpdateWithoutCredentialInput = {
-    platform?: EnumSocialPlatformFieldUpdateOperationsInput | $Enums.SocialPlatform
+    platform?: StringFieldUpdateOperationsInput | string
     config?: JsonNullValueInput | InputJsonValue
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -47713,7 +47641,7 @@ export namespace Prisma {
 
   export type SocialMediaSourceConfigUncheckedUpdateWithoutCredentialInput = {
     sourceId?: StringFieldUpdateOperationsInput | string
-    platform?: EnumSocialPlatformFieldUpdateOperationsInput | $Enums.SocialPlatform
+    platform?: StringFieldUpdateOperationsInput | string
     config?: JsonNullValueInput | InputJsonValue
     proxyId?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -47722,7 +47650,7 @@ export namespace Prisma {
 
   export type SocialMediaSourceConfigUncheckedUpdateManyWithoutCredentialInput = {
     sourceId?: StringFieldUpdateOperationsInput | string
-    platform?: EnumSocialPlatformFieldUpdateOperationsInput | $Enums.SocialPlatform
+    platform?: StringFieldUpdateOperationsInput | string
     config?: JsonNullValueInput | InputJsonValue
     proxyId?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string

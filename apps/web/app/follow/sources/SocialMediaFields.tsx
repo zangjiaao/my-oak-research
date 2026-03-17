@@ -15,7 +15,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { ErrorMessage } from "@/components/business";
 import SelectProxy from "./SelectProxy";
 import { Proxy } from "@/app/generated/prisma";
-import { SocialPlatform } from "@/app/generated/prisma";
 import {
   SocialPlatformEnum,
   SocialMediaSourceCreateSchema,
@@ -325,7 +324,7 @@ export const SocialMediaFields = ({
   setValue,
   sourceId,
 }: SocialMediaFieldsProps) => {
-  const socialPlatform = watch("social.platform") as SocialPlatform | undefined;
+  const socialPlatform = watch("social.platform") as string | undefined;
   const selectedDriver = watch("social.config.driver") as string | undefined;
   const currentCredentialId = watch("social.credentialId") as string | null | undefined;
   const currentRecordFormat = watch(
@@ -375,10 +374,7 @@ export const SocialMediaFields = ({
   const availablePlatforms = useMemo(() => {
     const base = new Set<string>(SocialPlatformEnum.options);
     for (const [platform, stats] of Object.entries(platformPresetStats)) {
-      if (
-        stats.active > 0 &&
-        SocialPlatformEnum.options.includes(platform as SocialPlatform)
-      ) {
+      if (stats.active > 0) {
         base.add(platform);
       }
     }
@@ -1267,7 +1263,8 @@ export const SocialMediaFields = ({
                 <ControlledSelect
                   value={field.value as string}
                   onValueChange={(value) => {
-                    field.onChange(value);
+                    const nextPlatform = value || "X";
+                    field.onChange(nextPlatform);
                     setAuthStatus({ status: "idle" });
                     setSelectedFile(null);
                     setShowUploadForm(false);
@@ -1275,7 +1272,7 @@ export const SocialMediaFields = ({
                       setValue("social.credentialId", null);
                       setValue(
                         "social.config.driver",
-                        getDefaultDriver(value as SocialPlatform)
+                        getDefaultDriver(nextPlatform)
                       );
                       setValue("social.config.playwright.mode", "eval-js");
                       setValue("social.config.playwright.headless", false);

@@ -494,19 +494,6 @@ exports.SearchEngineKind = exports.$Enums.SearchEngineKind = {
   CUSTOM: 'CUSTOM'
 };
 
-exports.SocialPlatform = exports.$Enums.SocialPlatform = {
-  X: 'X',
-  TELEGRAM: 'TELEGRAM',
-  REDDIT: 'REDDIT',
-  XIAOHONGSHU: 'XIAOHONGSHU',
-  DOUYIN: 'DOUYIN',
-  TIKTOK: 'TIKTOK',
-  WEIBO: 'WEIBO',
-  WHATSAPP: 'WHATSAPP',
-  INSTAGRAM: 'INSTAGRAM',
-  FACEBOOK: 'FACEBOOK'
-};
-
 exports.QueryFrequency = exports.$Enums.QueryFrequency = {
   MANUAL: 'MANUAL',
   HOURLY: 'HOURLY',

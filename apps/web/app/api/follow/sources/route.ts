@@ -1,7 +1,7 @@
 import prisma from "@/lib/prisma";
 import { json, badRequest, serverError, conflict } from "@/app/api/_utils/http";
 import { SourceCreateSchema, SourceQuerySchema } from "@/app/api/_utils/zod";
-import { Prisma, SocialPlatform } from "@/app/generated/prisma";
+import { Prisma } from "@/app/generated/prisma";
 import { syncSocialPresetBinding } from "@/lib/source-preset-binding";
 import { z } from "zod";
 
@@ -152,7 +152,7 @@ export async function POST(req: Request) {
           await tx.socialMediaSourceConfig.create({
             data: {
               sourceId: base.id,
-              platform: data.social.platform as SocialPlatform,
+              platform: data.social.platform,
               config: data.social.config,
               credentialId: data.social.credentialId ?? null,
               proxyId: data.social.proxyId ?? null,
