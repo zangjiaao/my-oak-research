@@ -1223,6 +1223,19 @@ def _parse_record_time(value: Any) -> datetime | None:
     return None
 
 
+def _resolve_source_path(source: dict[str, Any], source_path: list[str]) -> list[str]:
+    if not source_path:
+        return source_path
+    if source_path[0] in source:
+        return source_path
+    if source_path[0] == "text":
+        candidate_keys = ("tweets", "items", "posts", "results", "data", "notes")
+        for key in candidate_keys:
+            if isinstance(source.get(key), list):
+                return [key, *source_path[1:]]
+    return source_path
+
+
 def _apply_output_field_map(item: CleanItem, source: dict[str, Any], output_field_map: dict[str, str]) -> list[CleanItem]:
     mappings: list[tuple[list[str], list[str]]] = []
     for target_field, source_field in output_field_map.items():
@@ -1234,7 +1247,7 @@ def _apply_output_field_map(item: CleanItem, source: dict[str, Any], output_fiel
         source_path = [segment for segment in source_field.strip().split(".") if segment]
         if not target_path or not source_path:
             continue
-        mappings.append((target_path, source_path))
+        mappings.append((target_path, _resolve_source_path(source, source_path)))
 
     if not mappings:
         item.recordContent = {}
