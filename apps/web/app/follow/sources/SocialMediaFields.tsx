@@ -25,6 +25,8 @@ import { ControlledSelect } from "@/components/ui/controlled-select";
 import { SelectItem } from "@/components/ui/select";
 import {
   CheckCircle2,
+  Check,
+  ChevronsUpDown,
   XCircle,
   Upload,
   Loader2,
@@ -55,6 +57,19 @@ import {
 } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   getDefaultDriver,
   getSupportedDrivers,
@@ -350,6 +365,7 @@ export const SocialMediaFields = ({
   ]);
   const [bbPresetOptions, setBbPresetOptions] = useState<ScriptOption[]>([]);
   const [loadingBbPresets, setLoadingBbPresets] = useState(false);
+  const [platformPopoverOpen, setPlatformPopoverOpen] = useState(false);
   const [platformPresetStats, setPlatformPresetStats] = useState<
     Record<string, PlatformPresetStats>
   >({});
@@ -1160,12 +1176,31 @@ export const SocialMediaFields = ({
 
   const getPlatformOptionLabel = (platform: string) => {
     const stats = platformPresetStats[platform];
-    const isBbOnly = !SocialPlatformEnum.options.includes(platform as (typeof SocialPlatformEnum.options)[number]);
-    const bbOnlyTag = isBbOnly ? " [bb-site only]" : "";
-    if (!stats) return `${platform}${bbOnlyTag}`;
-    if (stats.active > 0) return `${platform} (bb:${stats.active})${bbOnlyTag}`;
-    if (stats.deprecated > 0 || stats.broken > 0) return `${platform} (bb unavailable)${bbOnlyTag}`;
-    return `${platform}${bbOnlyTag}`;
+    if (!stats) return platform;
+    if (stats.active > 0) return `${platform} (bb:${stats.active})`;
+    if (stats.deprecated > 0 || stats.broken > 0) return `${platform} (bb unavailable)`;
+    return platform;
+  };
+
+  const renderPlatformBadges = (platform: string) => {
+    const stats = platformPresetStats[platform];
+    const isBbOnly = !SocialPlatformEnum.options.includes(
+      platform as (typeof SocialPlatformEnum.options)[number]
+    );
+    return (
+      <div className="flex items-center gap-1">
+        {stats?.active ? (
+          <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">
+            bb:{stats.active}
+          </Badge>
+        ) : null}
+        {isBbOnly ? (
+          <Badge variant="outline" className="h-5 px-1.5 text-[10px]">
+            bb-site only
+          </Badge>
+        ) : null}
+      </div>
+    );
   };
 
   const renderGatherOutputAndFilterFields = () => (
@@ -1252,34 +1287,74 @@ export const SocialMediaFields = ({
               name="social.platform"
               control={control}
               render={({ field }) => (
-                <ControlledSelect
-                  value={field.value as string}
-                  onValueChange={(value) => {
-                    const nextPlatform = value || "X";
-                    field.onChange(nextPlatform);
-                    setAuthStatus({ status: "idle" });
-                    setSelectedFile(null);
-                    setShowUploadForm(false);
-                    if (setValue) {
-                      setValue("social.credentialId", null);
-                      setValue(
-                        "social.config.driver",
-                        getDefaultDriver(nextPlatform)
-                      );
-                      setValue("social.config.playwright.mode", "eval-js");
-                      setValue("social.config.playwright.headless", false);
-                      setValue("social.config.playwright.targetUrl", "");
-                      setValue("social.config.playwright.args", {});
-                    }
-                  }}
-                  placeholder="Select a social media platform"
-                >
-                  {availablePlatforms.map((platform) => (
-                    <SelectItem key={platform} value={platform}>
-                      {getPlatformOptionLabel(platform)}
-                    </SelectItem>
-                  ))}
-                </ControlledSelect>
+                <Popover open={platformPopoverOpen} onOpenChange={setPlatformPopoverOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={platformPopoverOpen}
+                      className="w-full justify-between"
+                    >
+                      {field.value ? (
+                        <div className="flex min-w-0 items-center gap-2">
+                          <span className="truncate">
+                            {getPlatformOptionLabel(field.value as string)}
+                          </span>
+                          {renderPlatformBadges(field.value as string)}
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground">
+                          Select a social media platform
+                        </span>
+                      )}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
+                    <Command>
+                      <CommandInput placeholder="Search platform..." />
+                      <CommandEmpty>No platform found.</CommandEmpty>
+                      <CommandGroup className="max-h-64 overflow-auto">
+                        {availablePlatforms.map((platform) => (
+                          <CommandItem
+                            key={platform}
+                            value={platform}
+                            onSelect={() => {
+                              const nextPlatform = platform || "X";
+                              field.onChange(nextPlatform);
+                              setPlatformPopoverOpen(false);
+                              setAuthStatus({ status: "idle" });
+                              setSelectedFile(null);
+                              setShowUploadForm(false);
+                              if (setValue) {
+                                setValue("social.credentialId", null);
+                                setValue(
+                                  "social.config.driver",
+                                  getDefaultDriver(nextPlatform)
+                                );
+                                setValue("social.config.playwright.mode", "eval-js");
+                                setValue("social.config.playwright.headless", false);
+                                setValue("social.config.playwright.targetUrl", "");
+                                setValue("social.config.playwright.args", {});
+                              }
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                field.value === platform ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            <div className="flex w-full items-center justify-between gap-2">
+                              <span>{getPlatformOptionLabel(platform)}</span>
+                              {renderPlatformBadges(platform)}
+                            </div>
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               )}
             />
             <ErrorMessage>
