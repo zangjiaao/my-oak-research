@@ -928,8 +928,12 @@ function sanitizeGatherConfig(
 
 function resolveGatherOutput(
   config: Record<string, unknown>
-): { field: string[] } {
+): { field: string[]; type?: string } {
   const configuredOutput = asObject(config.output);
+  const outputType =
+    typeof configuredOutput.type === "string" && configuredOutput.type.trim()
+      ? configuredOutput.type.trim()
+      : undefined;
   const rawFields = configuredOutput.fields ?? configuredOutput.field;
   if (Array.isArray(rawFields)) {
     const normalized = Array.from(
@@ -941,7 +945,7 @@ function resolveGatherOutput(
       )
     );
     if (normalized.length > 0) {
-      return { field: normalized };
+      return outputType ? { field: normalized, type: outputType } : { field: normalized };
     }
   }
 
@@ -959,10 +963,10 @@ function resolveGatherOutput(
       )
     );
     if (mapped.length > 0) {
-      return { field: mapped };
+      return outputType ? { field: mapped, type: outputType } : { field: mapped };
     }
   }
-  return { field: ["text", "markdown", "url"] };
+  return outputType ? { field: ["text", "markdown", "url"], type: outputType } : { field: ["text", "markdown", "url"] };
 }
 
 function resolveAgentBrowserOwnerId(

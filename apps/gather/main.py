@@ -1277,6 +1277,11 @@ def _normalize_v2_fetch_request(request: FetchV2Request) -> FetchRequest:
     raw_fields = output.get("field")
     if isinstance(raw_fields, list):
         output_fields = [value for value in raw_fields if isinstance(value, str) and value.strip()]
+    output_record_type = output.get("type")
+    if not isinstance(output_record_type, str) or not output_record_type.strip():
+        output_record_type = None
+    else:
+        output_record_type = output_record_type.strip()
 
     raw_filter = config.pop("filter", None)
     filter_options = raw_filter if isinstance(raw_filter, dict) else {}
@@ -1304,6 +1309,7 @@ def _normalize_v2_fetch_request(request: FetchV2Request) -> FetchRequest:
         source_id=request.source_id,
         keywords=request.keywords,
         output_fields=output_fields or None,
+        output_record_type=output_record_type,
     )
 
 
@@ -1442,6 +1448,9 @@ async def fetch_data_v2(payload: Dict[str, Any]):
         raw_results = await driver_registry.fetch(v1_request, driver_name=request.driver)
         results = _normalize_clean_items(raw_results)
         results = apply_keyword_hard_filter(v1_request, results)
+        if v1_request.output_record_type:
+            for item in results:
+                item.recordType = v1_request.output_record_type
         if request.driver:
             for item in results:
                 item.driver = request.driver

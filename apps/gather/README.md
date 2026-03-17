@@ -147,7 +147,8 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
   "keywords": ["openai"],
   "driver": "playwright",
   "output": {
-    "field": ["text", "meta.image", "url", "comments"]
+    "field": ["text", "meta.image", "url", "comments"],
+    "type": "x.post"
   },
   "driverOptions": {
     "playwright": {
@@ -172,6 +173,8 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 - `["text"]`：只返回 `recordContent.text`
 - `["text", "url"]`：返回 `recordContent.text` + `recordContent.url`
 - `["meta.image"]`：返回嵌套字段 `recordContent.meta.image`
+
+`output.type` 可选，用于覆盖输出 record 的 `recordType`（例如统一指定为 `x.post`）。
 
 `/v2/fetch` 只接受新字段：`sourceId`、`platform`、`keywords`、`driver`、`driverOptions`、`output.field`。不再兼容旧字段。
 

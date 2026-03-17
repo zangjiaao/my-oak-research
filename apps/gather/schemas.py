@@ -11,11 +11,13 @@ class FetchRequest(BaseModel):
     auth_data: Optional[Dict[str, Any]] = None
     keywords: List[str] = Field(default_factory=list)
     output_fields: Optional[List[str]] = None
+    output_record_type: Optional[str] = None
 
 
 class FetchV2Output(BaseModel):
     model_config = ConfigDict(extra="forbid")
     field: List[str]
+    type: Optional[str] = None
 
 
 class FetchV2Request(BaseModel):

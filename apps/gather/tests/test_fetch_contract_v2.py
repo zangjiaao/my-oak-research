@@ -173,6 +173,25 @@ def test_fetch_v2_output_fields_keep_requested_content_only(monkeypatch):
     assert "url" not in items[0]["recordContent"]
 
 
+def test_fetch_v2_output_type_overrides_record_type(monkeypatch):
+    response = _client_with_stub_driver(monkeypatch).post(
+        "/v2/fetch",
+        json={
+            "platform": "contract-test-platform",
+            "sourceId": "source_123",
+            "keywords": [],
+            "driver": "playwright",
+            "output": {"field": ["text"], "type": "x.post"},
+            "driverOptions": {},
+        },
+    )
+
+    assert response.status_code == 200
+    items = response.json()
+    assert items
+    assert items[0]["recordType"] == "x.post"
+
+
 def test_fetch_v1_endpoint_removed():
     response = client.post(
         "/fetch",
