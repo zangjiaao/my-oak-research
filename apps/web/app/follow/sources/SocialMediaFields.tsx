@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import {
   Control,
   UseFormRegister,
@@ -93,24 +93,40 @@ const PLATFORM_TO_KIND: Record<string, string> = {
   "FACEBOOK": "facebook-cookie",
 };
 
-type XScriptArg = {
+type ScriptArgRule = {
   required: boolean;
   description: string;
 };
 
-type XScriptOption = {
+type ScriptOption = {
+  id: string;
   name: string;
   description: string;
-  domain: string;
+  key: string;
+  version?: string;
+  platform: string;
   scriptPath: string;
-  args: Record<string, XScriptArg>;
+  args: Record<string, ScriptArgRule>;
 };
 
-const X_SCRIPT_OPTIONS: XScriptOption[] = [
+type BbPresetApiItem = {
+  id: string;
+  key: string;
+  version: string;
+  name: string;
+  description: string | null;
+  platform: string;
+  scriptRelPath: string;
+  argsSchema: Record<string, unknown> | null;
+};
+
+const LEGACY_X_SCRIPT_OPTIONS: ScriptOption[] = [
   {
+    id: "legacy-twitter-tweets",
     name: "twitter/tweets",
     description: "获取用户最近的推文（时间线）",
-    domain: "x.com",
+    key: "twitter/tweets",
+    platform: "X",
     scriptPath: "/Users/zangjiaao/Reference/bb-sites/twitter/tweets.js",
     args: {
       screen_name: {
@@ -124,9 +140,11 @@ const X_SCRIPT_OPTIONS: XScriptOption[] = [
     },
   },
   {
+    id: "legacy-twitter-thread",
     name: "twitter/thread",
     description: "获取推文对话线程（原文 + 所有回复）",
-    domain: "x.com",
+    key: "twitter/thread",
+    platform: "X",
     scriptPath: "/Users/zangjiaao/Reference/bb-sites/twitter/thread.js",
     args: {
       tweet_id: {
@@ -136,9 +154,11 @@ const X_SCRIPT_OPTIONS: XScriptOption[] = [
     },
   },
   {
+    id: "legacy-twitter-search",
     name: "twitter/search",
     description: "搜索推文",
-    domain: "x.com",
+    key: "twitter/search",
+    platform: "X",
     scriptPath: "/Users/zangjiaao/Reference/bb-sites/twitter/search.js",
     args: {
       query: {
@@ -156,8 +176,6 @@ const X_SCRIPT_OPTIONS: XScriptOption[] = [
     },
   },
 ];
-
-const DEFAULT_X_SCRIPT = X_SCRIPT_OPTIONS[0];
 
 type PlaywrightArgRow = {
   id: string;
@@ -219,12 +237,14 @@ const normalizeArgs = (input: unknown): Record<string, string> => {
   );
 };
 
-const getXScriptOptionByPath = (scriptPath?: string | null) =>
-  X_SCRIPT_OPTIONS.find((item) => item.scriptPath === scriptPath) ?? DEFAULT_X_SCRIPT;
+const getScriptOptionByPath = (
+  options: ScriptOption[],
+  scriptPath?: string | null
+) => options.find((item) => item.scriptPath === scriptPath) ?? options[0];
 
 const buildXArgRows = (
   args: Record<string, string>,
-  script: XScriptOption
+  script: ScriptOption
 ): PlaywrightArgRow[] => {
   const rows: PlaywrightArgRow[] = [];
   const included = new Set<string>();
@@ -252,6 +272,23 @@ const buildXArgRows = (
   }
 
   return rows.length > 0 ? rows : [createEmptyArgRow()];
+};
+
+const toScriptArgRules = (
+  input: Record<string, unknown> | null | undefined
+): Record<string, ScriptArgRule> => {
+  if (!input || typeof input !== "object") return {};
+  const output: Record<string, ScriptArgRule> = {};
+  for (const [key, value] of Object.entries(input)) {
+    if (!value || typeof value !== "object" || Array.isArray(value)) continue;
+    const raw = value as Record<string, unknown>;
+    output[key] = {
+      required: Boolean(raw.required),
+      description:
+        typeof raw.description === "string" ? raw.description : "",
+    };
+  }
+  return output;
 };
 
 export const SocialMediaFields = ({
@@ -301,6 +338,26 @@ export const SocialMediaFields = ({
   const [agentScriptRows, setAgentScriptRows] = useState<AgentScriptRow[]>([
     createEmptyAgentScriptRow(),
   ]);
+  const [bbPresetOptions, setBbPresetOptions] = useState<ScriptOption[]>([]);
+  const [loadingBbPresets, setLoadingBbPresets] = useState(false);
+  const scriptOptions = useMemo(
+    () =>
+      bbPresetOptions.length > 0
+        ? bbPresetOptions
+        : socialPlatform === "X"
+          ? LEGACY_X_SCRIPT_OPTIONS
+          : [],
+    [bbPresetOptions, socialPlatform]
+  );
+  const availablePlatforms = useMemo(() => {
+    const base = new Set<string>(SocialPlatformEnum.options);
+    for (const item of bbPresetOptions) {
+      if (SocialPlatformEnum.options.includes(item.platform as SocialPlatform)) {
+        base.add(item.platform);
+      }
+    }
+    return Array.from(base);
+  }, [bbPresetOptions]);
 
   // Credentials list
   const [credentials, setCredentials] = useState<CredentialInfo[]>([]);
@@ -378,6 +435,53 @@ export const SocialMediaFields = ({
   }, [socialPlatform, canUseCredential]);
 
   useEffect(() => {
+    if (!socialPlatform || resolvedDriver !== "playwright") {
+      setBbPresetOptions([]);
+      return;
+    }
+
+    const controller = new AbortController();
+    const fetchBbPresets = async () => {
+      setLoadingBbPresets(true);
+      try {
+        const response = await fetch(
+          `/api/follow/bb-presets?latestOnly=true&platform=${encodeURIComponent(
+            socialPlatform
+          )}`,
+          { signal: controller.signal }
+        );
+        if (!response.ok) return;
+        const data = await response.json();
+        const items = Array.isArray(data?.items) ? (data.items as BbPresetApiItem[]) : [];
+        const nextOptions: ScriptOption[] = items
+          .map((item) => ({
+            id: item.id,
+            key: item.key,
+            name: item.name || item.key,
+            version: item.version,
+            platform: item.platform,
+            description: item.description || item.key,
+            scriptPath: item.scriptRelPath.startsWith("/")
+              ? item.scriptRelPath
+              : `/Users/zangjiaao/Reference/bb-sites/${item.scriptRelPath}`,
+            args: toScriptArgRules(item.argsSchema),
+          }))
+          .filter((item) => item.scriptPath.trim().length > 0);
+        setBbPresetOptions(nextOptions);
+      } catch (error) {
+        if ((error as { name?: string })?.name !== "AbortError") {
+          console.error("Failed to fetch bb presets:", error);
+        }
+      } finally {
+        setLoadingBbPresets(false);
+      }
+    };
+
+    fetchBbPresets();
+    return () => controller.abort();
+  }, [socialPlatform, resolvedDriver]);
+
+  useEffect(() => {
     if (!setValue) return;
     if (socialPlatform && resolvedDriver === "xhttp") {
       setValue("social.credentialId", null, { shouldDirty: true });
@@ -429,26 +533,28 @@ export const SocialMediaFields = ({
     [setValue]
   );
 
-  const applyXScriptDefaults = useCallback(
+  const applyScriptDefaults = useCallback(
     (
       scriptPath: string,
+      scriptOptions: ScriptOption[],
       incomingArgs: unknown,
-      options?: {
+      config?: {
         markDirty?: boolean;
       }
     ) => {
       if (!setValue) return;
-      const script = getXScriptOptionByPath(scriptPath);
+      const script = getScriptOptionByPath(scriptOptions, scriptPath);
+      if (!script) return;
       const currentArgs = normalizeArgs(incomingArgs);
       const nextArgs = Object.fromEntries(
         Object.keys(script.args).map((argKey) => [argKey, currentArgs[argKey] ?? ""])
       );
       const rows = buildXArgRows(nextArgs, script);
       setValue("social.config.playwright.scriptPath", script.scriptPath, {
-        shouldDirty: options?.markDirty ?? false,
+        shouldDirty: config?.markDirty ?? false,
       });
       setValue("social.config.playwright.args", nextArgs, {
-        shouldDirty: options?.markDirty ?? false,
+        shouldDirty: config?.markDirty ?? false,
       });
       setXArgRows(rows);
     },
@@ -489,12 +595,13 @@ export const SocialMediaFields = ({
   }, [setValue, socialPlatform, selectedDriver]);
 
   useEffect(() => {
-    if (socialPlatform !== "X") return;
+    if (resolvedDriver !== "playwright") return;
+    if (scriptOptions.length === 0) return;
     const scriptPath = watch("social.config.playwright.scriptPath");
-    const normalizedScriptPath = scriptPath || DEFAULT_X_SCRIPT.scriptPath;
+    const normalizedScriptPath = scriptPath || scriptOptions[0].scriptPath;
     const rawArgs = watch("social.config.playwright.args");
-    applyXScriptDefaults(normalizedScriptPath, rawArgs);
-  }, [socialPlatform, watch, applyXScriptDefaults]);
+    applyScriptDefaults(normalizedScriptPath, scriptOptions, rawArgs);
+  }, [resolvedDriver, scriptOptions, watch, applyScriptDefaults]);
 
   useEffect(() => {
     if (resolvedDriver !== "agent-browser") return;
@@ -743,10 +850,13 @@ export const SocialMediaFields = ({
 
   // Get selected credential info
   const selectedCredential = credentials.find(c => c.id === currentCredentialId);
-  const selectedXScriptPath = watch("social.config.playwright.scriptPath") as
+  const selectedScriptPath = watch("social.config.playwright.scriptPath") as
     | string
     | undefined;
-  const selectedXScript = getXScriptOptionByPath(selectedXScriptPath);
+  const selectedScript =
+    scriptOptions.length > 0
+      ? getScriptOptionByPath(scriptOptions, selectedScriptPath)
+      : null;
   const keywordFilterError =
     getConfigErrorMessage("keywordFilter.keywords") ??
     getConfigErrorMessage("keywordFilter");
@@ -1083,27 +1193,19 @@ export const SocialMediaFields = ({
                 setShowUploadForm(false);
                 if (setValue) {
                   setValue("social.credentialId", null);
-                  if (value === "X") {
-                    setValue("social.config.driver", getDefaultDriver("X"));
-                    setValue("social.config.playwright.mode", "eval-js");
-                    setValue("social.config.playwright.headless", false);
-                    setValue("social.config.playwright.targetUrl", "");
-                    setValue(
-                      "social.config.playwright.scriptPath",
-                      DEFAULT_X_SCRIPT.scriptPath
-                    );
-                    setValue("social.config.playwright.args", {});
-                  } else {
-                    setValue(
-                      "social.config.driver",
-                      getDefaultDriver(value as SocialPlatform)
-                    );
-                  }
+                  setValue(
+                    "social.config.driver",
+                    getDefaultDriver(value as SocialPlatform)
+                  );
+                  setValue("social.config.playwright.mode", "eval-js");
+                  setValue("social.config.playwright.headless", false);
+                  setValue("social.config.playwright.targetUrl", "");
+                  setValue("social.config.playwright.args", {});
                 }
               }}
               placeholder="Select a social media platform"
             >
-              {SocialPlatformEnum.options.map((platform) => (
+              {availablePlatforms.map((platform) => (
                 <SelectItem key={platform} value={platform}>
                   {platform}
                 </SelectItem>
@@ -1347,7 +1449,7 @@ export const SocialMediaFields = ({
         </div>
       )}
 
-      {socialPlatform === "X" && (
+      {socialPlatform && (
         <>
           {resolvedDriver === "playwright" && (
             <div className="grid gap-4 p-4 border rounded-lg bg-muted/30">
@@ -1401,32 +1503,46 @@ export const SocialMediaFields = ({
 
                 <div className="grid gap-3 md:col-span-2">
                   <Label htmlFor="social.config.playwright.scriptPath">Script Template</Label>
-                  <Controller
-                    name="social.config.playwright.scriptPath"
-                    control={control}
-                    render={({ field }) => (
-                      <ControlledSelect
-                        value={(field.value as string) || DEFAULT_X_SCRIPT.scriptPath}
-                        onValueChange={(value) => {
-                          const nextScriptPath = value || DEFAULT_X_SCRIPT.scriptPath;
-                          field.onChange(nextScriptPath);
-                          const args = watch("social.config.playwright.args");
-                          applyXScriptDefaults(nextScriptPath, args, { markDirty: true });
-                        }}
-                        placeholder="Select script path"
-                      >
-                        {X_SCRIPT_OPTIONS.map((option) => (
-                          <SelectItem key={option.scriptPath} value={option.scriptPath}>
-                            {option.name}
-                          </SelectItem>
-                        ))}
-                      </ControlledSelect>
-                    )}
-                  />
+                  {scriptOptions.length > 0 && (
+                    <Controller
+                      name="social.config.playwright.scriptPath"
+                      control={control}
+                      render={({ field }) => (
+                        <ControlledSelect
+                          value={(field.value as string) || scriptOptions[0].scriptPath}
+                          onValueChange={(value) => {
+                            const nextScriptPath = value || scriptOptions[0].scriptPath;
+                            field.onChange(nextScriptPath);
+                            const args = watch("social.config.playwright.args");
+                            applyScriptDefaults(nextScriptPath, scriptOptions, args, {
+                              markDirty: true,
+                            });
+                          }}
+                          placeholder="Select script template"
+                        >
+                          {scriptOptions.map((option) => (
+                            <SelectItem key={option.id} value={option.scriptPath}>
+                              {option.version ? `${option.key}@${option.version}` : option.name}
+                            </SelectItem>
+                          ))}
+                        </ControlledSelect>
+                      )}
+                    />
+                  )}
+                  {loadingBbPresets && (
+                    <p className="text-xs text-muted-foreground">Loading bb-site presets...</p>
+                  )}
                   <ErrorMessage>{getConfigErrorMessage("playwright.scriptPath")}</ErrorMessage>
-                  <p className="text-xs text-muted-foreground">
-                    {selectedXScript.description}
-                  </p>
+                  {selectedScript && (
+                    <p className="text-xs text-muted-foreground">
+                      {selectedScript.description}
+                    </p>
+                  )}
+                  {scriptOptions.length === 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      当前平台暂无可用 bb-site 脚本，可手动填写 scriptPath。
+                    </p>
+                  )}
                   <div className="grid gap-2">
                     <Label htmlFor="social.config.playwright.scriptPath-input">
                       Script Path (Editable)
@@ -1482,7 +1598,7 @@ export const SocialMediaFields = ({
                   ))}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  预设参数随脚本切换自动调整；你也可以新增自定义 key:value。
+                  选择 bb-site preset 后会自动填充参数；你也可以新增自定义 key:value。
                 </p>
                 <ErrorMessage>{getConfigErrorMessage("playwright.args")}</ErrorMessage>
               </div>
@@ -1499,16 +1615,6 @@ export const SocialMediaFields = ({
             renderAgentBrowserFields()
           )}
         </>
-      )}
-
-      {socialPlatform && socialPlatform !== "X" && resolvedDriver === "xhttp" && (
-        <div className="rounded-lg border bg-muted/30 p-4 text-sm text-muted-foreground">
-          xhttp 驱动不需要浏览器参数，也不支持凭据上传/选择；将直接按 API 方式抓取。
-        </div>
-      )}
-
-      {socialPlatform && socialPlatform !== "X" && resolvedDriver === "agent-browser" && (
-        renderAgentBrowserFields()
       )}
 
       {socialPlatform && renderGatherOutputAndFilterFields()}
