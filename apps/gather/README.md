@@ -278,7 +278,6 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
       },
       "keyword": {
         "keywords": ["openclaw"],
-        "matchScope": "segment",
         "splitMode": "line",
         "minChars": 8
       }

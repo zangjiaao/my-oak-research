@@ -192,7 +192,7 @@ def test_keyword_filter_invalid_config_fails_closed(monkeypatch, capsys):
     assert "error" in capsys.readouterr().out
 
 
-def test_keyword_segment_scope_keeps_only_matched_segments(monkeypatch):
+def test_keyword_split_mode_keeps_only_matched_segments(monkeypatch):
     client = _client_with_stub_driver(monkeypatch)
     response = client.post(
         "/v2/fetch",
@@ -204,7 +204,6 @@ def test_keyword_segment_scope_keeps_only_matched_segments(monkeypatch):
             "output": {"field": ["text", "markdown"]},
             "driverOptions": {
                 "filter": {
-                    "matchScope": "segment",
                     "splitMode": "line",
                 }
             },
@@ -219,7 +218,7 @@ def test_keyword_segment_scope_keeps_only_matched_segments(monkeypatch):
     assert items[0]["recordType"] == "message"
 
 
-def test_keyword_segment_scope_supports_min_segment_chars(monkeypatch):
+def test_keyword_split_mode_supports_min_segment_chars(monkeypatch):
     client = _client_with_stub_driver(monkeypatch)
     response = client.post(
         "/v2/fetch",
@@ -231,7 +230,6 @@ def test_keyword_segment_scope_supports_min_segment_chars(monkeypatch):
             "output": {"field": ["text", "markdown"]},
             "driverOptions": {
                 "filter": {
-                    "matchScope": "segment",
                     "splitMode": "line",
                     "minChars": 30,
                 }

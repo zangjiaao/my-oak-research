@@ -446,22 +446,18 @@ def _extract_keyword_filter_keywords(config: Dict[str, Any]) -> Optional[List[st
 def _extract_keyword_filter_options(config: Dict[str, Any]) -> dict[str, Any]:
     raw_filter = _resolve_keyword_filter(config)
     if raw_filter is None:
-        return {"match_scope": "item", "split_mode": "auto"}
+        return {"split_mode": "none", "min_segment_chars": 1}
     if not isinstance(raw_filter, dict):
         raise KeywordFilterConfigError("config.keywordFilter or config.filters.keyword must be an object")
 
-    raw_scope = raw_filter.get("matchScope", raw_filter.get("scope", "item"))
-    if raw_scope not in {"item", "segment"}:
-        raise KeywordFilterConfigError("keyword filter matchScope must be item or segment")
-    raw_split_mode = raw_filter.get("splitMode", raw_filter.get("segmentSplit", "auto"))
-    if raw_split_mode not in {"auto", "line", "paragraph"}:
-        raise KeywordFilterConfigError("keyword filter splitMode must be auto, line, or paragraph")
+    raw_split_mode = raw_filter.get("splitMode", raw_filter.get("segmentSplit", "none"))
+    if raw_split_mode not in {"none", "auto", "line", "paragraph"}:
+        raise KeywordFilterConfigError("keyword filter splitMode must be none, auto, line, or paragraph")
     min_segment_chars = raw_filter.get("minChars", raw_filter.get("minSegmentChars", 1))
     if not isinstance(min_segment_chars, int) or min_segment_chars < 1:
         raise KeywordFilterConfigError("keyword filter minChars must be a positive integer")
 
     return {
-        "match_scope": raw_scope,
         "split_mode": raw_split_mode,
         "min_segment_chars": min_segment_chars,
     }
@@ -552,7 +548,7 @@ def apply_keyword_hard_filter(request: FetchRequest, items: List[CleanItem]) -> 
     miss = 0
     fetched = len(items)
     for item in items:
-        if options["match_scope"] == "segment":
+        if options["split_mode"] != "none":
             segment_hits = _apply_keyword_segment_filter(item, keywords, options)
             if segment_hits:
                 filtered.extend(segment_hits)
@@ -575,6 +571,6 @@ def apply_keyword_hard_filter(request: FetchRequest, items: List[CleanItem]) -> 
 
     print(
         f"[gather][keyword-filter][metrics] "
-        f"{json.dumps({'sourceId': request.source_id, 'platform': request.platform, 'fetched': fetched, 'hit': hit, 'miss': miss, 'persisted': len(filtered), 'matchScope': options['match_scope']}, ensure_ascii=False)}"
+        f"{json.dumps({'sourceId': request.source_id, 'platform': request.platform, 'fetched': fetched, 'hit': hit, 'miss': miss, 'persisted': len(filtered), 'splitMode': options['split_mode']}, ensure_ascii=False)}"
     )
     return filtered
