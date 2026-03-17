@@ -67,6 +67,20 @@ const isSearchSource = (
 ): source is SearchEngineSource => source?.type === "SEARCH_ENGINE";
 
 const SUPPORTED_LANGS = ["zh", "en", "ja", "auto"] as const;
+const BB_SITE_ROOT = "/Users/zangjiaao/Reference/bb-sites";
+
+function asRecord(value: unknown): Record<string, unknown> {
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    return value as Record<string, unknown>;
+  }
+  return {};
+}
+
+function normalizeScriptPathFromRelPath(scriptRelPath: string): string {
+  return scriptRelPath.startsWith("/")
+    ? scriptRelPath
+    : `${BB_SITE_ROOT}/${scriptRelPath}`;
+}
 
 // Helper to get schema based on type
 const getValidationSchema = (type: SourceType, isUpdate: boolean) => {
@@ -172,7 +186,45 @@ const getDefaultValues = (
     }
     case "SOCIAL_MEDIA": {
       if (isSocialSource(source)) {
-        const socialConfig = (source.social.config || {}) as Record<string, unknown>;
+        const socialConfig = {
+          ...(source.social.config as Record<string, unknown>),
+        };
+        const activeBinding = (source.presetBindings ?? [])
+          .filter((item) => item.enabled)
+          .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())[0];
+
+        if (activeBinding) {
+          const playwrightConfig = asRecord(socialConfig.playwright);
+          const bindingArgs = asRecord(activeBinding.args);
+          const snapshotArgs = asRecord(bindingArgs.args);
+
+          if (
+            !playwrightConfig.scriptPath &&
+            activeBinding.preset?.scriptRelPath
+          ) {
+            playwrightConfig.scriptPath = normalizeScriptPathFromRelPath(
+              activeBinding.preset.scriptRelPath
+            );
+          }
+
+          if (
+            (!playwrightConfig.args ||
+              Object.keys(asRecord(playwrightConfig.args)).length === 0) &&
+            Object.keys(snapshotArgs).length > 0
+          ) {
+            playwrightConfig.args = Object.fromEntries(
+              Object.entries(snapshotArgs).map(([key, value]) => [
+                key,
+                value == null ? "" : String(value),
+              ])
+            );
+          }
+
+          if (Object.keys(playwrightConfig).length > 0) {
+            socialConfig.playwright = playwrightConfig;
+          }
+        }
+
         if (typeof socialConfig.driver !== "string") {
           socialConfig.driver = getDefaultDriver(source.social.platform);
         }

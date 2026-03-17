@@ -2,6 +2,7 @@ import prisma from "@/lib/prisma";
 import { json, badRequest, serverError, conflict } from "@/app/api/_utils/http";
 import { SourceCreateSchema, SourceQuerySchema } from "@/app/api/_utils/zod";
 import { Prisma, SocialPlatform } from "@/app/generated/prisma";
+import { syncSocialPresetBinding } from "@/lib/source-preset-binding";
 import { z } from "zod";
 
 // 帮助函数：将 null 转换为 Prisma.JsonNull，undefined 保持不变
@@ -35,6 +36,23 @@ export async function GET(req: Request) {
         darknet: { include: { proxy: true } },
         search: true,
         social: true,
+        presetBindings: {
+          include: {
+            preset: {
+              select: {
+                id: true,
+                key: true,
+                version: true,
+                name: true,
+                platform: true,
+                scriptRelPath: true,
+                status: true,
+                isActive: true,
+              },
+            },
+          },
+          orderBy: { updatedAt: "desc" as const },
+        },
         proxy: true,
         credential: true,
       }
@@ -131,8 +149,6 @@ export async function POST(req: Request) {
           });
           break;
         case "SOCIAL_MEDIA":
-          console.log("[sources] Current platform:", data.social.platform);
-          console.log("[sources] Available platforms in SocialPlatform enum:", Object.keys(SocialPlatform));
           await tx.socialMediaSourceConfig.create({
             data: {
               sourceId: base.id,
@@ -141,6 +157,10 @@ export async function POST(req: Request) {
               credentialId: data.social.credentialId ?? null,
               proxyId: data.social.proxyId ?? null,
             },
+          });
+          await syncSocialPresetBinding(tx, {
+            sourceId: base.id,
+            config: data.social.config,
           });
           break;
       }
@@ -152,6 +172,23 @@ export async function POST(req: Request) {
           darknet: { include: { proxy: true } },
           search: true,
           social: true,
+          presetBindings: {
+            include: {
+              preset: {
+                select: {
+                  id: true,
+                  key: true,
+                  version: true,
+                  name: true,
+                  platform: true,
+                  scriptRelPath: true,
+                  status: true,
+                  isActive: true,
+                },
+              },
+            },
+            orderBy: { updatedAt: "desc" as const },
+          },
           proxy: true,
           credential: true,
         },
