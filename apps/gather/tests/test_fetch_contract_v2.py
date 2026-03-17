@@ -352,6 +352,32 @@ def test_fetch_v2_output_field_mapping_supports_text_alias_for_tweets(monkeypatc
     assert items[1]["recordId"] == "22"
 
 
+def test_fetch_v2_rejects_nested_playwright_option(monkeypatch):
+    response = _client_with_stub_driver(monkeypatch).post(
+        "/v2/fetch",
+        json={
+            "platform": "x",
+            "sourceId": "source-x-001",
+            "keywords": [],
+            "driver": {
+                "name": "playwright",
+                "option": {
+                    "playwright": {
+                        "mode": "eval-js",
+                        "scriptBody": "(args) => ({ text: 'ok' })",
+                    }
+                },
+            },
+            "output": {"field": ["text"]},
+        },
+    )
+
+    assert response.status_code == 400
+    payload = response.json()
+    assert payload["error"]["code"] == "FETCH_BAD_REQUEST"
+    assert "driver.option.playwright has been removed" in payload["error"]["message"]
+
+
 def test_fetch_v1_endpoint_removed():
     response = client.post(
         "/fetch",

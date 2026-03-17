@@ -1384,7 +1384,30 @@ def _normalize_agent_browser_driver_options(
 
 def _normalize_v2_fetch_request(request: FetchV2Request) -> FetchRequest:
     normalized_driver = request.driver.name.strip().lower()
-    config = dict(request.driver.option)
+    raw_option = dict(request.driver.option)
+    config = raw_option
+
+    if normalized_driver == "playwright":
+        if "playwright" in raw_option:
+            raise HTTPException(
+                status_code=400,
+                detail="driver.option.playwright has been removed; put playwright fields directly under driver.option",
+            )
+        network = raw_option.get("network")
+        playwright_option = {k: v for k, v in raw_option.items() if k != "network"}
+        config = {"playwright": playwright_option}
+        if network is not None:
+            config["network"] = network
+    elif normalized_driver == "agent-browser" and "agentBrowser" in raw_option:
+        raise HTTPException(
+            status_code=400,
+            detail="driver.option.agentBrowser has been removed; put agent-browser fields directly under driver.option",
+        )
+    elif normalized_driver == "xhttp" and "xhttp" in raw_option:
+        raise HTTPException(
+            status_code=400,
+            detail="driver.option.xhttp has been removed; put xhttp fields directly under driver.option",
+        )
 
     if normalized_driver == "agent-browser":
         config = _normalize_agent_browser_driver_options(request.source_id, {}, config)
@@ -1574,9 +1597,8 @@ async def fetch_data_v2(payload: Dict[str, Any]):
         _log_api_io("/v2/fetch", payload, response.body.decode("utf-8"), 422)
         return response
 
-    v1_request = _normalize_v2_fetch_request(request)
-
     try:
+        v1_request = _normalize_v2_fetch_request(request)
         raw_results = await driver_registry.fetch(v1_request, driver_name=request.driver.name)
         results = _normalize_clean_items(raw_results)
         if v1_request.output_record_type:

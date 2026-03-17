@@ -633,16 +633,17 @@ async function fetchSocialSource(
   const existingKeywordFilter = resolveGatherKeywordFilter(baseConfig, gatherDriver);
   const keywordFilterOptions = { ...existingKeywordFilter };
   delete keywordFilterOptions.keywords;
+  const driverOption = normalizeGatherDriverOption(baseConfig, gatherDriver);
   const driver =
     Object.keys(keywordFilterOptions).length > 0
       ? {
           name: gatherDriver,
-          option: baseConfig,
+          option: driverOption,
           filter: keywordFilterOptions,
         }
       : {
           name: gatherDriver,
-          option: baseConfig,
+          option: driverOption,
         };
 
   try {
@@ -1005,6 +1006,22 @@ function resolveGatherKeywordFilter(
   }
   const filters = asObject(driverOptions.filters);
   return asObject(filters.keyword);
+}
+
+function normalizeGatherDriverOption(
+  config: Record<string, unknown>,
+  driver: GatherSocialDriver
+): Record<string, unknown> {
+  if (driver !== "playwright") {
+    return config;
+  }
+  const playwright = asObject(config.playwright);
+  const rest = { ...config };
+  delete rest.playwright;
+  return {
+    ...playwright,
+    ...rest,
+  };
 }
 
 function applyGatherProxyConfig(

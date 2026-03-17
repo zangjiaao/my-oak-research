@@ -148,10 +148,8 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
   "driver": {
     "name": "playwright",
     "option": {
-      "playwright": {
-        "mode": "eval-js",
-        "scriptPath": "/path/to/script.js"
-      },
+      "mode": "eval-js",
+      "scriptPath": "/path/to/script.js",
       "network": {
         "proxy": {
           "url": "socks5h://127.0.0.1:9050"
