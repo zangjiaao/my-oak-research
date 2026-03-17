@@ -556,6 +556,7 @@ const SourceDialog = ({
             proxies={proxies}
             watch={watch}
             setValue={setValue}
+            sourceId={currentSource?.id}
           />
         )}
         {effectiveType === "SEARCH_ENGINE" && (

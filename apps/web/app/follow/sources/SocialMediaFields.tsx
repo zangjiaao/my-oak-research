@@ -69,6 +69,7 @@ interface SocialMediaFieldsProps {
   proxies: Proxy[];
   watch: UseFormWatch<z.infer<typeof SourceCreateSchema>>;
   setValue?: UseFormSetValue<z.infer<typeof SourceCreateSchema>>;
+  sourceId?: string;
 }
 
 interface AuthStatus {
@@ -254,6 +255,13 @@ const normalizeArgs = (input: unknown): Record<string, string> => {
   );
 };
 
+const asRecord = (value: unknown): Record<string, unknown> => {
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    return value as Record<string, unknown>;
+  }
+  return {};
+};
+
 const getScriptOptionByPath = (
   options: ScriptOption[],
   scriptPath?: string | null
@@ -315,6 +323,7 @@ export const SocialMediaFields = ({
   proxies,
   watch,
   setValue,
+  sourceId,
 }: SocialMediaFieldsProps) => {
   const socialPlatform = watch("social.platform") as SocialPlatform | undefined;
   const selectedDriver = watch("social.config.driver") as string | undefined;
@@ -911,6 +920,71 @@ export const SocialMediaFields = ({
       : null;
   const keywordFilterError = getConfigErrorMessage("keywordFilter");
   const responseFormatsError = getConfigErrorMessage("responseFormats");
+  const requestPreview = useMemo(() => {
+    if (!socialPlatform) return null;
+    const config = asRecord(watch("social.config"));
+    const keywordFilter = asRecord(config.keywordFilter);
+    const outputConfig = asRecord(config.output);
+
+    const rawOutputField = outputConfig.field ?? outputConfig.fields;
+    let outputField: string[] = [];
+    if (Array.isArray(rawOutputField)) {
+      outputField = rawOutputField
+        .filter((item): item is string => typeof item === "string")
+        .map((item) => item.trim())
+        .filter(Boolean);
+    } else {
+      const responseFormats = config.responseFormats;
+      if (Array.isArray(responseFormats)) {
+        outputField = responseFormats
+          .filter((item): item is string => typeof item === "string")
+          .map((item) => item.trim())
+          .filter(Boolean);
+      }
+    }
+    if (outputField.length === 0) {
+      outputField = ["text"];
+    }
+
+    const output: Record<string, unknown> = { field: outputField };
+    if (typeof outputConfig.type === "string" && outputConfig.type.trim()) {
+      output.type = outputConfig.type.trim();
+    }
+    if (Array.isArray(outputConfig.keywordScope)) {
+      output.keywordScope = outputConfig.keywordScope;
+    }
+
+    const driverOption = asRecord(
+      resolvedDriver === "playwright"
+        ? config.playwright
+        : resolvedDriver === "agent-browser"
+          ? config.agentBrowser
+          : config
+    );
+    const filter: Record<string, unknown> = {};
+    if (typeof keywordFilter.minSegmentChars === "number") {
+      filter.minChars = keywordFilter.minSegmentChars;
+    }
+    if (typeof keywordFilter.minChars === "number") {
+      filter.minChars = keywordFilter.minChars;
+    }
+
+    const driver: Record<string, unknown> = {
+      name: resolvedDriver,
+      option: driverOption,
+    };
+    if (Object.keys(filter).length > 0) {
+      driver.filter = filter;
+    }
+
+    return {
+      sourceId: sourceId ?? "__SOURCE_ID__",
+      platform: socialPlatform.toLowerCase(),
+      keywords: [],
+      driver,
+      output,
+    };
+  }, [socialPlatform, sourceId, resolvedDriver, watch]);
 
   // Render auth status indicator
   const renderAuthStatus = () => {
@@ -1640,6 +1714,22 @@ export const SocialMediaFields = ({
       )}
 
       {socialPlatform && renderGatherOutputAndFilterFields()}
+
+      {socialPlatform && requestPreview && (
+        <Card className="gap-4 border-dashed bg-muted/20">
+          <CardHeader>
+            <CardTitle>Gather Request Preview</CardTitle>
+            <CardDescription>
+              当前表单将按这个请求体发送给 gather（keywords 由 Query 注入）。
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <pre className="max-h-80 overflow-auto rounded-md bg-background p-3 text-xs leading-5">
+              {JSON.stringify(requestPreview, null, 2)}
+            </pre>
+          </CardContent>
+        </Card>
+      )}
 
       {socialPlatform === "REDDIT" && resolvedDriver !== "agent-browser" && (
         <>
