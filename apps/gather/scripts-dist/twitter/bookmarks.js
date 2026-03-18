@@ -72,7 +72,10 @@ async () => {
     const tweets = [];
     let cursor = null;
     for (let i = 0; i < 5 && tweets.length < limit; i += 1) {
-        const variables = { count: Math.min(100, limit - tweets.length + 10), includePromotedContent: false };
+        const variables = {
+            count: Math.min(100, limit - tweets.length + 10),
+            includePromotedContent: false,
+        };
         if (cursor)
             variables.cursor = cursor;
         const apiUrl = `/i/api/graphql/${queryId}/Bookmarks?variables=${encodeURIComponent(JSON.stringify(variables))}&features=${encodeURIComponent(JSON.stringify(features))}`;

@@ -57,7 +57,7 @@ async () => {
   let cursor = null;
 
   for (let i = 0; i < 5 && tweets.length < limit; i += 1) {
-    const variables = {
+    const variables: Record<string, unknown> = {
       count: Math.min(40, limit - tweets.length + 5),
       includePromotedContent: false,
       latestControlAvailable: true,

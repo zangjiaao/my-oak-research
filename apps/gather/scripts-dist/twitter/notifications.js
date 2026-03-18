@@ -18,7 +18,8 @@ async () => {
         window.fetch = async (...fetchArgs) => {
             const response = await origFetch(...fetchArgs);
             try {
-                const reqUrl = typeof fetchArgs[0] === 'string' ? fetchArgs[0] : (fetchArgs[0] && fetchArgs[0].url) || '';
+                const requestLike = fetchArgs[0];
+                const reqUrl = typeof requestLike === 'string' ? requestLike : requestLike?.url || '';
                 if (reqUrl.includes(CAPTURE_KEY)) {
                     const cloned = response.clone();
                     pushCapture(reqUrl, await cloned.json());
