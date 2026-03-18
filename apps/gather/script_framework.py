@@ -20,19 +20,22 @@ class ScriptSpec:
     platform: str
     intent: str
     mode: str
-    file_path: Path
+    source_path: Path
+    runtime_path: Path
 
 
 class ScriptRegistry:
-    def __init__(self, root: Path):
-        self._root = root
+    def __init__(self, source_root: Path, runtime_root: Path | None = None):
+        self._source_root = source_root
+        self._runtime_root = runtime_root or source_root
         self._specs = {
             "x.search.intercept": ScriptSpec(
                 key="x.search.intercept",
                 platform="x",
                 intent="search",
                 mode="intercept",
-                file_path=root / "x" / "search" / "intercept.js",
+                source_path=source_root / "x" / "search" / "flow.ts",
+                runtime_path=self._runtime_root / "x" / "search" / "flow.js",
             ),
         }
 
@@ -50,9 +53,10 @@ class ScriptRegistry:
         return None
 
     def render(self, spec: ScriptSpec, replacements: Dict[str, Any]) -> str:
-        if not spec.file_path.exists() or not spec.file_path.is_file():
-            raise FileNotFoundError(f"script file not found: {spec.file_path}")
-        content = spec.file_path.read_text(encoding="utf-8")
+        file_path = spec.runtime_path if spec.runtime_path.exists() else spec.source_path
+        if not file_path.exists() or not file_path.is_file():
+            raise FileNotFoundError(f"script file not found: {file_path}")
+        content = file_path.read_text(encoding="utf-8")
         rendered = content
         for key, value in replacements.items():
             rendered = rendered.replace(key, str(value))

@@ -78,8 +78,9 @@ _RAW_API_IO_LOG_DIR = Path(
     os.getenv("GATHER_API_IO_LOG_DIR", str(Path(__file__).resolve().parent / "logs"))
 ).expanduser()
 _GATHER_APP_ROOT = Path(__file__).resolve().parent
-_SCRIPT_ROOT = _GATHER_APP_ROOT / "scripts"
-_SCRIPT_REGISTRY = ScriptRegistry(_SCRIPT_ROOT)
+_SCRIPT_SOURCE_ROOT = _GATHER_APP_ROOT / "scripts"
+_SCRIPT_RUNTIME_ROOT = _GATHER_APP_ROOT / "scripts-dist"
+_SCRIPT_REGISTRY = ScriptRegistry(_SCRIPT_SOURCE_ROOT, _SCRIPT_RUNTIME_ROOT)
 _REPO_ROOT = _GATHER_APP_ROOT.parents[1]
 if _RAW_API_IO_LOG_DIR.is_absolute():
     _API_IO_LOG_DIR = _RAW_API_IO_LOG_DIR

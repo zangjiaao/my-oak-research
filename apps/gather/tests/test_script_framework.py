@@ -8,17 +8,18 @@ from script_framework import ScriptContext, ScriptRegistry, build_x_search_inter
 
 
 def test_script_registry_resolve_x_search_intercept():
-    root = Path(__file__).resolve().parents[1] / "scripts"
-    registry = ScriptRegistry(root)
+    app_root = Path(__file__).resolve().parents[1]
+    registry = ScriptRegistry(app_root / "scripts", app_root / "scripts-dist")
     spec = registry.resolve(ScriptContext(platform="x", intent="search", mode="intercept", args={}))
     assert spec is not None
     assert spec.key == "x.search.intercept"
-    assert spec.file_path.exists()
+    assert spec.source_path.exists()
+    assert spec.runtime_path.exists()
 
 
 def test_build_x_search_intercept_script_renders_placeholders():
-    root = Path(__file__).resolve().parents[1] / "scripts"
-    registry = ScriptRegistry(root)
+    app_root = Path(__file__).resolve().parents[1]
+    registry = ScriptRegistry(app_root / "scripts", app_root / "scripts-dist")
     script = build_x_search_intercept_script(
         registry=registry,
         query="openai",
