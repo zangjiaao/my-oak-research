@@ -88,3 +88,42 @@ def test_fetch_v3_opencli_bridge_mode(monkeypatch):
     assert payload["items"]
     assert payload["items"][0]["recordContent"]["id"] == "1"
     assert payload["items"][0]["recordContent"]["author"] == "openai"
+
+
+def test_fetch_v3_uses_intercept_reddit_search_mode(monkeypatch):
+    async def fake_run_playwright_intercept_reddit_intent(request, intent_type):  # noqa: ANN001
+        return [
+            CleanItem(
+                platform=request.platform,
+                sourceId=request.source_id,
+                sourceType="SOCIAL_MEDIA",
+                recordContent={
+                    "query": request.config.get("playwright", {}).get("args", {}).get("query"),
+                    "mode": request.config.get("playwright", {}).get("mode"),
+                    "intent_type": intent_type,
+                    "posts": [{"id": "p1", "title": "hello"}],
+                },
+            )
+        ]
+
+    monkeypatch.setattr(main, "_run_playwright_intercept_reddit_intent", fake_run_playwright_intercept_reddit_intent)
+
+    client = TestClient(main.app)
+    response = client.post(
+        "/v3/fetch",
+        json={
+            "platform": "reddit",
+            "sourceId": "source_123",
+            "intent": {"type": "search", "args": {"query": "openai", "limit": 20}},
+            "keywords": [],
+            "driver": {"name": "playwright", "option": {}},
+            "output": {"field": ["query", "intent_type", "mode"], "type": "reddit-post"},
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["meta"]["adapter"] == "reddit.search"
+    assert payload["items"][0]["recordContent"]["query"] == "openai"
+    assert payload["items"][0]["recordContent"]["intent_type"] == "search"
+    assert payload["items"][0]["recordContent"]["mode"] == "intercept-reddit-search"

@@ -82,6 +82,7 @@ _SCRIPT_SOURCE_ROOT = _GATHER_APP_ROOT / "scripts"
 _SCRIPT_RUNTIME_ROOT = _GATHER_APP_ROOT / "scripts-dist"
 _SCRIPT_REGISTRY = ScriptRegistry(_SCRIPT_SOURCE_ROOT, _SCRIPT_RUNTIME_ROOT)
 _X_INTERCEPT_INTENTS = _SCRIPT_REGISTRY.intents_for("x")
+_REDDIT_INTERCEPT_INTENTS = _SCRIPT_REGISTRY.intents_for("reddit")
 _REPO_ROOT = _GATHER_APP_ROOT.parents[1]
 if _RAW_API_IO_LOG_DIR.is_absolute():
     _API_IO_LOG_DIR = _RAW_API_IO_LOG_DIR
@@ -562,6 +563,9 @@ async def _playwright_fetch_data(request: FetchRequest):
         if mode.startswith("intercept-x-") and platform in {"x", "twitter"}:
             intent_type = mode.removeprefix("intercept-x-").strip().lower()
             return await _run_playwright_intercept_x_intent(request, intent_type)
+        if mode.startswith("intercept-reddit-") and platform == "reddit":
+            intent_type = mode.removeprefix("intercept-reddit-").strip().lower()
+            return await _run_playwright_intercept_reddit_intent(request, intent_type)
         if mode in {"eval-js", "evaljs", "eval"}:
             return await _run_playwright_eval_script(request)
 
@@ -1391,6 +1395,127 @@ async def _run_playwright_intercept_x_search(request: FetchRequest) -> list[Clea
     return await _run_playwright_intercept_x_intent(request, "search")
 
 
+def _normalize_reddit_username(raw: Any) -> str:
+    if not isinstance(raw, str):
+        return ""
+    username = raw.strip()
+    if not username:
+        return ""
+    if username.lower().startswith("u/"):
+        return username[2:]
+    return username.lstrip("@")
+
+
+async def _run_playwright_intercept_reddit_intent(request: FetchRequest, intent_type: str) -> list[CleanItem]:
+    from playwright.async_api import TimeoutError as PlaywrightTimeoutError
+    from playwright.async_api import async_playwright
+
+    config = request.config if isinstance(request.config, dict) else {}
+    playwright_options = config.get("playwright")
+    if not isinstance(playwright_options, dict):
+        raise HTTPException(status_code=400, detail="config.playwright must be an object")
+
+    args = playwright_options.get("args", {})
+    args_obj = args if isinstance(args, dict) else {}
+    normalized_intent = (intent_type or "").strip().lower()
+    if normalized_intent not in _REDDIT_INTERCEPT_INTENTS:
+        raise HTTPException(status_code=400, detail=f"unsupported reddit intercept intent: {normalized_intent}")
+
+    query = str(args_obj.get("query", "")).strip()
+    subreddit_name = str(args_obj.get("subreddit", args_obj.get("name", ""))).strip()
+    if subreddit_name.lower().startswith("r/"):
+        subreddit_name = subreddit_name[2:]
+    username = _normalize_reddit_username(args_obj.get("username"))
+    sort_value = str(args_obj.get("sort", "relevance")).strip().lower() or "relevance"
+    time_value = str(args_obj.get("time", "all")).strip().lower() or "all"
+
+    if normalized_intent == "search" and not query:
+        raise HTTPException(status_code=400, detail="config.playwright.args.query is required for intercept-reddit-search mode")
+    if normalized_intent == "subreddit" and not subreddit_name:
+        raise HTTPException(
+            status_code=400,
+            detail="config.playwright.args.subreddit (or name) is required for intercept-reddit-subreddit mode",
+        )
+    if normalized_intent in {"user", "user-posts", "user-comments"} and not username:
+        raise HTTPException(
+            status_code=400,
+            detail=f"config.playwright.args.username is required for intercept-reddit-{normalized_intent} mode",
+        )
+
+    raw_limit = args_obj.get("limit", args_obj.get("count", 20))
+    try:
+        limit = int(raw_limit)
+    except (TypeError, ValueError):
+        limit = 20
+    limit = max(1, min(limit, 100))
+    headless = bool(playwright_options.get("headless", True))
+    navigation_timeout_ms = playwright_options.get("navigationTimeoutMs", 60000)
+    if not isinstance(navigation_timeout_ms, int) or navigation_timeout_ms < 1000:
+        raise HTTPException(status_code=400, detail="config.playwright.navigationTimeoutMs must be an integer >= 1000")
+    storage_state = _load_playwright_storage_state_from_config(request, playwright_options)
+
+    if normalized_intent == "search":
+        target_url = f"https://www.reddit.com/search/?q={quote(query)}"
+    elif normalized_intent == "subreddit":
+        target_url = f"https://www.reddit.com/r/{quote(subreddit_name)}/"
+    elif normalized_intent == "hot":
+        target_url = f"https://www.reddit.com/r/{quote(subreddit_name)}/hot" if subreddit_name else "https://www.reddit.com/hot"
+    elif normalized_intent == "frontpage":
+        target_url = "https://www.reddit.com/r/all"
+    elif normalized_intent == "popular":
+        target_url = "https://www.reddit.com/r/popular"
+    elif normalized_intent == "user":
+        target_url = f"https://www.reddit.com/user/{quote(username)}"
+    elif normalized_intent == "user-posts":
+        target_url = f"https://www.reddit.com/user/{quote(username)}/submitted"
+    elif normalized_intent == "user-comments":
+        target_url = f"https://www.reddit.com/user/{quote(username)}/comments"
+    else:
+        target_url = "https://www.reddit.com"
+
+    script_to_run = build_x_intent_script(
+        _SCRIPT_REGISTRY,
+        normalized_intent,
+        {
+            "__QUERY_JSON__": json.dumps(query, ensure_ascii=False),
+            "__SUBREDDIT_JSON__": json.dumps(subreddit_name, ensure_ascii=False),
+            "__SORT_JSON__": json.dumps(sort_value, ensure_ascii=False),
+            "__TIME_JSON__": json.dumps(time_value, ensure_ascii=False),
+            "__USERNAME_JSON__": json.dumps(username, ensure_ascii=False),
+            "__LIMIT__": limit,
+            "__COUNT__": limit,
+        },
+        platform="reddit",
+    )
+
+    try:
+        async with async_playwright() as playwright:
+            browser = await playwright.chromium.launch(headless=headless)
+            context_options: dict[str, Any] = {}
+            if storage_state:
+                context_options["storage_state"] = storage_state
+            context = await browser.new_context(**context_options)
+            page = await context.new_page()
+            try:
+                await page.goto(target_url, wait_until="domcontentloaded", timeout=navigation_timeout_ms)
+                await page.wait_for_timeout(1000)
+                eval_result = await page.evaluate(script_to_run)
+            finally:
+                await context.close()
+                await browser.close()
+    except PlaywrightTimeoutError as error:
+        raise HTTPException(status_code=504, detail=f"playwright intercept reddit timeout: {error}") from error
+    except HTTPException:
+        raise
+    except Exception as error:
+        raise HTTPException(status_code=500, detail=f"playwright intercept reddit {normalized_intent} failed: {error}") from error
+
+    items = _normalize_playwright_eval_result(eval_result, request, target_url)
+    if not items:
+        raise HTTPException(status_code=500, detail=f"playwright intercept reddit {normalized_intent} finished without output")
+    return items
+
+
 def _extract_opencli_json_payload(stdout: str) -> Any:
     text = stdout.strip()
     if not text:
@@ -1862,12 +1987,18 @@ def _merge_v3_intent_into_driver_option(
 ) -> dict[str, Any]:
     merged_option = dict(option)
     query = intent_args.get("query")
+    subreddit = intent_args.get("subreddit", intent_args.get("name"))
+    sort = intent_args.get("sort")
+    time_filter = intent_args.get("time")
     username = intent_args.get("username")
     tweet_id = intent_args.get("tweet_id", intent_args.get("tweetId"))
     url = intent_args.get("url")
     limit = intent_args.get("limit")
     normalized_query = query.strip() if isinstance(query, str) else ""
+    normalized_subreddit = subreddit.strip() if isinstance(subreddit, str) else ""
     normalized_username = username.strip().lstrip("@") if isinstance(username, str) else ""
+    if normalized_username.lower().startswith("u/"):
+        normalized_username = normalized_username[2:]
     normalized_tweet_id = _extract_tweet_id(tweet_id)
     if not normalized_tweet_id and isinstance(url, str):
         normalized_tweet_id = _extract_tweet_id(url)
@@ -1881,7 +2012,15 @@ def _merge_v3_intent_into_driver_option(
                 args_obj["query"] = normalized_query
             if (platform or "").strip().lower() == "x" and "type" not in args_obj:
                 args_obj["type"] = "latest"
+        if intent_type in {"subreddit", "hot"}:
+            if normalized_subreddit and (not isinstance(args_obj.get("subreddit"), str) or not args_obj.get("subreddit")):
+                args_obj["subreddit"] = normalized_subreddit
+            if normalized_subreddit and (not isinstance(args_obj.get("name"), str) or not args_obj.get("name")):
+                args_obj["name"] = normalized_subreddit
         if intent_type in {"profile", "followers", "following"}:
+            if normalized_username and (not isinstance(args_obj.get("username"), str) or not args_obj.get("username")):
+                args_obj["username"] = normalized_username
+        if intent_type in {"user", "user-posts", "user-comments"}:
             if normalized_username and (not isinstance(args_obj.get("username"), str) or not args_obj.get("username")):
                 args_obj["username"] = normalized_username
         if intent_type in {"thread", "article"}:
@@ -1889,6 +2028,14 @@ def _merge_v3_intent_into_driver_option(
                 args_obj["tweet_id"] = normalized_tweet_id
         if normalized_limit is not None and "count" not in args_obj:
             args_obj["count"] = str(normalized_limit)
+        if normalized_limit is not None and "limit" not in args_obj:
+            args_obj["limit"] = normalized_limit
+        if isinstance(sort, str) and sort.strip():
+            if not isinstance(args_obj.get("sort"), str) or not args_obj.get("sort"):
+                args_obj["sort"] = sort.strip()
+        if isinstance(time_filter, str) and time_filter.strip():
+            if not isinstance(args_obj.get("time"), str) or not args_obj.get("time"):
+                args_obj["time"] = time_filter.strip()
         if args_obj:
             merged_option["args"] = args_obj
         if driver_name == "playwright":
@@ -1903,6 +2050,8 @@ def _merge_v3_intent_into_driver_option(
                 normalized_platform = (platform or "").strip().lower()
                 if normalized_platform in {"x", "twitter"} and intent_type in _X_INTERCEPT_INTENTS:
                     merged_option["mode"] = f"intercept-x-{intent_type}"
+                elif normalized_platform == "reddit" and intent_type in _REDDIT_INTERCEPT_INTENTS:
+                    merged_option["mode"] = f"intercept-reddit-{intent_type}"
                 elif intent_type == "search":
                     merged_option["mode"] = "opencli-bridge" if _OPENCLI_BRIDGE_ENABLED else "intercept-x-search"
         return merged_option
