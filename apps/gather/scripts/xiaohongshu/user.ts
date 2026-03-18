@@ -45,11 +45,34 @@ async () => {
       } catch (_error) {}
       return response;
     };
+
+    const xhrOpen = XMLHttpRequest.prototype.open;
+    const xhrSend = XMLHttpRequest.prototype.send;
+    XMLHttpRequest.prototype.open = function (method, url) {
+      this.__oakGatherUrl = String(url || "");
+      return xhrOpen.apply(this, arguments);
+    };
+    XMLHttpRequest.prototype.send = function () {
+      if (this.__oakGatherUrl && this.__oakGatherUrl.includes(captureKey)) {
+        this.addEventListener("load", function () {
+          try {
+            pushCapture(this.__oakGatherUrl, JSON.parse(this.responseText));
+          } catch (_error) {}
+        });
+      }
+      return xhrSend.apply(this, arguments);
+    };
   }
 
   for (let i = 0; i < Math.max(1, Number(__SCROLL_TIMES__) || 3); i += 1) {
     window.scrollTo(0, document.body.scrollHeight);
-    await sleep(1200);
+    await sleep(2000);
+  }
+
+  if (!captures.length) {
+    await sleep(1800);
+    window.scrollTo(0, document.body.scrollHeight);
+    await sleep(1600);
   }
 
   const notes = [];
@@ -65,6 +88,27 @@ async () => {
         title: note?.display_title || "",
         type: note?.type || "",
         likes: note?.interact_info?.liked_count || 0,
+        url: `https://www.xiaohongshu.com/explore/${noteId}`,
+      });
+    }
+  }
+
+  if (!notes.length) {
+    const cards = Array.from(document.querySelectorAll("section.note-item"));
+    for (const el of cards) {
+      if (!(el instanceof HTMLElement)) continue;
+      const link = el.querySelector('a[href*="/explore/"],a[href*="/note/"]');
+      const href = link ? link.getAttribute("href") || "" : "";
+      const matched = href.match(/\/(?:explore|note)\/([A-Za-z0-9]+)/);
+      const noteId = matched ? matched[1] : "";
+      if (!noteId || seen.has(noteId)) continue;
+      seen.add(noteId);
+      const titleEl = el.querySelector(".title,.note-title,a.title");
+      notes.push({
+        id: noteId,
+        title: (titleEl && titleEl.textContent ? titleEl.textContent : "").trim(),
+        type: "",
+        likes: 0,
         url: `https://www.xiaohongshu.com/explore/${noteId}`,
       });
     }
