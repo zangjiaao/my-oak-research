@@ -95,16 +95,17 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
 验证 cookies 是否有效。
 
-默认会优先尝试脚本校验：先查找 gather 内置脚本 `apps/gather/site_scripts/<platform>/me.ts`，再查找外部 bb-site（优先 `me.ts` / `me.js`，兼容回退 `user.ts` / `user.js`）。若脚本不可用才回退到 gather 内置平台 client 校验。可通过 `BB_SITES_DIR` 指定外部 bb-site 根目录（默认按 `~/.bb-browser/bb-sites`、`~/Reference/bb-sites` 依次查找）。  
-`whatsapp` 平台优先使用 `agent-browser` 方式做登录态探测（更贴合其 persistent profile 场景）。
+当前使用内置校验探针，不再依赖 `bb-site` 或 `site_scripts`：  
+- `x/twitter`: 检查 `ct0` + `auth_token` cookie  
+- `reddit`: Playwright 打开站点并请求 `/api/me.json`  
+- `whatsapp`: 使用 `agent-browser` 做登录态探测  
+- 其他平台：返回 `built-in-probe-missing`
 
 **请求体**：
 ```json
 {
   "platform": "x",
   "stateFile": ".auth/x_auth.json",
-  "verifyScriptPath": "/Users/me/Reference/bb-sites/twitter/me.ts",
-  "verifyArgs": { "screen_name": "openai" },
   "verifyTargetUrl": "https://x.com",
   "verifyTimeoutMs": 90000,
   "verifyPostWaitMs": 5000,
@@ -117,8 +118,6 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
 `auth_data` 与 `stateFile` 二选一即可（`stateFile` 为 gather 服务本机可访问路径）。
 可选覆盖字段：
-- `verifyScriptPath`: 指定本次校验使用的脚本路径（不传则按平台自动查找 `me.ts/me.js/user.ts/user.js`）
-- `verifyArgs`: 透传给校验脚本的参数对象
 - `verifyTargetUrl`: 指定校验跳转地址（不传则按平台默认地址）
 - `verifyTimeoutMs`: Playwright 导航超时（毫秒，默认 `60000`）
 - `verifyPostWaitMs`: 导航后额外等待时间（毫秒，默认 `3000`，单页应用建议适当调大）
@@ -562,9 +561,9 @@ apps/gather/
 
 ### 添加新平台
 
-1. 优先在 `site_scripts/<platform>/`（或 bb-site）提供 `me.ts/me.js` 验证脚本
+1. 在 `apps/gather/auth_verify.py` 增加该平台的内置 verify probe
 2. 采集逻辑优先走 `driver.name=agent-browser` 或 `driver.option.playwright.mode=eval-js`
-3. 在 `main.py` 中添加平台映射与校验逻辑
+3. 在 `main.py` 中添加平台映射与采集逻辑
 4. 在 `export_chrome_cookies.py` 中添加平台配置（如需）
 
 ## 注意事项

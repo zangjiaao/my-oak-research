@@ -28,6 +28,13 @@ from drivers.agent_browser_runner import (
 from drivers.playwright_driver import PlaywrightDriver
 from drivers.registry import DriverRegistry, DriverNotFoundError
 from drivers.xhttp_driver import XHttpDriver
+from auth_verify import (
+    agent_browser_verify_auth,
+    resolve_verify_auth_data,
+    verify_auth_with_agent_browser_for_whatsapp,
+    verify_auth_with_reddit_api_probe,
+    verify_auth_with_x_cookie_probe,
+)
 from fetch_processing import agent_browser_results_to_clean_items, apply_keyword_hard_filter
 from script_framework import ScriptRegistry, build_x_intent_script, build_x_search_intercept_script
 from schemas import (
@@ -82,6 +89,7 @@ _SCRIPT_SOURCE_ROOT = _GATHER_APP_ROOT / "scripts"
 _SCRIPT_RUNTIME_ROOT = _GATHER_APP_ROOT / "scripts-dist"
 _SCRIPT_REGISTRY = ScriptRegistry(_SCRIPT_SOURCE_ROOT, _SCRIPT_RUNTIME_ROOT)
 _X_INTERCEPT_INTENTS = _SCRIPT_REGISTRY.intents_for("x")
+_REDDIT_INTERCEPT_INTENTS = _SCRIPT_REGISTRY.intents_for("reddit")
 _REPO_ROOT = _GATHER_APP_ROOT.parents[1]
 if _RAW_API_IO_LOG_DIR.is_absolute():
     _API_IO_LOG_DIR = _RAW_API_IO_LOG_DIR
@@ -182,9 +190,6 @@ _BB_SITE_TARGET_URL = {
     "facebook": "https://www.facebook.com",
 }
 
-_GATHER_VERIFY_SCRIPT_ROOT = Path(__file__).resolve().parent / "site_scripts"
-
-
 @dataclass
 class _PlaywrightBrowserPoolEntry:
     browser: Any
@@ -218,306 +223,25 @@ async def root():
     return {"status": "ok", "service": "oak-gather"}
 
 
-def _resolve_bb_site_verify_script(platform: str) -> Path | None:
-    normalized = _BB_SITE_PLATFORM_ALIAS.get(platform.lower(), platform.lower())
-    script_dir_candidates: list[Path] = []
-    if _GATHER_VERIFY_SCRIPT_ROOT.exists():
-        script_dir_candidates.append(_GATHER_VERIFY_SCRIPT_ROOT)
-    configured_dir = os.getenv("BB_SITES_DIR")
-    if configured_dir:
-        script_dir_candidates.append(Path(configured_dir).expanduser())
-    script_dir_candidates.extend(
-        [
-            Path("~/.bb-browser/bb-sites").expanduser(),
-            Path("~/Reference/bb-sites").expanduser(),
-        ]
-    )
-
-    for base_dir in script_dir_candidates:
-        for suffix in ("me.ts", "me.js", "user.ts", "user.js"):
-            candidate = base_dir / normalized / suffix
-            if candidate.exists():
-                return candidate
-    return None
-
-
 async def _verify_auth_with_agent_browser_for_whatsapp(request: VerifyAuthRequest) -> VerifyAuthResponse | None:
-    if request.platform.lower() != "whatsapp":
-        return None
-
-    options: dict[str, Any] = {
-        "headed": not request.headless,
-        "verbose": False,
-        "closeOnComplete": True,
-        "commandTimeoutMs": 30000,
-        "script": [
-            {"command": "open https://web.whatsapp.com/"},
-            {"command": "wait --load domcontentloaded"},
-            {
-                "command": (
-                    "eval \"(()=>{"
-                    "const loggedIn=Boolean(document.querySelector('[aria-label=\\\"Chat list\\\"]')"
-                    "||document.querySelector('[data-testid=\\\"chat-list\\\"]')"
-                    "||document.querySelector('[contenteditable=\\\"true\\\"][data-tab]'));"
-                    "const needsQr=Boolean(document.querySelector('canvas[aria-label*=\\\"QR\\\"]'));"
-                    "if(loggedIn)return JSON.stringify({ok:true});"
-                    "if(needsQr)return JSON.stringify({ok:false,error:'QR required'});"
-                    "return JSON.stringify({ok:false,error:'Unable to confirm auth status'});"
-                    "})()\""
-                ),
-                "captureAs": "auth_probe",
-            },
-        ],
-    }
-
-    if request.state_file:
-        options["stateFile"] = request.state_file
-
-    auth_data = request.auth_data or {}
-    profile_name = auth_data.get("profileName")
-    if isinstance(profile_name, str) and profile_name.strip():
-        profile_path = AUTH_DIR / profile_name.strip()
-        if profile_path.exists():
-            options["profile"] = str(profile_path)
-
-    try:
-        script_result = await asyncio.to_thread(
-            execute_agent_browser_script,
-            {"agentBrowser": options},
-        )
-    except AgentBrowserScriptError as error:
-        print(f"[gather] whatsapp agent-browser verify failed, fallback to legacy verify: {error}")
-        return None
-    except Exception as error:  # pragma: no cover - defensive
-        print(f"[gather] whatsapp agent-browser verify unexpected error, fallback to legacy verify: {error}")
-        return None
-
-    captures = script_result.captures.get("auth_probe") or []
-    if not captures:
-        return None
-    raw = captures[-1]
-    try:
-        payload = json.loads(raw)
-    except json.JSONDecodeError:
-        return None
-    if not isinstance(payload, dict):
-        return None
-
-    if payload.get("ok") is True:
-        return VerifyAuthResponse(
-            valid=True,
-            message="WhatsApp authentication is valid",
-            details={"platform": "whatsapp", "verifyMethod": "agent-browser"},
-        )
-    return VerifyAuthResponse(
-        valid=False,
-        message=str(payload.get("error") or "WhatsApp authentication is invalid or expired"),
-        details={"platform": "whatsapp", "verifyMethod": "agent-browser"},
+    return await verify_auth_with_agent_browser_for_whatsapp(
+        request,
+        auth_dir=AUTH_DIR,
     )
 
 
-async def _verify_auth_with_bb_site_script(request: VerifyAuthRequest) -> VerifyAuthResponse | None:
-    platform = request.platform.lower()
-    normalized = _BB_SITE_PLATFORM_ALIAS.get(platform, platform)
-    target_url = request.verify_target_url or _BB_SITE_TARGET_URL.get(normalized)
-    if not target_url:
-        return None
-
-    script_path: Path | None = None
-    if request.verify_script_path:
-        explicit_path = Path(request.verify_script_path).expanduser()
-        if not explicit_path.exists():
-            return VerifyAuthResponse(
-                valid=False,
-                message=f"verifyScriptPath does not exist: {request.verify_script_path}",
-                details={"platform": platform, "verifyMethod": "bb-site-script"},
-            )
-        script_path = explicit_path
-    else:
-        script_path = _resolve_bb_site_verify_script(platform)
-    if not script_path:
-        return None
-
-    script_body = _strip_playwright_meta_block(script_path.read_text(encoding="utf-8"))
-    if not script_body:
-        return None
-    script_args = request.verify_args or {}
-    if not isinstance(script_args, dict):
-        return VerifyAuthResponse(
-            valid=False,
-            message="verifyArgs must be an object",
-            details={"platform": platform, "verifyMethod": "bb-site-script"},
-        )
-
-    from playwright.async_api import TimeoutError as PlaywrightTimeoutError
-    from playwright.async_api import async_playwright
-
-    try:
-        async with async_playwright() as playwright:
-            browser = await playwright.chromium.launch(headless=request.headless)
-            context = await browser.new_context(storage_state=request.auth_data)
-            page = await context.new_page()
-            try:
-                await page.goto(
-                    target_url,
-                    wait_until="domcontentloaded",
-                    timeout=max(1000, int(request.verify_timeout_ms)),
-                )
-                await page.wait_for_timeout(max(0, int(request.verify_post_wait_ms)))
-                result = await page.evaluate(f"({script_body})({json.dumps(script_args, ensure_ascii=False)})")
-            finally:
-                await context.close()
-                await browser.close()
-    except PlaywrightTimeoutError as error:
-        print(f"[gather] bb-site verify timeout for {platform}, fallback to legacy verify: {error}")
-        return None
-    except Exception as error:
-        print(f"[gather] bb-site verify failed for {platform}, fallback to legacy verify: {error}")
-        return None
-
-    if isinstance(result, dict):
-        error_message = result.get("error")
-        if error_message:
-            hint = result.get("hint") if isinstance(result.get("hint"), str) else None
-            if _is_inconclusive_bb_script_error(str(error_message), hint):
-                print(
-                    f"[gather] bb-site verify inconclusive for {platform} "
-                    f"(error={error_message}, hint={hint}), fallback to legacy verify"
-                )
-                return None
-            return VerifyAuthResponse(
-                valid=False,
-                message=str(error_message),
-                details={
-                    "platform": platform,
-                    "hint": result.get("hint"),
-                    "verifyMethod": "bb-site-script",
-                    "scriptPath": str(script_path),
-                },
-            )
-        ok_flag = result.get("ok")
-        if ok_flag is True:
-            return VerifyAuthResponse(
-                valid=True,
-                message=f"{request.platform} authentication is valid",
-                details={
-                    "platform": request.platform,
-                    "verifyMethod": "bb-site-script",
-                    "scriptPath": str(script_path),
-                    "result": result,
-                },
-            )
-        if ok_flag is False:
-            return VerifyAuthResponse(
-                valid=False,
-                message=f"{request.platform} authentication is invalid or expired",
-                details={
-                    "platform": request.platform,
-                    "hint": result.get("hint"),
-                    "verifyMethod": "bb-site-script",
-                    "scriptPath": str(script_path),
-                    "result": result,
-                },
-            )
-        user = {
-            key: result.get(key)
-            for key in ("id", "user_id", "uid", "screen_name", "username", "name")
-            if result.get(key) is not None
-        }
-        if user:
-            return VerifyAuthResponse(
-                valid=True,
-                message=f"{request.platform} authentication is valid",
-                details={
-                    "platform": request.platform,
-                    "verifyMethod": "bb-site-script",
-                    "scriptPath": str(script_path),
-                    "user": user,
-                },
-            )
-
-    if isinstance(result, list) and result:
-        return VerifyAuthResponse(
-            valid=True,
-            message=f"{request.platform} authentication is valid",
-            details={
-                "platform": request.platform,
-                "verifyMethod": "bb-site-script",
-                "scriptPath": str(script_path),
-                "resultCount": len(result),
-            },
-        )
-
-    if result is True:
-        return VerifyAuthResponse(
-            valid=True,
-            message=f"{request.platform} authentication is valid",
-            details={
-                "platform": request.platform,
-                "verifyMethod": "bb-site-script",
-                "scriptPath": str(script_path),
-            },
-        )
-
-    if result is False:
-        print(f"[gather] bb-site verify returned false for {platform}, fallback to legacy verify")
-        return None
-    print(f"[gather] bb-site verify inconclusive for {platform}, fallback to legacy verify")
-    return None
+async def _verify_auth_with_reddit_api_probe(request: VerifyAuthRequest) -> VerifyAuthResponse | None:
+    return await verify_auth_with_reddit_api_probe(request)
 
 
 def _resolve_verify_auth_data(request: VerifyAuthRequest) -> tuple[dict[str, Any] | None, VerifyAuthResponse | None]:
-    if isinstance(request.auth_data, dict):
-        return request.auth_data, None
-
-    if request.state_file:
-        path = Path(request.state_file).expanduser()
-        if not path.exists():
-            return None, VerifyAuthResponse(
-                valid=False,
-                message=f"stateFile does not exist: {request.state_file}",
-                details={"error": "invalid_state_file"},
-            )
-        try:
-            payload = json.loads(path.read_text(encoding="utf-8"))
-        except json.JSONDecodeError as error:
-            return None, VerifyAuthResponse(
-                valid=False,
-                message=f"stateFile is not valid JSON: {request.state_file}",
-                details={"error": str(error)},
-            )
-        if not isinstance(payload, dict):
-            return None, VerifyAuthResponse(
-                valid=False,
-                message=f"stateFile must contain a JSON object: {request.state_file}",
-                details={"error": "invalid_state_payload"},
-            )
-        return payload, None
-
-    if request.platform.lower() == "whatsapp":
-        return {}, None
-
-    return None, VerifyAuthResponse(
-        valid=False,
-        message="auth_data or stateFile is required",
-        details={"error": "missing_auth_data"},
-    )
-
-
-def _is_inconclusive_bb_script_error(message: str, hint: str | None = None) -> bool:
-    normalized_message = message.strip().lower()
-    normalized_hint = (hint or "").strip().lower()
-    if normalized_message == "cannot confirm logged-in state":
-        return True
-    if normalized_message == "failed to get user info" and "not logged in" in normalized_hint:
-        return True
-    return False
+    return resolve_verify_auth_data(request)
 
 
 async def _playwright_verify_auth_legacy(request: VerifyAuthRequest):
     return VerifyAuthResponse(
         valid=False,
-        message="Legacy playwright client verification has been removed; please configure verify script or agent-browser.",
+        message="Legacy playwright client verification has been removed.",
         details={"verifyMethod": "removed-legacy-client"},
     )
 
@@ -532,21 +256,23 @@ async def _playwright_verify_auth(request: VerifyAuthRequest):
     if whatsapp_result is not None:
         return whatsapp_result
 
-    scripted_result = await _verify_auth_with_bb_site_script(normalized_request)
-    if scripted_result is not None:
-        return scripted_result
+    reddit_probe_result = await _verify_auth_with_reddit_api_probe(normalized_request)
+    if reddit_probe_result is not None:
+        return reddit_probe_result
+
+    x_probe_result = verify_auth_with_x_cookie_probe(normalized_request)
+    if x_probe_result is not None:
+        return x_probe_result
+
     return VerifyAuthResponse(
         valid=False,
-        message="No verify script available for this platform. Configure verifyScriptPath or bb-site me.ts/me.js.",
-        details={"verifyMethod": "script-required"},
+        message="No built-in verify probe for this platform",
+        details={"verifyMethod": "built-in-probe-missing"},
     )
 
 
-async def _agent_browser_verify_auth(_request: VerifyAuthRequest):
-    return VerifyAuthResponse(
-        valid=True,
-        message="agent-browser authentication is configured through fetch config (profile/session/state).",
-    )
+async def _agent_browser_verify_auth(request: VerifyAuthRequest):
+    return await agent_browser_verify_auth(request)
 
 
 async def _playwright_fetch_data(request: FetchRequest):
@@ -562,6 +288,9 @@ async def _playwright_fetch_data(request: FetchRequest):
         if mode.startswith("intercept-x-") and platform in {"x", "twitter"}:
             intent_type = mode.removeprefix("intercept-x-").strip().lower()
             return await _run_playwright_intercept_x_intent(request, intent_type)
+        if mode.startswith("intercept-reddit-") and platform == "reddit":
+            intent_type = mode.removeprefix("intercept-reddit-").strip().lower()
+            return await _run_playwright_intercept_reddit_intent(request, intent_type)
         if mode in {"eval-js", "evaljs", "eval"}:
             return await _run_playwright_eval_script(request)
 
@@ -1391,6 +1120,127 @@ async def _run_playwright_intercept_x_search(request: FetchRequest) -> list[Clea
     return await _run_playwright_intercept_x_intent(request, "search")
 
 
+def _normalize_reddit_username(raw: Any) -> str:
+    if not isinstance(raw, str):
+        return ""
+    username = raw.strip()
+    if not username:
+        return ""
+    if username.lower().startswith("u/"):
+        return username[2:]
+    return username.lstrip("@")
+
+
+async def _run_playwright_intercept_reddit_intent(request: FetchRequest, intent_type: str) -> list[CleanItem]:
+    from playwright.async_api import TimeoutError as PlaywrightTimeoutError
+    from playwright.async_api import async_playwright
+
+    config = request.config if isinstance(request.config, dict) else {}
+    playwright_options = config.get("playwright")
+    if not isinstance(playwright_options, dict):
+        raise HTTPException(status_code=400, detail="config.playwright must be an object")
+
+    args = playwright_options.get("args", {})
+    args_obj = args if isinstance(args, dict) else {}
+    normalized_intent = (intent_type or "").strip().lower()
+    if normalized_intent not in _REDDIT_INTERCEPT_INTENTS:
+        raise HTTPException(status_code=400, detail=f"unsupported reddit intercept intent: {normalized_intent}")
+
+    query = str(args_obj.get("query", "")).strip()
+    subreddit_name = str(args_obj.get("subreddit", args_obj.get("name", ""))).strip()
+    if subreddit_name.lower().startswith("r/"):
+        subreddit_name = subreddit_name[2:]
+    username = _normalize_reddit_username(args_obj.get("username"))
+    sort_value = str(args_obj.get("sort", "relevance")).strip().lower() or "relevance"
+    time_value = str(args_obj.get("time", "all")).strip().lower() or "all"
+
+    if normalized_intent == "search" and not query:
+        raise HTTPException(status_code=400, detail="config.playwright.args.query is required for intercept-reddit-search mode")
+    if normalized_intent == "subreddit" and not subreddit_name:
+        raise HTTPException(
+            status_code=400,
+            detail="config.playwright.args.subreddit (or name) is required for intercept-reddit-subreddit mode",
+        )
+    if normalized_intent in {"user", "user-posts", "user-comments"} and not username:
+        raise HTTPException(
+            status_code=400,
+            detail=f"config.playwright.args.username is required for intercept-reddit-{normalized_intent} mode",
+        )
+
+    raw_limit = args_obj.get("limit", args_obj.get("count", 20))
+    try:
+        limit = int(raw_limit)
+    except (TypeError, ValueError):
+        limit = 20
+    limit = max(1, min(limit, 100))
+    headless = bool(playwright_options.get("headless", True))
+    navigation_timeout_ms = playwright_options.get("navigationTimeoutMs", 60000)
+    if not isinstance(navigation_timeout_ms, int) or navigation_timeout_ms < 1000:
+        raise HTTPException(status_code=400, detail="config.playwright.navigationTimeoutMs must be an integer >= 1000")
+    storage_state = _load_playwright_storage_state_from_config(request, playwright_options)
+
+    if normalized_intent == "search":
+        target_url = f"https://www.reddit.com/search/?q={quote(query)}"
+    elif normalized_intent == "subreddit":
+        target_url = f"https://www.reddit.com/r/{quote(subreddit_name)}/"
+    elif normalized_intent == "hot":
+        target_url = f"https://www.reddit.com/r/{quote(subreddit_name)}/hot" if subreddit_name else "https://www.reddit.com/hot"
+    elif normalized_intent == "frontpage":
+        target_url = "https://www.reddit.com/r/all"
+    elif normalized_intent == "popular":
+        target_url = "https://www.reddit.com/r/popular"
+    elif normalized_intent == "user":
+        target_url = f"https://www.reddit.com/user/{quote(username)}"
+    elif normalized_intent == "user-posts":
+        target_url = f"https://www.reddit.com/user/{quote(username)}/submitted"
+    elif normalized_intent == "user-comments":
+        target_url = f"https://www.reddit.com/user/{quote(username)}/comments"
+    else:
+        target_url = "https://www.reddit.com"
+
+    script_to_run = build_x_intent_script(
+        _SCRIPT_REGISTRY,
+        normalized_intent,
+        {
+            "__QUERY_JSON__": json.dumps(query, ensure_ascii=False),
+            "__SUBREDDIT_JSON__": json.dumps(subreddit_name, ensure_ascii=False),
+            "__SORT_JSON__": json.dumps(sort_value, ensure_ascii=False),
+            "__TIME_JSON__": json.dumps(time_value, ensure_ascii=False),
+            "__USERNAME_JSON__": json.dumps(username, ensure_ascii=False),
+            "__LIMIT__": limit,
+            "__COUNT__": limit,
+        },
+        platform="reddit",
+    )
+
+    try:
+        async with async_playwright() as playwright:
+            browser = await playwright.chromium.launch(headless=headless)
+            context_options: dict[str, Any] = {}
+            if storage_state:
+                context_options["storage_state"] = storage_state
+            context = await browser.new_context(**context_options)
+            page = await context.new_page()
+            try:
+                await page.goto(target_url, wait_until="domcontentloaded", timeout=navigation_timeout_ms)
+                await page.wait_for_timeout(1000)
+                eval_result = await page.evaluate(script_to_run)
+            finally:
+                await context.close()
+                await browser.close()
+    except PlaywrightTimeoutError as error:
+        raise HTTPException(status_code=504, detail=f"playwright intercept reddit timeout: {error}") from error
+    except HTTPException:
+        raise
+    except Exception as error:
+        raise HTTPException(status_code=500, detail=f"playwright intercept reddit {normalized_intent} failed: {error}") from error
+
+    items = _normalize_playwright_eval_result(eval_result, request, target_url)
+    if not items:
+        raise HTTPException(status_code=500, detail=f"playwright intercept reddit {normalized_intent} finished without output")
+    return items
+
+
 def _extract_opencli_json_payload(stdout: str) -> Any:
     text = stdout.strip()
     if not text:
@@ -1862,12 +1712,18 @@ def _merge_v3_intent_into_driver_option(
 ) -> dict[str, Any]:
     merged_option = dict(option)
     query = intent_args.get("query")
+    subreddit = intent_args.get("subreddit", intent_args.get("name"))
+    sort = intent_args.get("sort")
+    time_filter = intent_args.get("time")
     username = intent_args.get("username")
     tweet_id = intent_args.get("tweet_id", intent_args.get("tweetId"))
     url = intent_args.get("url")
     limit = intent_args.get("limit")
     normalized_query = query.strip() if isinstance(query, str) else ""
+    normalized_subreddit = subreddit.strip() if isinstance(subreddit, str) else ""
     normalized_username = username.strip().lstrip("@") if isinstance(username, str) else ""
+    if normalized_username.lower().startswith("u/"):
+        normalized_username = normalized_username[2:]
     normalized_tweet_id = _extract_tweet_id(tweet_id)
     if not normalized_tweet_id and isinstance(url, str):
         normalized_tweet_id = _extract_tweet_id(url)
@@ -1881,7 +1737,15 @@ def _merge_v3_intent_into_driver_option(
                 args_obj["query"] = normalized_query
             if (platform or "").strip().lower() == "x" and "type" not in args_obj:
                 args_obj["type"] = "latest"
+        if intent_type in {"subreddit", "hot"}:
+            if normalized_subreddit and (not isinstance(args_obj.get("subreddit"), str) or not args_obj.get("subreddit")):
+                args_obj["subreddit"] = normalized_subreddit
+            if normalized_subreddit and (not isinstance(args_obj.get("name"), str) or not args_obj.get("name")):
+                args_obj["name"] = normalized_subreddit
         if intent_type in {"profile", "followers", "following"}:
+            if normalized_username and (not isinstance(args_obj.get("username"), str) or not args_obj.get("username")):
+                args_obj["username"] = normalized_username
+        if intent_type in {"user", "user-posts", "user-comments"}:
             if normalized_username and (not isinstance(args_obj.get("username"), str) or not args_obj.get("username")):
                 args_obj["username"] = normalized_username
         if intent_type in {"thread", "article"}:
@@ -1889,6 +1753,14 @@ def _merge_v3_intent_into_driver_option(
                 args_obj["tweet_id"] = normalized_tweet_id
         if normalized_limit is not None and "count" not in args_obj:
             args_obj["count"] = str(normalized_limit)
+        if normalized_limit is not None and "limit" not in args_obj:
+            args_obj["limit"] = normalized_limit
+        if isinstance(sort, str) and sort.strip():
+            if not isinstance(args_obj.get("sort"), str) or not args_obj.get("sort"):
+                args_obj["sort"] = sort.strip()
+        if isinstance(time_filter, str) and time_filter.strip():
+            if not isinstance(args_obj.get("time"), str) or not args_obj.get("time"):
+                args_obj["time"] = time_filter.strip()
         if args_obj:
             merged_option["args"] = args_obj
         if driver_name == "playwright":
@@ -1903,6 +1775,8 @@ def _merge_v3_intent_into_driver_option(
                 normalized_platform = (platform or "").strip().lower()
                 if normalized_platform in {"x", "twitter"} and intent_type in _X_INTERCEPT_INTENTS:
                     merged_option["mode"] = f"intercept-x-{intent_type}"
+                elif normalized_platform == "reddit" and intent_type in _REDDIT_INTERCEPT_INTENTS:
+                    merged_option["mode"] = f"intercept-reddit-{intent_type}"
                 elif intent_type == "search":
                     merged_option["mode"] = "opencli-bridge" if _OPENCLI_BRIDGE_ENABLED else "intercept-x-search"
         return merged_option

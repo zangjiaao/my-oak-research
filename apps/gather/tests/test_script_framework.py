@@ -34,6 +34,15 @@ def test_script_registry_auto_discovers_twitter_dir_as_x(tmp_path):
     assert registry.intents_for("x") == {"search"}
 
 
+def test_script_registry_auto_discovers_reddit_intents():
+    app_root = Path(__file__).resolve().parents[1]
+    registry = ScriptRegistry(app_root / "scripts", app_root / "scripts-dist")
+    intents = registry.intents_for("reddit")
+    assert "search" in intents
+    assert "subreddit" in intents
+    assert "user-posts" in intents
+
+
 def test_build_x_search_intercept_script_renders_placeholders():
     app_root = Path(__file__).resolve().parents[1]
     registry = ScriptRegistry(app_root / "scripts", app_root / "scripts-dist")
@@ -71,3 +80,24 @@ def test_build_x_intent_script_resolves_all_registered_intents(intent):
         },
     )
     assert "async () => {" in script
+
+
+def test_build_reddit_search_script():
+    app_root = Path(__file__).resolve().parents[1]
+    registry = ScriptRegistry(app_root / "scripts", app_root / "scripts-dist")
+    script = build_x_intent_script(
+        registry=registry,
+        platform="reddit",
+        intent_type="search",
+        replacements={
+            "__QUERY_JSON__": '"openai"',
+            "__SUBREDDIT_JSON__": '""',
+            "__SORT_JSON__": '"relevance"',
+            "__TIME_JSON__": '"all"',
+            "__LIMIT__": 20,
+            "__COUNT__": 20,
+        },
+    )
+    assert "__QUERY_JSON__" not in script
+    assert "__LIMIT__" not in script
+    assert "search.json" in script

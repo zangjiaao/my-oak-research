@@ -150,6 +150,48 @@ def test_fetch_v3_thread_intent_maps_tweet_id_and_mode(monkeypatch):
     assert payload["items"][0]["recordContent"]["count"] == "10"
 
 
+def test_fetch_v3_reddit_search_intent_maps_mode_and_limit(monkeypatch):
+    response = _client_with_stub_driver(monkeypatch).post(
+        "/v3/fetch",
+        json={
+            "platform": "reddit",
+            "sourceId": "source_123",
+            "intent": {"type": "search", "args": {"query": "openai", "limit": 15, "sort": "new", "time": "week"}},
+            "keywords": [],
+            "driver": {"name": "playwright", "option": {}},
+            "output": {"field": ["query", "count", "mode"], "type": "reddit-post"},
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["meta"]["adapter"] == "reddit.search"
+    assert payload["items"][0]["recordContent"]["query"] == "openai"
+    assert payload["items"][0]["recordContent"]["count"] == "15"
+    assert payload["items"][0]["recordContent"]["mode"] == "intercept-reddit-search"
+
+
+def test_fetch_v3_reddit_user_posts_maps_username(monkeypatch):
+    response = _client_with_stub_driver(monkeypatch).post(
+        "/v3/fetch",
+        json={
+            "platform": "reddit",
+            "sourceId": "source_123",
+            "intent": {"type": "user-posts", "args": {"username": "u/spez", "limit": 5}},
+            "keywords": [],
+            "driver": {"name": "playwright", "option": {}},
+            "output": {"field": ["username", "mode", "count"], "type": "reddit-post"},
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["meta"]["adapter"] == "reddit.user-posts"
+    assert payload["items"][0]["recordContent"]["username"] == "spez"
+    assert payload["items"][0]["recordContent"]["mode"] == "intercept-reddit-user-posts"
+    assert payload["items"][0]["recordContent"]["count"] == "5"
+
+
 def test_fetch_v3_validation_error():
     client = TestClient(main.app)
     response = client.post(

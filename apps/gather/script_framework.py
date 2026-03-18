@@ -102,8 +102,9 @@ def build_x_intent_script(
     registry: ScriptRegistry,
     intent_type: str,
     replacements: Dict[str, Any],
+    platform: str = "x",
 ) -> str:
-    key = f"x.{intent_type}.intercept"
+    key = f"{platform}.{intent_type}.intercept"
     spec = registry.resolve_key(key)
     if spec is None:
         raise ValueError(f"{key} script spec not found")
