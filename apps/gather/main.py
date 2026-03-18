@@ -29,6 +29,7 @@ from drivers.playwright_driver import PlaywrightDriver
 from drivers.registry import DriverRegistry, DriverNotFoundError
 from drivers.xhttp_driver import XHttpDriver
 from fetch_processing import agent_browser_results_to_clean_items, apply_keyword_hard_filter
+from script_framework import ScriptRegistry, build_x_search_intercept_script
 from schemas import (
     AgentBrowserHeartbeatRequest,
     AgentBrowserHeartbeatResponse,
@@ -77,6 +78,8 @@ _RAW_API_IO_LOG_DIR = Path(
     os.getenv("GATHER_API_IO_LOG_DIR", str(Path(__file__).resolve().parent / "logs"))
 ).expanduser()
 _GATHER_APP_ROOT = Path(__file__).resolve().parent
+_SCRIPT_ROOT = _GATHER_APP_ROOT / "scripts"
+_SCRIPT_REGISTRY = ScriptRegistry(_SCRIPT_ROOT)
 _REPO_ROOT = _GATHER_APP_ROOT.parents[1]
 if _RAW_API_IO_LOG_DIR.is_absolute():
     _API_IO_LOG_DIR = _RAW_API_IO_LOG_DIR
@@ -1227,95 +1230,13 @@ async def _run_playwright_intercept_x_search(request: FetchRequest) -> list[Clea
     )
     scroll_times = max(1, min(12, (count + 9) // 10))
 
-    script_to_run = f"""
-        async () => {{
-          const CAPTURE_KEY = 'SearchTimeline';
-          if (!window.__oakGatherCapture) {{
-            window.__oakGatherCapture = [];
-            const pushCapture = (url, payload) => {{
-              if (!url || !String(url).includes(CAPTURE_KEY)) return;
-              if (!payload || typeof payload !== 'object') return;
-              window.__oakGatherCapture.push(payload);
-            }};
-            const origFetch = window.fetch.bind(window);
-            window.fetch = async (...fetchArgs) => {{
-              const response = await origFetch(...fetchArgs);
-              try {{
-                const reqUrl = typeof fetchArgs[0] === 'string'
-                  ? fetchArgs[0]
-                  : (fetchArgs[0] && fetchArgs[0].url) || '';
-                if (reqUrl.includes(CAPTURE_KEY)) {{
-                  const cloned = response.clone();
-                  const data = await cloned.json();
-                  pushCapture(reqUrl, data);
-                }}
-              }} catch (_error) {{}}
-              return response;
-            }};
-            const xhrOpen = XMLHttpRequest.prototype.open;
-            const xhrSend = XMLHttpRequest.prototype.send;
-            XMLHttpRequest.prototype.open = function(method, url) {{
-              this.__oakGatherUrl = String(url || '');
-              return xhrOpen.apply(this, arguments);
-            }};
-            XMLHttpRequest.prototype.send = function() {{
-              if (this.__oakGatherUrl && this.__oakGatherUrl.includes(CAPTURE_KEY)) {{
-                this.addEventListener('load', function() {{
-                  try {{
-                    const payload = JSON.parse(this.responseText);
-                    pushCapture(this.__oakGatherUrl, payload);
-                  }} catch (_error) {{}}
-                }});
-              }}
-              return xhrSend.apply(this, arguments);
-            }};
-          }}
-
-          const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-          for (let i = 0; i < {scroll_times}; i += 1) {{
-            window.scrollTo(0, document.body.scrollHeight);
-            await sleep(1200);
-          }}
-
-          const captures = Array.isArray(window.__oakGatherCapture) ? window.__oakGatherCapture : [];
-          const tweets = [];
-          const seen = new Set();
-
-          for (const payload of captures) {{
-            const instructions = payload?.data?.search_by_raw_query?.search_timeline?.timeline?.instructions || [];
-            for (const inst of instructions) {{
-              const entries = inst?.entries || [];
-              for (const entry of entries) {{
-                const result = entry?.content?.itemContent?.tweet_results?.result;
-                if (!result) continue;
-                const tweet = result.tweet || result;
-                const legacy = tweet?.legacy || {{}};
-                const restId = tweet?.rest_id;
-                if (!restId || seen.has(restId)) continue;
-                seen.add(restId);
-                const user = tweet?.core?.user_results?.result;
-                const screenName = user?.legacy?.screen_name || user?.core?.screen_name || 'unknown';
-                const noteText = tweet?.note_tweet?.note_tweet_results?.result?.text;
-                tweets.push({{
-                  id: restId,
-                  author: screenName,
-                  name: user?.legacy?.name || user?.core?.name || '',
-                  url: `https://x.com/${{screenName}}/status/${{restId}}`,
-                  text: noteText || legacy.full_text || '',
-                  created_at: legacy.created_at || null
-                }});
-              }}
-            }}
-          }}
-
-          return {{
-            query: {json.dumps(query, ensure_ascii=False)},
-            product: {json.dumps("Latest" if search_type == "latest" else "Top")},
-            count: tweets.length,
-            tweets: tweets.slice(0, {count})
-          }};
-        }}
-    """
+    script_to_run = build_x_search_intercept_script(
+        _SCRIPT_REGISTRY,
+        query=query,
+        search_type=search_type,
+        count=count,
+        scroll_times=scroll_times,
+    )
 
     try:
         async with async_playwright() as playwright:
