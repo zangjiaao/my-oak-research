@@ -523,6 +523,115 @@ async def _playwright_verify_auth_legacy(request: VerifyAuthRequest):
     )
 
 
+async def _verify_auth_with_reddit_api_probe(request: VerifyAuthRequest) -> VerifyAuthResponse | None:
+    if request.platform.lower().strip() != "reddit":
+        return None
+
+    from playwright.async_api import TimeoutError as PlaywrightTimeoutError
+    from playwright.async_api import async_playwright
+
+    target_url = request.verify_target_url or "https://www.reddit.com"
+    try:
+        async with async_playwright() as playwright:
+            browser = await playwright.chromium.launch(headless=request.headless)
+            context = await browser.new_context(storage_state=request.auth_data or {})
+            page = await context.new_page()
+            try:
+                await page.goto(
+                    target_url,
+                    wait_until="domcontentloaded",
+                    timeout=max(1000, int(request.verify_timeout_ms)),
+                )
+                await page.wait_for_timeout(max(0, int(request.verify_post_wait_ms)))
+                result = await page.evaluate(
+                    """
+                    (async () => {
+                      try {
+                        const response = await fetch('/api/me.json?raw_json=1', { credentials: 'include' });
+                        const text = await response.text();
+                        let payload = null;
+                        try { payload = JSON.parse(text); } catch (_) {}
+                        const username = payload?.name || payload?.data?.name || "";
+                        const modhash = payload?.modhash || payload?.data?.modhash || "";
+                        if (response.ok && username) {
+                          return {
+                            ok: true,
+                            status: response.status,
+                            username,
+                            modhash,
+                          };
+                        }
+                        return {
+                          ok: false,
+                          status: response.status,
+                          username,
+                          modhash,
+                          error: response.status === 401 || response.status === 403
+                            ? 'not_logged_in'
+                            : 'cannot_confirm_logged_in_state',
+                        };
+                      } catch (error) {
+                        return {
+                          ok: false,
+                          status: 0,
+                          error: String(error || 'reddit auth probe failed'),
+                        };
+                      }
+                    })()
+                    """
+                )
+            finally:
+                await context.close()
+                await browser.close()
+    except PlaywrightTimeoutError as error:
+        return VerifyAuthResponse(
+            valid=False,
+            message=f"Reddit auth probe timed out: {error}",
+            details={"platform": "reddit", "verifyMethod": "reddit-api-me"},
+        )
+    except Exception as error:
+        return VerifyAuthResponse(
+            valid=False,
+            message=f"Reddit auth probe failed: {error}",
+            details={"platform": "reddit", "verifyMethod": "reddit-api-me"},
+        )
+
+    if not isinstance(result, dict):
+        return VerifyAuthResponse(
+            valid=False,
+            message="Cannot confirm Reddit auth status",
+            details={"platform": "reddit", "verifyMethod": "reddit-api-me"},
+        )
+
+    if result.get("ok") is True and isinstance(result.get("username"), str) and result.get("username").strip():
+        return VerifyAuthResponse(
+            valid=True,
+            message="reddit authentication is valid",
+            details={
+                "platform": "reddit",
+                "verifyMethod": "reddit-api-me",
+                "username": result.get("username"),
+                "status": result.get("status"),
+                "hasModhash": bool(result.get("modhash")),
+            },
+        )
+
+    message = "reddit authentication is invalid or expired"
+    if isinstance(result.get("error"), str) and result.get("error").strip():
+        if result.get("error") == "cannot_confirm_logged_in_state":
+            message = "Cannot confirm Reddit auth status"
+    return VerifyAuthResponse(
+        valid=False,
+        message=message,
+        details={
+            "platform": "reddit",
+            "verifyMethod": "reddit-api-me",
+            "status": result.get("status"),
+            "error": result.get("error"),
+        },
+    )
+
+
 async def _playwright_verify_auth(request: VerifyAuthRequest):
     auth_data, error_response = _resolve_verify_auth_data(request)
     if error_response is not None:
@@ -536,6 +645,9 @@ async def _playwright_verify_auth(request: VerifyAuthRequest):
     scripted_result = await _verify_auth_with_bb_site_script(normalized_request)
     if scripted_result is not None:
         return scripted_result
+    reddit_probe_result = await _verify_auth_with_reddit_api_probe(normalized_request)
+    if reddit_probe_result is not None:
+        return reddit_probe_result
     return VerifyAuthResponse(
         valid=False,
         message="No verify script available for this platform. Configure verifyScriptPath or bb-site me.ts/me.js.",

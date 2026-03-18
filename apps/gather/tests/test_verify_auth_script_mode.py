@@ -61,6 +61,36 @@ def test_verify_auth_requires_script_when_script_verify_not_available(monkeypatc
     assert payload["details"]["verifyMethod"] == "script-required"
 
 
+def test_verify_auth_uses_reddit_api_probe_when_script_missing(monkeypatch):
+    async def fake_script_verify(_request):
+        return None
+
+    async def fake_reddit_probe(_request):
+        return VerifyAuthResponse(
+            valid=True,
+            message="reddit auth ok",
+            details={"verifyMethod": "reddit-api-me", "username": "demo_user"},
+        )
+
+    monkeypatch.setattr(main, "_verify_auth_with_bb_site_script", fake_script_verify)
+    monkeypatch.setattr(main, "_verify_auth_with_reddit_api_probe", fake_reddit_probe)
+
+    client = TestClient(main.app)
+    response = client.post(
+        "/verify-auth",
+        json={
+            "platform": "reddit",
+            "auth_data": {"cookies": [{"name": "reddit_session", "value": "demo"}], "origins": []},
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["valid"] is True
+    assert payload["details"]["verifyMethod"] == "reddit-api-me"
+    assert payload["details"]["username"] == "demo_user"
+
+
 def test_verify_auth_supports_state_file(monkeypatch, tmp_path):
     state_file = tmp_path / "x_auth.json"
     state_file.write_text(
