@@ -1,4 +1,8 @@
-// Sample /v3/fetch request\n// {\n//   "platform": "x",\n//   "sourceId": "source_123",\n//   "intent": {"type":"search","query":"openai","limit":20},\n//   "keywords": [],\n//   "driver": {"name": "playwright", "option": {"headless": false, "stateFile": \.auth/x_auth.json"}},\n//   "output": {"field":{"id":"tweets.id","text":"tweets.text","author":"tweets.author","url":"tweets.url","created_at":"tweets.created_at"},"type":"x-text"}\n// }\n\nasync () => {
+// Sample /v3/fetch key parts
+// intent.type: search
+// intent.args: {"query":"openai","limit":20}
+// output.field: {"id":"tweets.id","text":"tweets.text","author":"tweets.author","url":"tweets.url","created_at":"tweets.created_at"}
+
   const CAPTURE_KEY = "SearchTimeline";
   if (!window.__oakGatherCapture) {
     window.__oakGatherCapture = [];

@@ -1,4 +1,8 @@
-// Sample /v3/fetch request\n// {\n//   "platform": "x",\n//   "sourceId": "source_123",\n//   "intent": {"type":"notifications","limit":20},\n//   "keywords": [],\n//   "driver": {"name": "playwright", "option": {"headless": false, "stateFile": \.auth/x_auth.json"}},\n//   "output": {"field":{"id":"notifications.id","action":"notifications.action","text":"notifications.text","author":"notifications.author","url":"notifications.url"},"type":"x-notification"}\n// }\n\nasync () => {
+// Sample /v3/fetch key parts
+// intent.type: notifications
+// intent.args: {"limit":20}
+// output.field: {"id":"notifications.id","action":"notifications.action","text":"notifications.text","author":"notifications.author","url":"notifications.url"}
+
   const limit = Number(__COUNT__) || 20;
   const CAPTURE_KEY = 'NotificationsTimeline';
   if (!window.__oakGatherCapture) {

@@ -1,4 +1,8 @@
-// Sample /v3/fetch request\n// {\n//   "platform": "x",\n//   "sourceId": "source_123",\n//   "intent": {"type":"following","username":"openai","limit":50},\n//   "keywords": [],\n//   "driver": {"name": "playwright", "option": {"headless": false, "stateFile": \.auth/x_auth.json"}},\n//   "output": {"field":{"screen_name":"users.screen_name","name":"users.name","bio":"users.bio","followers":"users.followers","url":"users.url"},"type":"x-user"}\n// }\n\nasync () => {
+// Sample /v3/fetch key parts
+// intent.type: following
+// intent.args: {"username":"openai","limit":50}
+// output.field: {"screen_name":"users.screen_name","name":"users.name","bio":"users.bio","followers":"users.followers","url":"users.url"}
+
   const username = String(__USERNAME_JSON__ || '').replace(/^@/, '').trim();
   const limit = Number(__COUNT__) || 50;
   if (!username) {

@@ -1,4 +1,8 @@
-// Sample /v3/fetch request\n// {\n//   "platform": "x",\n//   "sourceId": "source_123",\n//   "intent": {"type":"thread","tweet_id":"1900000000000000000","limit":50},\n//   "keywords": [],\n//   "driver": {"name": "playwright", "option": {"headless": false, "stateFile": \.auth/x_auth.json"}},\n//   "output": {"field":{"id":"tweets.id","text":"tweets.text","author":"tweets.author","url":"tweets.url","created_at":"tweets.created_at"},"type":"x-thread"}\n// }\n\nasync () => {
+// Sample /v3/fetch key parts
+// intent.type: thread
+// intent.args: {"tweet_id":"1900000000000000000","limit":50}
+// output.field: {"id":"tweets.id","text":"tweets.text","author":"tweets.author","url":"tweets.url","created_at":"tweets.created_at"}
+
   const tweetId = String(__TWEET_ID_JSON__ || '').trim();
   const limit = Number(__COUNT__) || 50;
   if (!tweetId) {

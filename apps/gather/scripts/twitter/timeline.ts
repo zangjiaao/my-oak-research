@@ -1,4 +1,8 @@
-// Sample /v3/fetch request\n// {\n//   "platform": "x",\n//   "sourceId": "source_123",\n//   "intent": {"type":"timeline","limit":20},\n//   "keywords": [],\n//   "driver": {"name": "playwright", "option": {"headless": false, "stateFile": \.auth/x_auth.json"}},\n//   "output": {"field":{"id":"tweets.id","text":"tweets.text","author":"tweets.author","url":"tweets.url","created_at":"tweets.created_at"},"type":"x-text"}\n// }\n\nasync () => {
+// Sample /v3/fetch key parts
+// intent.type: timeline
+// intent.args: {"limit":20}
+// output.field: {"id":"tweets.id","text":"tweets.text","author":"tweets.author","url":"tweets.url","created_at":"tweets.created_at"}
+
   const limit = Number(__COUNT__) || 20;
   const ct0 = document.cookie.split(';').map((c) => c.trim()).find((c) => c.startsWith('ct0='))?.split('=')[1];
   if (!ct0) {
