@@ -36,6 +36,9 @@ from schemas import (
     ErrorResponse,
     FetchRequest,
     FetchV2Request,
+    FetchV3Meta,
+    FetchV3Request,
+    FetchV3Response,
     SaveAuthStateRequest,
     SaveAuthStateResponse,
     UploadProfileResponse,
@@ -1468,6 +1471,67 @@ def _normalize_v2_fetch_request(request: FetchV2Request) -> FetchRequest:
     )
 
 
+def _normalize_v3_fetch_request(request: FetchV3Request) -> tuple[FetchRequest, str, FetchV3Meta]:
+    driver_name = "playwright"
+    driver_option: dict[str, Any] = {}
+    driver_filter: dict[str, Any] = {}
+    if request.driver is not None:
+        if request.driver.name and request.driver.name.strip():
+            driver_name = request.driver.name.strip()
+        driver_option = dict(request.driver.option)
+        driver_filter = dict(request.driver.filter)
+
+    v2_request = FetchV2Request(
+        platform=request.platform,
+        sourceId=request.source_id,
+        keywords=request.keywords,
+        driver={
+            "name": driver_name,
+            "option": driver_option,
+            "filter": driver_filter,
+        },
+        output=request.output.model_dump(),
+    )
+    normalized_request = _normalize_v2_fetch_request(v2_request)
+    meta = FetchV3Meta(
+        adapter=f"{request.platform.lower().strip()}.{request.intent.type.strip().lower()}",
+        strategyTried=[driver_name],
+        strategyUsed=driver_name,
+        driverUsed=driver_name,
+    )
+    return normalized_request, driver_name, meta
+
+
+def _build_validation_error_response(route: str, payload: Dict[str, Any], error: ValidationError) -> JSONResponse:
+    first_error = error.errors()[0] if error.errors() else {}
+    location = ".".join(str(part) for part in first_error.get("loc", []))
+    message = first_error.get("msg", "Invalid request payload")
+    if location:
+        message = f"{location}: {message}"
+    response = build_error_response(
+        status_code=422,
+        code="VALIDATION_ERROR",
+        message=message,
+        retryable=False,
+    )
+    _log_api_io(route, payload, response.body.decode("utf-8"), 422)
+    return response
+
+
+async def _execute_fetch_request(request: FetchRequest, driver_name: str) -> list[CleanItem]:
+    raw_results = await driver_registry.fetch(request, driver_name=driver_name)
+    results = _normalize_clean_items(raw_results)
+    if request.output_record_type:
+        for item in results:
+            item.recordType = request.output_record_type
+    results = _apply_output_fields(results, request.output_fields, request.output_field_map)
+    results = apply_keyword_hard_filter(request, results)
+    if driver_name:
+        for item in results:
+            item.driver = driver_name
+    return results
+
+
 async def _agent_browser_fetch_data(request: FetchRequest):
     try:
         script_result = await asyncio.to_thread(execute_agent_browser_script, request.config)
@@ -1583,33 +1647,11 @@ async def fetch_data_v2(payload: Dict[str, Any]):
     try:
         request = FetchV2Request.model_validate(payload)
     except ValidationError as e:
-        first_error = e.errors()[0] if e.errors() else {}
-        location = ".".join(str(part) for part in first_error.get("loc", []))
-        message = first_error.get("msg", "Invalid request payload")
-        if location:
-            message = f"{location}: {message}"
-        response = build_error_response(
-            status_code=422,
-            code="VALIDATION_ERROR",
-            message=message,
-            retryable=False,
-        )
-        _log_api_io("/v2/fetch", payload, response.body.decode("utf-8"), 422)
-        return response
+        return _build_validation_error_response("/v2/fetch", payload, e)
 
     try:
         v1_request = _normalize_v2_fetch_request(request)
-        raw_results = await driver_registry.fetch(v1_request, driver_name=request.driver.name)
-        results = _normalize_clean_items(raw_results)
-        if v1_request.output_record_type:
-            for item in results:
-                item.recordType = v1_request.output_record_type
-        results = _apply_output_fields(results, v1_request.output_fields, v1_request.output_field_map)
-        results = apply_keyword_hard_filter(v1_request, results)
-        if request.driver.name:
-            for item in results:
-                item.driver = request.driver.name
-        response_payload = results
+        response_payload = await _execute_fetch_request(v1_request, request.driver.name)
         _log_api_io(
             "/v2/fetch",
             payload,
@@ -1645,6 +1687,64 @@ async def fetch_data_v2(payload: Dict[str, Any]):
             retryable=True,
         )
         _log_api_io("/v2/fetch", payload, response.body.decode("utf-8"), 500)
+        return response
+
+
+@app.post(
+    "/v3/fetch",
+    response_model=FetchV3Response,
+    response_model_exclude_none=True,
+    responses={
+        400: {"model": ErrorResponse},
+        422: {"model": ErrorResponse},
+        500: {"model": ErrorResponse},
+    },
+)
+async def fetch_data_v3(payload: Dict[str, Any]):
+    try:
+        request = FetchV3Request.model_validate(payload)
+    except ValidationError as e:
+        return _build_validation_error_response("/v3/fetch", payload, e)
+
+    try:
+        normalized_request, driver_name, meta = _normalize_v3_fetch_request(request)
+        items = await _execute_fetch_request(normalized_request, driver_name)
+        response_payload = FetchV3Response(items=items, meta=meta)
+        _log_api_io(
+            "/v3/fetch",
+            payload,
+            response_payload.model_dump(mode="json", by_alias=True, exclude_none=True),
+            200,
+        )
+        return response_payload
+    except DriverNotFoundError as error:
+        response = _to_driver_error_response(error)
+        _log_api_io("/v3/fetch", payload, response.body.decode("utf-8"), 400)
+        return response
+    except HTTPException as e:
+        status_code = e.status_code
+        if isinstance(e.detail, dict):
+            message = str(e.detail.get("message", e.detail))
+        else:
+            message = str(e.detail) if e.detail else "Request failed"
+        code = "FETCH_BAD_REQUEST" if status_code < 500 else "FETCH_INTERNAL_ERROR"
+        retryable = status_code >= 500
+        response = build_error_response(
+            status_code=status_code,
+            code=code,
+            message=message,
+            retryable=retryable,
+        )
+        _log_api_io("/v3/fetch", payload, response.body.decode("utf-8"), status_code)
+        return response
+    except Exception:
+        response = build_error_response(
+            status_code=500,
+            code="FETCH_INTERNAL_ERROR",
+            message="Internal server error",
+            retryable=True,
+        )
+        _log_api_io("/v3/fetch", payload, response.body.decode("utf-8"), 500)
         return response
 
 

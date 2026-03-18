@@ -40,6 +40,51 @@ class FetchV2Request(BaseModel):
     output: FetchV2Output
 
 
+class FetchV3Intent(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    type: str = "search"
+    query: Optional[str] = None
+    limit: Optional[int] = None
+    time_range: Optional[str] = Field(
+        default=None,
+        validation_alias=AliasChoices("timeRange", "time_range"),
+    )
+
+
+class FetchV3Network(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    proxy_profile: Optional[str] = Field(
+        default=None,
+        validation_alias=AliasChoices("proxyProfile", "proxy_profile"),
+    )
+
+
+class FetchV3Request(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    platform: str
+    source_id: str = Field(validation_alias=AliasChoices("sourceId", "source_id"))
+    intent: FetchV3Intent
+    keywords: List[str] = Field(default_factory=list)
+    output: FetchV2Output
+    driver: Optional[FetchV2Driver] = None
+    network: Optional[FetchV3Network] = None
+
+
+class FetchV3Meta(BaseModel):
+    adapter: str
+    strategyTried: List[str] = Field(default_factory=list)
+    strategyUsed: str
+    driverUsed: str
+
+
+class FetchV3Response(BaseModel):
+    items: List["CleanItem"]
+    meta: FetchV3Meta
+
+
 class VerifyAuthRequest(BaseModel):
     platform: str
     auth_data: Optional[Dict[str, Any]] = None
@@ -211,3 +256,6 @@ class DeleteAuthStateRequest(BaseModel):
 
 class KeywordFilterConfigError(ValueError):
     pass
+
+
+FetchV3Response.model_rebuild()
