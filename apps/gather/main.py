@@ -1328,6 +1328,13 @@ async def _run_playwright_intercept_xhs_intent(request: FetchRequest, intent_typ
             context = await browser.new_context(**context_options)
             page = await context.new_page()
             try:
+                bootstrap_capture_key = {
+                    "feed": "homefeed",
+                    "user": "v1/user/posted",
+                    "notifications": "/you/",
+                }.get(normalized_intent)
+                if bootstrap_capture_key:
+                    await page.add_init_script(_build_x_intercept_bootstrap_script(bootstrap_capture_key))
                 await page.goto(target_url, wait_until="domcontentloaded", timeout=navigation_timeout_ms)
                 await page.wait_for_timeout(1200)
                 eval_result = await page.evaluate(script_to_run)

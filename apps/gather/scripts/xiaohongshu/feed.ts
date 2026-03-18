@@ -47,6 +47,10 @@ async () => {
     await sleep(1000);
   }
 
+  if (!captures.length) {
+    await sleep(1200);
+  }
+
   const notes = [];
   const seen = new Set();
   for (const payload of captures) {
@@ -62,6 +66,30 @@ async () => {
         type: card?.type || "",
         author: card?.user?.nickname || "",
         likes: card?.interact_info?.liked_count || 0,
+        url: `https://www.xiaohongshu.com/explore/${noteId}`,
+      });
+    }
+  }
+
+  if (!notes.length) {
+    const cards = Array.from(document.querySelectorAll("section.note-item"));
+    for (const el of cards) {
+      if (!(el instanceof HTMLElement)) continue;
+      const link = el.querySelector('a[href*="/explore/"],a[href*="/note/"]');
+      const href = link ? link.getAttribute("href") || "" : "";
+      const matched = href.match(/\/(?:explore|note)\/([A-Za-z0-9]+)/);
+      const noteId = matched ? matched[1] : "";
+      if (!noteId || seen.has(noteId)) continue;
+      seen.add(noteId);
+      const titleEl = el.querySelector(".title,.note-title,a.title");
+      const authorEl = el.querySelector(".name,.author-name,.nick-name");
+      const likesEl = el.querySelector(".count,.like-count,.like-wrapper .count");
+      notes.push({
+        id: noteId,
+        title: (titleEl && titleEl.textContent ? titleEl.textContent : "").trim(),
+        type: "",
+        author: (authorEl && authorEl.textContent ? authorEl.textContent : "").trim(),
+        likes: (likesEl && likesEl.textContent ? likesEl.textContent : "0").trim(),
         url: `https://www.xiaohongshu.com/explore/${noteId}`,
       });
     }
