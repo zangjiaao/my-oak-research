@@ -1,4 +1,4 @@
-async () => {
+// Sample /v3/fetch request\n// {\n//   "platform": "x",\n//   "sourceId": "source_123",\n//   "intent": {"type":"profile","username":"openai"},\n//   "keywords": [],\n//   "driver": {"name": "playwright", "option": {"headless": false, "stateFile": \.auth/x_auth.json"}},\n//   "output": {"field":{"screen_name":"profiles.screen_name","name":"profiles.name","bio":"profiles.bio","followers":"profiles.followers","following":"profiles.following","url":"profiles.url"},"type":"x-profile"}\n// }\n\nasync () => {
   const username = String(__USERNAME_JSON__ || '').replace(/^@/, '').trim();
   if (!username) {
     return { error: 'username is required' };

@@ -1,4 +1,4 @@
-async () => {
+// Sample /v3/fetch request\n// {\n//   "platform": "x",\n//   "sourceId": "source_123",\n//   "intent": {"type":"article","tweet_id":"1900000000000000000"},\n//   "keywords": [],\n//   "driver": {"name": "playwright", "option": {"headless": false, "stateFile": \.auth/x_auth.json"}},\n//   "output": {"field":{"id":"items.id","title":"items.title","content":"items.content","author":"items.author","url":"items.url"},"type":"x-article"}\n// }\n\nasync () => {
   const tweetId = String(__TWEET_ID_JSON__ || '').trim();
   if (!tweetId) {
     return { error: 'tweet_id is required' };
