@@ -1,0 +1,90 @@
+from pathlib import Path
+import sys
+import subprocess
+
+from fastapi.testclient import TestClient
+
+
+sys.path.append(str(Path(__file__).resolve().parents[1]))
+
+import main  # noqa: E402
+from main import CleanItem  # noqa: E402
+
+
+def test_fetch_v3_uses_intercept_x_search_mode(monkeypatch):
+    async def fake_run_playwright_intercept_x_search(request):  # noqa: ANN001
+        return [
+            CleanItem(
+                platform=request.platform,
+                sourceId=request.source_id,
+                sourceType="SOCIAL_MEDIA",
+                recordContent={
+                    "query": request.config.get("playwright", {}).get("args", {}).get("query"),
+                    "tweets": [{"id": "1", "text": "hello"}],
+                    "text": "hello",
+                },
+            )
+        ]
+
+    monkeypatch.setattr(main, "_run_playwright_intercept_x_search", fake_run_playwright_intercept_x_search)
+
+    client = TestClient(main.app)
+    response = client.post(
+        "/v3/fetch",
+        json={
+            "platform": "x",
+            "sourceId": "source_123",
+            "intent": {"type": "search", "args": {"query": "openai", "limit": 20}},
+            "keywords": [],
+            "driver": {"name": "playwright", "option": {}},
+            "output": {"field": ["query", "tweets"], "type": "x-text"},
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["meta"]["driverUsed"] == "playwright"
+    assert payload["meta"]["strategyUsed"] == "cookie"
+    assert payload["items"][0]["recordContent"]["query"] == "openai"
+    assert payload["items"][0]["recordContent"]["tweets"][0]["id"] == "1"
+
+
+def test_fetch_v3_opencli_bridge_mode(monkeypatch):
+    def fake_run(command, capture_output, text, cwd, check):  # noqa: ANN001
+        return subprocess.CompletedProcess(
+            args=command,
+            returncode=0,
+            stdout='[{"id":"1","author":"openai","text":"hello","url":"https://x.com/openai/status/1","created_at":"Tue Mar 17 02:45:00 +0000 2026"}]',
+            stderr="",
+        )
+
+    monkeypatch.setattr(main.subprocess, "run", fake_run)
+
+    client = TestClient(main.app)
+    response = client.post(
+        "/v3/fetch",
+        json={
+            "platform": "x",
+            "sourceId": "source_123",
+            "intent": {"type": "search", "args": {"query": "openai", "limit": 20}},
+            "keywords": [],
+            "driver": {"name": "playwright", "option": {"mode": "opencli-bridge"}},
+            "output": {
+                "field": {
+                    "id": "tweets.id",
+                    "author": "tweets.author",
+                    "text": "tweets.text",
+                    "url": "tweets.url",
+                    "created_at": "tweets.created_at",
+                },
+                "type": "x-text",
+                "keywordScope": ["text"],
+            },
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["items"]
+    assert payload["items"][0]["recordContent"]["id"] == "1"
+    assert payload["items"][0]["recordContent"]["author"] == "openai"

@@ -45,6 +45,12 @@ type CleanItem = {
 };
 
 type GatherSocialDriver = "playwright" | "xhttp" | "agent-browser";
+type GatherOutputField = string[] | Record<string, string>;
+type GatherOutputPayload = {
+  field: GatherOutputField;
+  type?: string;
+  keywordScope?: string[];
+};
 
 const SOCIAL_PLATFORM_DRIVER_SUPPORT: Record<string, readonly GatherSocialDriver[]> = {
   X: ["playwright", "xhttp", "agent-browser"],
@@ -938,13 +944,37 @@ function sanitizeGatherConfig(
 
 function resolveGatherOutput(
   config: Record<string, unknown>
-): { field: string[]; type?: string } {
+): GatherOutputPayload {
   const configuredOutput = asObject(config.output);
   const outputType =
     typeof configuredOutput.type === "string" && configuredOutput.type.trim()
       ? configuredOutput.type.trim()
       : undefined;
+  const outputKeywordScope = normalizeStringArray(
+    configuredOutput.keywordScope ?? configuredOutput.scopeFields
+  );
   const rawFields = configuredOutput.fields ?? configuredOutput.field;
+  const mappedOutput = asObject(rawFields);
+  if (Object.keys(mappedOutput).length > 0) {
+    const mappedEntries: Array<[string, string]> = [];
+    for (const [key, value] of Object.entries(mappedOutput)) {
+      if (typeof key !== "string" || !key.trim()) {
+        continue;
+      }
+      if (typeof value !== "string" || !value.trim()) {
+        continue;
+      }
+      mappedEntries.push([key.trim(), value.trim()]);
+    }
+    const mappedField = Object.fromEntries(mappedEntries);
+    if (Object.keys(mappedField).length > 0) {
+      return {
+        field: mappedField,
+        ...(outputType ? { type: outputType } : {}),
+        ...(outputKeywordScope.length > 0 ? { keywordScope: outputKeywordScope } : {}),
+      };
+    }
+  }
   if (Array.isArray(rawFields)) {
     const normalized = Array.from(
       new Set(
@@ -955,7 +985,11 @@ function resolveGatherOutput(
       )
     );
     if (normalized.length > 0) {
-      return outputType ? { field: normalized, type: outputType } : { field: normalized };
+      return {
+        field: normalized,
+        ...(outputType ? { type: outputType } : {}),
+        ...(outputKeywordScope.length > 0 ? { keywordScope: outputKeywordScope } : {}),
+      };
     }
   }
 
@@ -973,10 +1007,18 @@ function resolveGatherOutput(
       )
     );
     if (mapped.length > 0) {
-      return outputType ? { field: mapped, type: outputType } : { field: mapped };
+      return {
+        field: mapped,
+        ...(outputType ? { type: outputType } : {}),
+        ...(outputKeywordScope.length > 0 ? { keywordScope: outputKeywordScope } : {}),
+      };
     }
   }
-  return outputType ? { field: ["text", "markdown", "url"], type: outputType } : { field: ["text", "markdown", "url"] };
+  return {
+    field: ["text", "markdown", "url"],
+    ...(outputType ? { type: outputType } : {}),
+    ...(outputKeywordScope.length > 0 ? { keywordScope: outputKeywordScope } : {}),
+  };
 }
 
 function resolveAgentBrowserOwnerId(
@@ -1002,7 +1044,22 @@ function resolveGatherKeywordFilter(
   driver: GatherSocialDriver
 ): Record<string, unknown> {
   if (driver !== "agent-browser") {
-    return asObject(driverOptions.keywordFilter);
+    const topLevelKeywordFilter = asObject(driverOptions.keywordFilter);
+    if (Object.keys(topLevelKeywordFilter).length > 0) {
+      return topLevelKeywordFilter;
+    }
+    const topLevelFilters = asObject(driverOptions.filters);
+    const topLevelFiltersKeyword = asObject(topLevelFilters.keyword);
+    if (Object.keys(topLevelFiltersKeyword).length > 0) {
+      return topLevelFiltersKeyword;
+    }
+    const playwright = asObject(driverOptions.playwright);
+    const playwrightKeywordFilter = asObject(playwright.keywordFilter);
+    if (Object.keys(playwrightKeywordFilter).length > 0) {
+      return playwrightKeywordFilter;
+    }
+    const playwrightFilters = asObject(playwright.filters);
+    return asObject(playwrightFilters.keyword);
   }
   const filters = asObject(driverOptions.filters);
   return asObject(filters.keyword);

@@ -8,6 +8,7 @@ import io
 import json
 import asyncio
 import hashlib
+import subprocess
 import shutil
 import zipfile
 from pathlib import Path
@@ -28,6 +29,7 @@ from drivers.playwright_driver import PlaywrightDriver
 from drivers.registry import DriverRegistry, DriverNotFoundError
 from drivers.xhttp_driver import XHttpDriver
 from fetch_processing import agent_browser_results_to_clean_items, apply_keyword_hard_filter
+from script_framework import ScriptRegistry, build_x_intent_script, build_x_search_intercept_script
 from schemas import (
     AgentBrowserHeartbeatRequest,
     AgentBrowserHeartbeatResponse,
@@ -36,6 +38,9 @@ from schemas import (
     ErrorResponse,
     FetchRequest,
     FetchV2Request,
+    FetchV3Meta,
+    FetchV3Request,
+    FetchV3Response,
     SaveAuthStateRequest,
     SaveAuthStateResponse,
     UploadProfileResponse,
@@ -45,6 +50,12 @@ from schemas import (
 
 _agent_browser_results_to_clean_items = agent_browser_results_to_clean_items
 _apply_keyword_hard_filter = apply_keyword_hard_filter
+
+_V3_DRIVER_STRATEGIES: dict[str, list[str]] = {
+    "playwright": ["cookie", "header", "intercept", "ui"],
+    "xhttp": ["public", "cookie", "header"],
+    "agent-browser": ["agent-browser"],
+}
 
 # Load environment variables from .env file
 load_dotenv()
@@ -60,10 +71,17 @@ def _env_flag(name: str, default: bool = False) -> bool:
 
 
 _API_IO_LOG_ENABLED = _env_flag("GATHER_API_IO_LOG_ENABLED", False)
+_OPENCLI_BRIDGE_ENABLED = _env_flag("GATHER_OPENCLI_BRIDGE_ENABLED", False)
+_OPENCLI_BIN = os.getenv("GATHER_OPENCLI_BIN", "opencli").strip() or "opencli"
+_OPENCLI_CWD = os.getenv("GATHER_OPENCLI_CWD", "").strip() or None
 _RAW_API_IO_LOG_DIR = Path(
     os.getenv("GATHER_API_IO_LOG_DIR", str(Path(__file__).resolve().parent / "logs"))
 ).expanduser()
 _GATHER_APP_ROOT = Path(__file__).resolve().parent
+_SCRIPT_SOURCE_ROOT = _GATHER_APP_ROOT / "scripts"
+_SCRIPT_RUNTIME_ROOT = _GATHER_APP_ROOT / "scripts-dist"
+_SCRIPT_REGISTRY = ScriptRegistry(_SCRIPT_SOURCE_ROOT, _SCRIPT_RUNTIME_ROOT)
+_X_INTERCEPT_INTENTS = _SCRIPT_REGISTRY.intents_for("x")
 _REPO_ROOT = _GATHER_APP_ROOT.parents[1]
 if _RAW_API_IO_LOG_DIR.is_absolute():
     _API_IO_LOG_DIR = _RAW_API_IO_LOG_DIR
@@ -537,6 +555,13 @@ async def _playwright_fetch_data(request: FetchRequest):
     playwright_options = config.get("playwright")
     if isinstance(playwright_options, dict):
         mode = str(playwright_options.get("mode", "")).lower()
+        if mode in {"opencli-bridge", "opencli-search"} and platform in {"x", "twitter"}:
+            return await _run_playwright_opencli_bridge_search(request)
+        if mode in {"intercept-x-search", "intercept-search"} and platform in {"x", "twitter"}:
+            return await _run_playwright_intercept_x_search(request)
+        if mode.startswith("intercept-x-") and platform in {"x", "twitter"}:
+            intent_type = mode.removeprefix("intercept-x-").strip().lower()
+            return await _run_playwright_intercept_x_intent(request, intent_type)
         if mode in {"eval-js", "evaljs", "eval"}:
             return await _run_playwright_eval_script(request)
 
@@ -551,6 +576,29 @@ async def _playwright_fetch_data(request: FetchRequest):
 
 def _strip_playwright_meta_block(script: str) -> str:
     return re.sub(r"/\*\s*@meta[\s\S]*?\*/", "", script, count=1).strip()
+
+
+def _load_playwright_storage_state_from_config(
+    request: FetchRequest,
+    playwright_options: Dict[str, Any],
+) -> Dict[str, Any] | None:
+    if request.auth_data and isinstance(request.auth_data, dict):
+        return request.auth_data
+    raw_state_file = playwright_options.get("stateFile", playwright_options.get("authFile"))
+    if not isinstance(raw_state_file, str) or not raw_state_file.strip():
+        return None
+    state_path = Path(raw_state_file.strip()).expanduser()
+    if not state_path.is_absolute():
+        state_path = (Path(__file__).resolve().parent / state_path).resolve()
+    if not state_path.exists() or not state_path.is_file():
+        raise HTTPException(status_code=400, detail=f"stateFile does not exist: {raw_state_file}")
+    try:
+        raw_state = json.loads(state_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as error:
+        raise HTTPException(status_code=400, detail=f"stateFile is not valid JSON: {error}") from error
+    if not isinstance(raw_state, dict):
+        raise HTTPException(status_code=400, detail="stateFile JSON must be an object")
+    return raw_state
 
 
 def _inject_proxy_credentials(proxy_url: str, username: str | None, password: str | None) -> str:
@@ -1155,6 +1203,299 @@ async def _run_playwright_eval_script(request: FetchRequest) -> list[CleanItem]:
     return items
 
 
+def _extract_tweet_id(raw: str | None) -> str:
+    if not isinstance(raw, str):
+        return ""
+    value = raw.strip()
+    if not value:
+        return ""
+    matched = re.search(r"/status/(\d+)", value)
+    if matched:
+        return matched.group(1)
+    digits = re.sub(r"\D", "", value)
+    return digits if digits else value
+
+
+def _build_x_intercept_bootstrap_script(capture_key: str) -> str:
+    return f"""
+(() => {{
+  const CAPTURE_KEY = {json.dumps(capture_key)};
+  if (window.__oakGatherCapture) return;
+  window.__oakGatherCapture = [];
+  const pushCapture = (url, payload) => {{
+    if (!url || !String(url).includes(CAPTURE_KEY)) return;
+    if (!payload || typeof payload !== "object") return;
+    window.__oakGatherCapture.push(payload);
+  }};
+
+  const origFetch = window.fetch.bind(window);
+  window.fetch = async (...fetchArgs) => {{
+    const response = await origFetch(...fetchArgs);
+    try {{
+      const reqUrl =
+        typeof fetchArgs[0] === "string"
+          ? fetchArgs[0]
+          : (fetchArgs[0] && fetchArgs[0].url) || "";
+      if (reqUrl.includes(CAPTURE_KEY)) {{
+        const cloned = response.clone();
+        const data = await cloned.json();
+        pushCapture(reqUrl, data);
+      }}
+    }} catch (_error) {{}}
+    return response;
+  }};
+
+  const xhrOpen = XMLHttpRequest.prototype.open;
+  const xhrSend = XMLHttpRequest.prototype.send;
+  XMLHttpRequest.prototype.open = function (method, url) {{
+    this.__oakGatherUrl = String(url || "");
+    return xhrOpen.apply(this, arguments);
+  }};
+  XMLHttpRequest.prototype.send = function () {{
+    if (this.__oakGatherUrl && this.__oakGatherUrl.includes(CAPTURE_KEY)) {{
+      this.addEventListener("load", function () {{
+        try {{
+          const payload = JSON.parse(this.responseText);
+          pushCapture(this.__oakGatherUrl, payload);
+        }} catch (_error) {{}}
+      }});
+    }}
+    return xhrSend.apply(this, arguments);
+  }};
+}})();
+"""
+
+
+async def _run_playwright_intercept_x_intent(request: FetchRequest, intent_type: str) -> list[CleanItem]:
+    from playwright.async_api import TimeoutError as PlaywrightTimeoutError
+    from playwright.async_api import async_playwright
+
+    config = request.config if isinstance(request.config, dict) else {}
+    playwright_options = config.get("playwright")
+    if not isinstance(playwright_options, dict):
+        raise HTTPException(status_code=400, detail="config.playwright must be an object")
+
+    args = playwright_options.get("args", {})
+    args_obj = args if isinstance(args, dict) else {}
+    normalized_intent = (intent_type or "").strip().lower()
+    if normalized_intent not in _X_INTERCEPT_INTENTS:
+        raise HTTPException(status_code=400, detail=f"unsupported x intercept intent: {normalized_intent}")
+
+    query = str(args_obj.get("query", "")).strip()
+    username = str(args_obj.get("username", "")).strip()
+    tweet_id = _extract_tweet_id(args_obj.get("tweet_id"))
+
+    if normalized_intent == "search" and not query:
+        raise HTTPException(status_code=400, detail="config.playwright.args.query is required for intercept-x-search mode")
+    if normalized_intent in {"profile", "followers", "following"} and not username:
+        raise HTTPException(
+            status_code=400,
+            detail=f"config.playwright.args.username is required for intercept-x-{normalized_intent} mode",
+        )
+    if normalized_intent in {"thread", "article"} and not tweet_id:
+        raise HTTPException(
+            status_code=400,
+            detail=f"config.playwright.args.tweet_id is required for intercept-x-{normalized_intent} mode",
+        )
+
+    raw_count = args_obj.get("count", 30)
+    try:
+        count = int(raw_count)
+    except (TypeError, ValueError):
+        count = 30
+    count = max(1, min(count, 100))
+    raw_type = str(args_obj.get("type", "latest")).strip().lower()
+    search_type = "top" if raw_type == "top" else "latest"
+    headless = bool(playwright_options.get("headless", True))
+    navigation_timeout_ms = playwright_options.get("navigationTimeoutMs", 60000)
+    if not isinstance(navigation_timeout_ms, int) or navigation_timeout_ms < 1000:
+        raise HTTPException(status_code=400, detail="config.playwright.navigationTimeoutMs must be an integer >= 1000")
+    storage_state = _load_playwright_storage_state_from_config(request, playwright_options)
+    if normalized_intent == "search":
+        target_url = f"https://x.com/search?q={quote(query)}&src=typed_query&f={'live' if search_type == 'latest' else 'top'}"
+    elif normalized_intent == "profile":
+        target_url = f"https://x.com/{quote(username)}"
+    elif normalized_intent == "followers":
+        target_url = f"https://x.com/{quote(username)}/followers"
+    elif normalized_intent == "following":
+        target_url = f"https://x.com/{quote(username)}/following"
+    elif normalized_intent == "bookmarks":
+        target_url = "https://x.com/i/bookmarks"
+    elif normalized_intent == "notifications":
+        target_url = "https://x.com/notifications"
+    elif normalized_intent in {"thread", "article"}:
+        target_url = f"https://x.com/i/status/{quote(tweet_id)}"
+    else:
+        target_url = "https://x.com/home"
+
+    scroll_times = max(1, min(12, (count + 9) // 10))
+
+    if normalized_intent == "search":
+        script_to_run = build_x_search_intercept_script(
+            _SCRIPT_REGISTRY,
+            query=query,
+            search_type=search_type,
+            count=count,
+            scroll_times=scroll_times,
+        )
+    else:
+        script_to_run = build_x_intent_script(
+            _SCRIPT_REGISTRY,
+            normalized_intent,
+            {
+                "__QUERY_JSON__": json.dumps(query, ensure_ascii=False),
+                "__USERNAME_JSON__": json.dumps(username, ensure_ascii=False),
+                "__TWEET_ID_JSON__": json.dumps(tweet_id, ensure_ascii=False),
+                "__COUNT__": count,
+                "__SCROLL_TIMES__": scroll_times,
+            },
+        )
+
+    try:
+        async with async_playwright() as playwright:
+            browser = await playwright.chromium.launch(headless=headless)
+            context_options: dict[str, Any] = {}
+            if storage_state:
+                context_options["storage_state"] = storage_state
+            context = await browser.new_context(**context_options)
+            page = await context.new_page()
+            try:
+                bootstrap_capture_key = {
+                    "search": "SearchTimeline",
+                    "notifications": "NotificationsTimeline",
+                    "followers": "Followers",
+                    "following": "Following",
+                }.get(normalized_intent)
+                if bootstrap_capture_key:
+                    await page.add_init_script(_build_x_intercept_bootstrap_script(bootstrap_capture_key))
+                await page.goto(target_url, wait_until="domcontentloaded", timeout=navigation_timeout_ms)
+                await page.wait_for_timeout(2000)
+                eval_result = await page.evaluate(script_to_run)
+            finally:
+                await context.close()
+                await browser.close()
+    except PlaywrightTimeoutError as error:
+        raise HTTPException(status_code=504, detail=f"playwright intercept search timeout: {error}") from error
+    except HTTPException:
+        raise
+    except Exception as error:
+        raise HTTPException(status_code=500, detail=f"playwright intercept {normalized_intent} failed: {error}") from error
+
+    items = _normalize_playwright_eval_result(eval_result, request, target_url)
+    if not items:
+        raise HTTPException(status_code=500, detail=f"playwright intercept {normalized_intent} finished without output")
+    return items
+
+
+async def _run_playwright_intercept_x_search(request: FetchRequest) -> list[CleanItem]:
+    return await _run_playwright_intercept_x_intent(request, "search")
+
+
+def _extract_opencli_json_payload(stdout: str) -> Any:
+    text = stdout.strip()
+    if not text:
+        return []
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        pass
+
+    start = text.find("[")
+    end = text.rfind("]")
+    if start != -1 and end != -1 and end > start:
+        try:
+            return json.loads(text[start : end + 1])
+        except json.JSONDecodeError:
+            pass
+
+    start = text.find("{")
+    end = text.rfind("}")
+    if start != -1 and end != -1 and end > start:
+        try:
+            return json.loads(text[start : end + 1])
+        except json.JSONDecodeError:
+            pass
+    raise HTTPException(status_code=500, detail="opencli returned non-json output")
+
+
+async def _run_playwright_opencli_bridge_search(request: FetchRequest) -> list[CleanItem]:
+    config = request.config if isinstance(request.config, dict) else {}
+    playwright_options = config.get("playwright")
+    if not isinstance(playwright_options, dict):
+        raise HTTPException(status_code=400, detail="config.playwright must be an object")
+
+    args = playwright_options.get("args", {})
+    args_obj = args if isinstance(args, dict) else {}
+    query = str(args_obj.get("query", "")).strip()
+    if not query:
+        raise HTTPException(status_code=400, detail="config.playwright.args.query is required for opencli bridge mode")
+    raw_count = args_obj.get("count", 20)
+    try:
+        count = int(raw_count)
+    except (TypeError, ValueError):
+        count = 20
+    count = max(1, min(count, 100))
+
+    commands = [
+        [_OPENCLI_BIN, "twitter", "search", "--query", query, "--limit", str(count), "-f", "json"],
+        [_OPENCLI_BIN, "twitter", "search", "--keyword", query, "--limit", str(count), "-f", "json"],
+    ]
+
+    last_error: Exception | None = None
+    for command in commands:
+        try:
+            completed = await asyncio.to_thread(
+                subprocess.run,
+                command,
+                capture_output=True,
+                text=True,
+                cwd=_OPENCLI_CWD,
+                check=False,
+            )
+            if completed.returncode != 0:
+                stderr = (completed.stderr or "").strip()
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"opencli command failed({completed.returncode}): {stderr or 'unknown error'}",
+                )
+            payload = _extract_opencli_json_payload(completed.stdout or "")
+            tweets: list[dict[str, Any]] = []
+            if isinstance(payload, list):
+                for item in payload:
+                    if not isinstance(item, dict):
+                        continue
+                    tweets.append(
+                        {
+                            "id": item.get("id"),
+                            "author": item.get("author"),
+                            "name": item.get("name"),
+                            "url": item.get("url"),
+                            "text": item.get("text"),
+                            "created_at": item.get("created_at"),
+                        }
+                    )
+            eval_like_result = {
+                "query": query,
+                "product": "Latest",
+                "count": len(tweets),
+                "tweets": tweets,
+            }
+            items = _normalize_playwright_eval_result(eval_like_result, request, "https://x.com")
+            if items:
+                return items
+            raise HTTPException(status_code=500, detail="opencli returned empty tweet list")
+        except HTTPException as error:
+            last_error = error
+            continue
+        except Exception as error:
+            last_error = error
+            continue
+
+    if isinstance(last_error, HTTPException):
+        raise last_error
+    raise HTTPException(status_code=500, detail=f"opencli bridge failed: {last_error}")
+
+
 def _truncate_text(value: str, max_length: int = 12000) -> str:
     if len(value) <= max_length:
         return value
@@ -1468,6 +1809,150 @@ def _normalize_v2_fetch_request(request: FetchV2Request) -> FetchRequest:
     )
 
 
+def _normalize_v3_fetch_request(request: FetchV3Request) -> tuple[FetchRequest, str, FetchV3Meta]:
+    driver_name = "playwright"
+    driver_option: dict[str, Any] = {}
+    driver_filter: dict[str, Any] = {}
+    if request.driver is not None:
+        if request.driver.name and request.driver.name.strip():
+            driver_name = request.driver.name.strip()
+        driver_option = dict(request.driver.option)
+        driver_filter = dict(request.driver.filter)
+    driver_name = driver_name.strip().lower()
+
+    intent_type = request.intent.type.strip().lower() if request.intent.type.strip() else "search"
+    intent_args = dict(request.intent.args) if isinstance(request.intent.args, dict) else {}
+    adapter = f"{request.platform.lower().strip()}.{intent_type}"
+    driver_option = _merge_v3_intent_into_driver_option(
+        request.platform,
+        intent_type,
+        intent_args,
+        driver_name,
+        driver_option,
+    )
+
+    v2_request = FetchV2Request(
+        platform=request.platform,
+        sourceId=request.source_id,
+        keywords=request.keywords,
+        driver={
+            "name": driver_name,
+            "option": driver_option,
+            "filter": driver_filter,
+        },
+        output=request.output.model_dump(),
+    )
+    normalized_request = _normalize_v2_fetch_request(v2_request)
+    strategy_tried = _V3_DRIVER_STRATEGIES.get(driver_name, [driver_name or "playwright"])
+    meta = FetchV3Meta(
+        adapter=adapter,
+        strategyTried=strategy_tried,
+        strategyUsed=strategy_tried[0],
+        driverUsed=driver_name,
+    )
+    return normalized_request, driver_name, meta
+
+
+def _merge_v3_intent_into_driver_option(
+    platform: str,
+    intent_type: str,
+    intent_args: dict[str, Any],
+    driver_name: str,
+    option: dict[str, Any],
+) -> dict[str, Any]:
+    merged_option = dict(option)
+    query = intent_args.get("query")
+    username = intent_args.get("username")
+    tweet_id = intent_args.get("tweet_id", intent_args.get("tweetId"))
+    url = intent_args.get("url")
+    limit = intent_args.get("limit")
+    normalized_query = query.strip() if isinstance(query, str) else ""
+    normalized_username = username.strip().lstrip("@") if isinstance(username, str) else ""
+    normalized_tweet_id = _extract_tweet_id(tweet_id)
+    if not normalized_tweet_id and isinstance(url, str):
+        normalized_tweet_id = _extract_tweet_id(url)
+    normalized_limit = limit if isinstance(limit, int) and limit > 0 else None
+
+    if driver_name in {"playwright", "agent-browser"}:
+        args = merged_option.get("args")
+        args_obj = dict(args) if isinstance(args, dict) else {}
+        if intent_type == "search":
+            if normalized_query and (not isinstance(args_obj.get("query"), str) or not args_obj.get("query")):
+                args_obj["query"] = normalized_query
+            if (platform or "").strip().lower() == "x" and "type" not in args_obj:
+                args_obj["type"] = "latest"
+        if intent_type in {"profile", "followers", "following"}:
+            if normalized_username and (not isinstance(args_obj.get("username"), str) or not args_obj.get("username")):
+                args_obj["username"] = normalized_username
+        if intent_type in {"thread", "article"}:
+            if normalized_tweet_id and (not isinstance(args_obj.get("tweet_id"), str) or not args_obj.get("tweet_id")):
+                args_obj["tweet_id"] = normalized_tweet_id
+        if normalized_limit is not None and "count" not in args_obj:
+            args_obj["count"] = str(normalized_limit)
+        if args_obj:
+            merged_option["args"] = args_obj
+        if driver_name == "playwright":
+            has_script_body = isinstance(merged_option.get("scriptBody"), str) and merged_option.get("scriptBody", "").strip()
+            has_script_path = isinstance(merged_option.get("scriptPath"), str) and merged_option.get("scriptPath", "").strip()
+            current_mode = str(merged_option.get("mode", "")).strip().lower()
+            if (
+                not has_script_body
+                and not has_script_path
+                and not current_mode
+            ):
+                normalized_platform = (platform or "").strip().lower()
+                if normalized_platform in {"x", "twitter"} and intent_type in _X_INTERCEPT_INTENTS:
+                    merged_option["mode"] = f"intercept-x-{intent_type}"
+                elif intent_type == "search":
+                    merged_option["mode"] = "opencli-bridge" if _OPENCLI_BRIDGE_ENABLED else "intercept-x-search"
+        return merged_option
+
+    if driver_name == "xhttp":
+        if intent_type != "search":
+            return merged_option
+        params = merged_option.get("params")
+        params_obj = dict(params) if isinstance(params, dict) else {}
+        if normalized_query and (not isinstance(params_obj.get("q"), str) or not params_obj.get("q")):
+            params_obj["q"] = normalized_query
+        if normalized_limit is not None and "limit" not in params_obj:
+            params_obj["limit"] = normalized_limit
+        if params_obj:
+            merged_option["params"] = params_obj
+        return merged_option
+
+    return merged_option
+
+
+def _build_validation_error_response(route: str, payload: Dict[str, Any], error: ValidationError) -> JSONResponse:
+    first_error = error.errors()[0] if error.errors() else {}
+    location = ".".join(str(part) for part in first_error.get("loc", []))
+    message = first_error.get("msg", "Invalid request payload")
+    if location:
+        message = f"{location}: {message}"
+    response = build_error_response(
+        status_code=422,
+        code="VALIDATION_ERROR",
+        message=message,
+        retryable=False,
+    )
+    _log_api_io(route, payload, response.body.decode("utf-8"), 422)
+    return response
+
+
+async def _execute_fetch_request(request: FetchRequest, driver_name: str) -> list[CleanItem]:
+    raw_results = await driver_registry.fetch(request, driver_name=driver_name)
+    results = _normalize_clean_items(raw_results)
+    if request.output_record_type:
+        for item in results:
+            item.recordType = request.output_record_type
+    results = _apply_output_fields(results, request.output_fields, request.output_field_map)
+    results = apply_keyword_hard_filter(request, results)
+    if driver_name:
+        for item in results:
+            item.driver = driver_name
+    return results
+
+
 async def _agent_browser_fetch_data(request: FetchRequest):
     try:
         script_result = await asyncio.to_thread(execute_agent_browser_script, request.config)
@@ -1583,33 +2068,11 @@ async def fetch_data_v2(payload: Dict[str, Any]):
     try:
         request = FetchV2Request.model_validate(payload)
     except ValidationError as e:
-        first_error = e.errors()[0] if e.errors() else {}
-        location = ".".join(str(part) for part in first_error.get("loc", []))
-        message = first_error.get("msg", "Invalid request payload")
-        if location:
-            message = f"{location}: {message}"
-        response = build_error_response(
-            status_code=422,
-            code="VALIDATION_ERROR",
-            message=message,
-            retryable=False,
-        )
-        _log_api_io("/v2/fetch", payload, response.body.decode("utf-8"), 422)
-        return response
+        return _build_validation_error_response("/v2/fetch", payload, e)
 
     try:
         v1_request = _normalize_v2_fetch_request(request)
-        raw_results = await driver_registry.fetch(v1_request, driver_name=request.driver.name)
-        results = _normalize_clean_items(raw_results)
-        if v1_request.output_record_type:
-            for item in results:
-                item.recordType = v1_request.output_record_type
-        results = _apply_output_fields(results, v1_request.output_fields, v1_request.output_field_map)
-        results = apply_keyword_hard_filter(v1_request, results)
-        if request.driver.name:
-            for item in results:
-                item.driver = request.driver.name
-        response_payload = results
+        response_payload = await _execute_fetch_request(v1_request, request.driver.name)
         _log_api_io(
             "/v2/fetch",
             payload,
@@ -1645,6 +2108,64 @@ async def fetch_data_v2(payload: Dict[str, Any]):
             retryable=True,
         )
         _log_api_io("/v2/fetch", payload, response.body.decode("utf-8"), 500)
+        return response
+
+
+@app.post(
+    "/v3/fetch",
+    response_model=FetchV3Response,
+    response_model_exclude_none=True,
+    responses={
+        400: {"model": ErrorResponse},
+        422: {"model": ErrorResponse},
+        500: {"model": ErrorResponse},
+    },
+)
+async def fetch_data_v3(payload: Dict[str, Any]):
+    try:
+        request = FetchV3Request.model_validate(payload)
+    except ValidationError as e:
+        return _build_validation_error_response("/v3/fetch", payload, e)
+
+    try:
+        normalized_request, driver_name, meta = _normalize_v3_fetch_request(request)
+        items = await _execute_fetch_request(normalized_request, driver_name)
+        response_payload = FetchV3Response(items=items, meta=meta)
+        _log_api_io(
+            "/v3/fetch",
+            payload,
+            response_payload.model_dump(mode="json", by_alias=True, exclude_none=True),
+            200,
+        )
+        return response_payload
+    except DriverNotFoundError as error:
+        response = _to_driver_error_response(error)
+        _log_api_io("/v3/fetch", payload, response.body.decode("utf-8"), 400)
+        return response
+    except HTTPException as e:
+        status_code = e.status_code
+        if isinstance(e.detail, dict):
+            message = str(e.detail.get("message", e.detail))
+        else:
+            message = str(e.detail) if e.detail else "Request failed"
+        code = "FETCH_BAD_REQUEST" if status_code < 500 else "FETCH_INTERNAL_ERROR"
+        retryable = status_code >= 500
+        response = build_error_response(
+            status_code=status_code,
+            code=code,
+            message=message,
+            retryable=retryable,
+        )
+        _log_api_io("/v3/fetch", payload, response.body.decode("utf-8"), status_code)
+        return response
+    except Exception:
+        response = build_error_response(
+            status_code=500,
+            code="FETCH_INTERNAL_ERROR",
+            message="Internal server error",
+            retryable=True,
+        )
+        _log_api_io("/v3/fetch", payload, response.body.decode("utf-8"), 500)
         return response
 
 
