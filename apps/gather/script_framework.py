@@ -31,6 +31,8 @@ class ScriptRegistry:
         self._platform_alias = {
             "twitter": "x",
             "x": "x",
+            "xiaohongshu": "xhs",
+            "xhs": "xhs",
         }
         self._specs = self._discover_specs()
 

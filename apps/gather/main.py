@@ -32,6 +32,7 @@ from auth_verify import (
     agent_browser_verify_auth,
     resolve_verify_auth_data,
     verify_auth_with_agent_browser_for_whatsapp,
+    verify_auth_with_xhs_api_probe,
     verify_auth_with_reddit_api_probe,
     verify_auth_with_x_cookie_probe,
 )
@@ -90,6 +91,7 @@ _SCRIPT_RUNTIME_ROOT = _GATHER_APP_ROOT / "scripts-dist"
 _SCRIPT_REGISTRY = ScriptRegistry(_SCRIPT_SOURCE_ROOT, _SCRIPT_RUNTIME_ROOT)
 _X_INTERCEPT_INTENTS = _SCRIPT_REGISTRY.intents_for("x")
 _REDDIT_INTERCEPT_INTENTS = _SCRIPT_REGISTRY.intents_for("reddit")
+_XHS_INTERCEPT_INTENTS = _SCRIPT_REGISTRY.intents_for("xhs")
 _REPO_ROOT = _GATHER_APP_ROOT.parents[1]
 if _RAW_API_IO_LOG_DIR.is_absolute():
     _API_IO_LOG_DIR = _RAW_API_IO_LOG_DIR
@@ -234,6 +236,10 @@ async def _verify_auth_with_reddit_api_probe(request: VerifyAuthRequest) -> Veri
     return await verify_auth_with_reddit_api_probe(request)
 
 
+async def _verify_auth_with_xhs_api_probe(request: VerifyAuthRequest) -> VerifyAuthResponse | None:
+    return await verify_auth_with_xhs_api_probe(request)
+
+
 def _resolve_verify_auth_data(request: VerifyAuthRequest) -> tuple[dict[str, Any] | None, VerifyAuthResponse | None]:
     return resolve_verify_auth_data(request)
 
@@ -259,6 +265,10 @@ async def _playwright_verify_auth(request: VerifyAuthRequest):
     reddit_probe_result = await _verify_auth_with_reddit_api_probe(normalized_request)
     if reddit_probe_result is not None:
         return reddit_probe_result
+
+    xhs_probe_result = await _verify_auth_with_xhs_api_probe(normalized_request)
+    if xhs_probe_result is not None:
+        return xhs_probe_result
 
     x_probe_result = verify_auth_with_x_cookie_probe(normalized_request)
     if x_probe_result is not None:
@@ -291,6 +301,9 @@ async def _playwright_fetch_data(request: FetchRequest):
         if mode.startswith("intercept-reddit-") and platform == "reddit":
             intent_type = mode.removeprefix("intercept-reddit-").strip().lower()
             return await _run_playwright_intercept_reddit_intent(request, intent_type)
+        if mode.startswith("intercept-xhs-") and platform in {"xhs", "xiaohongshu"}:
+            intent_type = mode.removeprefix("intercept-xhs-").strip().lower()
+            return await _run_playwright_intercept_xhs_intent(request, intent_type)
         if mode in {"eval-js", "evaljs", "eval"}:
             return await _run_playwright_eval_script(request)
 
@@ -1241,6 +1254,106 @@ async def _run_playwright_intercept_reddit_intent(request: FetchRequest, intent_
     return items
 
 
+def _normalize_xhs_user_id(raw: Any) -> str:
+    if not isinstance(raw, str):
+        return ""
+    return raw.strip().lstrip("@")
+
+
+async def _run_playwright_intercept_xhs_intent(request: FetchRequest, intent_type: str) -> list[CleanItem]:
+    from playwright.async_api import TimeoutError as PlaywrightTimeoutError
+    from playwright.async_api import async_playwright
+
+    config = request.config if isinstance(request.config, dict) else {}
+    playwright_options = config.get("playwright")
+    if not isinstance(playwright_options, dict):
+        raise HTTPException(status_code=400, detail="config.playwright must be an object")
+
+    args = playwright_options.get("args", {})
+    args_obj = args if isinstance(args, dict) else {}
+    normalized_intent = (intent_type or "").strip().lower()
+    if normalized_intent not in _XHS_INTERCEPT_INTENTS:
+        raise HTTPException(status_code=400, detail=f"unsupported xhs intercept intent: {normalized_intent}")
+
+    query = str(args_obj.get("query", args_obj.get("keyword", ""))).strip()
+    user_id = _normalize_xhs_user_id(args_obj.get("id", args_obj.get("user_id", "")))
+    notification_type = str(args_obj.get("type", "mentions")).strip().lower() or "mentions"
+    raw_limit = args_obj.get("limit", args_obj.get("count", 20))
+    try:
+        limit = int(raw_limit)
+    except (TypeError, ValueError):
+        limit = 20
+    limit = max(1, min(limit, 100))
+
+    if normalized_intent == "search" and not query:
+        raise HTTPException(status_code=400, detail="config.playwright.args.query is required for intercept-xhs-search mode")
+    if normalized_intent == "user" and not user_id:
+        raise HTTPException(status_code=400, detail="config.playwright.args.id is required for intercept-xhs-user mode")
+
+    headless = bool(playwright_options.get("headless", True))
+    navigation_timeout_ms = playwright_options.get("navigationTimeoutMs", 60000)
+    if not isinstance(navigation_timeout_ms, int) or navigation_timeout_ms < 1000:
+        raise HTTPException(status_code=400, detail="config.playwright.navigationTimeoutMs must be an integer >= 1000")
+    storage_state = _load_playwright_storage_state_from_config(request, playwright_options)
+    if normalized_intent == "search":
+        target_url = f"https://www.xiaohongshu.com/search_result?keyword={quote(query)}&source=web_search_result_notes"
+    elif normalized_intent == "user":
+        target_url = f"https://www.xiaohongshu.com/user/profile/{quote(user_id)}"
+    elif normalized_intent == "notifications":
+        target_url = "https://www.xiaohongshu.com/notification"
+    else:
+        target_url = "https://www.xiaohongshu.com/explore"
+
+    scroll_times = max(1, min(10, (limit + 9) // 10))
+    script_to_run = build_x_intent_script(
+        _SCRIPT_REGISTRY,
+        normalized_intent,
+        {
+            "__QUERY_JSON__": json.dumps(query, ensure_ascii=False),
+            "__XHS_USER_ID_JSON__": json.dumps(user_id, ensure_ascii=False),
+            "__NOTIFICATION_TYPE_JSON__": json.dumps(notification_type, ensure_ascii=False),
+            "__LIMIT__": limit,
+            "__COUNT__": limit,
+            "__SCROLL_TIMES__": scroll_times,
+        },
+        platform="xhs",
+    )
+
+    try:
+        async with async_playwright() as playwright:
+            browser = await playwright.chromium.launch(headless=headless)
+            context_options: dict[str, Any] = {}
+            if storage_state:
+                context_options["storage_state"] = storage_state
+            context = await browser.new_context(**context_options)
+            page = await context.new_page()
+            try:
+                bootstrap_capture_key = {
+                    "feed": "homefeed",
+                    "user": "v1/user/posted",
+                    "notifications": "/you/",
+                }.get(normalized_intent)
+                if bootstrap_capture_key:
+                    await page.add_init_script(_build_x_intercept_bootstrap_script(bootstrap_capture_key))
+                await page.goto(target_url, wait_until="domcontentloaded", timeout=navigation_timeout_ms)
+                await page.wait_for_timeout(1200)
+                eval_result = await page.evaluate(script_to_run)
+            finally:
+                await context.close()
+                await browser.close()
+    except PlaywrightTimeoutError as error:
+        raise HTTPException(status_code=504, detail=f"playwright intercept xhs timeout: {error}") from error
+    except HTTPException:
+        raise
+    except Exception as error:
+        raise HTTPException(status_code=500, detail=f"playwright intercept xhs {normalized_intent} failed: {error}") from error
+
+    items = _normalize_playwright_eval_result(eval_result, request, target_url)
+    if not items:
+        raise HTTPException(status_code=500, detail=f"playwright intercept xhs {normalized_intent} finished without output")
+    return items
+
+
 def _extract_opencli_json_payload(stdout: str) -> Any:
     text = stdout.strip()
     if not text:
@@ -1716,12 +1829,14 @@ def _merge_v3_intent_into_driver_option(
     sort = intent_args.get("sort")
     time_filter = intent_args.get("time")
     username = intent_args.get("username")
+    xhs_user_id = intent_args.get("id", intent_args.get("user_id"))
     tweet_id = intent_args.get("tweet_id", intent_args.get("tweetId"))
     url = intent_args.get("url")
     limit = intent_args.get("limit")
     normalized_query = query.strip() if isinstance(query, str) else ""
     normalized_subreddit = subreddit.strip() if isinstance(subreddit, str) else ""
     normalized_username = username.strip().lstrip("@") if isinstance(username, str) else ""
+    normalized_xhs_user_id = xhs_user_id.strip() if isinstance(xhs_user_id, str) else ""
     if normalized_username.lower().startswith("u/"):
         normalized_username = normalized_username[2:]
     normalized_tweet_id = _extract_tweet_id(tweet_id)
@@ -1745,6 +1860,11 @@ def _merge_v3_intent_into_driver_option(
         if intent_type in {"profile", "followers", "following"}:
             if normalized_username and (not isinstance(args_obj.get("username"), str) or not args_obj.get("username")):
                 args_obj["username"] = normalized_username
+        if intent_type == "user":
+            if normalized_username and (not isinstance(args_obj.get("username"), str) or not args_obj.get("username")):
+                args_obj["username"] = normalized_username
+            if normalized_xhs_user_id and (not isinstance(args_obj.get("id"), str) or not args_obj.get("id")):
+                args_obj["id"] = normalized_xhs_user_id
         if intent_type in {"user", "user-posts", "user-comments"}:
             if normalized_username and (not isinstance(args_obj.get("username"), str) or not args_obj.get("username")):
                 args_obj["username"] = normalized_username
@@ -1777,6 +1897,8 @@ def _merge_v3_intent_into_driver_option(
                     merged_option["mode"] = f"intercept-x-{intent_type}"
                 elif normalized_platform == "reddit" and intent_type in _REDDIT_INTERCEPT_INTENTS:
                     merged_option["mode"] = f"intercept-reddit-{intent_type}"
+                elif normalized_platform in {"xhs", "xiaohongshu"} and intent_type in _XHS_INTERCEPT_INTENTS:
+                    merged_option["mode"] = f"intercept-xhs-{intent_type}"
                 elif intent_type == "search":
                     merged_option["mode"] = "opencli-bridge" if _OPENCLI_BRIDGE_ENABLED else "intercept-x-search"
         return merged_option
