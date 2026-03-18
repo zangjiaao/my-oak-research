@@ -33,8 +33,6 @@ async () => {
     };
   }
 
-  const link = document.querySelector(`a[href='/${username}/following']`) as HTMLElement | null;
-  if (link) link.click();
   const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   await sleep(1800);
   for (let i = 0; i < __SCROLL_TIMES__; i += 1) {

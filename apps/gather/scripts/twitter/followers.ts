@@ -33,10 +33,6 @@ async () => {
     };
   }
 
-  const targetPath = `/${username}/followers`;
-  if (window.location.pathname !== targetPath) {
-    window.location.assign(`https://x.com${targetPath}`);
-  }
   const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   await sleep(1800);
   for (let i = 0; i < __SCROLL_TIMES__; i += 1) {

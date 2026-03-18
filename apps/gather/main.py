@@ -1313,8 +1313,12 @@ async def _run_playwright_intercept_x_intent(request: FetchRequest, intent_type:
     storage_state = _load_playwright_storage_state_from_config(request, playwright_options)
     if normalized_intent == "search":
         target_url = f"https://x.com/search?q={quote(query)}&src=typed_query&f={'live' if search_type == 'latest' else 'top'}"
-    elif normalized_intent in {"profile", "followers", "following"}:
+    elif normalized_intent == "profile":
         target_url = f"https://x.com/{quote(username)}"
+    elif normalized_intent == "followers":
+        target_url = f"https://x.com/{quote(username)}/followers"
+    elif normalized_intent == "following":
+        target_url = f"https://x.com/{quote(username)}/following"
     elif normalized_intent == "bookmarks":
         target_url = "https://x.com/i/bookmarks"
     elif normalized_intent == "notifications":
