@@ -56,7 +56,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import {
   Command,
@@ -247,6 +246,39 @@ const toDelimitedStringArray = (value: unknown): string[] => {
     );
   }
   return [];
+};
+
+const normalizeOutputFieldMap = (value: unknown): Record<string, string> => {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return {};
+  }
+  const entries = Object.entries(value as Record<string, unknown>)
+    .map(([key, rawValue]) => [key.trim(), String(rawValue ?? "").trim()] as const)
+    .filter(([key, mappedPath]) => key.length > 0 && mappedPath.length > 0);
+  return Object.fromEntries(entries);
+};
+
+const outputFieldMapToEditorValue = (value: unknown): string => {
+  const mapped = normalizeOutputFieldMap(value);
+  return Object.entries(mapped)
+    .map(([key, path]) => `${key}=${path}`)
+    .join("\n");
+};
+
+const parseOutputFieldMapEditorValue = (value: string): Record<string, string> => {
+  const mapped = value
+    .split(/\r?\n/g)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const [key, ...rest] = line.includes("=")
+        ? line.split("=")
+        : line.split(":");
+      return [key?.trim() ?? "", rest.join(":").trim()] as const;
+    })
+    .filter(([key, mappedPath]) => key.length > 0 && mappedPath.length > 0);
+
+  return Object.fromEntries(mapped);
 };
 
 const normalizeArgs = (input: unknown): Record<string, string> => {
@@ -955,40 +987,27 @@ export const SocialMediaFields = ({
     scriptOptions.length > 0
       ? getScriptOptionByPath(scriptOptions, selectedScriptPath)
       : null;
-  const keywordFilterError = getConfigErrorMessage("keywordFilter");
-  const responseFormatsError = getConfigErrorMessage("responseFormats");
+  const outputFieldError = getConfigErrorMessage("output.field");
+  const outputTypeError = getConfigErrorMessage("output.type");
+  const outputKeywordScopeError = getConfigErrorMessage("output.keywordScope");
+  const filterMinCharsError = getConfigErrorMessage("filter.minChars");
   const requestPreview = useMemo(() => {
     if (!socialPlatform) return null;
     const config = asRecord(watch("social.config"));
-    const keywordFilter = asRecord(config.keywordFilter);
     const outputConfig = asRecord(config.output);
 
-    const rawOutputField = outputConfig.field ?? outputConfig.fields;
-    let outputField: string[] = [];
-    if (Array.isArray(rawOutputField)) {
-      outputField = rawOutputField
-        .filter((item): item is string => typeof item === "string")
-        .map((item) => item.trim())
-        .filter(Boolean);
-    } else {
-      const responseFormats = config.responseFormats;
-      if (Array.isArray(responseFormats)) {
-        outputField = responseFormats
-          .filter((item): item is string => typeof item === "string")
-          .map((item) => item.trim())
-          .filter(Boolean);
-      }
-    }
-    if (outputField.length === 0) {
-      outputField = ["text"];
+    let outputField = normalizeOutputFieldMap(outputConfig.field);
+    if (Object.keys(outputField).length === 0) {
+      outputField = { text: "text" };
     }
 
     const output: Record<string, unknown> = { field: outputField };
     if (typeof outputConfig.type === "string" && outputConfig.type.trim()) {
       output.type = outputConfig.type.trim();
     }
-    if (Array.isArray(outputConfig.keywordScope)) {
-      output.keywordScope = outputConfig.keywordScope;
+    const keywordScope = toDelimitedStringArray(outputConfig.keywordScope);
+    if (keywordScope.length > 0) {
+      output.keywordScope = keywordScope;
     }
 
     const driverOption = asRecord(
@@ -998,12 +1017,10 @@ export const SocialMediaFields = ({
           ? config.agentBrowser
           : config
     );
+    const configuredFilter = asRecord(config.filter);
     const filter: Record<string, unknown> = {};
-    if (typeof keywordFilter.minSegmentChars === "number") {
-      filter.minChars = keywordFilter.minSegmentChars;
-    }
-    if (typeof keywordFilter.minChars === "number") {
-      filter.minChars = keywordFilter.minChars;
+    if (typeof configuredFilter.minChars === "number") {
+      filter.minChars = configuredFilter.minChars;
     }
 
     const driver: Record<string, unknown> = {
@@ -1244,64 +1261,109 @@ export const SocialMediaFields = ({
       <CardHeader>
         <CardTitle>Output & Filter</CardTitle>
         <CardDescription>
-          source 仅配置输出和最小内容长度；关键词由 Query 统一注入。
+          配置 gather 的 output.field / output.type / output.keywordScope 与 minChars。
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-4">
 
       <div className="grid gap-2">
-        <Label>Response Formats</Label>
+        <Label htmlFor="social.config.output.field">
+          Output Field Mapping
+        </Label>
         <Controller
-          name="social.config.responseFormats"
+          name={"social.config.output.field" as any}
           control={control}
           render={({ field }) => {
-            const selected = Array.isArray(field.value) && field.value.length > 0
-              ? field.value
-              : ["text", "markdown"];
-            const toggle = (format: "text" | "markdown", checked: boolean) => {
-              const next = checked
-                ? Array.from(new Set([...selected, format]))
-                : selected.filter((value) => value !== format);
-              field.onChange(next.length > 0 ? next : [format]);
-            };
             return (
-              <div className="flex flex-wrap items-center gap-5">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <Checkbox
-                    checked={selected.includes("text")}
-                    onCheckedChange={(checked) => toggle("text", checked === true)}
-                  />
-                  <span className="text-sm">text</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <Checkbox
-                    checked={selected.includes("markdown")}
-                    onCheckedChange={(checked) =>
-                      toggle("markdown", checked === true)
-                    }
-                  />
-                  <span className="text-sm">markdown</span>
-                </label>
-              </div>
+              <Textarea
+                id="social.config.output.field"
+                rows={6}
+                placeholder={"id=tweets.id\nauthor=tweets.author\ntext=tweets.text"}
+                value={outputFieldMapToEditorValue(field.value)}
+                onChange={(event) =>
+                  field.onChange(parseOutputFieldMapEditorValue(event.target.value))
+                }
+              />
             );
           }}
         />
-        <ErrorMessage>{responseFormatsError}</ErrorMessage>
+        <p className="text-xs text-muted-foreground">
+          每行一个映射，格式为 `目标字段=原始路径`（支持 `:` 作为分隔符）。
+        </p>
+        <ErrorMessage>{outputFieldError}</ErrorMessage>
+      </div>
+
+      <div className="grid gap-2 md:max-w-md">
+        <Label htmlFor="social.config.output.type">Output Type</Label>
+        <Controller
+          name={"social.config.output.type" as any}
+          control={control}
+          render={({ field }) => (
+            <Input
+              id="social.config.output.type"
+              placeholder="x-text"
+              value={typeof field.value === "string" ? field.value : ""}
+              onChange={field.onChange}
+            />
+          )}
+        />
+        <ErrorMessage>{outputTypeError}</ErrorMessage>
+      </div>
+
+      <div className="grid gap-2">
+        <Label htmlFor="social.config.output.keywordScope">
+          Keyword Scope
+        </Label>
+        <Controller
+          name={"social.config.output.keywordScope" as any}
+          control={control}
+          render={({ field }) => (
+            <Textarea
+              id="social.config.output.keywordScope"
+              rows={2}
+              placeholder={"text\nmarkdown"}
+              value={
+                Array.isArray(field.value)
+                  ? field.value.join("\n")
+                  : typeof field.value === "string"
+                    ? field.value
+                    : ""
+              }
+              onChange={(event) =>
+                field.onChange(toDelimitedStringArray(event.target.value))
+              }
+            />
+          )}
+        />
+        <p className="text-xs text-muted-foreground">
+          关键词过滤仅匹配这里指定的 recordContent 字段。
+        </p>
+        <ErrorMessage>{outputKeywordScopeError}</ErrorMessage>
       </div>
 
       <div className="grid gap-2 md:max-w-xs">
-        <Label htmlFor="social.config.keywordFilter.minSegmentChars">
+        <Label htmlFor="social.config.filter.minChars">
           Filter Min Chars
         </Label>
-        <Input
-          id="social.config.keywordFilter.minSegmentChars"
-          type="number"
-          min={0}
-          {...register("social.config.keywordFilter.minSegmentChars", {
-            setValueAs: (value) => (value === "" ? undefined : Number(value)),
-          })}
+        <Controller
+          name={"social.config.filter.minChars" as any}
+          control={control}
+          render={({ field }) => (
+            <Input
+              id="social.config.filter.minChars"
+              type="number"
+              min={0}
+              value={
+                typeof field.value === "number" ? field.value : field.value ?? ""
+              }
+              onChange={(event) => {
+                const next = event.target.value;
+                field.onChange(next === "" ? undefined : Number(next));
+              }}
+            />
+          )}
         />
-        <ErrorMessage>{keywordFilterError}</ErrorMessage>
+        <ErrorMessage>{filterMinCharsError}</ErrorMessage>
       </div>
       </CardContent>
     </Card>
