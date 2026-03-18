@@ -1452,7 +1452,6 @@ export const SocialMediaFields = ({
         </CardHeader>
         <CardContent className="grid gap-4">
           <div className="grid gap-3">
-            <Label htmlFor="social.platform">Platform</Label>
             <Controller
               name="social.platform"
               control={control}
@@ -1557,7 +1556,6 @@ export const SocialMediaFields = ({
           <CardContent className="grid gap-4">
             {supportedDrivers.length > 0 && (
               <div className="grid gap-3">
-                <Label>Driver</Label>
                 <Controller
                   name="social.config.driver"
                   control={control}

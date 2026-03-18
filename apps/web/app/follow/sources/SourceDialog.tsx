@@ -24,6 +24,13 @@ import {
 import { SettingEditDialog } from "@/components/layout";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { ControlledSelect } from "@/components/ui/controlled-select";
 import { SelectItem } from "@/components/ui/select";
 import { ErrorMessage } from "@/components/business";
@@ -324,23 +331,31 @@ const getFirstErrorMessage = (errors: FieldErrors<SourceFormValues>): string | u
 };
 
 const CommonFields = ({ register, errors }: CommonFieldsProps) => (
-  <>
-    <div className="grid gap-3">
-      <Label htmlFor="name">Name</Label>
-      <Input id="name" placeholder="Name" {...register("name")} />
-      <ErrorMessage>{errors.name?.message?.toString()}</ErrorMessage>
-    </div>
-    <div className="grid gap-3">
-      <Label htmlFor="description">Description</Label>
-      <Textarea
-        id="description"
-        placeholder="Description"
-        rows={3}
-        {...register("description")}
-      />
-      <ErrorMessage>{errors.description?.message?.toString()}</ErrorMessage>
-    </div>
-  </>
+  <Card className="gap-4 bg-muted/30">
+    <CardHeader>
+      <CardTitle>Basic Info</CardTitle>
+      <CardDescription>
+        Configure source display name and description.
+      </CardDescription>
+    </CardHeader>
+    <CardContent className="grid gap-4">
+      <div className="grid gap-3">
+        <Label htmlFor="name">Name</Label>
+        <Input id="name" placeholder="Name" {...register("name")} />
+        <ErrorMessage>{errors.name?.message?.toString()}</ErrorMessage>
+      </div>
+      <div className="grid gap-3">
+        <Label htmlFor="description">Description</Label>
+        <Textarea
+          id="description"
+          placeholder="Description"
+          rows={3}
+          {...register("description")}
+        />
+        <ErrorMessage>{errors.description?.message?.toString()}</ErrorMessage>
+      </div>
+    </CardContent>
+  </Card>
 );
 
 interface WebFieldsProps {
