@@ -192,6 +192,47 @@ def test_fetch_v3_reddit_user_posts_maps_username(monkeypatch):
     assert payload["items"][0]["recordContent"]["count"] == "5"
 
 
+def test_fetch_v3_xhs_search_intent_maps_mode(monkeypatch):
+    response = _client_with_stub_driver(monkeypatch).post(
+        "/v3/fetch",
+        json={
+            "platform": "xhs",
+            "sourceId": "source_123",
+            "intent": {"type": "search", "args": {"query": "mcp", "limit": 8}},
+            "keywords": [],
+            "driver": {"name": "playwright", "option": {}},
+            "output": {"field": ["query", "count", "mode"], "type": "xhs-note"},
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["meta"]["adapter"] == "xhs.search"
+    assert payload["items"][0]["recordContent"]["query"] == "mcp"
+    assert payload["items"][0]["recordContent"]["count"] == "8"
+    assert payload["items"][0]["recordContent"]["mode"] == "intercept-xhs-search"
+
+
+def test_fetch_v3_xhs_user_intent_maps_id(monkeypatch):
+    response = _client_with_stub_driver(monkeypatch).post(
+        "/v3/fetch",
+        json={
+            "platform": "xhs",
+            "sourceId": "source_123",
+            "intent": {"type": "user", "args": {"id": "abc123", "limit": 5}},
+            "keywords": [],
+            "driver": {"name": "playwright", "option": {}},
+            "output": {"field": ["count", "mode"], "type": "xhs-user"},
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["meta"]["adapter"] == "xhs.user"
+    assert payload["items"][0]["recordContent"]["count"] == "5"
+    assert payload["items"][0]["recordContent"]["mode"] == "intercept-xhs-user"
+
+
 def test_fetch_v3_validation_error():
     client = TestClient(main.app)
     response = client.post(

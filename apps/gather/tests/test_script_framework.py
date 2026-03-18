@@ -43,6 +43,15 @@ def test_script_registry_auto_discovers_reddit_intents():
     assert "user-posts" in intents
 
 
+def test_script_registry_auto_discovers_xhs_intents():
+    app_root = Path(__file__).resolve().parents[1]
+    registry = ScriptRegistry(app_root / "scripts", app_root / "scripts-dist")
+    intents = registry.intents_for("xhs")
+    assert "search" in intents
+    assert "user" in intents
+    assert "feed" in intents
+
+
 def test_build_x_search_intercept_script_renders_placeholders():
     app_root = Path(__file__).resolve().parents[1]
     registry = ScriptRegistry(app_root / "scripts", app_root / "scripts-dist")
