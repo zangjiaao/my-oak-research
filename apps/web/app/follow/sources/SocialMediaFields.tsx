@@ -1342,9 +1342,21 @@ export const SocialMediaFields = ({
       </div>
 
       <div className="grid gap-2 md:max-w-xs">
-        <Label htmlFor="social.config.filter.minChars">
-          Filter Min Chars
-        </Label>
+      </div>
+      </CardContent>
+    </Card>
+  );
+
+  const renderDriverFilterFields = () => (
+    <Card className="gap-4 bg-muted/30">
+      <CardHeader>
+        <CardTitle>Driver Filter</CardTitle>
+        <CardDescription>
+          对 driver 输出结果做基础过滤；将写入 driver.filter。
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="grid gap-2 md:max-w-xs">
+        <Label htmlFor="social.config.filter.minChars">Min Chars</Label>
         <Controller
           name={"social.config.filter.minChars" as any}
           control={control}
@@ -1364,7 +1376,6 @@ export const SocialMediaFields = ({
           )}
         />
         <ErrorMessage>{filterMinCharsError}</ErrorMessage>
-      </div>
       </CardContent>
     </Card>
   );
@@ -1876,6 +1887,8 @@ export const SocialMediaFields = ({
           )}
         </>
       )}
+
+      {socialPlatform && renderDriverFilterFields()}
 
       {socialPlatform && renderGatherOutputAndFilterFields()}
 
