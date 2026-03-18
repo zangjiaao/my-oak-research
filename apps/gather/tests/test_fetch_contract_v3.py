@@ -28,7 +28,10 @@ class StubFetchDriver(BaseDriver):
                     "text": f"stub text {args.get('query', '')}".strip(),
                     "url": "https://x.com/openai/status/1",
                     "query": args.get("query"),
+                    "username": args.get("username"),
+                    "tweet_id": args.get("tweet_id"),
                     "count": args.get("count"),
+                    "mode": playwright.get("mode"),
                 },
             )
         ]
@@ -104,6 +107,47 @@ def test_fetch_v3_keeps_existing_driver_args(monkeypatch):
     payload = response.json()
     assert payload["items"][0]["recordContent"]["query"] == "manual-query"
     assert payload["items"][0]["recordContent"]["count"] == "5"
+
+
+def test_fetch_v3_profile_intent_maps_username_and_mode(monkeypatch):
+    response = _client_with_stub_driver(monkeypatch).post(
+        "/v3/fetch",
+        json={
+            "platform": "x",
+            "sourceId": "source_123",
+            "intent": {"type": "profile", "username": "openai"},
+            "keywords": [],
+            "driver": {"name": "playwright", "option": {}},
+            "output": {"field": ["username", "mode"], "type": "x-profile"},
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["meta"]["adapter"] == "x.profile"
+    assert payload["items"][0]["recordContent"]["username"] == "openai"
+    assert payload["items"][0]["recordContent"]["mode"] == "intercept-x-profile"
+
+
+def test_fetch_v3_thread_intent_maps_tweet_id_and_mode(monkeypatch):
+    response = _client_with_stub_driver(monkeypatch).post(
+        "/v3/fetch",
+        json={
+            "platform": "x",
+            "sourceId": "source_123",
+            "intent": {"type": "thread", "url": "https://x.com/openai/status/1900000000000000000", "limit": 10},
+            "keywords": [],
+            "driver": {"name": "playwright", "option": {}},
+            "output": {"field": ["tweet_id", "mode", "count"], "type": "x-thread"},
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["meta"]["adapter"] == "x.thread"
+    assert payload["items"][0]["recordContent"]["tweet_id"] == "1900000000000000000"
+    assert payload["items"][0]["recordContent"]["mode"] == "intercept-x-thread"
+    assert payload["items"][0]["recordContent"]["count"] == "10"
 
 
 def test_fetch_v3_validation_error():

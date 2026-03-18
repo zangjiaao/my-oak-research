@@ -37,6 +37,70 @@ class ScriptRegistry:
                 source_path=source_root / "x" / "search" / "flow.ts",
                 runtime_path=self._runtime_root / "x" / "search" / "flow.js",
             ),
+            "x.profile.intercept": ScriptSpec(
+                key="x.profile.intercept",
+                platform="x",
+                intent="profile",
+                mode="intercept",
+                source_path=source_root / "x" / "profile" / "flow.ts",
+                runtime_path=self._runtime_root / "x" / "profile" / "flow.js",
+            ),
+            "x.timeline.intercept": ScriptSpec(
+                key="x.timeline.intercept",
+                platform="x",
+                intent="timeline",
+                mode="intercept",
+                source_path=source_root / "x" / "timeline" / "flow.ts",
+                runtime_path=self._runtime_root / "x" / "timeline" / "flow.js",
+            ),
+            "x.bookmarks.intercept": ScriptSpec(
+                key="x.bookmarks.intercept",
+                platform="x",
+                intent="bookmarks",
+                mode="intercept",
+                source_path=source_root / "x" / "bookmarks" / "flow.ts",
+                runtime_path=self._runtime_root / "x" / "bookmarks" / "flow.js",
+            ),
+            "x.notifications.intercept": ScriptSpec(
+                key="x.notifications.intercept",
+                platform="x",
+                intent="notifications",
+                mode="intercept",
+                source_path=source_root / "x" / "notifications" / "flow.ts",
+                runtime_path=self._runtime_root / "x" / "notifications" / "flow.js",
+            ),
+            "x.followers.intercept": ScriptSpec(
+                key="x.followers.intercept",
+                platform="x",
+                intent="followers",
+                mode="intercept",
+                source_path=source_root / "x" / "followers" / "flow.ts",
+                runtime_path=self._runtime_root / "x" / "followers" / "flow.js",
+            ),
+            "x.following.intercept": ScriptSpec(
+                key="x.following.intercept",
+                platform="x",
+                intent="following",
+                mode="intercept",
+                source_path=source_root / "x" / "following" / "flow.ts",
+                runtime_path=self._runtime_root / "x" / "following" / "flow.js",
+            ),
+            "x.thread.intercept": ScriptSpec(
+                key="x.thread.intercept",
+                platform="x",
+                intent="thread",
+                mode="intercept",
+                source_path=source_root / "x" / "thread" / "flow.ts",
+                runtime_path=self._runtime_root / "x" / "thread" / "flow.js",
+            ),
+            "x.article.intercept": ScriptSpec(
+                key="x.article.intercept",
+                platform="x",
+                intent="article",
+                mode="intercept",
+                source_path=source_root / "x" / "article" / "flow.ts",
+                runtime_path=self._runtime_root / "x" / "article" / "flow.js",
+            ),
         }
 
     def resolve(self, ctx: ScriptContext) -> ScriptSpec | None:
@@ -52,6 +116,9 @@ class ScriptRegistry:
                 return spec
         return None
 
+    def resolve_key(self, key: str) -> ScriptSpec | None:
+        return self._specs.get(key)
+
     def render(self, spec: ScriptSpec, replacements: Dict[str, Any]) -> str:
         file_path = spec.runtime_path if spec.runtime_path.exists() else spec.source_path
         if not file_path.exists() or not file_path.is_file():
@@ -63,6 +130,18 @@ class ScriptRegistry:
         return rendered
 
 
+def build_x_intent_script(
+    registry: ScriptRegistry,
+    intent_type: str,
+    replacements: Dict[str, Any],
+) -> str:
+    key = f"x.{intent_type}.intercept"
+    spec = registry.resolve_key(key)
+    if spec is None:
+        raise ValueError(f"{key} script spec not found")
+    return registry.render(spec, replacements)
+
+
 def build_x_search_intercept_script(
     registry: ScriptRegistry,
     query: str,
@@ -70,13 +149,10 @@ def build_x_search_intercept_script(
     count: int,
     scroll_times: int,
 ) -> str:
-    ctx = ScriptContext(platform="x", intent="search", mode="intercept", args={})
-    spec = registry.resolve(ctx)
-    if spec is None:
-        raise ValueError("x.search.intercept script spec not found")
     product = "Top" if search_type == "top" else "Latest"
-    return registry.render(
-        spec,
+    return build_x_intent_script(
+        registry,
+        "search",
         {
             "__QUERY_JSON__": json.dumps(query, ensure_ascii=False),
             "__PRODUCT_JSON__": json.dumps(product, ensure_ascii=False),

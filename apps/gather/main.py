@@ -29,7 +29,7 @@ from drivers.playwright_driver import PlaywrightDriver
 from drivers.registry import DriverRegistry, DriverNotFoundError
 from drivers.xhttp_driver import XHttpDriver
 from fetch_processing import agent_browser_results_to_clean_items, apply_keyword_hard_filter
-from script_framework import ScriptRegistry, build_x_search_intercept_script
+from script_framework import ScriptRegistry, build_x_intent_script, build_x_search_intercept_script
 from schemas import (
     AgentBrowserHeartbeatRequest,
     AgentBrowserHeartbeatResponse,
@@ -55,6 +55,18 @@ _V3_DRIVER_STRATEGIES: dict[str, list[str]] = {
     "playwright": ["cookie", "header", "intercept", "ui"],
     "xhttp": ["public", "cookie", "header"],
     "agent-browser": ["agent-browser"],
+}
+
+_X_INTERCEPT_INTENTS = {
+    "search",
+    "profile",
+    "timeline",
+    "bookmarks",
+    "notifications",
+    "followers",
+    "following",
+    "thread",
+    "article",
 }
 
 # Load environment variables from .env file
@@ -558,6 +570,9 @@ async def _playwright_fetch_data(request: FetchRequest):
             return await _run_playwright_opencli_bridge_search(request)
         if mode in {"intercept-x-search", "intercept-search"} and platform in {"x", "twitter"}:
             return await _run_playwright_intercept_x_search(request)
+        if mode.startswith("intercept-x-") and platform in {"x", "twitter"}:
+            intent_type = mode.removeprefix("intercept-x-").strip().lower()
+            return await _run_playwright_intercept_x_intent(request, intent_type)
         if mode in {"eval-js", "evaljs", "eval"}:
             return await _run_playwright_eval_script(request)
 
@@ -1199,7 +1214,20 @@ async def _run_playwright_eval_script(request: FetchRequest) -> list[CleanItem]:
     return items
 
 
-async def _run_playwright_intercept_x_search(request: FetchRequest) -> list[CleanItem]:
+def _extract_tweet_id(raw: str | None) -> str:
+    if not isinstance(raw, str):
+        return ""
+    value = raw.strip()
+    if not value:
+        return ""
+    matched = re.search(r"/status/(\d+)", value)
+    if matched:
+        return matched.group(1)
+    digits = re.sub(r"\D", "", value)
+    return digits if digits else value
+
+
+async def _run_playwright_intercept_x_intent(request: FetchRequest, intent_type: str) -> list[CleanItem]:
     from playwright.async_api import TimeoutError as PlaywrightTimeoutError
     from playwright.async_api import async_playwright
 
@@ -1210,9 +1238,27 @@ async def _run_playwright_intercept_x_search(request: FetchRequest) -> list[Clea
 
     args = playwright_options.get("args", {})
     args_obj = args if isinstance(args, dict) else {}
+    normalized_intent = (intent_type or "").strip().lower()
+    if normalized_intent not in _X_INTERCEPT_INTENTS:
+        raise HTTPException(status_code=400, detail=f"unsupported x intercept intent: {normalized_intent}")
+
     query = str(args_obj.get("query", "")).strip()
-    if not query:
+    username = str(args_obj.get("username", "")).strip()
+    tweet_id = _extract_tweet_id(args_obj.get("tweet_id"))
+
+    if normalized_intent == "search" and not query:
         raise HTTPException(status_code=400, detail="config.playwright.args.query is required for intercept-x-search mode")
+    if normalized_intent in {"profile", "followers", "following"} and not username:
+        raise HTTPException(
+            status_code=400,
+            detail=f"config.playwright.args.username is required for intercept-x-{normalized_intent} mode",
+        )
+    if normalized_intent in {"thread", "article"} and not tweet_id:
+        raise HTTPException(
+            status_code=400,
+            detail=f"config.playwright.args.tweet_id is required for intercept-x-{normalized_intent} mode",
+        )
+
     raw_count = args_obj.get("count", 30)
     try:
         count = int(raw_count)
@@ -1226,18 +1272,39 @@ async def _run_playwright_intercept_x_search(request: FetchRequest) -> list[Clea
     if not isinstance(navigation_timeout_ms, int) or navigation_timeout_ms < 1000:
         raise HTTPException(status_code=400, detail="config.playwright.navigationTimeoutMs must be an integer >= 1000")
     storage_state = _load_playwright_storage_state_from_config(request, playwright_options)
-    search_url = (
-        f"https://x.com/search?q={quote(query)}&src=typed_query&f={'live' if search_type == 'latest' else 'top'}"
-    )
+    if normalized_intent == "search":
+        target_url = f"https://x.com/search?q={quote(query)}&src=typed_query&f={'live' if search_type == 'latest' else 'top'}"
+    elif normalized_intent in {"profile", "followers", "following"}:
+        target_url = f"https://x.com/{quote(username)}"
+    elif normalized_intent == "bookmarks":
+        target_url = "https://x.com/i/bookmarks"
+    elif normalized_intent == "notifications":
+        target_url = "https://x.com/notifications"
+    else:
+        target_url = "https://x.com/home"
+
     scroll_times = max(1, min(12, (count + 9) // 10))
 
-    script_to_run = build_x_search_intercept_script(
-        _SCRIPT_REGISTRY,
-        query=query,
-        search_type=search_type,
-        count=count,
-        scroll_times=scroll_times,
-    )
+    if normalized_intent == "search":
+        script_to_run = build_x_search_intercept_script(
+            _SCRIPT_REGISTRY,
+            query=query,
+            search_type=search_type,
+            count=count,
+            scroll_times=scroll_times,
+        )
+    else:
+        script_to_run = build_x_intent_script(
+            _SCRIPT_REGISTRY,
+            normalized_intent,
+            {
+                "__QUERY_JSON__": json.dumps(query, ensure_ascii=False),
+                "__USERNAME_JSON__": json.dumps(username, ensure_ascii=False),
+                "__TWEET_ID_JSON__": json.dumps(tweet_id, ensure_ascii=False),
+                "__COUNT__": count,
+                "__SCROLL_TIMES__": scroll_times,
+            },
+        )
 
     try:
         async with async_playwright() as playwright:
@@ -1248,7 +1315,7 @@ async def _run_playwright_intercept_x_search(request: FetchRequest) -> list[Clea
             context = await browser.new_context(**context_options)
             page = await context.new_page()
             try:
-                await page.goto(search_url, wait_until="domcontentloaded", timeout=navigation_timeout_ms)
+                await page.goto(target_url, wait_until="domcontentloaded", timeout=navigation_timeout_ms)
                 await page.wait_for_timeout(2000)
                 eval_result = await page.evaluate(script_to_run)
             finally:
@@ -1259,12 +1326,16 @@ async def _run_playwright_intercept_x_search(request: FetchRequest) -> list[Clea
     except HTTPException:
         raise
     except Exception as error:
-        raise HTTPException(status_code=500, detail=f"playwright intercept search failed: {error}") from error
+        raise HTTPException(status_code=500, detail=f"playwright intercept {normalized_intent} failed: {error}") from error
 
-    items = _normalize_playwright_eval_result(eval_result, request, search_url)
+    items = _normalize_playwright_eval_result(eval_result, request, target_url)
     if not items:
-        raise HTTPException(status_code=500, detail="playwright intercept search finished without output")
+        raise HTTPException(status_code=500, detail=f"playwright intercept {normalized_intent} finished without output")
     return items
+
+
+async def _run_playwright_intercept_x_search(request: FetchRequest) -> list[CleanItem]:
+    return await _run_playwright_intercept_x_intent(request, "search")
 
 
 def _extract_opencli_json_payload(stdout: str) -> Any:
@@ -1702,6 +1773,9 @@ def _normalize_v3_fetch_request(request: FetchV3Request) -> tuple[FetchRequest, 
         request.platform,
         intent_type,
         request.intent.query,
+        request.intent.username,
+        request.intent.tweet_id,
+        request.intent.url,
         request.intent.limit,
         driver_name,
         driver_option,
@@ -1733,25 +1807,37 @@ def _merge_v3_intent_into_driver_option(
     platform: str,
     intent_type: str,
     query: str | None,
+    username: str | None,
+    tweet_id: str | None,
+    url: str | None,
     limit: int | None,
     driver_name: str,
     option: dict[str, Any],
 ) -> dict[str, Any]:
     merged_option = dict(option)
     normalized_query = query.strip() if isinstance(query, str) else ""
+    normalized_username = username.strip().lstrip("@") if isinstance(username, str) else ""
+    normalized_tweet_id = _extract_tweet_id(tweet_id)
+    if not normalized_tweet_id and isinstance(url, str):
+        normalized_tweet_id = _extract_tweet_id(url)
     normalized_limit = limit if isinstance(limit, int) and limit > 0 else None
-    if intent_type != "search":
-        return merged_option
 
     if driver_name in {"playwright", "agent-browser"}:
         args = merged_option.get("args")
         args_obj = dict(args) if isinstance(args, dict) else {}
-        if normalized_query and (not isinstance(args_obj.get("query"), str) or not args_obj.get("query")):
-            args_obj["query"] = normalized_query
+        if intent_type == "search":
+            if normalized_query and (not isinstance(args_obj.get("query"), str) or not args_obj.get("query")):
+                args_obj["query"] = normalized_query
+            if (platform or "").strip().lower() == "x" and "type" not in args_obj:
+                args_obj["type"] = "latest"
+        if intent_type in {"profile", "followers", "following"}:
+            if normalized_username and (not isinstance(args_obj.get("username"), str) or not args_obj.get("username")):
+                args_obj["username"] = normalized_username
+        if intent_type in {"thread", "article"}:
+            if normalized_tweet_id and (not isinstance(args_obj.get("tweet_id"), str) or not args_obj.get("tweet_id")):
+                args_obj["tweet_id"] = normalized_tweet_id
         if normalized_limit is not None and "count" not in args_obj:
             args_obj["count"] = str(normalized_limit)
-        if (platform or "").strip().lower() == "x" and "type" not in args_obj:
-            args_obj["type"] = "latest"
         if args_obj:
             merged_option["args"] = args_obj
         if driver_name == "playwright":
@@ -1763,10 +1849,16 @@ def _merge_v3_intent_into_driver_option(
                 and not has_script_path
                 and not current_mode
             ):
-                merged_option["mode"] = "opencli-bridge" if _OPENCLI_BRIDGE_ENABLED else "intercept-x-search"
+                normalized_platform = (platform or "").strip().lower()
+                if normalized_platform in {"x", "twitter"} and intent_type in _X_INTERCEPT_INTENTS:
+                    merged_option["mode"] = f"intercept-x-{intent_type}"
+                elif intent_type == "search":
+                    merged_option["mode"] = "opencli-bridge" if _OPENCLI_BRIDGE_ENABLED else "intercept-x-search"
         return merged_option
 
     if driver_name == "xhttp":
+        if intent_type != "search":
+            return merged_option
         params = merged_option.get("params")
         params_obj = dict(params) if isinstance(params, dict) else {}
         if normalized_query and (not isinstance(params_obj.get("q"), str) or not params_obj.get("q")):

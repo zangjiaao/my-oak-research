@@ -1,10 +1,12 @@
 from pathlib import Path
 import sys
 
+import pytest
+
 
 sys.path.append(str(Path(__file__).resolve().parents[1]))
 
-from script_framework import ScriptContext, ScriptRegistry, build_x_search_intercept_script  # noqa: E402
+from script_framework import ScriptContext, ScriptRegistry, build_x_intent_script, build_x_search_intercept_script  # noqa: E402
 
 
 def test_script_registry_resolve_x_search_intercept():
@@ -33,3 +35,24 @@ def test_build_x_search_intercept_script_renders_placeholders():
     assert "__SCROLL_TIMES__" not in script
     assert '"openai"' in script
     assert '"Latest"' in script
+
+
+@pytest.mark.parametrize(
+    "intent",
+    ["profile", "timeline", "bookmarks", "notifications", "followers", "following", "thread", "article"],
+)
+def test_build_x_intent_script_resolves_all_registered_intents(intent):
+    app_root = Path(__file__).resolve().parents[1]
+    registry = ScriptRegistry(app_root / "scripts", app_root / "scripts-dist")
+    script = build_x_intent_script(
+        registry=registry,
+        intent_type=intent,
+        replacements={
+            "__QUERY_JSON__": '"openai"',
+            "__USERNAME_JSON__": '"openai"',
+            "__TWEET_ID_JSON__": '"1900000000000000000"',
+            "__COUNT__": 20,
+            "__SCROLL_TIMES__": 3,
+        },
+    )
+    assert script.strip().startswith("async")
