@@ -9,6 +9,27 @@ from drivers.agent_browser_runner import AgentBrowserScriptError, execute_agent_
 from schemas import VerifyAuthRequest, VerifyAuthResponse
 
 
+def _extract_cookie_names(auth_data: dict[str, Any] | None) -> set[str]:
+    if not isinstance(auth_data, dict):
+        return set()
+    cookies = auth_data.get("cookies")
+    if not isinstance(cookies, list):
+        return set()
+    names: set[str] = set()
+    for cookie in cookies:
+        if not isinstance(cookie, dict):
+            continue
+        name = cookie.get("name")
+        if isinstance(name, str) and name.strip():
+            names.add(name.strip())
+    return names
+
+
+def _looks_like_xhs_login_cookie_set(auth_data: dict[str, Any] | None) -> bool:
+    cookie_names = _extract_cookie_names(auth_data)
+    return "a1" in cookie_names and ("web_session" in cookie_names or "webId" in cookie_names)
+
+
 async def verify_auth_with_agent_browser_for_whatsapp(
     request: VerifyAuthRequest,
     auth_dir: Path,
@@ -224,6 +245,11 @@ async def verify_auth_with_xhs_api_probe(request: VerifyAuthRequest) -> VerifyAu
                           "https://www.xiaohongshu.com/api/sns/web/v1/user/me",
                         ];
                         let lastStatus = 0;
+                        let profileLink = "";
+                        try {
+                          const profileAnchor = document.querySelector('a[href*="/user/profile/"]');
+                          profileLink = profileAnchor?.getAttribute("href") || "";
+                        } catch (_) {}
                         for (const endpoint of candidates) {
                           const response = await fetch(endpoint, { credentials: "include" });
                           lastStatus = response.status;
@@ -239,12 +265,13 @@ async def verify_auth_with_xhs_api_probe(request: VerifyAuthRequest) -> VerifyAu
                               userId,
                               nickname: user?.nickname || "",
                               redId: user?.red_id || "",
+                              profileLink,
                             };
                           }
                         }
-                        return { ok: false, status: lastStatus, error: "not_logged_in" };
+                        return { ok: false, status: lastStatus, error: "not_logged_in", profileLink };
                       } catch (error) {
-                        return { ok: false, status: 0, error: String(error || "xhs auth probe failed") };
+                        return { ok: false, status: 0, error: String(error || "xhs auth probe failed"), profileLink: "" };
                       }
                     })()
                     """
@@ -284,6 +311,33 @@ async def verify_auth_with_xhs_api_probe(request: VerifyAuthRequest) -> VerifyAu
                 "nickname": result.get("nickname"),
                 "redId": result.get("redId"),
                 "status": result.get("status"),
+            },
+        )
+
+    profile_link = result.get("profileLink")
+    if isinstance(profile_link, str) and "/user/profile/" in profile_link:
+        return VerifyAuthResponse(
+            valid=True,
+            message="xiaohongshu authentication looks valid (dom fallback)",
+            details={
+                "platform": "xhs",
+                "verifyMethod": "xhs-dom-fallback",
+                "profileLink": profile_link,
+                "status": result.get("status"),
+                "error": result.get("error"),
+            },
+        )
+
+    if _looks_like_xhs_login_cookie_set(request.auth_data):
+        return VerifyAuthResponse(
+            valid=True,
+            message="xiaohongshu authentication looks valid (cookie fallback)",
+            details={
+                "platform": "xhs",
+                "verifyMethod": "xhs-cookie-fallback",
+                "status": result.get("status"),
+                "error": result.get("error"),
+                "cookieNames": sorted(_extract_cookie_names(request.auth_data)),
             },
         )
 
@@ -349,11 +403,7 @@ def verify_auth_with_x_cookie_probe(request: VerifyAuthRequest) -> VerifyAuthRes
             details={"platform": "x", "verifyMethod": "x-cookie-probe"},
         )
 
-    cookie_names = {
-        str(cookie.get("name", "")).strip()
-        for cookie in cookies
-        if isinstance(cookie, dict)
-    }
+    cookie_names = _extract_cookie_names(auth_data)
     is_valid = "ct0" in cookie_names and "auth_token" in cookie_names
     return VerifyAuthResponse(
         valid=is_valid,
