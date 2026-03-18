@@ -57,18 +57,6 @@ _V3_DRIVER_STRATEGIES: dict[str, list[str]] = {
     "agent-browser": ["agent-browser"],
 }
 
-_X_INTERCEPT_INTENTS = {
-    "search",
-    "profile",
-    "timeline",
-    "bookmarks",
-    "notifications",
-    "followers",
-    "following",
-    "thread",
-    "article",
-}
-
 # Load environment variables from .env file
 load_dotenv()
 
@@ -93,6 +81,7 @@ _GATHER_APP_ROOT = Path(__file__).resolve().parent
 _SCRIPT_SOURCE_ROOT = _GATHER_APP_ROOT / "scripts"
 _SCRIPT_RUNTIME_ROOT = _GATHER_APP_ROOT / "scripts-dist"
 _SCRIPT_REGISTRY = ScriptRegistry(_SCRIPT_SOURCE_ROOT, _SCRIPT_RUNTIME_ROOT)
+_X_INTERCEPT_INTENTS = _SCRIPT_REGISTRY.intents_for("x")
 _REPO_ROOT = _GATHER_APP_ROOT.parents[1]
 if _RAW_API_IO_LOG_DIR.is_absolute():
     _API_IO_LOG_DIR = _RAW_API_IO_LOG_DIR

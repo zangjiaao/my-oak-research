@@ -28,83 +28,42 @@ class ScriptRegistry:
     def __init__(self, source_root: Path, runtime_root: Path | None = None):
         self._source_root = source_root
         self._runtime_root = runtime_root or source_root
-        self._specs = {
-            "x.search.intercept": ScriptSpec(
-                key="x.search.intercept",
-                platform="x",
-                intent="search",
-                mode="intercept",
-                source_path=source_root / "twitter" / "search.ts",
-                runtime_path=self._runtime_root / "twitter" / "search.js",
-            ),
-            "x.profile.intercept": ScriptSpec(
-                key="x.profile.intercept",
-                platform="x",
-                intent="profile",
-                mode="intercept",
-                source_path=source_root / "twitter" / "profile.ts",
-                runtime_path=self._runtime_root / "twitter" / "profile.js",
-            ),
-            "x.timeline.intercept": ScriptSpec(
-                key="x.timeline.intercept",
-                platform="x",
-                intent="timeline",
-                mode="intercept",
-                source_path=source_root / "twitter" / "timeline.ts",
-                runtime_path=self._runtime_root / "twitter" / "timeline.js",
-            ),
-            "x.bookmarks.intercept": ScriptSpec(
-                key="x.bookmarks.intercept",
-                platform="x",
-                intent="bookmarks",
-                mode="intercept",
-                source_path=source_root / "twitter" / "bookmarks.ts",
-                runtime_path=self._runtime_root / "twitter" / "bookmarks.js",
-            ),
-            "x.notifications.intercept": ScriptSpec(
-                key="x.notifications.intercept",
-                platform="x",
-                intent="notifications",
-                mode="intercept",
-                source_path=source_root / "twitter" / "notifications.ts",
-                runtime_path=self._runtime_root / "twitter" / "notifications.js",
-            ),
-            "x.followers.intercept": ScriptSpec(
-                key="x.followers.intercept",
-                platform="x",
-                intent="followers",
-                mode="intercept",
-                source_path=source_root / "twitter" / "followers.ts",
-                runtime_path=self._runtime_root / "twitter" / "followers.js",
-            ),
-            "x.following.intercept": ScriptSpec(
-                key="x.following.intercept",
-                platform="x",
-                intent="following",
-                mode="intercept",
-                source_path=source_root / "twitter" / "following.ts",
-                runtime_path=self._runtime_root / "twitter" / "following.js",
-            ),
-            "x.thread.intercept": ScriptSpec(
-                key="x.thread.intercept",
-                platform="x",
-                intent="thread",
-                mode="intercept",
-                source_path=source_root / "twitter" / "thread.ts",
-                runtime_path=self._runtime_root / "twitter" / "thread.js",
-            ),
-            "x.article.intercept": ScriptSpec(
-                key="x.article.intercept",
-                platform="x",
-                intent="article",
-                mode="intercept",
-                source_path=source_root / "twitter" / "article.ts",
-                runtime_path=self._runtime_root / "twitter" / "article.js",
-            ),
+        self._platform_alias = {
+            "twitter": "x",
+            "x": "x",
         }
+        self._specs = self._discover_specs()
+
+    def _normalize_platform(self, raw_platform: str) -> str:
+        return self._platform_alias.get(raw_platform, raw_platform)
+
+    def _discover_specs(self) -> dict[str, ScriptSpec]:
+        specs: dict[str, ScriptSpec] = {}
+        if not self._source_root.exists():
+            return specs
+        for source_path in sorted(self._source_root.glob("*/*.ts")):
+            if not source_path.is_file():
+                continue
+            platform_dir = source_path.parent.name.strip().lower()
+            intent = source_path.stem.strip().lower()
+            if not platform_dir or not intent:
+                continue
+            platform = self._normalize_platform(platform_dir)
+            key = f"{platform}.{intent}.intercept"
+            if key in specs:
+                continue
+            specs[key] = ScriptSpec(
+                key=key,
+                platform=platform,
+                intent=intent,
+                mode="intercept",
+                source_path=source_path,
+                runtime_path=self._runtime_root / platform_dir / f"{intent}.js",
+            )
+        return specs
 
     def resolve(self, ctx: ScriptContext) -> ScriptSpec | None:
-        normalized_platform = ctx.platform.strip().lower()
+        normalized_platform = self._normalize_platform(ctx.platform.strip().lower())
         normalized_intent = ctx.intent.strip().lower()
         normalized_mode = ctx.mode.strip().lower()
         for spec in self._specs.values():
@@ -118,6 +77,15 @@ class ScriptRegistry:
 
     def resolve_key(self, key: str) -> ScriptSpec | None:
         return self._specs.get(key)
+
+    def intents_for(self, platform: str, mode: str = "intercept") -> set[str]:
+        normalized_platform = self._normalize_platform(platform.strip().lower())
+        normalized_mode = mode.strip().lower()
+        return {
+            spec.intent
+            for spec in self._specs.values()
+            if spec.platform == normalized_platform and spec.mode == normalized_mode
+        }
 
     def render(self, spec: ScriptSpec, replacements: Dict[str, Any]) -> str:
         file_path = spec.runtime_path if spec.runtime_path.exists() else spec.source_path

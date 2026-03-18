@@ -19,6 +19,21 @@ def test_script_registry_resolve_x_search_intercept():
     assert spec.runtime_path.exists()
 
 
+def test_script_registry_auto_discovers_twitter_dir_as_x(tmp_path):
+    source_root = tmp_path / "scripts"
+    runtime_root = tmp_path / "scripts-dist"
+    (source_root / "twitter").mkdir(parents=True, exist_ok=True)
+    (runtime_root / "twitter").mkdir(parents=True, exist_ok=True)
+    (source_root / "twitter" / "search.ts").write_text("async () => ({ ok: true })", encoding="utf-8")
+    (runtime_root / "twitter" / "search.js").write_text("async () => ({ ok: true })", encoding="utf-8")
+
+    registry = ScriptRegistry(source_root, runtime_root)
+    spec = registry.resolve(ScriptContext(platform="x", intent="search", mode="intercept", args={}))
+    assert spec is not None
+    assert spec.key == "x.search.intercept"
+    assert registry.intents_for("x") == {"search"}
+
+
 def test_build_x_search_intercept_script_renders_placeholders():
     app_root = Path(__file__).resolve().parents[1]
     registry = ScriptRegistry(app_root / "scripts", app_root / "scripts-dist")
