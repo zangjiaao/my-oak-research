@@ -34,7 +34,7 @@ def test_fetch_v3_uses_intercept_x_search_mode(monkeypatch):
         json={
             "platform": "x",
             "sourceId": "source_123",
-            "intent": {"type": "search", "query": "openai", "limit": 20},
+            "intent": {"type": "search", "args": {"query": "openai", "limit": 20}},
             "keywords": [],
             "driver": {"name": "playwright", "option": {}},
             "output": {"field": ["query", "tweets"], "type": "x-text"},
@@ -66,7 +66,7 @@ def test_fetch_v3_opencli_bridge_mode(monkeypatch):
         json={
             "platform": "x",
             "sourceId": "source_123",
-            "intent": {"type": "search", "query": "openai", "limit": 20},
+            "intent": {"type": "search", "args": {"query": "openai", "limit": 20}},
             "keywords": [],
             "driver": {"name": "playwright", "option": {"mode": "opencli-bridge"}},
             "output": {

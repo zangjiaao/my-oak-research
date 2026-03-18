@@ -44,18 +44,7 @@ class FetchV3Intent(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     type: str = "search"
-    query: Optional[str] = None
-    username: Optional[str] = None
-    tweet_id: Optional[str] = Field(
-        default=None,
-        validation_alias=AliasChoices("tweetId", "tweet_id"),
-    )
-    url: Optional[str] = None
-    limit: Optional[int] = None
-    time_range: Optional[str] = Field(
-        default=None,
-        validation_alias=AliasChoices("timeRange", "time_range"),
-    )
+    args: Dict[str, Any] = Field(default_factory=dict)
 
 
 class FetchV3Network(BaseModel):

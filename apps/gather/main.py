@@ -1817,15 +1817,12 @@ def _normalize_v3_fetch_request(request: FetchV3Request) -> tuple[FetchRequest, 
     driver_name = driver_name.strip().lower()
 
     intent_type = request.intent.type.strip().lower() if request.intent.type.strip() else "search"
+    intent_args = dict(request.intent.args) if isinstance(request.intent.args, dict) else {}
     adapter = f"{request.platform.lower().strip()}.{intent_type}"
     driver_option = _merge_v3_intent_into_driver_option(
         request.platform,
         intent_type,
-        request.intent.query,
-        request.intent.username,
-        request.intent.tweet_id,
-        request.intent.url,
-        request.intent.limit,
+        intent_args,
         driver_name,
         driver_option,
     )
@@ -1855,15 +1852,16 @@ def _normalize_v3_fetch_request(request: FetchV3Request) -> tuple[FetchRequest, 
 def _merge_v3_intent_into_driver_option(
     platform: str,
     intent_type: str,
-    query: str | None,
-    username: str | None,
-    tweet_id: str | None,
-    url: str | None,
-    limit: int | None,
+    intent_args: dict[str, Any],
     driver_name: str,
     option: dict[str, Any],
 ) -> dict[str, Any]:
     merged_option = dict(option)
+    query = intent_args.get("query")
+    username = intent_args.get("username")
+    tweet_id = intent_args.get("tweet_id", intent_args.get("tweetId"))
+    url = intent_args.get("url")
+    limit = intent_args.get("limit")
     normalized_query = query.strip() if isinstance(query, str) else ""
     normalized_username = username.strip().lstrip("@") if isinstance(username, str) else ""
     normalized_tweet_id = _extract_tweet_id(tweet_id)

@@ -50,7 +50,7 @@ def test_fetch_v3_happy_path(monkeypatch):
         json={
             "platform": "x",
             "sourceId": "source_123",
-                "intent": {"type": "search", "query": "openai", "limit": 20},
+                "intent": {"type": "search", "args": {"query": "openai", "limit": 20}},
                 "keywords": [],
                 "driver": {"name": "playwright", "option": {}},
                 "output": {"field": ["text", "url", "query", "count"], "type": "x-text"},
@@ -75,7 +75,7 @@ def test_fetch_v3_uses_default_playwright_driver(monkeypatch):
         json={
             "platform": "x",
             "sourceId": "source_123",
-            "intent": {"type": "search", "query": "openai"},
+            "intent": {"type": "search", "args": {"query": "openai"}},
             "keywords": [],
             "output": {"field": ["text"], "type": "x-text"},
         },
@@ -93,7 +93,7 @@ def test_fetch_v3_keeps_existing_driver_args(monkeypatch):
         json={
             "platform": "x",
             "sourceId": "source_123",
-            "intent": {"type": "search", "query": "openai", "limit": 20},
+            "intent": {"type": "search", "args": {"query": "openai", "limit": 20}},
             "driver": {
                 "name": "playwright",
                 "option": {"mode": "eval-js", "args": {"query": "manual-query", "count": "5"}},
@@ -115,7 +115,7 @@ def test_fetch_v3_profile_intent_maps_username_and_mode(monkeypatch):
         json={
             "platform": "x",
             "sourceId": "source_123",
-            "intent": {"type": "profile", "username": "openai"},
+            "intent": {"type": "profile", "args": {"username": "openai"}},
             "keywords": [],
             "driver": {"name": "playwright", "option": {}},
             "output": {"field": ["username", "mode"], "type": "x-profile"},
@@ -135,7 +135,7 @@ def test_fetch_v3_thread_intent_maps_tweet_id_and_mode(monkeypatch):
         json={
             "platform": "x",
             "sourceId": "source_123",
-            "intent": {"type": "thread", "url": "https://x.com/openai/status/1900000000000000000", "limit": 10},
+            "intent": {"type": "thread", "args": {"url": "https://x.com/openai/status/1900000000000000000", "limit": 10}},
             "keywords": [],
             "driver": {"name": "playwright", "option": {}},
             "output": {"field": ["tweet_id", "mode", "count"], "type": "x-thread"},
