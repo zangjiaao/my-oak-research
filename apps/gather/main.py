@@ -49,6 +49,12 @@ from schemas import (
 _agent_browser_results_to_clean_items = agent_browser_results_to_clean_items
 _apply_keyword_hard_filter = apply_keyword_hard_filter
 
+_V3_DRIVER_STRATEGIES: dict[str, list[str]] = {
+    "playwright": ["cookie", "header", "intercept", "ui"],
+    "xhttp": ["public", "cookie", "header"],
+    "agent-browser": ["agent-browser"],
+}
+
 # Load environment variables from .env file
 load_dotenv()
 
@@ -1480,6 +1486,18 @@ def _normalize_v3_fetch_request(request: FetchV3Request) -> tuple[FetchRequest, 
             driver_name = request.driver.name.strip()
         driver_option = dict(request.driver.option)
         driver_filter = dict(request.driver.filter)
+    driver_name = driver_name.strip().lower()
+
+    intent_type = request.intent.type.strip().lower() if request.intent.type.strip() else "search"
+    adapter = f"{request.platform.lower().strip()}.{intent_type}"
+    driver_option = _merge_v3_intent_into_driver_option(
+        request.platform,
+        intent_type,
+        request.intent.query,
+        request.intent.limit,
+        driver_name,
+        driver_option,
+    )
 
     v2_request = FetchV2Request(
         platform=request.platform,
@@ -1493,13 +1511,55 @@ def _normalize_v3_fetch_request(request: FetchV3Request) -> tuple[FetchRequest, 
         output=request.output.model_dump(),
     )
     normalized_request = _normalize_v2_fetch_request(v2_request)
+    strategy_tried = _V3_DRIVER_STRATEGIES.get(driver_name, [driver_name or "playwright"])
     meta = FetchV3Meta(
-        adapter=f"{request.platform.lower().strip()}.{request.intent.type.strip().lower()}",
-        strategyTried=[driver_name],
-        strategyUsed=driver_name,
+        adapter=adapter,
+        strategyTried=strategy_tried,
+        strategyUsed=strategy_tried[0],
         driverUsed=driver_name,
     )
     return normalized_request, driver_name, meta
+
+
+def _merge_v3_intent_into_driver_option(
+    platform: str,
+    intent_type: str,
+    query: str | None,
+    limit: int | None,
+    driver_name: str,
+    option: dict[str, Any],
+) -> dict[str, Any]:
+    merged_option = dict(option)
+    normalized_query = query.strip() if isinstance(query, str) else ""
+    normalized_limit = limit if isinstance(limit, int) and limit > 0 else None
+    if intent_type != "search":
+        return merged_option
+
+    if driver_name in {"playwright", "agent-browser"}:
+        args = merged_option.get("args")
+        args_obj = dict(args) if isinstance(args, dict) else {}
+        if normalized_query and (not isinstance(args_obj.get("query"), str) or not args_obj.get("query")):
+            args_obj["query"] = normalized_query
+        if normalized_limit is not None and "count" not in args_obj:
+            args_obj["count"] = str(normalized_limit)
+        if (platform or "").strip().lower() == "x" and "type" not in args_obj:
+            args_obj["type"] = "latest"
+        if args_obj:
+            merged_option["args"] = args_obj
+        return merged_option
+
+    if driver_name == "xhttp":
+        params = merged_option.get("params")
+        params_obj = dict(params) if isinstance(params, dict) else {}
+        if normalized_query and (not isinstance(params_obj.get("q"), str) or not params_obj.get("q")):
+            params_obj["q"] = normalized_query
+        if normalized_limit is not None and "limit" not in params_obj:
+            params_obj["limit"] = normalized_limit
+        if params_obj:
+            merged_option["params"] = params_obj
+        return merged_option
+
+    return merged_option
 
 
 def _build_validation_error_response(route: str, payload: Dict[str, Any], error: ValidationError) -> JSONResponse:
