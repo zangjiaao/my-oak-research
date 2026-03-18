@@ -87,14 +87,6 @@ class VerifyAuthRequest(BaseModel):
         default=None,
         validation_alias=AliasChoices("stateFile", "state_file"),
     )
-    verify_script_path: Optional[str] = Field(
-        default=None,
-        validation_alias=AliasChoices("verifyScriptPath", "verify_script_path"),
-    )
-    verify_args: Optional[Dict[str, Any]] = Field(
-        default=None,
-        validation_alias=AliasChoices("verifyArgs", "verify_args"),
-    )
     verify_target_url: Optional[str] = Field(
         default=None,
         validation_alias=AliasChoices("verifyTargetUrl", "verify_target_url"),
