@@ -32,6 +32,7 @@ from auth_verify import (
     agent_browser_verify_auth,
     resolve_verify_auth_data,
     verify_auth_with_agent_browser_for_whatsapp,
+    verify_auth_with_xhs_api_probe,
     verify_auth_with_reddit_api_probe,
     verify_auth_with_x_cookie_probe,
 )
@@ -235,6 +236,10 @@ async def _verify_auth_with_reddit_api_probe(request: VerifyAuthRequest) -> Veri
     return await verify_auth_with_reddit_api_probe(request)
 
 
+async def _verify_auth_with_xhs_api_probe(request: VerifyAuthRequest) -> VerifyAuthResponse | None:
+    return await verify_auth_with_xhs_api_probe(request)
+
+
 def _resolve_verify_auth_data(request: VerifyAuthRequest) -> tuple[dict[str, Any] | None, VerifyAuthResponse | None]:
     return resolve_verify_auth_data(request)
 
@@ -260,6 +265,10 @@ async def _playwright_verify_auth(request: VerifyAuthRequest):
     reddit_probe_result = await _verify_auth_with_reddit_api_probe(normalized_request)
     if reddit_probe_result is not None:
         return reddit_probe_result
+
+    xhs_probe_result = await _verify_auth_with_xhs_api_probe(normalized_request)
+    if xhs_probe_result is not None:
+        return xhs_probe_result
 
     x_probe_result = verify_auth_with_x_cookie_probe(normalized_request)
     if x_probe_result is not None:

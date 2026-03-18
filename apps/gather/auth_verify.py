@@ -195,6 +195,110 @@ async def verify_auth_with_reddit_api_probe(request: VerifyAuthRequest) -> Verif
     )
 
 
+async def verify_auth_with_xhs_api_probe(request: VerifyAuthRequest) -> VerifyAuthResponse | None:
+    if request.platform.lower().strip() not in {"xhs", "xiaohongshu"}:
+        return None
+
+    from playwright.async_api import TimeoutError as PlaywrightTimeoutError
+    from playwright.async_api import async_playwright
+
+    target_url = request.verify_target_url or "https://www.xiaohongshu.com/explore"
+    try:
+        async with async_playwright() as playwright:
+            browser = await playwright.chromium.launch(headless=request.headless)
+            context = await browser.new_context(storage_state=request.auth_data or {})
+            page = await context.new_page()
+            try:
+                await page.goto(
+                    target_url,
+                    wait_until="domcontentloaded",
+                    timeout=max(1000, int(request.verify_timeout_ms)),
+                )
+                await page.wait_for_timeout(max(0, int(request.verify_post_wait_ms)))
+                result = await page.evaluate(
+                    """
+                    (async () => {
+                      try {
+                        const candidates = [
+                          "/api/sns/web/v1/user/me",
+                          "https://www.xiaohongshu.com/api/sns/web/v1/user/me",
+                        ];
+                        let lastStatus = 0;
+                        for (const endpoint of candidates) {
+                          const response = await fetch(endpoint, { credentials: "include" });
+                          lastStatus = response.status;
+                          const text = await response.text();
+                          let payload = null;
+                          try { payload = JSON.parse(text); } catch (_) {}
+                          const user = payload?.data || {};
+                          const userId = user?.user_id || "";
+                          if (response.ok && payload?.success === true && userId) {
+                            return {
+                              ok: true,
+                              status: response.status,
+                              userId,
+                              nickname: user?.nickname || "",
+                              redId: user?.red_id || "",
+                            };
+                          }
+                        }
+                        return { ok: false, status: lastStatus, error: "not_logged_in" };
+                      } catch (error) {
+                        return { ok: false, status: 0, error: String(error || "xhs auth probe failed") };
+                      }
+                    })()
+                    """
+                )
+            finally:
+                await context.close()
+                await browser.close()
+    except PlaywrightTimeoutError as error:
+        return VerifyAuthResponse(
+            valid=False,
+            message=f"Xiaohongshu auth probe timed out: {error}",
+            details={"platform": "xhs", "verifyMethod": "xhs-api-me"},
+        )
+    except Exception as error:
+        return VerifyAuthResponse(
+            valid=False,
+            message=f"Xiaohongshu auth probe failed: {error}",
+            details={"platform": "xhs", "verifyMethod": "xhs-api-me"},
+        )
+
+    if not isinstance(result, dict):
+        return VerifyAuthResponse(
+            valid=False,
+            message="Cannot confirm Xiaohongshu auth status",
+            details={"platform": "xhs", "verifyMethod": "xhs-api-me"},
+        )
+
+    user_id = result.get("userId")
+    if result.get("ok") is True and isinstance(user_id, str) and user_id.strip():
+        return VerifyAuthResponse(
+            valid=True,
+            message="xiaohongshu authentication is valid",
+            details={
+                "platform": "xhs",
+                "verifyMethod": "xhs-api-me",
+                "userId": user_id,
+                "nickname": result.get("nickname"),
+                "redId": result.get("redId"),
+                "status": result.get("status"),
+            },
+        )
+
+    return VerifyAuthResponse(
+        valid=False,
+        message="xiaohongshu authentication is invalid or expired",
+        details={
+            "platform": "xhs",
+            "verifyMethod": "xhs-api-me",
+            "status": result.get("status"),
+            "error": result.get("error"),
+        },
+    )
+
+
 def resolve_verify_auth_data(request: VerifyAuthRequest) -> tuple[dict[str, Any] | None, VerifyAuthResponse | None]:
     if isinstance(request.auth_data, dict):
         return request.auth_data, None
@@ -275,6 +379,10 @@ async def playwright_verify_auth(request: VerifyAuthRequest, auth_dir: Path) -> 
     reddit_result = await verify_auth_with_reddit_api_probe(normalized_request)
     if reddit_result is not None:
         return reddit_result
+
+    xhs_result = await verify_auth_with_xhs_api_probe(normalized_request)
+    if xhs_result is not None:
+        return xhs_result
 
     x_result = verify_auth_with_x_cookie_probe(normalized_request)
     if x_result is not None:

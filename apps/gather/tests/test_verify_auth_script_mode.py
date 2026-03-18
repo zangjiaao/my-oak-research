@@ -78,6 +78,32 @@ def test_verify_auth_uses_reddit_api_probe(monkeypatch):
     assert payload["details"]["username"] == "demo_user"
 
 
+def test_verify_auth_uses_xhs_api_probe(monkeypatch):
+    async def fake_xhs_probe(_request):
+        return VerifyAuthResponse(
+            valid=True,
+            message="xhs auth ok",
+            details={"verifyMethod": "xhs-api-me", "userId": "66f26918000000000101adf0"},
+        )
+
+    monkeypatch.setattr(main, "_verify_auth_with_xhs_api_probe", fake_xhs_probe)
+
+    client = TestClient(main.app)
+    response = client.post(
+        "/verify-auth",
+        json={
+            "platform": "xhs",
+            "auth_data": {"cookies": [{"name": "webId", "value": "demo"}], "origins": []},
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["valid"] is True
+    assert payload["details"]["verifyMethod"] == "xhs-api-me"
+    assert payload["details"]["userId"] == "66f26918000000000101adf0"
+
+
 def test_verify_auth_supports_state_file(tmp_path):
     state_file = tmp_path / "x_auth.json"
     state_file.write_text(
