@@ -13,8 +13,6 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ErrorMessage } from "@/components/business";
-import SelectProxy from "./SelectProxy";
-import { Proxy } from "@/app/generated/prisma";
 import {
   SocialPlatformEnum,
   SocialMediaSourceCreateSchema,
@@ -80,7 +78,6 @@ interface SocialMediaFieldsProps {
   register: UseFormRegister<z.infer<typeof SourceCreateSchema>>;
   control: Control<z.infer<typeof SourceCreateSchema>>;
   errors: FieldErrors<z.infer<typeof SourceCreateSchema>>;
-  proxies: Proxy[];
   watch: UseFormWatch<z.infer<typeof SourceCreateSchema>>;
   setValue?: UseFormSetValue<z.infer<typeof SourceCreateSchema>>;
   sourceId?: string;
@@ -357,7 +354,6 @@ export const SocialMediaFields = ({
   register,
   control,
   errors,
-  proxies,
   watch,
   setValue,
   sourceId,
@@ -1058,13 +1054,34 @@ export const SocialMediaFields = ({
       output.keywordScope = keywordScope;
     }
 
-    const driverOption = asRecord(
+    const previewConfig = { ...config };
+    delete previewConfig.driver;
+    delete previewConfig.output;
+    delete previewConfig.responseFormats;
+    delete previewConfig.filter;
+    delete previewConfig.keywordFilter;
+    delete previewConfig.driverOptions;
+
+    const driverOption =
       resolvedDriver === "playwright"
-        ? config.playwright
+        ? {
+            ...asRecord(previewConfig.playwright),
+            ...(() => {
+              const rest = { ...previewConfig };
+              delete rest.playwright;
+              return rest;
+            })(),
+          }
         : resolvedDriver === "agent-browser"
-          ? config.agentBrowser
-          : config
-    );
+          ? {
+              ...asRecord(previewConfig.agentBrowser),
+              ...(() => {
+                const rest = { ...previewConfig };
+                delete rest.agentBrowser;
+                return rest;
+              })(),
+            }
+          : previewConfig;
     const configuredFilter = asRecord(config.filter);
     const filter: Record<string, unknown> = {};
     if (typeof configuredFilter.minChars === "number") {
@@ -1438,6 +1455,44 @@ export const SocialMediaFields = ({
           )}
         />
         <ErrorMessage>{filterMinCharsError}</ErrorMessage>
+    </div>
+  );
+
+  const renderDriverNetworkFields = () => (
+    <div className="grid gap-3 rounded-lg border bg-background p-4">
+      <div>
+        <p className="text-sm font-medium">Driver Network</p>
+        <p className="text-xs text-muted-foreground">
+          配置 driver.network.proxy（支持 http/https/socks5/socks5h）。
+        </p>
+      </div>
+      <div className="grid gap-2">
+        <Label htmlFor="social.config.network.proxy.url">Proxy URL</Label>
+        <Input
+          id="social.config.network.proxy.url"
+          placeholder="socks5h://127.0.0.1:9050"
+          {...register("social.config.network.proxy.url" as any)}
+        />
+      </div>
+      <div className="grid gap-2 md:grid-cols-2">
+        <div className="grid gap-2">
+          <Label htmlFor="social.config.network.proxy.username">Proxy Username</Label>
+          <Input
+            id="social.config.network.proxy.username"
+            placeholder="optional"
+            {...register("social.config.network.proxy.username" as any)}
+          />
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor="social.config.network.proxy.password">Proxy Password</Label>
+          <Input
+            id="social.config.network.proxy.password"
+            type="password"
+            placeholder="optional"
+            {...register("social.config.network.proxy.password" as any)}
+          />
+        </div>
+      </div>
     </div>
   );
 
@@ -1956,6 +2011,7 @@ export const SocialMediaFields = ({
       )}
 
       {socialPlatform && renderDriverFilterFields()}
+      {socialPlatform && renderDriverNetworkFields()}
           </CardContent>
         </Card>
       )}
@@ -2232,13 +2288,6 @@ export const SocialMediaFields = ({
           </div>
         </>
       )}
-
-      <SelectProxy
-        control={control}
-        proxies={proxies}
-        name="social.proxyId"
-        error={socialErrors.social?.proxyId?.message?.toString()}
-      />
 
       <AlertDialog
         open={!!credentialToDelete}

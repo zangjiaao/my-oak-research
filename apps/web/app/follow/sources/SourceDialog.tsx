@@ -568,7 +568,6 @@ const SourceDialog = ({
             register={register}
             control={control}
             errors={errors}
-            proxies={proxies}
             watch={watch}
             setValue={setValue}
             sourceId={currentSource?.id}
