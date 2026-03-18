@@ -258,8 +258,18 @@ const normalizeOutputFieldMap = (value: unknown): Record<string, string> => {
   return Object.fromEntries(entries);
 };
 
+const normalizeOutputFieldMapForEditor = (value: unknown): Record<string, string> => {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return {};
+  }
+  const entries = Object.entries(value as Record<string, unknown>)
+    .map(([key, rawValue]) => [key.trim(), String(rawValue ?? "").trim()] as const)
+    .filter(([key]) => key.length > 0);
+  return Object.fromEntries(entries);
+};
+
 const outputFieldMapToEditorValue = (value: unknown): string => {
-  const mapped = normalizeOutputFieldMap(value);
+  const mapped = normalizeOutputFieldMapForEditor(value);
   return Object.entries(mapped)
     .map(([key, path]) => `${key}=${path}`)
     .join("\n");
@@ -276,7 +286,7 @@ const parseOutputFieldMapEditorValue = (value: string): Record<string, string> =
         : line.split(":");
       return [key?.trim() ?? "", rest.join(":").trim()] as const;
     })
-    .filter(([key, mappedPath]) => key.length > 0 && mappedPath.length > 0);
+    .filter(([key]) => key.length > 0);
 
   return Object.fromEntries(mapped);
 };
