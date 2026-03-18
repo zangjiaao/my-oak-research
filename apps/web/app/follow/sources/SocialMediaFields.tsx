@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import {
   Control,
   UseFormRegister,
@@ -367,6 +367,40 @@ export const SocialMediaFields = ({
   const [bbPresetOptions, setBbPresetOptions] = useState<ScriptOption[]>([]);
   const [loadingBbPresets, setLoadingBbPresets] = useState(false);
   const [platformPopoverOpen, setPlatformPopoverOpen] = useState(false);
+  const commandListCleanup = useRef<(() => void) | null>(null);
+  const commandListRef = useCallback((node: HTMLDivElement | null) => {
+    commandListCleanup.current?.();
+    commandListCleanup.current = null;
+    if (!node) return;
+
+    let touchY = 0;
+    const onWheel = (e: WheelEvent) => {
+      if (node.scrollHeight <= node.clientHeight) return;
+      node.scrollTop += e.deltaY;
+      e.preventDefault();
+      e.stopPropagation();
+    };
+    const onTouchStart = (e: TouchEvent) => {
+      touchY = e.touches[0]?.clientY ?? 0;
+    };
+    const onTouchMove = (e: TouchEvent) => {
+      if (node.scrollHeight <= node.clientHeight) return;
+      const currentY = e.touches[0]?.clientY ?? 0;
+      node.scrollTop += touchY - currentY;
+      touchY = currentY;
+      e.preventDefault();
+      e.stopPropagation();
+    };
+
+    node.addEventListener("wheel", onWheel, { passive: false });
+    node.addEventListener("touchstart", onTouchStart, { passive: true });
+    node.addEventListener("touchmove", onTouchMove, { passive: false });
+    commandListCleanup.current = () => {
+      node.removeEventListener("wheel", onWheel);
+      node.removeEventListener("touchstart", onTouchStart);
+      node.removeEventListener("touchmove", onTouchMove);
+    };
+  }, []);
   const [platformPresetStats, setPlatformPresetStats] = useState<
     Record<string, PlatformPresetStats>
   >({});
@@ -1316,7 +1350,7 @@ export const SocialMediaFields = ({
                     <Command className="max-h-80">
                       <CommandInput placeholder="Search platform..." />
                       <CommandEmpty>No platform found.</CommandEmpty>
-                      <CommandList className="h-64 overflow-y-auto">
+                      <CommandList ref={commandListRef} className="max-h-64 overflow-y-auto">
                         <CommandGroup>
                           {availablePlatforms.map((platform) => (
                             <CommandItem
