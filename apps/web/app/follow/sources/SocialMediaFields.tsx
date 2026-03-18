@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import {
   Control,
   UseFormRegister,
@@ -25,6 +25,8 @@ import { ControlledSelect } from "@/components/ui/controlled-select";
 import { SelectItem } from "@/components/ui/select";
 import {
   CheckCircle2,
+  Check,
+  ChevronsUpDown,
   XCircle,
   Upload,
   Loader2,
@@ -54,7 +56,20 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   getDefaultDriver,
   getSupportedDrivers,
@@ -199,7 +214,19 @@ type AgentScriptRow = {
   json: string;
 };
 
+type OutputFieldRow = {
+  id: string;
+  key: string;
+  value: string;
+};
+
 const createEmptyArgRow = (): PlaywrightArgRow => ({
+  id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+  key: "",
+  value: "",
+});
+
+const createEmptyOutputFieldRow = (): OutputFieldRow => ({
   id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
   key: "",
   value: "",
@@ -231,6 +258,26 @@ const toDelimitedStringArray = (value: unknown): string[] => {
     );
   }
   return [];
+};
+
+const normalizeOutputFieldMap = (value: unknown): Record<string, string> => {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return {};
+  }
+  const entries = Object.entries(value as Record<string, unknown>)
+    .map(([key, rawValue]) => [key.trim(), String(rawValue ?? "").trim()] as const)
+    .filter(([key, mappedPath]) => key.length > 0 && mappedPath.length > 0);
+  return Object.fromEntries(entries);
+};
+
+const buildOutputFieldRows = (value: unknown): OutputFieldRow[] => {
+  const mapped = normalizeOutputFieldMap(value);
+  const rows = Object.entries(mapped).map(([key, itemValue]) => ({
+    id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    key,
+    value: itemValue,
+  }));
+  return rows.length > 0 ? rows : [createEmptyOutputFieldRow()];
 };
 
 const normalizeArgs = (input: unknown): Record<string, string> => {
@@ -318,6 +365,8 @@ export const SocialMediaFields = ({
   const socialPlatform = watch("social.platform") as string | undefined;
   const selectedDriver = watch("social.config.driver") as string | undefined;
   const currentCredentialId = watch("social.credentialId") as string | null | undefined;
+  const currentProxyId = watch("social.proxyId") as string | null | undefined;
+  const outputFieldValue = (watch as any)("social.config.output.field");
   const currentRecordFormat = watch(
     "social.config.agentBrowser.recordSchema.format"
   ) as string | undefined;
@@ -345,11 +394,49 @@ export const SocialMediaFields = ({
   const [xArgRows, setXArgRows] = useState<PlaywrightArgRow[]>([
     createEmptyArgRow(),
   ]);
+  const [outputFieldRows, setOutputFieldRows] = useState<OutputFieldRow[]>(
+    () => buildOutputFieldRows(outputFieldValue)
+  );
   const [agentScriptRows, setAgentScriptRows] = useState<AgentScriptRow[]>([
     createEmptyAgentScriptRow(),
   ]);
   const [bbPresetOptions, setBbPresetOptions] = useState<ScriptOption[]>([]);
   const [loadingBbPresets, setLoadingBbPresets] = useState(false);
+  const [platformPopoverOpen, setPlatformPopoverOpen] = useState(false);
+  const commandListCleanup = useRef<(() => void) | null>(null);
+  const commandListRef = useCallback((node: HTMLDivElement | null) => {
+    commandListCleanup.current?.();
+    commandListCleanup.current = null;
+    if (!node) return;
+
+    let touchY = 0;
+    const onWheel = (e: WheelEvent) => {
+      if (node.scrollHeight <= node.clientHeight) return;
+      node.scrollTop += e.deltaY;
+      e.preventDefault();
+      e.stopPropagation();
+    };
+    const onTouchStart = (e: TouchEvent) => {
+      touchY = e.touches[0]?.clientY ?? 0;
+    };
+    const onTouchMove = (e: TouchEvent) => {
+      if (node.scrollHeight <= node.clientHeight) return;
+      const currentY = e.touches[0]?.clientY ?? 0;
+      node.scrollTop += touchY - currentY;
+      touchY = currentY;
+      e.preventDefault();
+      e.stopPropagation();
+    };
+
+    node.addEventListener("wheel", onWheel, { passive: false });
+    node.addEventListener("touchstart", onTouchStart, { passive: true });
+    node.addEventListener("touchmove", onTouchMove, { passive: false });
+    commandListCleanup.current = () => {
+      node.removeEventListener("wheel", onWheel);
+      node.removeEventListener("touchstart", onTouchStart);
+      node.removeEventListener("touchmove", onTouchMove);
+    };
+  }, []);
   const [platformPresetStats, setPlatformPresetStats] = useState<
     Record<string, PlatformPresetStats>
   >({});
@@ -374,6 +461,10 @@ export const SocialMediaFields = ({
   const currentPlatformStats = socialPlatform
     ? platformPresetStats[socialPlatform]
     : undefined;
+  const selectedProxy = useMemo(
+    () => proxies.find((proxy) => proxy.id === currentProxyId) ?? null,
+    [proxies, currentProxyId]
+  );
 
   // Credentials list
   const [credentials, setCredentials] = useState<CredentialInfo[]>([]);
@@ -552,6 +643,15 @@ export const SocialMediaFields = ({
 
   useEffect(() => {
     if (!setValue) return;
+    if (!currentProxyId) {
+      (setValue as any)("social.config.network", undefined, {
+        shouldDirty: true,
+      });
+    }
+  }, [setValue, currentProxyId]);
+
+  useEffect(() => {
+    if (!setValue) return;
     if (!socialPlatform || resolvedDriver !== "agent-browser") return;
 
     if (!currentRecordFormat) {
@@ -576,6 +676,23 @@ export const SocialMediaFields = ({
         return acc;
       }, {});
       setValue("social.config.playwright.args", args, { shouldDirty: true });
+    },
+    [setValue]
+  );
+
+  const syncOutputFieldRowsToForm = useCallback(
+    (rows: OutputFieldRow[]) => {
+      if (!setValue) return;
+      const mapped = rows.reduce<Record<string, string>>((acc, row) => {
+        const key = row.key.trim();
+        const value = row.value.trim();
+        if (!key || !value) return acc;
+        acc[key] = value;
+        return acc;
+      }, {});
+      (setValue as any)("social.config.output.field", mapped, {
+        shouldDirty: true,
+      });
     },
     [setValue]
   );
@@ -694,6 +811,34 @@ export const SocialMediaFields = ({
       syncArgsToForm(safeRows);
     },
     [syncArgsToForm, xArgRows]
+  );
+
+  const updateOutputFieldRow = useCallback(
+    (id: string, field: "key" | "value", nextValue: string) => {
+      const nextRows = outputFieldRows.map((row) =>
+        row.id === id ? { ...row, [field]: nextValue } : row
+      );
+      setOutputFieldRows(nextRows);
+      syncOutputFieldRowsToForm(nextRows);
+    },
+    [outputFieldRows, syncOutputFieldRowsToForm]
+  );
+
+  const addOutputFieldRow = useCallback(() => {
+    const nextRows = [...outputFieldRows, createEmptyOutputFieldRow()];
+    setOutputFieldRows(nextRows);
+    syncOutputFieldRowsToForm(nextRows);
+  }, [outputFieldRows, syncOutputFieldRowsToForm]);
+
+  const removeOutputFieldRow = useCallback(
+    (id: string) => {
+      const nextRows = outputFieldRows.filter((row) => row.id !== id);
+      const safeRows =
+        nextRows.length > 0 ? nextRows : [createEmptyOutputFieldRow()];
+      setOutputFieldRows(safeRows);
+      syncOutputFieldRowsToForm(safeRows);
+    },
+    [outputFieldRows, syncOutputFieldRowsToForm]
   );
 
   const updateAgentScriptRow = useCallback(
@@ -904,60 +1049,79 @@ export const SocialMediaFields = ({
     scriptOptions.length > 0
       ? getScriptOptionByPath(scriptOptions, selectedScriptPath)
       : null;
-  const keywordFilterError = getConfigErrorMessage("keywordFilter");
-  const responseFormatsError = getConfigErrorMessage("responseFormats");
+  const outputFieldError = getConfigErrorMessage("output.field");
+  const outputTypeError = getConfigErrorMessage("output.type");
+  const outputKeywordScopeError = getConfigErrorMessage("output.keywordScope");
+  const filterMinCharsError = getConfigErrorMessage("filter.minChars");
   const requestPreview = useMemo(() => {
     if (!socialPlatform) return null;
     const config = asRecord(watch("social.config"));
-    const keywordFilter = asRecord(config.keywordFilter);
     const outputConfig = asRecord(config.output);
 
-    const rawOutputField = outputConfig.field ?? outputConfig.fields;
-    let outputField: string[] = [];
-    if (Array.isArray(rawOutputField)) {
-      outputField = rawOutputField
-        .filter((item): item is string => typeof item === "string")
-        .map((item) => item.trim())
-        .filter(Boolean);
-    } else {
-      const responseFormats = config.responseFormats;
-      if (Array.isArray(responseFormats)) {
-        outputField = responseFormats
-          .filter((item): item is string => typeof item === "string")
-          .map((item) => item.trim())
-          .filter(Boolean);
-      }
-    }
-    if (outputField.length === 0) {
-      outputField = ["text"];
+    let outputField = normalizeOutputFieldMap(outputConfig.field);
+    if (Object.keys(outputField).length === 0) {
+      outputField = { text: "text" };
     }
 
     const output: Record<string, unknown> = { field: outputField };
     if (typeof outputConfig.type === "string" && outputConfig.type.trim()) {
       output.type = outputConfig.type.trim();
     }
-    if (Array.isArray(outputConfig.keywordScope)) {
-      output.keywordScope = outputConfig.keywordScope;
+    const keywordScope = toDelimitedStringArray(outputConfig.keywordScope);
+    if (keywordScope.length > 0) {
+      output.keywordScope = keywordScope;
     }
 
-    const driverOption = asRecord(
+    const previewConfig = { ...config };
+    delete previewConfig.driver;
+    delete previewConfig.output;
+    delete previewConfig.responseFormats;
+    delete previewConfig.filter;
+    delete previewConfig.keywordFilter;
+    delete previewConfig.driverOptions;
+
+    const driverOption =
       resolvedDriver === "playwright"
-        ? config.playwright
+        ? {
+            ...asRecord(previewConfig.playwright),
+            ...(() => {
+              const rest = { ...previewConfig };
+              delete rest.playwright;
+              return rest;
+            })(),
+          }
         : resolvedDriver === "agent-browser"
-          ? config.agentBrowser
-          : config
-    );
+          ? {
+              ...asRecord(previewConfig.agentBrowser),
+              ...(() => {
+                const rest = { ...previewConfig };
+                delete rest.agentBrowser;
+                return rest;
+              })(),
+            }
+          : previewConfig;
+    const configuredFilter = asRecord(config.filter);
     const filter: Record<string, unknown> = {};
-    if (typeof keywordFilter.minSegmentChars === "number") {
-      filter.minChars = keywordFilter.minSegmentChars;
+    if (typeof configuredFilter.minChars === "number") {
+      filter.minChars = configuredFilter.minChars;
     }
-    if (typeof keywordFilter.minChars === "number") {
-      filter.minChars = keywordFilter.minChars;
+
+    const normalizedDriverOption = { ...driverOption };
+    if (selectedProxy?.url) {
+      normalizedDriverOption.network = {
+        ...asRecord(normalizedDriverOption.network),
+        proxy: {
+          ...asRecord(asRecord(normalizedDriverOption.network).proxy),
+          url: selectedProxy.url,
+        },
+      };
+    } else {
+      delete normalizedDriverOption.network;
     }
 
     const driver: Record<string, unknown> = {
       name: resolvedDriver,
-      option: driverOption,
+      option: normalizedDriverOption,
     };
     if (Object.keys(filter).length > 0) {
       driver.filter = filter;
@@ -970,7 +1134,7 @@ export const SocialMediaFields = ({
       driver,
       output,
     };
-  }, [socialPlatform, sourceId, resolvedDriver, watch]);
+  }, [socialPlatform, sourceId, resolvedDriver, watch, selectedProxy]);
 
   // Render auth status indicator
   const renderAuthStatus = () => {
@@ -1003,14 +1167,13 @@ export const SocialMediaFields = ({
   };
 
   const renderAgentBrowserFields = () => (
-    <Card className="gap-4 bg-muted/30">
-      <CardHeader>
-        <CardTitle>Agent Browser Params</CardTitle>
-        <CardDescription>
+    <div className="grid gap-4 rounded-lg border bg-background p-4">
+      <div>
+        <p className="text-sm font-medium">Agent Browser Option</p>
+        <p className="text-xs text-muted-foreground">
           ownerId / sessionKey 由系统统一维护，表单无需填写。
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="grid gap-4">
+        </p>
+      </div>
 
       <div className="flex flex-wrap items-center gap-5">
         <Controller
@@ -1154,132 +1317,280 @@ export const SocialMediaFields = ({
           )}
         />
       </div>
-      </CardContent>
-    </Card>
+    </div>
   );
 
   const getPlatformOptionLabel = (platform: string) => {
+    return platform;
+  };
+
+  const renderPlatformBadges = (platform: string) => {
     const stats = platformPresetStats[platform];
-    const isBbOnly = !SocialPlatformEnum.options.includes(platform as (typeof SocialPlatformEnum.options)[number]);
-    const bbOnlyTag = isBbOnly ? " [bb-site only]" : "";
-    if (!stats) return `${platform}${bbOnlyTag}`;
-    if (stats.active > 0) return `${platform} (bb:${stats.active})${bbOnlyTag}`;
-    if (stats.deprecated > 0 || stats.broken > 0) return `${platform} (bb unavailable)${bbOnlyTag}`;
-    return `${platform}${bbOnlyTag}`;
+    const isBbOnly = !SocialPlatformEnum.options.includes(
+      platform as (typeof SocialPlatformEnum.options)[number]
+    );
+    return (
+      <div className="flex items-center gap-1">
+        {stats?.active ? (
+          <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">
+            bb:{stats.active}
+          </Badge>
+        ) : null}
+        {stats && !stats.active && (stats.deprecated > 0 || stats.broken > 0) ? (
+          <Badge variant="outline" className="h-5 px-1.5 text-[10px]">
+            bb unavailable
+          </Badge>
+        ) : null}
+        {isBbOnly ? (
+          <Badge variant="outline" className="h-5 px-1.5 text-[10px]">
+            bb-site only
+          </Badge>
+        ) : null}
+      </div>
+    );
   };
 
   const renderGatherOutputAndFilterFields = () => (
     <Card className="gap-4 bg-muted/30">
       <CardHeader>
-        <CardTitle>Output & Filter</CardTitle>
+        <CardTitle>Output</CardTitle>
         <CardDescription>
-          source 仅配置输出和最小内容长度；关键词由 Query 统一注入。
+          配置输出映射、输出类型和关键词过滤范围。
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-4">
 
       <div className="grid gap-2">
-        <Label>Response Formats</Label>
-        <Controller
-          name="social.config.responseFormats"
-          control={control}
-          render={({ field }) => {
-            const selected = Array.isArray(field.value) && field.value.length > 0
-              ? field.value
-              : ["text", "markdown"];
-            const toggle = (format: "text" | "markdown", checked: boolean) => {
-              const next = checked
-                ? Array.from(new Set([...selected, format]))
-                : selected.filter((value) => value !== format);
-              field.onChange(next.length > 0 ? next : [format]);
-            };
-            return (
-              <div className="flex flex-wrap items-center gap-5">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <Checkbox
-                    checked={selected.includes("text")}
-                    onCheckedChange={(checked) => toggle("text", checked === true)}
-                  />
-                  <span className="text-sm">text</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <Checkbox
-                    checked={selected.includes("markdown")}
-                    onCheckedChange={(checked) =>
-                      toggle("markdown", checked === true)
-                    }
-                  />
-                  <span className="text-sm">markdown</span>
-                </label>
+        <Label htmlFor="social.config.output.field">
+          Output Field Mapping
+        </Label>
+        <div className="grid gap-3 border rounded-md p-3 bg-background">
+          <div className="flex items-center justify-between">
+            <Label className="text-sm font-medium">Field (key:value)</Label>
+            <Button type="button" variant="outline" size="sm" onClick={addOutputFieldRow}>
+              <Plus className="h-3.5 w-3.5 mr-1" />
+              Add
+            </Button>
+          </div>
+          <div className="grid gap-2 max-h-56 overflow-y-auto pr-1">
+            {outputFieldRows.map((row) => (
+              <div key={row.id} className="grid grid-cols-[1fr_1fr_auto] gap-2 items-center">
+                <Input
+                  value={row.key}
+                  onChange={(e) => updateOutputFieldRow(row.id, "key", e.target.value)}
+                  placeholder="key (e.g. text)"
+                />
+                <Input
+                  value={row.value}
+                  onChange={(e) => updateOutputFieldRow(row.id, "value", e.target.value)}
+                  placeholder="value path (e.g. tweets.text)"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => removeOutputFieldRow(row.id)}
+                  aria-label="Remove output field row"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
               </div>
-            );
-          }}
+            ))}
+          </div>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          配置 recordContent 字段映射，key 为输出字段名，value 为脚本输出路径。
+        </p>
+        <ErrorMessage>{outputFieldError}</ErrorMessage>
+      </div>
+
+      <div className="grid gap-2 md:max-w-md">
+        <Label htmlFor="social.config.output.type">Output Type</Label>
+        <Controller
+          name={"social.config.output.type" as any}
+          control={control}
+          render={({ field }) => (
+            <Input
+              id="social.config.output.type"
+              placeholder="x-text"
+              value={typeof field.value === "string" ? field.value : ""}
+              onChange={field.onChange}
+            />
+          )}
         />
-        <ErrorMessage>{responseFormatsError}</ErrorMessage>
+        <ErrorMessage>{outputTypeError}</ErrorMessage>
+      </div>
+
+      <div className="grid gap-2">
+        <Label htmlFor="social.config.output.keywordScope">
+          Keyword Scope
+        </Label>
+        <Controller
+          name={"social.config.output.keywordScope" as any}
+          control={control}
+          render={({ field }) => (
+            <Textarea
+              id="social.config.output.keywordScope"
+              rows={2}
+              placeholder={"text\nmarkdown"}
+              value={
+                Array.isArray(field.value)
+                  ? field.value.join("\n")
+                  : typeof field.value === "string"
+                    ? field.value
+                    : ""
+              }
+              onChange={(event) =>
+                field.onChange(toDelimitedStringArray(event.target.value))
+              }
+            />
+          )}
+        />
+        <p className="text-xs text-muted-foreground">
+          关键词过滤仅匹配这里指定的 recordContent 字段。
+        </p>
+        <ErrorMessage>{outputKeywordScopeError}</ErrorMessage>
       </div>
 
       <div className="grid gap-2 md:max-w-xs">
-        <Label htmlFor="social.config.keywordFilter.minSegmentChars">
-          Filter Min Chars
-        </Label>
-        <Input
-          id="social.config.keywordFilter.minSegmentChars"
-          type="number"
-          min={0}
-          {...register("social.config.keywordFilter.minSegmentChars", {
-            setValueAs: (value) => (value === "" ? undefined : Number(value)),
-          })}
-        />
-        <ErrorMessage>{keywordFilterError}</ErrorMessage>
       </div>
       </CardContent>
     </Card>
+  );
+
+  const renderDriverFilterFields = () => (
+    <div className="grid gap-2 rounded-lg border bg-background p-4 md:max-w-xs">
+      <div>
+        <p className="text-sm font-medium">Driver Filter</p>
+        <p className="text-xs text-muted-foreground">
+          对 driver 输出结果做基础过滤；将写入 driver.filter。
+        </p>
+      </div>
+        <Label htmlFor="social.config.filter.minChars">Min Chars</Label>
+        <Controller
+          name={"social.config.filter.minChars" as any}
+          control={control}
+          render={({ field }) => (
+            <Input
+              id="social.config.filter.minChars"
+              type="number"
+              min={0}
+              value={
+                typeof field.value === "number" ? field.value : field.value ?? ""
+              }
+              onChange={(event) => {
+                const next = event.target.value;
+                field.onChange(next === "" ? undefined : Number(next));
+              }}
+            />
+          )}
+        />
+        <ErrorMessage>{filterMinCharsError}</ErrorMessage>
+    </div>
+  );
+
+  const renderDriverNetworkFields = () => (
+    <div className="grid gap-3 rounded-lg border bg-background p-4">
+      <div>
+        <p className="text-sm font-medium">Driver Network</p>
+        <p className="text-xs text-muted-foreground">
+          选择已配置的代理设置；未选择时不会注入 network。
+        </p>
+      </div>
+      <SelectProxy
+        control={control}
+        proxies={proxies}
+        name="social.proxyId"
+        error={socialErrors.social?.proxyId?.message?.toString()}
+      />
+    </div>
   );
 
   return (
     <>
       <Card className="gap-4 bg-muted/30">
         <CardHeader>
-          <CardTitle>Social Driver</CardTitle>
+          <CardTitle>Platform</CardTitle>
           <CardDescription>
-            配置 source 级别的平台和驱动；name / description 在基础信息中保留。
+            选择 source 对应的平台。
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4">
           <div className="grid gap-3">
-            <Label htmlFor="social.platform">Platform</Label>
             <Controller
               name="social.platform"
               control={control}
               render={({ field }) => (
-                <ControlledSelect
-                  value={field.value as string}
-                  onValueChange={(value) => {
-                    const nextPlatform = value || "X";
-                    field.onChange(nextPlatform);
-                    setAuthStatus({ status: "idle" });
-                    setSelectedFile(null);
-                    setShowUploadForm(false);
-                    if (setValue) {
-                      setValue("social.credentialId", null);
-                      setValue(
-                        "social.config.driver",
-                        getDefaultDriver(nextPlatform)
-                      );
-                      setValue("social.config.playwright.mode", "eval-js");
-                      setValue("social.config.playwright.headless", false);
-                      setValue("social.config.playwright.targetUrl", "");
-                      setValue("social.config.playwright.args", {});
-                    }
-                  }}
-                  placeholder="Select a social media platform"
-                >
-                  {availablePlatforms.map((platform) => (
-                    <SelectItem key={platform} value={platform}>
-                      {getPlatformOptionLabel(platform)}
-                    </SelectItem>
-                  ))}
-                </ControlledSelect>
+                <Popover open={platformPopoverOpen} onOpenChange={setPlatformPopoverOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={platformPopoverOpen}
+                      className="w-full justify-between"
+                    >
+                      {field.value ? (
+                        <div className="flex min-w-0 items-center gap-2">
+                          <span className="truncate">
+                            {getPlatformOptionLabel(field.value as string)}
+                          </span>
+                          {renderPlatformBadges(field.value as string)}
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground">
+                          Select a social media platform
+                        </span>
+                      )}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
+                    <Command className="max-h-80">
+                      <CommandInput placeholder="Search platform..." />
+                      <CommandEmpty>No platform found.</CommandEmpty>
+                      <CommandList ref={commandListRef} className="max-h-64 overflow-y-auto">
+                        <CommandGroup>
+                          {availablePlatforms.map((platform) => (
+                            <CommandItem
+                              key={platform}
+                              value={platform}
+                              onSelect={() => {
+                                const nextPlatform = platform || "X";
+                                field.onChange(nextPlatform);
+                                setPlatformPopoverOpen(false);
+                                setAuthStatus({ status: "idle" });
+                                setSelectedFile(null);
+                                setShowUploadForm(false);
+                                if (setValue) {
+                                  setValue("social.credentialId", null);
+                                  setValue(
+                                    "social.config.driver",
+                                    getDefaultDriver(nextPlatform)
+                                  );
+                                  setValue("social.config.playwright.mode", "eval-js");
+                                  setValue("social.config.playwright.headless", false);
+                                  setValue("social.config.playwright.targetUrl", "");
+                                  setValue("social.config.playwright.args", {});
+                                }
+                              }}
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  field.value === platform ? "opacity-100" : "opacity-0"
+                                )}
+                              />
+                              <div className="flex w-full items-center justify-between gap-2">
+                                <span>{getPlatformOptionLabel(platform)}</span>
+                                {renderPlatformBadges(platform)}
+                              </div>
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               )}
             />
             <ErrorMessage>
@@ -1296,47 +1607,56 @@ export const SocialMediaFields = ({
             )}
           </div>
 
-          {socialPlatform && supportedDrivers.length > 0 && (
-            <div className="grid gap-3">
-              <Label>Driver</Label>
-              <Controller
-                name="social.config.driver"
-                control={control}
-                render={({ field }) => (
-                  <Tabs
-                    value={resolvedDriver}
-                    onValueChange={(value) => {
-                      field.onChange(value);
-                    }}
-                  >
-                    <TabsList
-                      className="grid w-full"
-                      style={{ gridTemplateColumns: `repeat(${supportedDrivers.length}, minmax(0, 1fr))` }}
-                    >
-                      {supportedDrivers.map((driver) => (
-                        <TabsTrigger key={driver} value={driver}>
-                          {driver}
-                        </TabsTrigger>
-                      ))}
-                    </TabsList>
-                  </Tabs>
-                )}
-              />
-              <p className="text-xs text-muted-foreground">
-                xhttp 不支持认证凭据；playwright / agent-browser 支持凭据。
-              </p>
-            </div>
-          )}
         </CardContent>
       </Card>
 
+      {socialPlatform && (
+        <Card className="gap-4 bg-muted/30">
+          <CardHeader>
+            <CardTitle>Driver</CardTitle>
+            <CardDescription>
+              选择 driver，并配置 option 和 filter。
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            {supportedDrivers.length > 0 && (
+              <div className="grid gap-3">
+                <Controller
+                  name="social.config.driver"
+                  control={control}
+                  render={({ field }) => (
+                    <Tabs
+                      value={resolvedDriver}
+                      onValueChange={(value) => {
+                        field.onChange(value);
+                      }}
+                    >
+                      <TabsList
+                        className="grid w-full"
+                        style={{ gridTemplateColumns: `repeat(${supportedDrivers.length}, minmax(0, 1fr))` }}
+                      >
+                        {supportedDrivers.map((driver) => (
+                          <TabsTrigger key={driver} value={driver}>
+                            {driver}
+                          </TabsTrigger>
+                        ))}
+                      </TabsList>
+                    </Tabs>
+                  )}
+                />
+                <p className="text-xs text-muted-foreground">
+                  xhttp 不支持认证凭据；playwright / agent-browser 支持凭据。
+                </p>
+              </div>
+            )}
+
       {/* Cookie Auth Selection Section */}
       {canUseCredential && (
-        <div className="grid gap-3 p-4 border rounded-lg bg-muted/30">
+        <div className="grid gap-3 rounded-lg border bg-background p-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <KeyRound className="h-5 w-5 text-muted-foreground" />
-              <Label className="text-base font-medium">认证凭证</Label>
+              <KeyRound className="h-4 w-4 text-muted-foreground" />
+              <Label className="text-sm font-medium">认证凭证</Label>
             </div>
             {!showUploadForm && (
               <Button
@@ -1532,14 +1852,13 @@ export const SocialMediaFields = ({
       {socialPlatform && (
         <>
           {resolvedDriver === "playwright" && (
-            <Card className="gap-4 bg-muted/30">
-              <CardHeader>
-                <CardTitle>Playwright Params</CardTitle>
-                <CardDescription>
+            <div className="grid gap-4 rounded-lg border bg-background p-4">
+              <div>
+                <p className="text-sm font-medium">Playwright Option</p>
+                <p className="text-xs text-muted-foreground">
                   可直接选择 bb-site preset 并自动填充 scriptPath 与 args。
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="grid gap-4">
+                </p>
+              </div>
 
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="grid gap-3">
@@ -1686,8 +2005,7 @@ export const SocialMediaFields = ({
                 </p>
                 <ErrorMessage>{getConfigErrorMessage("playwright.args")}</ErrorMessage>
               </div>
-              </CardContent>
-            </Card>
+            </div>
           )}
 
           {resolvedDriver === "xhttp" && (
@@ -1700,6 +2018,12 @@ export const SocialMediaFields = ({
             renderAgentBrowserFields()
           )}
         </>
+      )}
+
+      {socialPlatform && renderDriverFilterFields()}
+      {socialPlatform && renderDriverNetworkFields()}
+          </CardContent>
+        </Card>
       )}
 
       {socialPlatform && renderGatherOutputAndFilterFields()}
@@ -1974,13 +2298,6 @@ export const SocialMediaFields = ({
           </div>
         </>
       )}
-
-      <SelectProxy
-        control={control}
-        proxies={proxies}
-        name="social.proxyId"
-        error={socialErrors.social?.proxyId?.message?.toString()}
-      />
 
       <AlertDialog
         open={!!credentialToDelete}
