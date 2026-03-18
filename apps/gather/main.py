@@ -546,6 +546,8 @@ async def _playwright_fetch_data(request: FetchRequest):
     playwright_options = config.get("playwright")
     if isinstance(playwright_options, dict):
         mode = str(playwright_options.get("mode", "")).lower()
+        if mode in {"intercept-x-search", "intercept-search"} and platform in {"x", "twitter"}:
+            return await _run_playwright_intercept_x_search(request)
         if mode in {"eval-js", "evaljs", "eval"}:
             return await _run_playwright_eval_script(request)
 
@@ -560,6 +562,29 @@ async def _playwright_fetch_data(request: FetchRequest):
 
 def _strip_playwright_meta_block(script: str) -> str:
     return re.sub(r"/\*\s*@meta[\s\S]*?\*/", "", script, count=1).strip()
+
+
+def _load_playwright_storage_state_from_config(
+    request: FetchRequest,
+    playwright_options: Dict[str, Any],
+) -> Dict[str, Any] | None:
+    if request.auth_data and isinstance(request.auth_data, dict):
+        return request.auth_data
+    raw_state_file = playwright_options.get("stateFile", playwright_options.get("authFile"))
+    if not isinstance(raw_state_file, str) or not raw_state_file.strip():
+        return None
+    state_path = Path(raw_state_file.strip()).expanduser()
+    if not state_path.is_absolute():
+        state_path = (Path(__file__).resolve().parent / state_path).resolve()
+    if not state_path.exists() or not state_path.is_file():
+        raise HTTPException(status_code=400, detail=f"stateFile does not exist: {raw_state_file}")
+    try:
+        raw_state = json.loads(state_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as error:
+        raise HTTPException(status_code=400, detail=f"stateFile is not valid JSON: {error}") from error
+    if not isinstance(raw_state, dict):
+        raise HTTPException(status_code=400, detail="stateFile JSON must be an object")
+    return raw_state
 
 
 def _inject_proxy_credentials(proxy_url: str, username: str | None, password: str | None) -> str:
@@ -1164,6 +1189,156 @@ async def _run_playwright_eval_script(request: FetchRequest) -> list[CleanItem]:
     return items
 
 
+async def _run_playwright_intercept_x_search(request: FetchRequest) -> list[CleanItem]:
+    from playwright.async_api import TimeoutError as PlaywrightTimeoutError
+    from playwright.async_api import async_playwright
+
+    config = request.config if isinstance(request.config, dict) else {}
+    playwright_options = config.get("playwright")
+    if not isinstance(playwright_options, dict):
+        raise HTTPException(status_code=400, detail="config.playwright must be an object")
+
+    args = playwright_options.get("args", {})
+    args_obj = args if isinstance(args, dict) else {}
+    query = str(args_obj.get("query", "")).strip()
+    if not query:
+        raise HTTPException(status_code=400, detail="config.playwright.args.query is required for intercept-x-search mode")
+    raw_count = args_obj.get("count", 30)
+    try:
+        count = int(raw_count)
+    except (TypeError, ValueError):
+        count = 30
+    count = max(1, min(count, 100))
+    raw_type = str(args_obj.get("type", "latest")).strip().lower()
+    search_type = "top" if raw_type == "top" else "latest"
+    headless = bool(playwright_options.get("headless", True))
+    navigation_timeout_ms = playwright_options.get("navigationTimeoutMs", 60000)
+    if not isinstance(navigation_timeout_ms, int) or navigation_timeout_ms < 1000:
+        raise HTTPException(status_code=400, detail="config.playwright.navigationTimeoutMs must be an integer >= 1000")
+    storage_state = _load_playwright_storage_state_from_config(request, playwright_options)
+    search_url = (
+        f"https://x.com/search?q={quote(query)}&src=typed_query&f={'live' if search_type == 'latest' else 'top'}"
+    )
+    scroll_times = max(1, min(12, (count + 9) // 10))
+
+    script_to_run = f"""
+        async () => {{
+          const CAPTURE_KEY = 'SearchTimeline';
+          if (!window.__oakGatherCapture) {{
+            window.__oakGatherCapture = [];
+            const pushCapture = (url, payload) => {{
+              if (!url || !String(url).includes(CAPTURE_KEY)) return;
+              if (!payload || typeof payload !== 'object') return;
+              window.__oakGatherCapture.push(payload);
+            }};
+            const origFetch = window.fetch.bind(window);
+            window.fetch = async (...fetchArgs) => {{
+              const response = await origFetch(...fetchArgs);
+              try {{
+                const reqUrl = typeof fetchArgs[0] === 'string'
+                  ? fetchArgs[0]
+                  : (fetchArgs[0] && fetchArgs[0].url) || '';
+                if (reqUrl.includes(CAPTURE_KEY)) {{
+                  const cloned = response.clone();
+                  const data = await cloned.json();
+                  pushCapture(reqUrl, data);
+                }}
+              }} catch (_error) {{}}
+              return response;
+            }};
+            const xhrOpen = XMLHttpRequest.prototype.open;
+            const xhrSend = XMLHttpRequest.prototype.send;
+            XMLHttpRequest.prototype.open = function(method, url) {{
+              this.__oakGatherUrl = String(url || '');
+              return xhrOpen.apply(this, arguments);
+            }};
+            XMLHttpRequest.prototype.send = function() {{
+              if (this.__oakGatherUrl && this.__oakGatherUrl.includes(CAPTURE_KEY)) {{
+                this.addEventListener('load', function() {{
+                  try {{
+                    const payload = JSON.parse(this.responseText);
+                    pushCapture(this.__oakGatherUrl, payload);
+                  }} catch (_error) {{}}
+                }});
+              }}
+              return xhrSend.apply(this, arguments);
+            }};
+          }}
+
+          const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+          for (let i = 0; i < {scroll_times}; i += 1) {{
+            window.scrollTo(0, document.body.scrollHeight);
+            await sleep(1200);
+          }}
+
+          const captures = Array.isArray(window.__oakGatherCapture) ? window.__oakGatherCapture : [];
+          const tweets = [];
+          const seen = new Set();
+
+          for (const payload of captures) {{
+            const instructions = payload?.data?.search_by_raw_query?.search_timeline?.timeline?.instructions || [];
+            for (const inst of instructions) {{
+              const entries = inst?.entries || [];
+              for (const entry of entries) {{
+                const result = entry?.content?.itemContent?.tweet_results?.result;
+                if (!result) continue;
+                const tweet = result.tweet || result;
+                const legacy = tweet?.legacy || {{}};
+                const restId = tweet?.rest_id;
+                if (!restId || seen.has(restId)) continue;
+                seen.add(restId);
+                const user = tweet?.core?.user_results?.result;
+                const screenName = user?.legacy?.screen_name || user?.core?.screen_name || 'unknown';
+                const noteText = tweet?.note_tweet?.note_tweet_results?.result?.text;
+                tweets.push({{
+                  id: restId,
+                  author: screenName,
+                  name: user?.legacy?.name || user?.core?.name || '',
+                  url: `https://x.com/${{screenName}}/status/${{restId}}`,
+                  text: noteText || legacy.full_text || '',
+                  created_at: legacy.created_at || null
+                }});
+              }}
+            }}
+          }}
+
+          return {{
+            query: {json.dumps(query, ensure_ascii=False)},
+            product: {json.dumps("Latest" if search_type == "latest" else "Top")},
+            count: tweets.length,
+            tweets: tweets.slice(0, {count})
+          }};
+        }}
+    """
+
+    try:
+        async with async_playwright() as playwright:
+            browser = await playwright.chromium.launch(headless=headless)
+            context_options: dict[str, Any] = {}
+            if storage_state:
+                context_options["storage_state"] = storage_state
+            context = await browser.new_context(**context_options)
+            page = await context.new_page()
+            try:
+                await page.goto(search_url, wait_until="domcontentloaded", timeout=navigation_timeout_ms)
+                await page.wait_for_timeout(2000)
+                eval_result = await page.evaluate(script_to_run)
+            finally:
+                await context.close()
+                await browser.close()
+    except PlaywrightTimeoutError as error:
+        raise HTTPException(status_code=504, detail=f"playwright intercept search timeout: {error}") from error
+    except HTTPException:
+        raise
+    except Exception as error:
+        raise HTTPException(status_code=500, detail=f"playwright intercept search failed: {error}") from error
+
+    items = _normalize_playwright_eval_result(eval_result, request, search_url)
+    if not items:
+        raise HTTPException(status_code=500, detail="playwright intercept search finished without output")
+    return items
+
+
 def _truncate_text(value: str, max_length: int = 12000) -> str:
     if len(value) <= max_length:
         return value
@@ -1546,6 +1721,12 @@ def _merge_v3_intent_into_driver_option(
             args_obj["type"] = "latest"
         if args_obj:
             merged_option["args"] = args_obj
+        if driver_name == "playwright":
+            has_script_body = isinstance(merged_option.get("scriptBody"), str) and merged_option.get("scriptBody", "").strip()
+            has_script_path = isinstance(merged_option.get("scriptPath"), str) and merged_option.get("scriptPath", "").strip()
+            current_mode = str(merged_option.get("mode", "")).strip().lower()
+            if not has_script_body and not has_script_path and current_mode not in {"eval-js", "evaljs", "eval"}:
+                merged_option["mode"] = "intercept-x-search"
         return merged_option
 
     if driver_name == "xhttp":
