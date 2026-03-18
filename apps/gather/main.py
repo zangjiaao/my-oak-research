@@ -642,6 +642,16 @@ async def _playwright_verify_auth(request: VerifyAuthRequest):
     if whatsapp_result is not None:
         return whatsapp_result
 
+    # Reddit has a reliable built-in probe via /api/me.json.
+    # Run it first unless user explicitly provides a verify script override.
+    if (
+        normalized_request.platform.lower().strip() == "reddit"
+        and not normalized_request.verify_script_path
+    ):
+        reddit_probe_result = await _verify_auth_with_reddit_api_probe(normalized_request)
+        if reddit_probe_result is not None:
+            return reddit_probe_result
+
     scripted_result = await _verify_auth_with_bb_site_script(normalized_request)
     if scripted_result is not None:
         return scripted_result

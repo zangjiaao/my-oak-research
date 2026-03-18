@@ -63,7 +63,7 @@ def test_verify_auth_requires_script_when_script_verify_not_available(monkeypatc
 
 def test_verify_auth_uses_reddit_api_probe_when_script_missing(monkeypatch):
     async def fake_script_verify(_request):
-        return None
+        raise AssertionError("bb-site verify should be skipped for reddit when verifyScriptPath is not set")
 
     async def fake_reddit_probe(_request):
         return VerifyAuthResponse(
