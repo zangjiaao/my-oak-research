@@ -13,6 +13,8 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ErrorMessage } from "@/components/business";
+import SelectProxy from "./SelectProxy";
+import { Proxy } from "@/app/generated/prisma";
 import {
   SocialPlatformEnum,
   SocialMediaSourceCreateSchema,
@@ -78,6 +80,7 @@ interface SocialMediaFieldsProps {
   register: UseFormRegister<z.infer<typeof SourceCreateSchema>>;
   control: Control<z.infer<typeof SourceCreateSchema>>;
   errors: FieldErrors<z.infer<typeof SourceCreateSchema>>;
+  proxies: Proxy[];
   watch: UseFormWatch<z.infer<typeof SourceCreateSchema>>;
   setValue?: UseFormSetValue<z.infer<typeof SourceCreateSchema>>;
   sourceId?: string;
@@ -354,6 +357,7 @@ export const SocialMediaFields = ({
   register,
   control,
   errors,
+  proxies,
   watch,
   setValue,
   sourceId,
@@ -361,6 +365,7 @@ export const SocialMediaFields = ({
   const socialPlatform = watch("social.platform") as string | undefined;
   const selectedDriver = watch("social.config.driver") as string | undefined;
   const currentCredentialId = watch("social.credentialId") as string | null | undefined;
+  const currentProxyId = watch("social.proxyId") as string | null | undefined;
   const outputFieldValue = (watch as any)("social.config.output.field");
   const currentRecordFormat = watch(
     "social.config.agentBrowser.recordSchema.format"
@@ -456,6 +461,10 @@ export const SocialMediaFields = ({
   const currentPlatformStats = socialPlatform
     ? platformPresetStats[socialPlatform]
     : undefined;
+  const selectedProxy = useMemo(
+    () => proxies.find((proxy) => proxy.id === currentProxyId) ?? null,
+    [proxies, currentProxyId]
+  );
 
   // Credentials list
   const [credentials, setCredentials] = useState<CredentialInfo[]>([]);
@@ -631,6 +640,15 @@ export const SocialMediaFields = ({
       setAuthStatus({ status: "idle" });
     }
   }, [setValue, socialPlatform, resolvedDriver]);
+
+  useEffect(() => {
+    if (!setValue) return;
+    if (!currentProxyId) {
+      (setValue as any)("social.config.network", undefined, {
+        shouldDirty: true,
+      });
+    }
+  }, [setValue, currentProxyId]);
 
   useEffect(() => {
     if (!setValue) return;
@@ -1088,9 +1106,22 @@ export const SocialMediaFields = ({
       filter.minChars = configuredFilter.minChars;
     }
 
+    const normalizedDriverOption = { ...driverOption };
+    if (selectedProxy?.url) {
+      normalizedDriverOption.network = {
+        ...asRecord(normalizedDriverOption.network),
+        proxy: {
+          ...asRecord(asRecord(normalizedDriverOption.network).proxy),
+          url: selectedProxy.url,
+        },
+      };
+    } else {
+      delete normalizedDriverOption.network;
+    }
+
     const driver: Record<string, unknown> = {
       name: resolvedDriver,
-      option: driverOption,
+      option: normalizedDriverOption,
     };
     if (Object.keys(filter).length > 0) {
       driver.filter = filter;
@@ -1103,7 +1134,7 @@ export const SocialMediaFields = ({
       driver,
       output,
     };
-  }, [socialPlatform, sourceId, resolvedDriver, watch]);
+  }, [socialPlatform, sourceId, resolvedDriver, watch, selectedProxy]);
 
   // Render auth status indicator
   const renderAuthStatus = () => {
@@ -1463,36 +1494,15 @@ export const SocialMediaFields = ({
       <div>
         <p className="text-sm font-medium">Driver Network</p>
         <p className="text-xs text-muted-foreground">
-          配置 driver.network.proxy（支持 http/https/socks5/socks5h）。
+          选择已配置的代理设置；未选择时不会注入 network。
         </p>
       </div>
-      <div className="grid gap-2">
-        <Label htmlFor="social.config.network.proxy.url">Proxy URL</Label>
-        <Input
-          id="social.config.network.proxy.url"
-          placeholder="socks5h://127.0.0.1:9050"
-          {...register("social.config.network.proxy.url" as any)}
-        />
-      </div>
-      <div className="grid gap-2 md:grid-cols-2">
-        <div className="grid gap-2">
-          <Label htmlFor="social.config.network.proxy.username">Proxy Username</Label>
-          <Input
-            id="social.config.network.proxy.username"
-            placeholder="optional"
-            {...register("social.config.network.proxy.username" as any)}
-          />
-        </div>
-        <div className="grid gap-2">
-          <Label htmlFor="social.config.network.proxy.password">Proxy Password</Label>
-          <Input
-            id="social.config.network.proxy.password"
-            type="password"
-            placeholder="optional"
-            {...register("social.config.network.proxy.password" as any)}
-          />
-        </div>
-      </div>
+      <SelectProxy
+        control={control}
+        proxies={proxies}
+        name="social.proxyId"
+        error={socialErrors.social?.proxyId?.message?.toString()}
+      />
     </div>
   );
 
