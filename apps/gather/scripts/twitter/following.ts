@@ -3,6 +3,7 @@
 // intent.args: {"username":"openai","limit":50}
 // output.field: {"screen_name":"users.screen_name","name":"users.name","bio":"users.bio","followers":"users.followers","url":"users.url"}
 
+async () => {
   const username = String(__USERNAME_JSON__ || '').replace(/^@/, '').trim();
   const limit = Number(__COUNT__) || 50;
   if (!username) {

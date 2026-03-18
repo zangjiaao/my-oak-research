@@ -3,6 +3,7 @@
 // intent.args: {"limit":20}
 // output.field: {"id":"tweets.id","text":"tweets.text","author":"tweets.author","url":"tweets.url","created_at":"tweets.created_at"}
 
+async () => {
   const limit = Number(__COUNT__) || 20;
   const ct0 = document.cookie.split(';').map((c) => c.trim()).find((c) => c.startsWith('ct0='))?.split('=')[1];
   if (!ct0) {

@@ -3,6 +3,7 @@
 // intent.args: {"tweet_id":"1900000000000000000"}
 // output.field: {"id":"items.id","title":"items.title","content":"items.content","author":"items.author","url":"items.url"}
 
+async () => {
   const tweetId = String(__TWEET_ID_JSON__ || '').trim();
   if (!tweetId) {
     return { error: 'tweet_id is required' };

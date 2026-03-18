@@ -9,5 +9,5 @@
     "outDir": "../scripts-dist",
     "rootDir": "."
   },
-  "include": ["**/*.ts"]
+  "include": ["**/*.ts", "**/*.d.ts"]
 }

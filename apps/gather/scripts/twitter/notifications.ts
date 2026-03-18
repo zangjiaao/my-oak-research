@@ -3,6 +3,7 @@
 // intent.args: {"limit":20}
 // output.field: {"id":"notifications.id","action":"notifications.action","text":"notifications.text","author":"notifications.author","url":"notifications.url"}
 
+async () => {
   const limit = Number(__COUNT__) || 20;
   const CAPTURE_KEY = 'NotificationsTimeline';
   if (!window.__oakGatherCapture) {

@@ -3,6 +3,7 @@
 // intent.args: {"query":"openai","limit":20}
 // output.field: {"id":"tweets.id","text":"tweets.text","author":"tweets.author","url":"tweets.url","created_at":"tweets.created_at"}
 
+async () => {
   const CAPTURE_KEY = "SearchTimeline";
   if (!window.__oakGatherCapture) {
     window.__oakGatherCapture = [];

@@ -70,4 +70,4 @@ def test_build_x_intent_script_resolves_all_registered_intents(intent):
             "__SCROLL_TIMES__": 3,
         },
     )
-    assert script.strip().startswith("async")
+    assert "async () => {" in script
