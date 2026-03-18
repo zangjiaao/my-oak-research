@@ -1071,14 +1071,13 @@ export const SocialMediaFields = ({
   };
 
   const renderAgentBrowserFields = () => (
-    <Card className="gap-4 bg-muted/30">
-      <CardHeader>
-        <CardTitle>Agent Browser Params</CardTitle>
-        <CardDescription>
+    <div className="grid gap-4 rounded-lg border bg-background p-4">
+      <div>
+        <p className="text-sm font-medium">Agent Browser Option</p>
+        <p className="text-xs text-muted-foreground">
           ownerId / sessionKey 由系统统一维护，表单无需填写。
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="grid gap-4">
+        </p>
+      </div>
 
       <div className="flex flex-wrap items-center gap-5">
         <Controller
@@ -1222,8 +1221,7 @@ export const SocialMediaFields = ({
           )}
         />
       </div>
-      </CardContent>
-    </Card>
+    </div>
   );
 
   const getPlatformOptionLabel = (platform: string) => {
@@ -1259,9 +1257,9 @@ export const SocialMediaFields = ({
   const renderGatherOutputAndFilterFields = () => (
     <Card className="gap-4 bg-muted/30">
       <CardHeader>
-        <CardTitle>Output & Filter</CardTitle>
+        <CardTitle>Output</CardTitle>
         <CardDescription>
-          配置 gather 的 output.field / output.type / output.keywordScope 与 minChars。
+          配置输出映射、输出类型和关键词过滤范围。
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-4">
@@ -1348,14 +1346,13 @@ export const SocialMediaFields = ({
   );
 
   const renderDriverFilterFields = () => (
-    <Card className="gap-4 bg-muted/30">
-      <CardHeader>
-        <CardTitle>Driver Filter</CardTitle>
-        <CardDescription>
+    <div className="grid gap-2 rounded-lg border bg-background p-4 md:max-w-xs">
+      <div>
+        <p className="text-sm font-medium">Driver Filter</p>
+        <p className="text-xs text-muted-foreground">
           对 driver 输出结果做基础过滤；将写入 driver.filter。
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="grid gap-2 md:max-w-xs">
+        </p>
+      </div>
         <Label htmlFor="social.config.filter.minChars">Min Chars</Label>
         <Controller
           name={"social.config.filter.minChars" as any}
@@ -1376,17 +1373,16 @@ export const SocialMediaFields = ({
           )}
         />
         <ErrorMessage>{filterMinCharsError}</ErrorMessage>
-      </CardContent>
-    </Card>
+    </div>
   );
 
   return (
     <>
       <Card className="gap-4 bg-muted/30">
         <CardHeader>
-          <CardTitle>Social Driver</CardTitle>
+          <CardTitle>Platform</CardTitle>
           <CardDescription>
-            配置 source 级别的平台和驱动；name / description 在基础信息中保留。
+            选择 source 对应的平台。
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4">
@@ -1482,39 +1478,49 @@ export const SocialMediaFields = ({
             )}
           </div>
 
-          {socialPlatform && supportedDrivers.length > 0 && (
-            <div className="grid gap-3">
-              <Label>Driver</Label>
-              <Controller
-                name="social.config.driver"
-                control={control}
-                render={({ field }) => (
-                  <Tabs
-                    value={resolvedDriver}
-                    onValueChange={(value) => {
-                      field.onChange(value);
-                    }}
-                  >
-                    <TabsList
-                      className="grid w-full"
-                      style={{ gridTemplateColumns: `repeat(${supportedDrivers.length}, minmax(0, 1fr))` }}
-                    >
-                      {supportedDrivers.map((driver) => (
-                        <TabsTrigger key={driver} value={driver}>
-                          {driver}
-                        </TabsTrigger>
-                      ))}
-                    </TabsList>
-                  </Tabs>
-                )}
-              />
-              <p className="text-xs text-muted-foreground">
-                xhttp 不支持认证凭据；playwright / agent-browser 支持凭据。
-              </p>
-            </div>
-          )}
         </CardContent>
       </Card>
+
+      {socialPlatform && (
+        <Card className="gap-4 bg-muted/30">
+          <CardHeader>
+            <CardTitle>Driver</CardTitle>
+            <CardDescription>
+              选择 driver，并配置 option 和 filter。
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            {supportedDrivers.length > 0 && (
+              <div className="grid gap-3">
+                <Label>Driver</Label>
+                <Controller
+                  name="social.config.driver"
+                  control={control}
+                  render={({ field }) => (
+                    <Tabs
+                      value={resolvedDriver}
+                      onValueChange={(value) => {
+                        field.onChange(value);
+                      }}
+                    >
+                      <TabsList
+                        className="grid w-full"
+                        style={{ gridTemplateColumns: `repeat(${supportedDrivers.length}, minmax(0, 1fr))` }}
+                      >
+                        {supportedDrivers.map((driver) => (
+                          <TabsTrigger key={driver} value={driver}>
+                            {driver}
+                          </TabsTrigger>
+                        ))}
+                      </TabsList>
+                    </Tabs>
+                  )}
+                />
+                <p className="text-xs text-muted-foreground">
+                  xhttp 不支持认证凭据；playwright / agent-browser 支持凭据。
+                </p>
+              </div>
+            )}
 
       {/* Cookie Auth Selection Section */}
       {canUseCredential && (
@@ -1718,14 +1724,13 @@ export const SocialMediaFields = ({
       {socialPlatform && (
         <>
           {resolvedDriver === "playwright" && (
-            <Card className="gap-4 bg-muted/30">
-              <CardHeader>
-                <CardTitle>Playwright Params</CardTitle>
-                <CardDescription>
+            <div className="grid gap-4 rounded-lg border bg-background p-4">
+              <div>
+                <p className="text-sm font-medium">Playwright Option</p>
+                <p className="text-xs text-muted-foreground">
                   可直接选择 bb-site preset 并自动填充 scriptPath 与 args。
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="grid gap-4">
+                </p>
+              </div>
 
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="grid gap-3">
@@ -1872,8 +1877,7 @@ export const SocialMediaFields = ({
                 </p>
                 <ErrorMessage>{getConfigErrorMessage("playwright.args")}</ErrorMessage>
               </div>
-              </CardContent>
-            </Card>
+            </div>
           )}
 
           {resolvedDriver === "xhttp" && (
@@ -1889,6 +1893,9 @@ export const SocialMediaFields = ({
       )}
 
       {socialPlatform && renderDriverFilterFields()}
+          </CardContent>
+        </Card>
+      )}
 
       {socialPlatform && renderGatherOutputAndFilterFields()}
 
