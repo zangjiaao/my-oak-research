@@ -1269,6 +1269,8 @@ async def _run_playwright_intercept_x_intent(request: FetchRequest, intent_type:
         target_url = "https://x.com/i/bookmarks"
     elif normalized_intent == "notifications":
         target_url = "https://x.com/notifications"
+    elif normalized_intent in {"thread", "article"}:
+        target_url = f"https://x.com/i/status/{quote(tweet_id)}"
     else:
         target_url = "https://x.com/home"
 
