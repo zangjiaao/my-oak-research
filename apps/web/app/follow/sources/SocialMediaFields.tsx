@@ -214,7 +214,19 @@ type AgentScriptRow = {
   json: string;
 };
 
+type OutputFieldRow = {
+  id: string;
+  key: string;
+  value: string;
+};
+
 const createEmptyArgRow = (): PlaywrightArgRow => ({
+  id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+  key: "",
+  value: "",
+});
+
+const createEmptyOutputFieldRow = (): OutputFieldRow => ({
   id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
   key: "",
   value: "",
@@ -258,37 +270,14 @@ const normalizeOutputFieldMap = (value: unknown): Record<string, string> => {
   return Object.fromEntries(entries);
 };
 
-const normalizeOutputFieldMapForEditor = (value: unknown): Record<string, string> => {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
-    return {};
-  }
-  const entries = Object.entries(value as Record<string, unknown>)
-    .map(([key, rawValue]) => [key.trim(), String(rawValue ?? "").trim()] as const)
-    .filter(([key]) => key.length > 0);
-  return Object.fromEntries(entries);
-};
-
-const outputFieldMapToEditorValue = (value: unknown): string => {
-  const mapped = normalizeOutputFieldMapForEditor(value);
-  return Object.entries(mapped)
-    .map(([key, path]) => `${key}=${path}`)
-    .join("\n");
-};
-
-const parseOutputFieldMapEditorValue = (value: string): Record<string, string> => {
-  const mapped = value
-    .split(/\r?\n/g)
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((line) => {
-      const [key, ...rest] = line.includes("=")
-        ? line.split("=")
-        : line.split(":");
-      return [key?.trim() ?? "", rest.join(":").trim()] as const;
-    })
-    .filter(([key]) => key.length > 0);
-
-  return Object.fromEntries(mapped);
+const buildOutputFieldRows = (value: unknown): OutputFieldRow[] => {
+  const mapped = normalizeOutputFieldMap(value);
+  const rows = Object.entries(mapped).map(([key, itemValue]) => ({
+    id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    key,
+    value: itemValue,
+  }));
+  return rows.length > 0 ? rows : [createEmptyOutputFieldRow()];
 };
 
 const normalizeArgs = (input: unknown): Record<string, string> => {
@@ -376,6 +365,7 @@ export const SocialMediaFields = ({
   const socialPlatform = watch("social.platform") as string | undefined;
   const selectedDriver = watch("social.config.driver") as string | undefined;
   const currentCredentialId = watch("social.credentialId") as string | null | undefined;
+  const outputFieldValue = (watch as any)("social.config.output.field");
   const currentRecordFormat = watch(
     "social.config.agentBrowser.recordSchema.format"
   ) as string | undefined;
@@ -403,6 +393,9 @@ export const SocialMediaFields = ({
   const [xArgRows, setXArgRows] = useState<PlaywrightArgRow[]>([
     createEmptyArgRow(),
   ]);
+  const [outputFieldRows, setOutputFieldRows] = useState<OutputFieldRow[]>(
+    () => buildOutputFieldRows(outputFieldValue)
+  );
   const [agentScriptRows, setAgentScriptRows] = useState<AgentScriptRow[]>([
     createEmptyAgentScriptRow(),
   ]);
@@ -673,6 +666,23 @@ export const SocialMediaFields = ({
     [setValue]
   );
 
+  const syncOutputFieldRowsToForm = useCallback(
+    (rows: OutputFieldRow[]) => {
+      if (!setValue) return;
+      const mapped = rows.reduce<Record<string, string>>((acc, row) => {
+        const key = row.key.trim();
+        const value = row.value.trim();
+        if (!key || !value) return acc;
+        acc[key] = value;
+        return acc;
+      }, {});
+      (setValue as any)("social.config.output.field", mapped, {
+        shouldDirty: true,
+      });
+    },
+    [setValue]
+  );
+
   const applyScriptDefaults = useCallback(
     (
       scriptPath: string,
@@ -787,6 +797,34 @@ export const SocialMediaFields = ({
       syncArgsToForm(safeRows);
     },
     [syncArgsToForm, xArgRows]
+  );
+
+  const updateOutputFieldRow = useCallback(
+    (id: string, field: "key" | "value", nextValue: string) => {
+      const nextRows = outputFieldRows.map((row) =>
+        row.id === id ? { ...row, [field]: nextValue } : row
+      );
+      setOutputFieldRows(nextRows);
+      syncOutputFieldRowsToForm(nextRows);
+    },
+    [outputFieldRows, syncOutputFieldRowsToForm]
+  );
+
+  const addOutputFieldRow = useCallback(() => {
+    const nextRows = [...outputFieldRows, createEmptyOutputFieldRow()];
+    setOutputFieldRows(nextRows);
+    syncOutputFieldRowsToForm(nextRows);
+  }, [outputFieldRows, syncOutputFieldRowsToForm]);
+
+  const removeOutputFieldRow = useCallback(
+    (id: string) => {
+      const nextRows = outputFieldRows.filter((row) => row.id !== id);
+      const safeRows =
+        nextRows.length > 0 ? nextRows : [createEmptyOutputFieldRow()];
+      setOutputFieldRows(safeRows);
+      syncOutputFieldRowsToForm(safeRows);
+    },
+    [outputFieldRows, syncOutputFieldRowsToForm]
   );
 
   const updateAgentScriptRow = useCallback(
@@ -1278,25 +1316,42 @@ export const SocialMediaFields = ({
         <Label htmlFor="social.config.output.field">
           Output Field Mapping
         </Label>
-        <Controller
-          name={"social.config.output.field" as any}
-          control={control}
-          render={({ field }) => {
-            return (
-              <Textarea
-                id="social.config.output.field"
-                rows={6}
-                placeholder={"id=tweets.id\nauthor=tweets.author\ntext=tweets.text"}
-                value={outputFieldMapToEditorValue(field.value)}
-                onChange={(event) =>
-                  field.onChange(parseOutputFieldMapEditorValue(event.target.value))
-                }
-              />
-            );
-          }}
-        />
+        <div className="grid gap-3 border rounded-md p-3 bg-background">
+          <div className="flex items-center justify-between">
+            <Label className="text-sm font-medium">Field (key:value)</Label>
+            <Button type="button" variant="outline" size="sm" onClick={addOutputFieldRow}>
+              <Plus className="h-3.5 w-3.5 mr-1" />
+              Add
+            </Button>
+          </div>
+          <div className="grid gap-2 max-h-56 overflow-y-auto pr-1">
+            {outputFieldRows.map((row) => (
+              <div key={row.id} className="grid grid-cols-[1fr_1fr_auto] gap-2 items-center">
+                <Input
+                  value={row.key}
+                  onChange={(e) => updateOutputFieldRow(row.id, "key", e.target.value)}
+                  placeholder="key (e.g. text)"
+                />
+                <Input
+                  value={row.value}
+                  onChange={(e) => updateOutputFieldRow(row.id, "value", e.target.value)}
+                  placeholder="value path (e.g. tweets.text)"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => removeOutputFieldRow(row.id)}
+                  aria-label="Remove output field row"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        </div>
         <p className="text-xs text-muted-foreground">
-          每行一个映射，格式为 `目标字段=原始路径`（支持 `:` 作为分隔符）。
+          配置 recordContent 字段映射，key 为输出字段名，value 为脚本输出路径。
         </p>
         <ErrorMessage>{outputFieldError}</ErrorMessage>
       </div>
