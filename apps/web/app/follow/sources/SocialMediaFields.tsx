@@ -1524,11 +1524,11 @@ export const SocialMediaFields = ({
 
       {/* Cookie Auth Selection Section */}
       {canUseCredential && (
-        <div className="grid gap-3 p-4 border rounded-lg bg-muted/30">
+        <div className="grid gap-3 rounded-lg border bg-background p-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <KeyRound className="h-5 w-5 text-muted-foreground" />
-              <Label className="text-base font-medium">认证凭证</Label>
+              <KeyRound className="h-4 w-4 text-muted-foreground" />
+              <Label className="text-sm font-medium">认证凭证</Label>
             </div>
             {!showUploadForm && (
               <Button
