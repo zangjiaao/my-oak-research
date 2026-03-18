@@ -1,11 +1,11 @@
 async () => {
-  const username = String(__USERNAME_JSON__ || "").replace(/^@/, "").trim();
+  const username = String(__USERNAME_JSON__ || '').replace(/^@/, '').trim();
   if (!username) {
-    return { error: "username is required" };
+    return { error: 'username is required' };
   }
   const ct0 = document.cookie.split(';').map((c) => c.trim()).find((c) => c.startsWith('ct0='))?.split('=')[1];
   if (!ct0) {
-    return { error: "No ct0 cookie - not logged into x.com" };
+    return { error: 'No ct0 cookie - not logged into x.com' };
   }
 
   const bearer = 'AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs%3D1Zv7ttfk8LF81IUq16cHjhLTvJu4FA33AGWWjCpTnA';
@@ -16,27 +16,65 @@ async () => {
     'X-Twitter-Active-User': 'yes',
   };
 
-  const variables = JSON.stringify({ screen_name: username, withSafetyModeUserFields: true });
+  const variables = JSON.stringify({
+    screen_name: username,
+    withSafetyModeUserFields: true,
+  });
   const features = JSON.stringify({
+    hidden_profile_subscriptions_enabled: true,
+    rweb_tipjar_consumption_enabled: true,
     responsive_web_graphql_exclude_directive_enabled: true,
     verified_phone_label_enabled: false,
+    subscriptions_verification_info_is_identity_verified_enabled: true,
+    subscriptions_verification_info_verified_since_enabled: true,
+    highlights_tweets_tab_ui_enabled: true,
+    responsive_web_twitter_article_notes_tab_enabled: true,
+    subscriptions_feature_can_gift_premium: true,
+    creator_subscriptions_tweet_preview_api_enabled: true,
     responsive_web_graphql_skip_user_profile_image_extensions_enabled: false,
     responsive_web_graphql_timeline_navigation_enabled: true,
   });
 
-  const url = `/i/api/graphql/qRednkZG-rn1P6b48NINmQ/UserByScreenName?variables=${encodeURIComponent(variables)}&features=${encodeURIComponent(features)}`;
+  async function resolveQueryId(operationName, fallbackId) {
+    try {
+      const ghResp = await fetch('https://raw.githubusercontent.com/fa0311/twitter-openapi/refs/heads/main/src/config/placeholder.json');
+      if (ghResp.ok) {
+        const data = await ghResp.json();
+        const entry = data[operationName];
+        if (entry && entry.queryId) return entry.queryId;
+      }
+    } catch (_error) {}
+    try {
+      const scripts = performance.getEntriesByType('resource')
+        .filter((r) => r.name.includes('client-web') && r.name.endsWith('.js'))
+        .map((r) => r.name);
+      for (const scriptUrl of scripts.slice(0, 15)) {
+        try {
+          const text = await (await fetch(scriptUrl)).text();
+          const re = new RegExp(`queryId:"([A-Za-z0-9_-]+)"[^}]{0,200}operationName:"${operationName}"`);
+          const matched = text.match(re);
+          if (matched) return matched[1];
+        } catch (_error) {}
+      }
+    } catch (_error) {}
+    return fallbackId;
+  }
+
+  const queryId = await resolveQueryId('UserByScreenName', 'qRednkZG-rn1P6b48NINmQ');
+  const url = `/i/api/graphql/${queryId}/UserByScreenName?variables=${encodeURIComponent(variables)}&features=${encodeURIComponent(features)}`;
   const response = await fetch(url, { headers, credentials: 'include' });
   if (!response.ok) {
-    return { error: `HTTP ${response.status}` };
+    return { error: `HTTP ${response.status}`, hint: 'User may not exist or queryId expired' };
   }
+
   const payload = await response.json();
   const result = payload?.data?.user?.result;
   if (!result) {
     return { error: `User @${username} not found` };
   }
+
   const legacy = result.legacy || {};
   const expandedUrl = legacy.entities?.url?.urls?.[0]?.expanded_url || '';
-
   return {
     username,
     profiles: [

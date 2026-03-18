@@ -1216,6 +1216,56 @@ def _extract_tweet_id(raw: str | None) -> str:
     return digits if digits else value
 
 
+def _build_x_intercept_bootstrap_script(capture_key: str) -> str:
+    return f"""
+(() => {{
+  const CAPTURE_KEY = {json.dumps(capture_key)};
+  if (window.__oakGatherCapture) return;
+  window.__oakGatherCapture = [];
+  const pushCapture = (url, payload) => {{
+    if (!url || !String(url).includes(CAPTURE_KEY)) return;
+    if (!payload || typeof payload !== "object") return;
+    window.__oakGatherCapture.push(payload);
+  }};
+
+  const origFetch = window.fetch.bind(window);
+  window.fetch = async (...fetchArgs) => {{
+    const response = await origFetch(...fetchArgs);
+    try {{
+      const reqUrl =
+        typeof fetchArgs[0] === "string"
+          ? fetchArgs[0]
+          : (fetchArgs[0] && fetchArgs[0].url) || "";
+      if (reqUrl.includes(CAPTURE_KEY)) {{
+        const cloned = response.clone();
+        const data = await cloned.json();
+        pushCapture(reqUrl, data);
+      }}
+    }} catch (_error) {{}}
+    return response;
+  }};
+
+  const xhrOpen = XMLHttpRequest.prototype.open;
+  const xhrSend = XMLHttpRequest.prototype.send;
+  XMLHttpRequest.prototype.open = function (method, url) {{
+    this.__oakGatherUrl = String(url || "");
+    return xhrOpen.apply(this, arguments);
+  }};
+  XMLHttpRequest.prototype.send = function () {{
+    if (this.__oakGatherUrl && this.__oakGatherUrl.includes(CAPTURE_KEY)) {{
+      this.addEventListener("load", function () {{
+        try {{
+          const payload = JSON.parse(this.responseText);
+          pushCapture(this.__oakGatherUrl, payload);
+        }} catch (_error) {{}}
+      }});
+    }}
+    return xhrSend.apply(this, arguments);
+  }};
+}})();
+"""
+
+
 async def _run_playwright_intercept_x_intent(request: FetchRequest, intent_type: str) -> list[CleanItem]:
     from playwright.async_api import TimeoutError as PlaywrightTimeoutError
     from playwright.async_api import async_playwright
@@ -1306,6 +1356,14 @@ async def _run_playwright_intercept_x_intent(request: FetchRequest, intent_type:
             context = await browser.new_context(**context_options)
             page = await context.new_page()
             try:
+                bootstrap_capture_key = {
+                    "search": "SearchTimeline",
+                    "notifications": "NotificationsTimeline",
+                    "followers": "Followers",
+                    "following": "Following",
+                }.get(normalized_intent)
+                if bootstrap_capture_key:
+                    await page.add_init_script(_build_x_intercept_bootstrap_script(bootstrap_capture_key))
                 await page.goto(target_url, wait_until="domcontentloaded", timeout=navigation_timeout_ms)
                 await page.wait_for_timeout(2000)
                 eval_result = await page.evaluate(script_to_run)

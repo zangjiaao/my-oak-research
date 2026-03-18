@@ -2,18 +2,30 @@ async () => {
   const limit = Number(__COUNT__) || 20;
   const ct0 = document.cookie.split(';').map((c) => c.trim()).find((c) => c.startsWith('ct0='))?.split('=')[1];
   if (!ct0) {
-    return { error: "No ct0 cookie - not logged into x.com" };
+    return { error: 'No ct0 cookie - not logged into x.com' };
   }
 
   const bearer = 'AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs%3D1Zv7ttfk8LF81IUq16cHjhLTvJu4FA33AGWWjCpTnA';
-  const queryId = 'c-CzHF1LboFilMpsx4ZCrQ';
+  const fallbackQueryId = 'c-CzHF1LboFilMpsx4ZCrQ';
   const features = {
+    rweb_video_screen_enabled: false,
+    profile_label_improvements_pcf_label_in_post_enabled: true,
+    rweb_tipjar_consumption_enabled: true,
+    verified_phone_label_enabled: false,
+    creator_subscriptions_tweet_preview_api_enabled: true,
     responsive_web_graphql_timeline_navigation_enabled: true,
     responsive_web_graphql_skip_user_profile_image_extensions_enabled: false,
+    articles_preview_enabled: true,
+    responsive_web_edit_tweet_api_enabled: true,
+    view_counts_everywhere_api_enabled: true,
     longform_notetweets_consumption_enabled: true,
+    responsive_web_twitter_article_tweet_consumption_enabled: true,
+    freedom_of_speech_not_reach_fetch_enabled: true,
+    standardized_nudges_misinfo: true,
+    tweet_with_visibility_results_prefer_gql_limited_actions_policy_enabled: true,
     longform_notetweets_rich_text_read_enabled: true,
     longform_notetweets_inline_media_enabled: true,
-    view_counts_everywhere_api_enabled: true,
+    responsive_web_enhance_cards_enabled: false,
   };
   const headers = {
     Authorization: `Bearer ${decodeURIComponent(bearer)}`,
@@ -22,6 +34,19 @@ async () => {
     'X-Twitter-Active-User': 'yes',
   };
 
+  async function resolveQueryId(operationName, fallbackId) {
+    try {
+      const ghResp = await fetch('https://raw.githubusercontent.com/fa0311/twitter-openapi/refs/heads/main/src/config/placeholder.json');
+      if (ghResp.ok) {
+        const data = await ghResp.json();
+        const entry = data[operationName];
+        if (entry && entry.queryId) return entry.queryId;
+      }
+    } catch (_error) {}
+    return fallbackId;
+  }
+
+  const queryId = await resolveQueryId('HomeTimeline', fallbackQueryId);
   const seen = new Set();
   const tweets = [];
   let cursor = null;
@@ -38,7 +63,10 @@ async () => {
 
     const apiUrl = `/i/api/graphql/${queryId}/HomeTimeline?variables=${encodeURIComponent(JSON.stringify(variables))}&features=${encodeURIComponent(JSON.stringify(features))}`;
     const response = await fetch(apiUrl, { headers, credentials: 'include' });
-    if (!response.ok) break;
+    if (!response.ok) {
+      if (tweets.length === 0) return { error: `HTTP ${response.status}`, hint: 'queryId may have expired' };
+      break;
+    }
     const payload = await response.json();
     const instructions = payload?.data?.home?.home_timeline_urt?.instructions || [];
 
