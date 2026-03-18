@@ -28,6 +28,13 @@ from drivers.agent_browser_runner import (
 from drivers.playwright_driver import PlaywrightDriver
 from drivers.registry import DriverRegistry, DriverNotFoundError
 from drivers.xhttp_driver import XHttpDriver
+from auth_verify import (
+    agent_browser_verify_auth,
+    resolve_verify_auth_data,
+    verify_auth_with_agent_browser_for_whatsapp,
+    verify_auth_with_reddit_api_probe,
+    verify_auth_with_x_cookie_probe,
+)
 from fetch_processing import agent_browser_results_to_clean_items, apply_keyword_hard_filter
 from script_framework import ScriptRegistry, build_x_intent_script, build_x_search_intercept_script
 from schemas import (
@@ -183,9 +190,6 @@ _BB_SITE_TARGET_URL = {
     "facebook": "https://www.facebook.com",
 }
 
-_GATHER_VERIFY_SCRIPT_ROOT = Path(__file__).resolve().parent / "site_scripts"
-
-
 @dataclass
 class _PlaywrightBrowserPoolEntry:
     browser: Any
@@ -219,416 +223,26 @@ async def root():
     return {"status": "ok", "service": "oak-gather"}
 
 
-def _resolve_bb_site_verify_script(platform: str) -> Path | None:
-    normalized = _BB_SITE_PLATFORM_ALIAS.get(platform.lower(), platform.lower())
-    script_dir_candidates: list[Path] = []
-    if _GATHER_VERIFY_SCRIPT_ROOT.exists():
-        script_dir_candidates.append(_GATHER_VERIFY_SCRIPT_ROOT)
-    configured_dir = os.getenv("BB_SITES_DIR")
-    if configured_dir:
-        script_dir_candidates.append(Path(configured_dir).expanduser())
-    script_dir_candidates.extend(
-        [
-            Path("~/.bb-browser/bb-sites").expanduser(),
-            Path("~/Reference/bb-sites").expanduser(),
-        ]
-    )
-
-    for base_dir in script_dir_candidates:
-        for suffix in ("me.ts", "me.js", "user.ts", "user.js"):
-            candidate = base_dir / normalized / suffix
-            if candidate.exists():
-                return candidate
-    return None
-
-
 async def _verify_auth_with_agent_browser_for_whatsapp(request: VerifyAuthRequest) -> VerifyAuthResponse | None:
-    if request.platform.lower() != "whatsapp":
-        return None
-
-    options: dict[str, Any] = {
-        "headed": not request.headless,
-        "verbose": False,
-        "closeOnComplete": True,
-        "commandTimeoutMs": 30000,
-        "script": [
-            {"command": "open https://web.whatsapp.com/"},
-            {"command": "wait --load domcontentloaded"},
-            {
-                "command": (
-                    "eval \"(()=>{"
-                    "const loggedIn=Boolean(document.querySelector('[aria-label=\\\"Chat list\\\"]')"
-                    "||document.querySelector('[data-testid=\\\"chat-list\\\"]')"
-                    "||document.querySelector('[contenteditable=\\\"true\\\"][data-tab]'));"
-                    "const needsQr=Boolean(document.querySelector('canvas[aria-label*=\\\"QR\\\"]'));"
-                    "if(loggedIn)return JSON.stringify({ok:true});"
-                    "if(needsQr)return JSON.stringify({ok:false,error:'QR required'});"
-                    "return JSON.stringify({ok:false,error:'Unable to confirm auth status'});"
-                    "})()\""
-                ),
-                "captureAs": "auth_probe",
-            },
-        ],
-    }
-
-    if request.state_file:
-        options["stateFile"] = request.state_file
-
-    auth_data = request.auth_data or {}
-    profile_name = auth_data.get("profileName")
-    if isinstance(profile_name, str) and profile_name.strip():
-        profile_path = AUTH_DIR / profile_name.strip()
-        if profile_path.exists():
-            options["profile"] = str(profile_path)
-
-    try:
-        script_result = await asyncio.to_thread(
-            execute_agent_browser_script,
-            {"agentBrowser": options},
-        )
-    except AgentBrowserScriptError as error:
-        print(f"[gather] whatsapp agent-browser verify failed, fallback to legacy verify: {error}")
-        return None
-    except Exception as error:  # pragma: no cover - defensive
-        print(f"[gather] whatsapp agent-browser verify unexpected error, fallback to legacy verify: {error}")
-        return None
-
-    captures = script_result.captures.get("auth_probe") or []
-    if not captures:
-        return None
-    raw = captures[-1]
-    try:
-        payload = json.loads(raw)
-    except json.JSONDecodeError:
-        return None
-    if not isinstance(payload, dict):
-        return None
-
-    if payload.get("ok") is True:
-        return VerifyAuthResponse(
-            valid=True,
-            message="WhatsApp authentication is valid",
-            details={"platform": "whatsapp", "verifyMethod": "agent-browser"},
-        )
-    return VerifyAuthResponse(
-        valid=False,
-        message=str(payload.get("error") or "WhatsApp authentication is invalid or expired"),
-        details={"platform": "whatsapp", "verifyMethod": "agent-browser"},
+    return await verify_auth_with_agent_browser_for_whatsapp(
+        request,
+        auth_dir=AUTH_DIR,
     )
 
 
-async def _verify_auth_with_bb_site_script(request: VerifyAuthRequest) -> VerifyAuthResponse | None:
-    platform = request.platform.lower()
-    normalized = _BB_SITE_PLATFORM_ALIAS.get(platform, platform)
-    target_url = request.verify_target_url or _BB_SITE_TARGET_URL.get(normalized)
-    if not target_url:
-        return None
-
-    script_path: Path | None = None
-    if request.verify_script_path:
-        explicit_path = Path(request.verify_script_path).expanduser()
-        if not explicit_path.exists():
-            return VerifyAuthResponse(
-                valid=False,
-                message=f"verifyScriptPath does not exist: {request.verify_script_path}",
-                details={"platform": platform, "verifyMethod": "bb-site-script"},
-            )
-        script_path = explicit_path
-    else:
-        script_path = _resolve_bb_site_verify_script(platform)
-    if not script_path:
-        return None
-
-    script_body = _strip_playwright_meta_block(script_path.read_text(encoding="utf-8"))
-    if not script_body:
-        return None
-    script_args = request.verify_args or {}
-    if not isinstance(script_args, dict):
-        return VerifyAuthResponse(
-            valid=False,
-            message="verifyArgs must be an object",
-            details={"platform": platform, "verifyMethod": "bb-site-script"},
-        )
-
-    from playwright.async_api import TimeoutError as PlaywrightTimeoutError
-    from playwright.async_api import async_playwright
-
-    try:
-        async with async_playwright() as playwright:
-            browser = await playwright.chromium.launch(headless=request.headless)
-            context = await browser.new_context(storage_state=request.auth_data)
-            page = await context.new_page()
-            try:
-                await page.goto(
-                    target_url,
-                    wait_until="domcontentloaded",
-                    timeout=max(1000, int(request.verify_timeout_ms)),
-                )
-                await page.wait_for_timeout(max(0, int(request.verify_post_wait_ms)))
-                result = await page.evaluate(f"({script_body})({json.dumps(script_args, ensure_ascii=False)})")
-            finally:
-                await context.close()
-                await browser.close()
-    except PlaywrightTimeoutError as error:
-        print(f"[gather] bb-site verify timeout for {platform}, fallback to legacy verify: {error}")
-        return None
-    except Exception as error:
-        print(f"[gather] bb-site verify failed for {platform}, fallback to legacy verify: {error}")
-        return None
-
-    if isinstance(result, dict):
-        error_message = result.get("error")
-        if error_message:
-            hint = result.get("hint") if isinstance(result.get("hint"), str) else None
-            if _is_inconclusive_bb_script_error(str(error_message), hint):
-                print(
-                    f"[gather] bb-site verify inconclusive for {platform} "
-                    f"(error={error_message}, hint={hint}), fallback to legacy verify"
-                )
-                return None
-            return VerifyAuthResponse(
-                valid=False,
-                message=str(error_message),
-                details={
-                    "platform": platform,
-                    "hint": result.get("hint"),
-                    "verifyMethod": "bb-site-script",
-                    "scriptPath": str(script_path),
-                },
-            )
-        ok_flag = result.get("ok")
-        if ok_flag is True:
-            return VerifyAuthResponse(
-                valid=True,
-                message=f"{request.platform} authentication is valid",
-                details={
-                    "platform": request.platform,
-                    "verifyMethod": "bb-site-script",
-                    "scriptPath": str(script_path),
-                    "result": result,
-                },
-            )
-        if ok_flag is False:
-            return VerifyAuthResponse(
-                valid=False,
-                message=f"{request.platform} authentication is invalid or expired",
-                details={
-                    "platform": request.platform,
-                    "hint": result.get("hint"),
-                    "verifyMethod": "bb-site-script",
-                    "scriptPath": str(script_path),
-                    "result": result,
-                },
-            )
-        user = {
-            key: result.get(key)
-            for key in ("id", "user_id", "uid", "screen_name", "username", "name")
-            if result.get(key) is not None
-        }
-        if user:
-            return VerifyAuthResponse(
-                valid=True,
-                message=f"{request.platform} authentication is valid",
-                details={
-                    "platform": request.platform,
-                    "verifyMethod": "bb-site-script",
-                    "scriptPath": str(script_path),
-                    "user": user,
-                },
-            )
-
-    if isinstance(result, list) and result:
-        return VerifyAuthResponse(
-            valid=True,
-            message=f"{request.platform} authentication is valid",
-            details={
-                "platform": request.platform,
-                "verifyMethod": "bb-site-script",
-                "scriptPath": str(script_path),
-                "resultCount": len(result),
-            },
-        )
-
-    if result is True:
-        return VerifyAuthResponse(
-            valid=True,
-            message=f"{request.platform} authentication is valid",
-            details={
-                "platform": request.platform,
-                "verifyMethod": "bb-site-script",
-                "scriptPath": str(script_path),
-            },
-        )
-
-    if result is False:
-        print(f"[gather] bb-site verify returned false for {platform}, fallback to legacy verify")
-        return None
-    print(f"[gather] bb-site verify inconclusive for {platform}, fallback to legacy verify")
-    return None
+async def _verify_auth_with_reddit_api_probe(request: VerifyAuthRequest) -> VerifyAuthResponse | None:
+    return await verify_auth_with_reddit_api_probe(request)
 
 
 def _resolve_verify_auth_data(request: VerifyAuthRequest) -> tuple[dict[str, Any] | None, VerifyAuthResponse | None]:
-    if isinstance(request.auth_data, dict):
-        return request.auth_data, None
-
-    if request.state_file:
-        path = Path(request.state_file).expanduser()
-        if not path.exists():
-            return None, VerifyAuthResponse(
-                valid=False,
-                message=f"stateFile does not exist: {request.state_file}",
-                details={"error": "invalid_state_file"},
-            )
-        try:
-            payload = json.loads(path.read_text(encoding="utf-8"))
-        except json.JSONDecodeError as error:
-            return None, VerifyAuthResponse(
-                valid=False,
-                message=f"stateFile is not valid JSON: {request.state_file}",
-                details={"error": str(error)},
-            )
-        if not isinstance(payload, dict):
-            return None, VerifyAuthResponse(
-                valid=False,
-                message=f"stateFile must contain a JSON object: {request.state_file}",
-                details={"error": "invalid_state_payload"},
-            )
-        return payload, None
-
-    if request.platform.lower() == "whatsapp":
-        return {}, None
-
-    return None, VerifyAuthResponse(
-        valid=False,
-        message="auth_data or stateFile is required",
-        details={"error": "missing_auth_data"},
-    )
-
-
-def _is_inconclusive_bb_script_error(message: str, hint: str | None = None) -> bool:
-    normalized_message = message.strip().lower()
-    normalized_hint = (hint or "").strip().lower()
-    if normalized_message == "cannot confirm logged-in state":
-        return True
-    if normalized_message == "failed to get user info" and "not logged in" in normalized_hint:
-        return True
-    return False
+    return resolve_verify_auth_data(request)
 
 
 async def _playwright_verify_auth_legacy(request: VerifyAuthRequest):
     return VerifyAuthResponse(
         valid=False,
-        message="Legacy playwright client verification has been removed; please configure verify script or agent-browser.",
+        message="Legacy playwright client verification has been removed.",
         details={"verifyMethod": "removed-legacy-client"},
-    )
-
-
-async def _verify_auth_with_reddit_api_probe(request: VerifyAuthRequest) -> VerifyAuthResponse | None:
-    if request.platform.lower().strip() != "reddit":
-        return None
-
-    from playwright.async_api import TimeoutError as PlaywrightTimeoutError
-    from playwright.async_api import async_playwright
-
-    target_url = request.verify_target_url or "https://www.reddit.com"
-    try:
-        async with async_playwright() as playwright:
-            browser = await playwright.chromium.launch(headless=request.headless)
-            context = await browser.new_context(storage_state=request.auth_data or {})
-            page = await context.new_page()
-            try:
-                await page.goto(
-                    target_url,
-                    wait_until="domcontentloaded",
-                    timeout=max(1000, int(request.verify_timeout_ms)),
-                )
-                await page.wait_for_timeout(max(0, int(request.verify_post_wait_ms)))
-                result = await page.evaluate(
-                    """
-                    (async () => {
-                      try {
-                        const response = await fetch('/api/me.json?raw_json=1', { credentials: 'include' });
-                        const text = await response.text();
-                        let payload = null;
-                        try { payload = JSON.parse(text); } catch (_) {}
-                        const username = payload?.name || payload?.data?.name || "";
-                        const modhash = payload?.modhash || payload?.data?.modhash || "";
-                        if (response.ok && username) {
-                          return {
-                            ok: true,
-                            status: response.status,
-                            username,
-                            modhash,
-                          };
-                        }
-                        return {
-                          ok: false,
-                          status: response.status,
-                          username,
-                          modhash,
-                          error: response.status === 401 || response.status === 403
-                            ? 'not_logged_in'
-                            : 'cannot_confirm_logged_in_state',
-                        };
-                      } catch (error) {
-                        return {
-                          ok: false,
-                          status: 0,
-                          error: String(error || 'reddit auth probe failed'),
-                        };
-                      }
-                    })()
-                    """
-                )
-            finally:
-                await context.close()
-                await browser.close()
-    except PlaywrightTimeoutError as error:
-        return VerifyAuthResponse(
-            valid=False,
-            message=f"Reddit auth probe timed out: {error}",
-            details={"platform": "reddit", "verifyMethod": "reddit-api-me"},
-        )
-    except Exception as error:
-        return VerifyAuthResponse(
-            valid=False,
-            message=f"Reddit auth probe failed: {error}",
-            details={"platform": "reddit", "verifyMethod": "reddit-api-me"},
-        )
-
-    if not isinstance(result, dict):
-        return VerifyAuthResponse(
-            valid=False,
-            message="Cannot confirm Reddit auth status",
-            details={"platform": "reddit", "verifyMethod": "reddit-api-me"},
-        )
-
-    if result.get("ok") is True and isinstance(result.get("username"), str) and result.get("username").strip():
-        return VerifyAuthResponse(
-            valid=True,
-            message="reddit authentication is valid",
-            details={
-                "platform": "reddit",
-                "verifyMethod": "reddit-api-me",
-                "username": result.get("username"),
-                "status": result.get("status"),
-                "hasModhash": bool(result.get("modhash")),
-            },
-        )
-
-    message = "reddit authentication is invalid or expired"
-    if isinstance(result.get("error"), str) and result.get("error").strip():
-        if result.get("error") == "cannot_confirm_logged_in_state":
-            message = "Cannot confirm Reddit auth status"
-    return VerifyAuthResponse(
-        valid=False,
-        message=message,
-        details={
-            "platform": "reddit",
-            "verifyMethod": "reddit-api-me",
-            "status": result.get("status"),
-            "error": result.get("error"),
-        },
     )
 
 
@@ -642,34 +256,23 @@ async def _playwright_verify_auth(request: VerifyAuthRequest):
     if whatsapp_result is not None:
         return whatsapp_result
 
-    # Reddit has a reliable built-in probe via /api/me.json.
-    # Run it first unless user explicitly provides a verify script override.
-    if (
-        normalized_request.platform.lower().strip() == "reddit"
-        and not normalized_request.verify_script_path
-    ):
-        reddit_probe_result = await _verify_auth_with_reddit_api_probe(normalized_request)
-        if reddit_probe_result is not None:
-            return reddit_probe_result
-
-    scripted_result = await _verify_auth_with_bb_site_script(normalized_request)
-    if scripted_result is not None:
-        return scripted_result
     reddit_probe_result = await _verify_auth_with_reddit_api_probe(normalized_request)
     if reddit_probe_result is not None:
         return reddit_probe_result
+
+    x_probe_result = verify_auth_with_x_cookie_probe(normalized_request)
+    if x_probe_result is not None:
+        return x_probe_result
+
     return VerifyAuthResponse(
         valid=False,
-        message="No verify script available for this platform. Configure verifyScriptPath or bb-site me.ts/me.js.",
-        details={"verifyMethod": "script-required"},
+        message="No built-in verify probe for this platform",
+        details={"verifyMethod": "built-in-probe-missing"},
     )
 
 
-async def _agent_browser_verify_auth(_request: VerifyAuthRequest):
-    return VerifyAuthResponse(
-        valid=True,
-        message="agent-browser authentication is configured through fetch config (profile/session/state).",
-    )
+async def _agent_browser_verify_auth(request: VerifyAuthRequest):
+    return await agent_browser_verify_auth(request)
 
 
 async def _playwright_fetch_data(request: FetchRequest):
