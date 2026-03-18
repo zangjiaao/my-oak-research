@@ -8,6 +8,7 @@ import io
 import json
 import asyncio
 import hashlib
+import subprocess
 import shutil
 import zipfile
 from pathlib import Path
@@ -69,6 +70,9 @@ def _env_flag(name: str, default: bool = False) -> bool:
 
 
 _API_IO_LOG_ENABLED = _env_flag("GATHER_API_IO_LOG_ENABLED", False)
+_OPENCLI_BRIDGE_ENABLED = _env_flag("GATHER_OPENCLI_BRIDGE_ENABLED", False)
+_OPENCLI_BIN = os.getenv("GATHER_OPENCLI_BIN", "opencli").strip() or "opencli"
+_OPENCLI_CWD = os.getenv("GATHER_OPENCLI_CWD", "").strip() or None
 _RAW_API_IO_LOG_DIR = Path(
     os.getenv("GATHER_API_IO_LOG_DIR", str(Path(__file__).resolve().parent / "logs"))
 ).expanduser()
@@ -546,6 +550,8 @@ async def _playwright_fetch_data(request: FetchRequest):
     playwright_options = config.get("playwright")
     if isinstance(playwright_options, dict):
         mode = str(playwright_options.get("mode", "")).lower()
+        if mode in {"opencli-bridge", "opencli-search"} and platform in {"x", "twitter"}:
+            return await _run_playwright_opencli_bridge_search(request)
         if mode in {"intercept-x-search", "intercept-search"} and platform in {"x", "twitter"}:
             return await _run_playwright_intercept_x_search(request)
         if mode in {"eval-js", "evaljs", "eval"}:
@@ -1339,6 +1345,111 @@ async def _run_playwright_intercept_x_search(request: FetchRequest) -> list[Clea
     return items
 
 
+def _extract_opencli_json_payload(stdout: str) -> Any:
+    text = stdout.strip()
+    if not text:
+        return []
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        pass
+
+    start = text.find("[")
+    end = text.rfind("]")
+    if start != -1 and end != -1 and end > start:
+        try:
+            return json.loads(text[start : end + 1])
+        except json.JSONDecodeError:
+            pass
+
+    start = text.find("{")
+    end = text.rfind("}")
+    if start != -1 and end != -1 and end > start:
+        try:
+            return json.loads(text[start : end + 1])
+        except json.JSONDecodeError:
+            pass
+    raise HTTPException(status_code=500, detail="opencli returned non-json output")
+
+
+async def _run_playwright_opencli_bridge_search(request: FetchRequest) -> list[CleanItem]:
+    config = request.config if isinstance(request.config, dict) else {}
+    playwright_options = config.get("playwright")
+    if not isinstance(playwright_options, dict):
+        raise HTTPException(status_code=400, detail="config.playwright must be an object")
+
+    args = playwright_options.get("args", {})
+    args_obj = args if isinstance(args, dict) else {}
+    query = str(args_obj.get("query", "")).strip()
+    if not query:
+        raise HTTPException(status_code=400, detail="config.playwright.args.query is required for opencli bridge mode")
+    raw_count = args_obj.get("count", 20)
+    try:
+        count = int(raw_count)
+    except (TypeError, ValueError):
+        count = 20
+    count = max(1, min(count, 100))
+
+    commands = [
+        [_OPENCLI_BIN, "twitter", "search", "--query", query, "--limit", str(count), "-f", "json"],
+        [_OPENCLI_BIN, "twitter", "search", "--keyword", query, "--limit", str(count), "-f", "json"],
+    ]
+
+    last_error: Exception | None = None
+    for command in commands:
+        try:
+            completed = await asyncio.to_thread(
+                subprocess.run,
+                command,
+                capture_output=True,
+                text=True,
+                cwd=_OPENCLI_CWD,
+                check=False,
+            )
+            if completed.returncode != 0:
+                stderr = (completed.stderr or "").strip()
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"opencli command failed({completed.returncode}): {stderr or 'unknown error'}",
+                )
+            payload = _extract_opencli_json_payload(completed.stdout or "")
+            tweets: list[dict[str, Any]] = []
+            if isinstance(payload, list):
+                for item in payload:
+                    if not isinstance(item, dict):
+                        continue
+                    tweets.append(
+                        {
+                            "id": item.get("id"),
+                            "author": item.get("author"),
+                            "name": item.get("name"),
+                            "url": item.get("url"),
+                            "text": item.get("text"),
+                            "created_at": item.get("created_at"),
+                        }
+                    )
+            eval_like_result = {
+                "query": query,
+                "product": "Latest",
+                "count": len(tweets),
+                "tweets": tweets,
+            }
+            items = _normalize_playwright_eval_result(eval_like_result, request, "https://x.com")
+            if items:
+                return items
+            raise HTTPException(status_code=500, detail="opencli returned empty tweet list")
+        except HTTPException as error:
+            last_error = error
+            continue
+        except Exception as error:
+            last_error = error
+            continue
+
+    if isinstance(last_error, HTTPException):
+        raise last_error
+    raise HTTPException(status_code=500, detail=f"opencli bridge failed: {last_error}")
+
+
 def _truncate_text(value: str, max_length: int = 12000) -> str:
     if len(value) <= max_length:
         return value
@@ -1725,8 +1836,12 @@ def _merge_v3_intent_into_driver_option(
             has_script_body = isinstance(merged_option.get("scriptBody"), str) and merged_option.get("scriptBody", "").strip()
             has_script_path = isinstance(merged_option.get("scriptPath"), str) and merged_option.get("scriptPath", "").strip()
             current_mode = str(merged_option.get("mode", "")).strip().lower()
-            if not has_script_body and not has_script_path and current_mode not in {"eval-js", "evaljs", "eval"}:
-                merged_option["mode"] = "intercept-x-search"
+            if (
+                not has_script_body
+                and not has_script_path
+                and not current_mode
+            ):
+                merged_option["mode"] = "opencli-bridge" if _OPENCLI_BRIDGE_ENABLED else "intercept-x-search"
         return merged_option
 
     if driver_name == "xhttp":
