@@ -2252,6 +2252,8 @@ async def _run_playwright_intercept_generic_intent(
         target_url = "https://www.toutiao.com/hot-event/hot-board/?origin=toutiao_pc"
     if normalized_platform == "devto" and normalized_intent == "search" and query:
         target_url = f"https://dev.to/search?q={quote(query)}"
+    if normalized_platform == "reuters" and normalized_intent == "search" and query:
+        target_url = f"https://www.reuters.com/site-search/?query={quote(query)}&offset=0"
 
     script_to_run = build_x_intent_script(
         _SCRIPT_REGISTRY,

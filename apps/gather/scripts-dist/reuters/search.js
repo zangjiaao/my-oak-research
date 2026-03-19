@@ -28,7 +28,7 @@ async () => {
         }
     }
     catch (_error) { }
-    const searchUrl = `https://www.reuters.com/site-search/?query=${encodeURIComponent(query)}`;
+    const searchUrl = `https://www.reuters.com/site-search/?query=${encodeURIComponent(query)}&offset=0`;
     const response = await fetch(searchUrl, { credentials: "include" });
     if (!response.ok)
         return { error: `HTTP ${response.status}`, hint: "Make sure a reuters.com tab is open" };
