@@ -94,6 +94,9 @@ export const ContentList = () => {
                 }
                 platform={content.summaryView?.source ?? content.platform}
                 time={new Date(content.summaryView?.ingestedAt ?? content.time).toLocaleDateString()}
+                mediaLabel={content.summaryView?.previewMediaType}
+                mediaCount={content.summaryView?.mediaCount}
+                url={content.detailView?.sourceUrl ?? content.url ?? undefined}
                 mark={bookmarked}
                 onBookmarkToggle={() => {
                   toggleFavorite.mutate({

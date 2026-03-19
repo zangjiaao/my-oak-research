@@ -4,8 +4,14 @@ import React from "react";
 import Image from "next/image";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Globe, Bookmark } from "lucide-react";
+import { Calendar, Globe, Bookmark, MoreHorizontal, Link as LinkIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export interface NewsCardProps {
   title: string;
@@ -13,6 +19,9 @@ export interface NewsCardProps {
   image?: string;
   platform?: string;
   time?: string;
+  mediaLabel?: string;
+  mediaCount?: number;
+  url?: string;
   mark?: boolean;
   onBookmarkToggle?: () => void;
 }
@@ -23,6 +32,9 @@ const NewsCard = ({
   image,
   platform,
   time,
+  mediaLabel,
+  mediaCount,
+  url,
   mark,
   onBookmarkToggle,
 }: NewsCardProps) => {
@@ -92,23 +104,52 @@ const NewsCard = ({
                   <Calendar />
                   {time}
                 </Badge>
+                {mediaLabel ? (
+                  <Badge variant="secondary">
+                    {mediaLabel}
+                    {mediaCount && mediaCount > 0 ? ` x${mediaCount}` : ""}
+                  </Badge>
+                ) : null}
               </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                aria-label={mark ? "Remove from bookmarks" : "Add to bookmarks"}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onBookmarkToggle?.();
-                }}
-              >
-                <Bookmark
-                  size={32}
-                  className={
-                    mark ? "fill-red-500 text-red-500" : "text-muted-foreground"
-                  }
-                />
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label="More actions"
+                    onClick={(event) => event.stopPropagation()}
+                  >
+                    <MoreHorizontal className="size-5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onBookmarkToggle?.();
+                    }}
+                  >
+                    <Bookmark
+                      size={16}
+                      className={
+                        mark ? "fill-red-500 text-red-500" : "text-muted-foreground"
+                      }
+                    />
+                    {mark ? "取消收藏" : "收藏"}
+                  </DropdownMenuItem>
+                  {url ? (
+                    <DropdownMenuItem
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        window.open(url, "_blank", "noopener,noreferrer");
+                      }}
+                    >
+                      <LinkIcon className="size-4" />
+                      打开原文
+                    </DropdownMenuItem>
+                  ) : null}
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
         </div>
