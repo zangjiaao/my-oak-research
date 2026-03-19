@@ -704,7 +704,7 @@ async function fetchSocialSource(
 
     const data = await response.json();
     const items = Array.isArray(data?.items) ? data.items : [];
-    return normalizeGatherItems(items, source, output.type);
+    return normalizeGatherItems(items, source, intent.type);
   } catch (error) {
     console.error(`[collector] fetchSocialSource error:`, error);
     // Fallback to basic info if gather service is down

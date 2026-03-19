@@ -976,7 +976,6 @@ export const SocialMediaFields = ({
     () => Array.from(new Set(outputFieldEntries.map((item) => item.key))),
     [outputFieldEntries]
   );
-  const outputTypeError = getConfigErrorMessage("output.type");
   const outputKeywordScopeError = getConfigErrorMessage("output.keywordScope");
   const filterMinCharsError = getConfigErrorMessage("filter.minChars");
   const requestPreview = useMemo(() => {
@@ -1009,9 +1008,6 @@ export const SocialMediaFields = ({
       if (mappedEntries.length > 0) {
         output.field = Object.fromEntries(mappedEntries);
       }
-    }
-    if (typeof outputConfig.type === "string" && outputConfig.type.trim()) {
-      output.type = outputConfig.type.trim();
     }
     const keywordScope = toDelimitedStringArray(outputConfig.keywordScope);
     if (keywordScope.length > 0) {
@@ -1308,7 +1304,7 @@ export const SocialMediaFields = ({
       <CardHeader>
         <CardTitle>Output</CardTitle>
         <CardDescription>
-          配置输出类型和关键词过滤范围（字段映射由 worker 规则维护）。
+          配置关键词过滤范围（字段映射由 worker 规则维护）。
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-4">
@@ -1332,23 +1328,6 @@ export const SocialMediaFields = ({
         <p className="text-xs text-muted-foreground">
           output.field 由 worker 规则维护，这里仅展示给 keywordScope 参考。
         </p>
-      </div>
-
-      <div className="grid gap-2 md:max-w-md">
-        <Label htmlFor="social.config.output.type">Output Type</Label>
-        <Controller
-          name={"social.config.output.type" as any}
-          control={control}
-          render={({ field }) => (
-            <Input
-              id="social.config.output.type"
-              placeholder="x-text"
-              value={typeof field.value === "string" ? field.value : ""}
-              onChange={field.onChange}
-            />
-          )}
-        />
-        <ErrorMessage>{outputTypeError}</ErrorMessage>
       </div>
 
       <div className="grid gap-2">
