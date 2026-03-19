@@ -249,12 +249,18 @@ const toIntentArgRules = (
   if (!input || typeof input !== "object") return {};
   const output: Record<string, IntentArgRule> = {};
   for (const [key, value] of Object.entries(input)) {
-    if (!value || typeof value !== "object" || Array.isArray(value)) continue;
-    const raw = value as Record<string, unknown>;
+    if (value && typeof value === "object" && !Array.isArray(value)) {
+      const raw = value as Record<string, unknown>;
+      output[key] = {
+        required: Boolean(raw.required),
+        description:
+          typeof raw.description === "string" ? raw.description : "",
+      };
+      continue;
+    }
     output[key] = {
-      required: Boolean(raw.required),
-      description:
-        typeof raw.description === "string" ? raw.description : "",
+      required: false,
+      description: "",
     };
   }
   return output;
