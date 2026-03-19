@@ -2240,6 +2240,8 @@ async def _run_playwright_intercept_generic_intent(
         raise HTTPException(status_code=400, detail="config.playwright.navigationTimeoutMs must be an integer >= 1000")
     storage_state = _load_playwright_storage_state_from_config(request, playwright_options)
     target_url = _GENERIC_INTERCEPT_TARGET_URL.get(normalized_platform, "https://example.com")
+    if normalized_platform == "arxiv" and normalized_intent == "search" and query:
+        target_url = f"https://arxiv.org/search/?query={quote(query)}&searchtype=all&source=header&size={limit}"
 
     script_to_run = build_x_intent_script(
         _SCRIPT_REGISTRY,
