@@ -11,6 +11,14 @@ declare global {
   const __TWEET_ID_JSON__: string;
   const __XHS_USER_ID_JSON__: string;
   const __NOTIFICATION_TYPE_JSON__: string;
+  const __LOCATION_JSON__: string;
+  const __COMPANY_JSON__: string;
+  const __EXPERIENCE_LEVEL_JSON__: string;
+  const __JOB_TYPE_JSON__: string;
+  const __DATE_POSTED_JSON__: string;
+  const __REMOTE_JSON__: string;
+  const __START__: number;
+  const __DETAILS__: boolean;
 
   interface Window {
     __oakGatherCapture?: any[];

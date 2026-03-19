@@ -94,6 +94,7 @@ _REDDIT_INTERCEPT_INTENTS = _SCRIPT_REGISTRY.intents_for("reddit")
 _XHS_INTERCEPT_INTENTS = _SCRIPT_REGISTRY.intents_for("xhs")
 _BBC_INTERCEPT_INTENTS = _SCRIPT_REGISTRY.intents_for("bbc")
 _HACKERNEWS_INTERCEPT_INTENTS = _SCRIPT_REGISTRY.intents_for("hackernews")
+_LINKEDIN_INTERCEPT_INTENTS = _SCRIPT_REGISTRY.intents_for("linkedin")
 _REPO_ROOT = _GATHER_APP_ROOT.parents[1]
 if _RAW_API_IO_LOG_DIR.is_absolute():
     _API_IO_LOG_DIR = _RAW_API_IO_LOG_DIR
@@ -315,6 +316,9 @@ async def _playwright_fetch_data(request: FetchRequest):
         if mode.startswith("intercept-hn-") and platform in {"hackernews", "hn"}:
             intent_type = mode.removeprefix("intercept-hn-").strip().lower()
             return await _run_playwright_intercept_hackernews_intent(request, intent_type)
+        if mode.startswith("intercept-linkedin-") and platform == "linkedin":
+            intent_type = mode.removeprefix("intercept-linkedin-").strip().lower()
+            return await _run_playwright_intercept_linkedin_intent(request, intent_type)
         if mode in {"eval-js", "evaljs", "eval"}:
             return await _run_playwright_eval_script(request)
 
@@ -1502,6 +1506,102 @@ async def _run_playwright_intercept_hackernews_intent(request: FetchRequest, int
     return items
 
 
+async def _run_playwright_intercept_linkedin_intent(request: FetchRequest, intent_type: str) -> list[CleanItem]:
+    from playwright.async_api import TimeoutError as PlaywrightTimeoutError
+    from playwright.async_api import async_playwright
+
+    config = request.config if isinstance(request.config, dict) else {}
+    playwright_options = config.get("playwright")
+    if not isinstance(playwright_options, dict):
+        raise HTTPException(status_code=400, detail="config.playwright must be an object")
+
+    args = playwright_options.get("args", {})
+    args_obj = args if isinstance(args, dict) else {}
+    normalized_intent = (intent_type or "").strip().lower()
+    if normalized_intent not in _LINKEDIN_INTERCEPT_INTENTS:
+        raise HTTPException(status_code=400, detail=f"unsupported linkedin intercept intent: {normalized_intent}")
+
+    query = str(args_obj.get("query", "")).strip()
+    if normalized_intent == "search" and not query:
+        raise HTTPException(status_code=400, detail="config.playwright.args.query is required for intercept-linkedin-search mode")
+
+    location = str(args_obj.get("location", "")).strip()
+    company = str(args_obj.get("company", "")).strip()
+    experience_level = str(args_obj.get("experience_level", args_obj.get("experienceLevel", ""))).strip()
+    job_type = str(args_obj.get("job_type", args_obj.get("jobType", ""))).strip()
+    date_posted = str(args_obj.get("date_posted", args_obj.get("datePosted", ""))).strip()
+    remote = str(args_obj.get("remote", "")).strip()
+    details = bool(args_obj.get("details", False))
+    raw_start = args_obj.get("start", 0)
+    try:
+        start = int(raw_start)
+    except (TypeError, ValueError):
+        start = 0
+    start = max(0, min(start, 1000))
+    raw_limit = args_obj.get("limit", args_obj.get("count", 20))
+    try:
+        limit = int(raw_limit)
+    except (TypeError, ValueError):
+        limit = 20
+    limit = max(1, min(limit, 100))
+
+    headless = bool(playwright_options.get("headless", True))
+    navigation_timeout_ms = playwright_options.get("navigationTimeoutMs", 60000)
+    if not isinstance(navigation_timeout_ms, int) or navigation_timeout_ms < 1000:
+        raise HTTPException(status_code=400, detail="config.playwright.navigationTimeoutMs must be an integer >= 1000")
+    storage_state = _load_playwright_storage_state_from_config(request, playwright_options)
+    params = [f"keywords={quote(query)}"]
+    if location:
+        params.append(f"location={quote(location)}")
+    target_url = f"https://www.linkedin.com/jobs/search/?{'&'.join(params)}"
+
+    script_to_run = build_x_intent_script(
+        _SCRIPT_REGISTRY,
+        normalized_intent,
+        {
+            "__QUERY_JSON__": json.dumps(query, ensure_ascii=False),
+            "__LOCATION_JSON__": json.dumps(location, ensure_ascii=False),
+            "__COMPANY_JSON__": json.dumps(company, ensure_ascii=False),
+            "__EXPERIENCE_LEVEL_JSON__": json.dumps(experience_level, ensure_ascii=False),
+            "__JOB_TYPE_JSON__": json.dumps(job_type, ensure_ascii=False),
+            "__DATE_POSTED_JSON__": json.dumps(date_posted, ensure_ascii=False),
+            "__REMOTE_JSON__": json.dumps(remote, ensure_ascii=False),
+            "__START__": start,
+            "__LIMIT__": limit,
+            "__COUNT__": limit,
+            "__DETAILS__": "true" if details else "false",
+        },
+        platform="linkedin",
+    )
+
+    try:
+        async with async_playwright() as playwright:
+            browser = await playwright.chromium.launch(headless=headless)
+            context_options: dict[str, Any] = {}
+            if storage_state:
+                context_options["storage_state"] = storage_state
+            context = await browser.new_context(**context_options)
+            page = await context.new_page()
+            try:
+                await page.goto(target_url, wait_until="domcontentloaded", timeout=navigation_timeout_ms)
+                await page.wait_for_timeout(1500)
+                eval_result = await page.evaluate(script_to_run)
+            finally:
+                await context.close()
+                await browser.close()
+    except PlaywrightTimeoutError as error:
+        raise HTTPException(status_code=504, detail=f"playwright intercept linkedin timeout: {error}") from error
+    except HTTPException:
+        raise
+    except Exception as error:
+        raise HTTPException(status_code=500, detail=f"playwright intercept linkedin {normalized_intent} failed: {error}") from error
+
+    items = _normalize_playwright_eval_result(eval_result, request, target_url)
+    if not items:
+        raise HTTPException(status_code=500, detail=f"playwright intercept linkedin {normalized_intent} finished without output")
+    return items
+
+
 def _extract_opencli_json_payload(stdout: str) -> Any:
     text = stdout.strip()
     if not text:
@@ -2000,6 +2100,29 @@ def _merge_v3_intent_into_driver_option(
                 args_obj["query"] = normalized_query
             if (platform or "").strip().lower() == "x" and "type" not in args_obj:
                 args_obj["type"] = "latest"
+            normalized_platform = (platform or "").strip().lower()
+            if normalized_platform == "linkedin":
+                if isinstance(intent_args.get("location"), str) and "location" not in args_obj:
+                    args_obj["location"] = intent_args.get("location")
+                if isinstance(intent_args.get("company"), str) and "company" not in args_obj:
+                    args_obj["company"] = intent_args.get("company")
+                experience_level = intent_args.get("experience_level", intent_args.get("experienceLevel"))
+                if isinstance(experience_level, str) and "experience_level" not in args_obj:
+                    args_obj["experience_level"] = experience_level
+                job_type = intent_args.get("job_type", intent_args.get("jobType"))
+                if isinstance(job_type, str) and "job_type" not in args_obj:
+                    args_obj["job_type"] = job_type
+                date_posted = intent_args.get("date_posted", intent_args.get("datePosted"))
+                if isinstance(date_posted, str) and "date_posted" not in args_obj:
+                    args_obj["date_posted"] = date_posted
+                if isinstance(intent_args.get("remote"), str) and "remote" not in args_obj:
+                    args_obj["remote"] = intent_args.get("remote")
+                start_arg = intent_args.get("start")
+                if isinstance(start_arg, int) and "start" not in args_obj:
+                    args_obj["start"] = start_arg
+                details_arg = intent_args.get("details")
+                if isinstance(details_arg, bool) and "details" not in args_obj:
+                    args_obj["details"] = details_arg
         if intent_type in {"subreddit", "hot"}:
             if normalized_subreddit and (not isinstance(args_obj.get("subreddit"), str) or not args_obj.get("subreddit")):
                 args_obj["subreddit"] = normalized_subreddit
@@ -2051,6 +2174,8 @@ def _merge_v3_intent_into_driver_option(
                     merged_option["mode"] = f"intercept-bbc-{intent_type}"
                 elif normalized_platform in {"hackernews", "hn"} and intent_type in _HACKERNEWS_INTERCEPT_INTENTS:
                     merged_option["mode"] = f"intercept-hackernews-{intent_type}"
+                elif normalized_platform == "linkedin" and intent_type in _LINKEDIN_INTERCEPT_INTENTS:
+                    merged_option["mode"] = f"intercept-linkedin-{intent_type}"
                 elif intent_type == "search":
                     merged_option["mode"] = "opencli-bridge" if _OPENCLI_BRIDGE_ENABLED else "intercept-x-search"
         return merged_option

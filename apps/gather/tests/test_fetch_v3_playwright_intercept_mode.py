@@ -244,3 +244,42 @@ def test_fetch_v3_uses_intercept_hackernews_top_mode(monkeypatch):
     assert payload["items"][0]["recordContent"]["count"] == "10"
     assert payload["items"][0]["recordContent"]["intent_type"] == "top"
     assert payload["items"][0]["recordContent"]["mode"] == "intercept-hackernews-top"
+
+
+def test_fetch_v3_uses_intercept_linkedin_search_mode(monkeypatch):
+    async def fake_run_playwright_intercept_linkedin_intent(request, intent_type):  # noqa: ANN001
+        return [
+            CleanItem(
+                platform=request.platform,
+                sourceId=request.source_id,
+                sourceType="SOCIAL_MEDIA",
+                recordContent={
+                    "query": request.config.get("playwright", {}).get("args", {}).get("query"),
+                    "mode": request.config.get("playwright", {}).get("mode"),
+                    "intent_type": intent_type,
+                    "jobs": [{"rank": 1, "title": "Software Engineer"}],
+                },
+            )
+        ]
+
+    monkeypatch.setattr(main, "_run_playwright_intercept_linkedin_intent", fake_run_playwright_intercept_linkedin_intent)
+
+    client = TestClient(main.app)
+    response = client.post(
+        "/v3/fetch",
+        json={
+            "platform": "linkedin",
+            "sourceId": "source_123",
+            "intent": {"type": "search", "args": {"query": "software engineer", "limit": 10}},
+            "keywords": [],
+            "driver": {"name": "playwright", "option": {}},
+            "output": {"field": ["query", "intent_type", "mode"], "type": "linkedin-job"},
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["meta"]["adapter"] == "linkedin.search"
+    assert payload["items"][0]["recordContent"]["query"] == "software engineer"
+    assert payload["items"][0]["recordContent"]["intent_type"] == "search"
+    assert payload["items"][0]["recordContent"]["mode"] == "intercept-linkedin-search"

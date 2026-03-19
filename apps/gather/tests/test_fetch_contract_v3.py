@@ -273,6 +273,35 @@ def test_fetch_v3_hackernews_top_intent_maps_mode_and_limit(monkeypatch):
     assert payload["items"][0]["recordContent"]["mode"] == "intercept-hackernews-top"
 
 
+def test_fetch_v3_linkedin_search_maps_mode_and_args(monkeypatch):
+    response = _client_with_stub_driver(monkeypatch).post(
+        "/v3/fetch",
+        json={
+            "platform": "linkedin",
+            "sourceId": "source_123",
+            "intent": {
+                "type": "search",
+                "args": {
+                    "query": "software engineer",
+                    "location": "San Francisco",
+                    "start": 5,
+                    "limit": 10,
+                },
+            },
+            "keywords": [],
+            "driver": {"name": "playwright", "option": {}},
+            "output": {"field": ["query", "count", "mode"], "type": "linkedin-job"},
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["meta"]["adapter"] == "linkedin.search"
+    assert payload["items"][0]["recordContent"]["query"] == "software engineer"
+    assert payload["items"][0]["recordContent"]["count"] == "10"
+    assert payload["items"][0]["recordContent"]["mode"] == "intercept-linkedin-search"
+
+
 def test_fetch_v3_validation_error():
     client = TestClient(main.app)
     response = client.post(
