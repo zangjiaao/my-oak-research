@@ -279,6 +279,9 @@ export const SocialMediaFields = ({
   const currentPlaywrightMode = watch(
     "social.config.playwright.mode"
   ) as string | undefined;
+  const currentPlaywrightTargetUrl = watch(
+    "social.config.playwright.targetUrl"
+  ) as string | undefined;
   const supportedDrivers = socialPlatform
     ? getSupportedDrivers(socialPlatform)
     : [];
@@ -561,7 +564,21 @@ export const SocialMediaFields = ({
         shouldDirty: false,
       });
     }
-  }, [setValue, socialPlatform, resolvedDriver, currentPlaywrightMode]);
+    if (
+      typeof currentPlaywrightTargetUrl === "string" &&
+      currentPlaywrightTargetUrl.trim()
+    ) {
+      setValue("social.config.playwright.targetUrl", "", {
+        shouldDirty: false,
+      });
+    }
+  }, [
+    setValue,
+    socialPlatform,
+    resolvedDriver,
+    currentPlaywrightMode,
+    currentPlaywrightTargetUrl,
+  ]);
 
   const syncArgsToForm = useCallback(
     (rows: IntentArgRow[]) => {
@@ -1413,7 +1430,6 @@ export const SocialMediaFields = ({
                                   );
                                   setValue("social.config.playwright.mode", "eval-js");
                                   setValue("social.config.playwright.headless", false);
-                                  setValue("social.config.playwright.targetUrl", "");
                                   setValue("social.config.intent.type", "search");
                                   setValue("social.config.intent.args", {} as any);
                                 }
@@ -1718,16 +1734,6 @@ export const SocialMediaFields = ({
                       </label>
                     )}
                   />
-                </div>
-
-                <div className="grid gap-3">
-                  <Label htmlFor="social.config.playwright.targetUrl">Target URL (Optional)</Label>
-                  <Input
-                    id="social.config.playwright.targetUrl"
-                    placeholder="留空则不执行 page.goto()"
-                    {...register("social.config.playwright.targetUrl")}
-                  />
-                  <ErrorMessage>{getConfigErrorMessage("playwright.targetUrl")}</ErrorMessage>
                 </div>
 
                 <div className="grid gap-3 md:col-span-2">
