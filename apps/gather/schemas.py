@@ -13,13 +13,11 @@ class FetchRequest(BaseModel):
     output_fields: Optional[List[str]] = None
     output_field_map: Optional[Dict[str, str]] = None
     output_keyword_scope: Optional[List[str]] = None
-    output_record_type: Optional[str] = None
 
 
 class FetchV2Output(BaseModel):
     model_config = ConfigDict(extra="forbid")
     field: Union[List[str], Dict[str, str]]
-    type: Optional[str] = None
     keywordScope: Optional[List[str]] = None
 
 

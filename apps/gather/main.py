@@ -2770,11 +2770,6 @@ def _normalize_v2_fetch_request(request: FetchV2Request) -> FetchRequest:
         }
     elif isinstance(raw_fields, list):
         output_fields = [value for value in raw_fields if isinstance(value, str) and value.strip()]
-    output_record_type = output.get("type")
-    if not isinstance(output_record_type, str) or not output_record_type.strip():
-        output_record_type = None
-    else:
-        output_record_type = output_record_type.strip()
     raw_keyword_scope = output.get("keywordScope")
     if isinstance(raw_keyword_scope, list):
         output_keyword_scope = [
@@ -2806,7 +2801,6 @@ def _normalize_v2_fetch_request(request: FetchV2Request) -> FetchRequest:
         output_fields=output_fields or None,
         output_field_map=output_field_map or None,
         output_keyword_scope=output_keyword_scope or None,
-        output_record_type=output_record_type,
     )
 
 
@@ -3141,9 +3135,6 @@ def _build_validation_error_response(route: str, payload: Dict[str, Any], error:
 async def _execute_fetch_request(request: FetchRequest, driver_name: str) -> list[CleanItem]:
     raw_results = await driver_registry.fetch(request, driver_name=driver_name)
     results = _normalize_clean_items(raw_results)
-    if request.output_record_type:
-        for item in results:
-            item.recordType = request.output_record_type
     results = _apply_output_fields(results, request.output_fields, request.output_field_map)
     results = apply_keyword_hard_filter(request, results)
     if driver_name:

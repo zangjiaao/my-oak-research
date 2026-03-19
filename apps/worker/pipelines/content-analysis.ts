@@ -50,7 +50,6 @@ type GatherSocialDriver = "playwright" | "xhttp" | "agent-browser";
 type GatherOutputField = string[] | Record<string, string>;
 type GatherOutputPayload = {
   field: GatherOutputField;
-  type?: string;
   keywordScope?: string[];
 };
 type GatherIntentPayload = {
@@ -1011,10 +1010,6 @@ function resolveGatherOutput(
   config: Record<string, unknown>
 ): GatherOutputPayload {
   const configuredOutput = asObject(config.output);
-  const outputType =
-    typeof configuredOutput.type === "string" && configuredOutput.type.trim()
-      ? configuredOutput.type.trim()
-      : undefined;
   const outputKeywordScope = normalizeStringArray(
     configuredOutput.keywordScope ?? configuredOutput.scopeFields
   );
@@ -1035,7 +1030,6 @@ function resolveGatherOutput(
     if (Object.keys(mappedField).length > 0) {
       return {
         field: mappedField,
-        ...(outputType ? { type: outputType } : {}),
         ...(outputKeywordScope.length > 0 ? { keywordScope: outputKeywordScope } : {}),
       };
     }
@@ -1052,7 +1046,6 @@ function resolveGatherOutput(
     if (normalized.length > 0) {
       return {
         field: normalized,
-        ...(outputType ? { type: outputType } : {}),
         ...(outputKeywordScope.length > 0 ? { keywordScope: outputKeywordScope } : {}),
       };
     }
@@ -1074,14 +1067,12 @@ function resolveGatherOutput(
     if (mapped.length > 0) {
       return {
         field: mapped,
-        ...(outputType ? { type: outputType } : {}),
         ...(outputKeywordScope.length > 0 ? { keywordScope: outputKeywordScope } : {}),
       };
     }
   }
   return {
     field: ["text", "markdown", "url"],
-    ...(outputType ? { type: outputType } : {}),
     ...(outputKeywordScope.length > 0 ? { keywordScope: outputKeywordScope } : {}),
   };
 }
