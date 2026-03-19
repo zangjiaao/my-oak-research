@@ -43,7 +43,9 @@ async () => {
 
   return {
     query,
-    error: "No results found. Ctrip may require an active browser session on www.ctrip.com.",
-    hint: "Open www.ctrip.com first, then retry.",
+    source: "no_results",
+    count: 0,
+    results: [],
+    hint: "No results found. Open www.ctrip.com first, then retry.",
   };
 };
