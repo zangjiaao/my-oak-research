@@ -1080,7 +1080,7 @@ export const SocialMediaFields = ({
 
     const driver: Record<string, unknown> = {
       name: resolvedDriver,
-      option: normalizedDriverOption,
+      ...normalizedDriverOption,
       script: {
         type: intentType,
         args: intentArgs,

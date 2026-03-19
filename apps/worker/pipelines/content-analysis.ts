@@ -58,10 +58,9 @@ type GatherIntentPayload = {
 };
 type GatherDriverPayload = {
   name: GatherSocialDriver;
-  option: Record<string, unknown>;
   script: GatherIntentPayload;
   filter?: Record<string, unknown>;
-};
+} & Record<string, unknown>;
 
 type GatherScriptCatalogItem = {
   platform?: string;
@@ -683,13 +682,13 @@ async function fetchSocialSource(
     Object.keys(keywordFilterOptions).length > 0
       ? {
           name: gatherDriver,
-          option: driverOption,
+          ...driverOption,
           script: intent,
           filter: keywordFilterOptions,
         }
       : {
           name: gatherDriver,
-          option: driverOption,
+          ...driverOption,
           script: intent,
         };
 

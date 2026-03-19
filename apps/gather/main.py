@@ -2811,8 +2811,14 @@ def _normalize_v3_fetch_request(request: FetchV3Request) -> tuple[FetchRequest, 
     if request.driver is not None:
         if request.driver.name and request.driver.name.strip():
             driver_name = request.driver.name.strip()
-        driver_option = dict(request.driver.option)
         driver_filter = dict(request.driver.filter)
+        dumped_driver = request.driver.model_dump(
+            by_alias=True,
+            exclude_none=True,
+        )
+        for reserved in ("name", "script", "filter"):
+            dumped_driver.pop(reserved, None)
+        driver_option = dumped_driver
     driver_name = driver_name.strip().lower()
 
     request_intent = request.driver.script if request.driver is not None else None

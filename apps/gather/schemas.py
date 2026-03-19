@@ -54,8 +54,20 @@ class FetchV3Network(BaseModel):
     )
 
 
-class FetchV3Driver(FetchV2Driver):
+class FetchV3Driver(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    name: str
+    filter: Dict[str, Any] = Field(default_factory=dict)
     script: Optional[FetchV3Intent] = None
+
+    @model_validator(mode="after")
+    def _validate_no_option(self):
+        if isinstance(self.model_extra, dict) and "option" in self.model_extra:
+            raise ValueError(
+                "v3 payload no longer accepts driver.option; move fields directly under driver (e.g. driver.headless)"
+            )
+        return self
 
 
 class FetchV3Request(BaseModel):
