@@ -30,6 +30,7 @@ class StubFetchDriver(BaseDriver):
                     "query": args.get("query"),
                     "keyword": args.get("keyword"),
                     "video_url": args.get("url"),
+                    "channel_id": args.get("id"),
                     "lang": args.get("lang"),
                     "transcript_mode": args.get("mode"),
                     "username": args.get("username"),
@@ -383,6 +384,33 @@ def test_fetch_v3_youtube_transcript_maps_url_lang_mode(monkeypatch):
     assert payload["items"][0]["recordContent"]["transcript_mode"] == "raw"
     assert payload["items"][0]["recordContent"]["count"] == "8"
     assert payload["items"][0]["recordContent"]["mode"] == "intercept-youtube-transcript"
+
+
+def test_fetch_v3_youtube_channel_maps_channel_id(monkeypatch):
+    response = _client_with_stub_driver(monkeypatch).post(
+        "/v3/fetch",
+        json={
+            "platform": "youtube",
+            "sourceId": "source_123",
+            "intent": {
+                "type": "channel",
+                "args": {
+                    "id": "@openai",
+                    "limit": 6,
+                },
+            },
+            "keywords": [],
+            "driver": {"name": "playwright", "option": {}},
+            "output": {"field": ["channel_id", "count", "mode"], "type": "youtube-channel"},
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["meta"]["adapter"] == "youtube.channel"
+    assert payload["items"][0]["recordContent"]["channel_id"] == "@openai"
+    assert payload["items"][0]["recordContent"]["count"] == "6"
+    assert payload["items"][0]["recordContent"]["mode"] == "intercept-youtube-channel"
 
 
 def test_fetch_v3_validation_error():

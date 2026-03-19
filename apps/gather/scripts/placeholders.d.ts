@@ -27,6 +27,7 @@ declare global {
   const __URL_JSON__: string;
   const __LANG_JSON__: string;
   const __MODE_JSON__: string;
+  const __CHANNEL_ID_JSON__: string;
 
   interface Window {
     __oakGatherCapture?: any[];

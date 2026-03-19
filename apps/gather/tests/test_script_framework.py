@@ -92,6 +92,7 @@ def test_script_registry_auto_discovers_youtube_intents():
     assert "search" in intents
     assert "video" in intents
     assert "transcript" in intents
+    assert "channel" in intents
 
 
 def test_build_x_search_intercept_script_renders_placeholders():
@@ -249,6 +250,7 @@ def test_build_youtube_search_script():
         replacements={
             "__QUERY_JSON__": '"openai"',
             "__URL_JSON__": '""',
+            "__CHANNEL_ID_JSON__": '""',
             "__LANG_JSON__": '""',
             "__MODE_JSON__": '"grouped"',
             "__LIMIT__": 20,
@@ -258,3 +260,25 @@ def test_build_youtube_search_script():
     assert "__QUERY_JSON__" not in script
     assert "__COUNT__" not in script
     assert "youtubei/v1/search" in script
+
+
+def test_build_youtube_channel_script():
+    app_root = Path(__file__).resolve().parents[1]
+    registry = ScriptRegistry(app_root / "scripts", app_root / "scripts-dist")
+    script = build_x_intent_script(
+        registry=registry,
+        platform="youtube",
+        intent_type="channel",
+        replacements={
+            "__QUERY_JSON__": '""',
+            "__URL_JSON__": '""',
+            "__CHANNEL_ID_JSON__": '"@openai"',
+            "__LANG_JSON__": '""',
+            "__MODE_JSON__": '"grouped"',
+            "__LIMIT__": 10,
+            "__COUNT__": 10,
+        },
+    )
+    assert "__CHANNEL_ID_JSON__" not in script
+    assert "__COUNT__" not in script
+    assert "youtubei/v1/browse" in script

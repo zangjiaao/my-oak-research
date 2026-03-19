@@ -1728,6 +1728,7 @@ async def _run_playwright_intercept_youtube_intent(request: FetchRequest, intent
 
     query = str(args_obj.get("query", "")).strip()
     raw_url = str(args_obj.get("url", args_obj.get("video_url", args_obj.get("videoId", args_obj.get("video_id", ""))))).strip()
+    channel_id = str(args_obj.get("id", args_obj.get("channel_id", ""))).strip()
     lang = str(args_obj.get("lang", "")).strip()
     mode = str(args_obj.get("mode", "grouped")).strip().lower() or "grouped"
     if normalized_intent == "search" and not query:
@@ -1752,6 +1753,16 @@ async def _run_playwright_intercept_youtube_intent(request: FetchRequest, intent
         target_url = "https://www.youtube.com"
     elif normalized_intent in {"video", "transcript"}:
         target_url = raw_url if raw_url.startswith("http") else f"https://www.youtube.com/watch?v={quote(raw_url)}"
+    elif normalized_intent == "channel":
+        if channel_id:
+            if channel_id.startswith("@"):
+                target_url = f"https://www.youtube.com/{quote(channel_id)}"
+            elif channel_id.startswith("UC"):
+                target_url = f"https://www.youtube.com/channel/{quote(channel_id)}"
+            else:
+                target_url = f"https://www.youtube.com/{quote(channel_id)}"
+        else:
+            target_url = "https://www.youtube.com"
     else:
         target_url = "https://www.youtube.com"
 
@@ -1761,6 +1772,7 @@ async def _run_playwright_intercept_youtube_intent(request: FetchRequest, intent
         {
             "__QUERY_JSON__": json.dumps(query, ensure_ascii=False),
             "__URL_JSON__": json.dumps(raw_url, ensure_ascii=False),
+            "__CHANNEL_ID_JSON__": json.dumps(channel_id, ensure_ascii=False),
             "__LANG_JSON__": json.dumps(lang, ensure_ascii=False),
             "__MODE_JSON__": json.dumps(mode, ensure_ascii=False),
             "__LIMIT__": limit,
@@ -2347,6 +2359,10 @@ def _merge_v3_intent_into_driver_option(
             raw_url_arg = intent_args.get("url", intent_args.get("video_url", intent_args.get("video_id")))
             if isinstance(raw_url_arg, str) and raw_url_arg.strip() and "url" not in args_obj:
                 args_obj["url"] = raw_url_arg.strip()
+        if intent_type == "channel":
+            channel_id_arg = intent_args.get("id", intent_args.get("channel_id"))
+            if isinstance(channel_id_arg, str) and channel_id_arg.strip() and "id" not in args_obj:
+                args_obj["id"] = channel_id_arg.strip()
         if intent_type == "transcript":
             lang_arg = intent_args.get("lang")
             if isinstance(lang_arg, str) and lang_arg.strip() and "lang" not in args_obj:

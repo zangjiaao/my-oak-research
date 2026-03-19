@@ -361,3 +361,42 @@ def test_fetch_v3_uses_intercept_youtube_search_mode(monkeypatch):
     assert payload["items"][0]["recordContent"]["query"] == "openai"
     assert payload["items"][0]["recordContent"]["intent_type"] == "search"
     assert payload["items"][0]["recordContent"]["mode"] == "intercept-youtube-search"
+
+
+def test_fetch_v3_uses_intercept_youtube_channel_mode(monkeypatch):
+    async def fake_run_playwright_intercept_youtube_intent(request, intent_type):  # noqa: ANN001
+        return [
+            CleanItem(
+                platform=request.platform,
+                sourceId=request.source_id,
+                sourceType="VIDEO_PLATFORM",
+                recordContent={
+                    "channel_id": request.config.get("playwright", {}).get("args", {}).get("id"),
+                    "mode": request.config.get("playwright", {}).get("mode"),
+                    "intent_type": intent_type,
+                    "recentVideos": [{"title": "Channel video"}],
+                },
+            )
+        ]
+
+    monkeypatch.setattr(main, "_run_playwright_intercept_youtube_intent", fake_run_playwright_intercept_youtube_intent)
+
+    client = TestClient(main.app)
+    response = client.post(
+        "/v3/fetch",
+        json={
+            "platform": "youtube",
+            "sourceId": "source_123",
+            "intent": {"type": "channel", "args": {"id": "@openai", "limit": 10}},
+            "keywords": [],
+            "driver": {"name": "playwright", "option": {}},
+            "output": {"field": ["channel_id", "intent_type", "mode"], "type": "youtube-channel"},
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["meta"]["adapter"] == "youtube.channel"
+    assert payload["items"][0]["recordContent"]["channel_id"] == "@openai"
+    assert payload["items"][0]["recordContent"]["intent_type"] == "channel"
+    assert payload["items"][0]["recordContent"]["mode"] == "intercept-youtube-channel"
