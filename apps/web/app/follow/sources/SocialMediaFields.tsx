@@ -153,19 +153,7 @@ type AgentScriptRow = {
   json: string;
 };
 
-type OutputFieldRow = {
-  id: string;
-  key: string;
-  value: string;
-};
-
 const createEmptyArgRow = (): IntentArgRow => ({
-  id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
-  key: "",
-  value: "",
-});
-
-const createEmptyOutputFieldRow = (): OutputFieldRow => ({
   id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
   key: "",
   value: "",
@@ -197,26 +185,6 @@ const toDelimitedStringArray = (value: unknown): string[] => {
     );
   }
   return [];
-};
-
-const normalizeOutputFieldMap = (value: unknown): Record<string, string> => {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
-    return {};
-  }
-  const entries = Object.entries(value as Record<string, unknown>)
-    .map(([key, rawValue]) => [key.trim(), String(rawValue ?? "").trim()] as const)
-    .filter(([key, mappedPath]) => key.length > 0 && mappedPath.length > 0);
-  return Object.fromEntries(entries);
-};
-
-const buildOutputFieldRows = (value: unknown): OutputFieldRow[] => {
-  const mapped = normalizeOutputFieldMap(value);
-  const rows = Object.entries(mapped).map(([key, itemValue]) => ({
-    id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
-    key,
-    value: itemValue,
-  }));
-  return rows.length > 0 ? rows : [createEmptyOutputFieldRow()];
 };
 
 const normalizeArgs = (input: unknown): Record<string, string> => {
@@ -305,7 +273,6 @@ export const SocialMediaFields = ({
   const selectedDriver = watch("social.config.driver") as string | undefined;
   const currentCredentialId = watch("social.credentialId") as string | null | undefined;
   const currentProxyId = watch("social.proxyId") as string | null | undefined;
-  const outputFieldValue = (watch as any)("social.config.output.field");
   const currentRecordFormat = watch(
     "social.config.agentBrowser.recordSchema.format"
   ) as string | undefined;
@@ -333,9 +300,6 @@ export const SocialMediaFields = ({
   const [xArgRows, setXArgRows] = useState<IntentArgRow[]>([
     createEmptyArgRow(),
   ]);
-  const [outputFieldRows, setOutputFieldRows] = useState<OutputFieldRow[]>(
-    () => buildOutputFieldRows(outputFieldValue)
-  );
   const [agentScriptRows, setAgentScriptRows] = useState<AgentScriptRow[]>([
     createEmptyAgentScriptRow(),
   ]);
@@ -600,23 +564,6 @@ export const SocialMediaFields = ({
     [setValue]
   );
 
-  const syncOutputFieldRowsToForm = useCallback(
-    (rows: OutputFieldRow[]) => {
-      if (!setValue) return;
-      const mapped = rows.reduce<Record<string, string>>((acc, row) => {
-        const key = row.key.trim();
-        const value = row.value.trim();
-        if (!key || !value) return acc;
-        acc[key] = value;
-        return acc;
-      }, {});
-      (setValue as any)("social.config.output.field", mapped, {
-        shouldDirty: true,
-      });
-    },
-    [setValue]
-  );
-
   const applyScriptDefaults = useCallback(
     (
       intentType: string,
@@ -744,34 +691,6 @@ export const SocialMediaFields = ({
       syncArgsToForm(safeRows);
     },
     [syncArgsToForm, xArgRows]
-  );
-
-  const updateOutputFieldRow = useCallback(
-    (id: string, field: "key" | "value", nextValue: string) => {
-      const nextRows = outputFieldRows.map((row) =>
-        row.id === id ? { ...row, [field]: nextValue } : row
-      );
-      setOutputFieldRows(nextRows);
-      syncOutputFieldRowsToForm(nextRows);
-    },
-    [outputFieldRows, syncOutputFieldRowsToForm]
-  );
-
-  const addOutputFieldRow = useCallback(() => {
-    const nextRows = [...outputFieldRows, createEmptyOutputFieldRow()];
-    setOutputFieldRows(nextRows);
-    syncOutputFieldRowsToForm(nextRows);
-  }, [outputFieldRows, syncOutputFieldRowsToForm]);
-
-  const removeOutputFieldRow = useCallback(
-    (id: string) => {
-      const nextRows = outputFieldRows.filter((row) => row.id !== id);
-      const safeRows =
-        nextRows.length > 0 ? nextRows : [createEmptyOutputFieldRow()];
-      setOutputFieldRows(safeRows);
-      syncOutputFieldRowsToForm(safeRows);
-    },
-    [outputFieldRows, syncOutputFieldRowsToForm]
   );
 
   const updateAgentScriptRow = useCallback(
@@ -982,7 +901,6 @@ export const SocialMediaFields = ({
     scriptOptions.length > 0
       ? getIntentOptionByType(scriptOptions, selectedIntentType)
       : null;
-  const outputFieldError = getConfigErrorMessage("output.field");
   const outputTypeError = getConfigErrorMessage("output.type");
   const outputKeywordScopeError = getConfigErrorMessage("output.keywordScope");
   const filterMinCharsError = getConfigErrorMessage("filter.minChars");
@@ -991,12 +909,32 @@ export const SocialMediaFields = ({
     const config = asRecord(watch("social.config"));
     const outputConfig = asRecord(config.output);
 
-    let outputField = normalizeOutputFieldMap(outputConfig.field);
-    if (Object.keys(outputField).length === 0) {
-      outputField = { text: "text" };
+    const output: Record<string, unknown> = {};
+    const rawOutputField = outputConfig.fields ?? outputConfig.field;
+    if (Array.isArray(rawOutputField)) {
+      const normalizedFields = Array.from(
+        new Set(
+          rawOutputField
+            .filter((value): value is string => typeof value === "string")
+            .map((value) => value.trim())
+            .filter(Boolean)
+        )
+      );
+      if (normalizedFields.length > 0) {
+        output.field = normalizedFields;
+      }
+    } else if (
+      rawOutputField &&
+      typeof rawOutputField === "object" &&
+      !Array.isArray(rawOutputField)
+    ) {
+      const mappedEntries = Object.entries(rawOutputField as Record<string, unknown>)
+        .map(([key, value]) => [key.trim(), String(value ?? "").trim()] as const)
+        .filter(([key, value]) => key.length > 0 && value.length > 0);
+      if (mappedEntries.length > 0) {
+        output.field = Object.fromEntries(mappedEntries);
+      }
     }
-
-    const output: Record<string, unknown> = { field: outputField };
     if (typeof outputConfig.type === "string" && outputConfig.type.trim()) {
       output.type = outputConfig.type.trim();
     }
@@ -1295,54 +1233,10 @@ export const SocialMediaFields = ({
       <CardHeader>
         <CardTitle>Output</CardTitle>
         <CardDescription>
-          配置输出映射、输出类型和关键词过滤范围。
+          配置输出类型和关键词过滤范围（字段映射由 worker 规则维护）。
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-4">
-
-      <div className="grid gap-2">
-        <Label htmlFor="social.config.output.field">
-          Output Field Mapping
-        </Label>
-        <div className="grid gap-3 border rounded-md p-3 bg-background">
-          <div className="flex items-center justify-between">
-            <Label className="text-sm font-medium">Field (key:value)</Label>
-            <Button type="button" variant="outline" size="sm" onClick={addOutputFieldRow}>
-              <Plus className="h-3.5 w-3.5 mr-1" />
-              Add
-            </Button>
-          </div>
-          <div className="grid gap-2 max-h-56 overflow-y-auto pr-1">
-            {outputFieldRows.map((row) => (
-              <div key={row.id} className="grid grid-cols-[1fr_1fr_auto] gap-2 items-center">
-                <Input
-                  value={row.key}
-                  onChange={(e) => updateOutputFieldRow(row.id, "key", e.target.value)}
-                  placeholder="key (e.g. text)"
-                />
-                <Input
-                  value={row.value}
-                  onChange={(e) => updateOutputFieldRow(row.id, "value", e.target.value)}
-                  placeholder="value path (e.g. tweets.text)"
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => removeOutputFieldRow(row.id)}
-                  aria-label="Remove output field row"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            ))}
-          </div>
-        </div>
-        <p className="text-xs text-muted-foreground">
-          配置 recordContent 字段映射，key 为输出字段名，value 为脚本输出路径。
-        </p>
-        <ErrorMessage>{outputFieldError}</ErrorMessage>
-      </div>
 
       <div className="grid gap-2 md:max-w-md">
         <Label htmlFor="social.config.output.type">Output Type</Label>
@@ -1390,9 +1284,6 @@ export const SocialMediaFields = ({
           关键词过滤仅匹配这里指定的 recordContent 字段。
         </p>
         <ErrorMessage>{outputKeywordScopeError}</ErrorMessage>
-      </div>
-
-      <div className="grid gap-2 md:max-w-xs">
       </div>
       </CardContent>
     </Card>
