@@ -276,6 +276,9 @@ export const SocialMediaFields = ({
   const currentRecordFormat = watch(
     "social.config.agentBrowser.recordSchema.format"
   ) as string | undefined;
+  const currentPlaywrightMode = watch(
+    "social.config.playwright.mode"
+  ) as string | undefined;
   const supportedDrivers = socialPlatform
     ? getSupportedDrivers(socialPlatform)
     : [];
@@ -549,6 +552,16 @@ export const SocialMediaFields = ({
     resolvedDriver,
     currentRecordFormat,
   ]);
+
+  useEffect(() => {
+    if (!setValue) return;
+    if (!socialPlatform || resolvedDriver !== "playwright") return;
+    if (currentPlaywrightMode !== "eval-js") {
+      setValue("social.config.playwright.mode", "eval-js", {
+        shouldDirty: false,
+      });
+    }
+  }, [setValue, socialPlatform, resolvedDriver, currentPlaywrightMode]);
 
   const syncArgsToForm = useCallback(
     (rows: IntentArgRow[]) => {
@@ -1691,23 +1704,6 @@ export const SocialMediaFields = ({
               </div>
 
               <div className="grid gap-4 md:grid-cols-2">
-                <div className="grid gap-3">
-                  <Label htmlFor="social.config.playwright.mode">Mode</Label>
-                  <Controller
-                    name="social.config.playwright.mode"
-                    control={control}
-                    render={({ field }) => (
-                      <ControlledSelect
-                        value={(field.value as string) || "eval-js"}
-                        onValueChange={field.onChange}
-                        placeholder="Select mode"
-                      >
-                        <SelectItem value="eval-js">eval-js</SelectItem>
-                      </ControlledSelect>
-                    )}
-                  />
-                </div>
-
                 <div className="flex items-center gap-3 pt-8">
                   <Controller
                     name="social.config.playwright.headless"
