@@ -85,11 +85,11 @@ export const ContentList = () => {
               }`}
             >
               <NewsCard
-                title={content.title}
-                summary={content.summary}
-                image={content.image}
-                platform={content.platform}
-                time={new Date(content.time).toLocaleDateString()}
+                title={content.summaryView?.title ?? content.title}
+                summary={content.summaryView?.summary ?? content.summary}
+                image={content.summaryView?.hasImage ? content.image : undefined}
+                platform={content.summaryView?.source ?? content.platform}
+                time={new Date(content.summaryView?.ingestedAt ?? content.time).toLocaleDateString()}
                 mark={bookmarked}
                 onBookmarkToggle={() => {
                   toggleFavorite.mutate({
