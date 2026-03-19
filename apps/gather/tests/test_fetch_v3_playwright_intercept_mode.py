@@ -3,6 +3,7 @@ import sys
 import subprocess
 
 from fastapi.testclient import TestClient
+import pytest
 
 
 sys.path.append(str(Path(__file__).resolve().parents[1]))
@@ -517,3 +518,58 @@ def test_fetch_v3_uses_intercept_bilibili_search_mode(monkeypatch):
     assert payload["items"][0]["recordContent"]["keyword"] == "openai"
     assert payload["items"][0]["recordContent"]["intent_type"] == "search"
     assert payload["items"][0]["recordContent"]["mode"] == "intercept-bilibili-search"
+
+
+@pytest.mark.parametrize(
+    ("platform", "intent_type", "intent_args", "expected_mode"),
+    [
+        ("36kr", "newsflash", {"limit": 8}, "intercept-36kr-newsflash"),
+        ("arxiv", "search", {"query": "llm", "limit": 6}, "intercept-arxiv-search"),
+        ("baidu", "search", {"query": "openai", "limit": 5}, "intercept-baidu-search"),
+        ("bing", "search", {"query": "openai", "limit": 5}, "intercept-bing-search"),
+        ("cnblogs", "search", {"query": "python", "limit": 5}, "intercept-cnblogs-search"),
+        ("csdn", "search", {"query": "python", "limit": 5}, "intercept-csdn-search"),
+        ("ctrip", "search", {"query": "sanya", "limit": 5}, "intercept-ctrip-search"),
+        ("devto", "search", {"query": "rust", "limit": 5}, "intercept-devto-search"),
+        ("duckduckgo", "search", {"query": "openai", "limit": 5}, "intercept-duckduckgo-search"),
+        ("google", "search", {"query": "openai", "limit": 5}, "intercept-google-search"),
+        ("reuters", "search", {"query": "ai", "limit": 5}, "intercept-reuters-search"),
+        ("toutiao", "search", {"query": "ai", "limit": 5}, "intercept-toutiao-search"),
+        ("toutiao", "hot", {"limit": 5}, "intercept-toutiao-hot"),
+    ],
+)
+def test_fetch_v3_uses_intercept_new_web_sources_mode(monkeypatch, platform, intent_type, intent_args, expected_mode):
+    async def fake_run_playwright_intercept_generic_intent(request, mode_intent_type, platform):  # noqa: ANN001
+        return [
+            CleanItem(
+                platform=request.platform,
+                sourceId=request.source_id,
+                sourceType="NEWS",
+                recordContent={
+                    "platform": platform,
+                    "mode": request.config.get("playwright", {}).get("mode"),
+                    "intent_type": mode_intent_type,
+                },
+            )
+        ]
+
+    monkeypatch.setattr(main, "_run_playwright_intercept_generic_intent", fake_run_playwright_intercept_generic_intent)
+
+    client = TestClient(main.app)
+    response = client.post(
+        "/v3/fetch",
+        json={
+            "platform": platform,
+            "sourceId": "source_123",
+            "intent": {"type": intent_type, "args": intent_args},
+            "keywords": [],
+            "driver": {"name": "playwright", "option": {}},
+            "output": {"field": ["mode", "intent_type"], "type": f"{platform}-{intent_type}"},
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["meta"]["adapter"] == f"{platform}.{intent_type}"
+    assert payload["items"][0]["recordContent"]["intent_type"] == intent_type
+    assert payload["items"][0]["recordContent"]["mode"] == expected_mode

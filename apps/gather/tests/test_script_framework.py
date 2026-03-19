@@ -133,6 +133,30 @@ def test_script_registry_auto_discovers_bilibili_intents():
     assert "history" in intents
 
 
+@pytest.mark.parametrize(
+    ("platform", "expected_intents"),
+    [
+        ("36kr", {"newsflash"}),
+        ("arxiv", {"search"}),
+        ("baidu", {"search"}),
+        ("bing", {"search"}),
+        ("cnblogs", {"search"}),
+        ("csdn", {"search"}),
+        ("ctrip", {"search"}),
+        ("devto", {"search"}),
+        ("duckduckgo", {"search"}),
+        ("google", {"search"}),
+        ("reuters", {"search"}),
+        ("toutiao", {"search", "hot"}),
+    ],
+)
+def test_script_registry_auto_discovers_new_web_source_intents(platform, expected_intents):
+    app_root = Path(__file__).resolve().parents[1]
+    registry = ScriptRegistry(app_root / "scripts", app_root / "scripts-dist")
+    intents = registry.intents_for(platform)
+    assert expected_intents.issubset(intents)
+
+
 def test_build_x_search_intercept_script_renders_placeholders():
     app_root = Path(__file__).resolve().parents[1]
     registry = ScriptRegistry(app_root / "scripts", app_root / "scripts-dist")
@@ -385,3 +409,24 @@ def test_build_bilibili_search_script():
     assert "__COUNT__" not in script
     assert "__ORDER_JSON__" not in script
     assert "wbi/search/type" in script
+
+
+def test_build_toutiao_hot_script():
+    app_root = Path(__file__).resolve().parents[1]
+    registry = ScriptRegistry(app_root / "scripts", app_root / "scripts-dist")
+    script = build_x_intent_script(
+        registry=registry,
+        platform="toutiao",
+        intent_type="hot",
+        replacements={
+            "__QUERY_JSON__": '""',
+            "__KEYWORD_JSON__": '""',
+            "__ORDER_JSON__": '""',
+            "__TYPE_JSON__": '""',
+            "__PAGE__": 1,
+            "__LIMIT__": 10,
+            "__COUNT__": 10,
+        },
+    )
+    assert "__COUNT__" not in script
+    assert "hot-board" in script
