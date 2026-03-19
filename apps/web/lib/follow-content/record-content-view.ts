@@ -244,8 +244,8 @@ export function buildRecordContentViews(content: Content): NormalizedContentView
     (content.markdown && content.markdown.trim() ? content.markdown.trim() : "");
   const contentBody =
     pickFirst(recordContent, CONTENT_KEYS) ??
-    contentMarkdown ||
-    contentSummary ||
+    contentMarkdown ??
+    contentSummary ??
     "No content available";
   const images = pickMany(recordContent, IMAGE_KEYS).filter((value) =>
     /^https?:\/\//i.test(value)
