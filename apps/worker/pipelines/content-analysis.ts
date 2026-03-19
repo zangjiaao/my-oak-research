@@ -53,6 +53,10 @@ type GatherOutputPayload = {
   type?: string;
   keywordScope?: string[];
 };
+type GatherIntentPayload = {
+  type: string;
+  args: Record<string, unknown>;
+};
 
 const SOCIAL_PLATFORM_DRIVER_SUPPORT: Record<string, readonly GatherSocialDriver[]> = {
   X: ["playwright", "xhttp", "agent-browser"],
@@ -649,6 +653,7 @@ async function fetchSocialSource(
     source.proxy?.url ??
     null;
   const output = resolveGatherOutput(sourceConfigObj);
+  const intent = resolveGatherIntent(sourceConfigObj);
   const normalizedSocialConfig = normalizeGatherSocialConfig(
     source,
     sourceConfigObj,
@@ -672,11 +677,12 @@ async function fetchSocialSource(
         };
 
   try {
-    const response = await fetch(`${gatherUrl}/v2/fetch`, {
+    const response = await fetch(`${gatherUrl}/v3/fetch`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         platform: gatherPlatform,
+        intent,
         keywords: keywordFilterTerms,
         driver,
         sourceId: source.id,
@@ -690,7 +696,8 @@ async function fetchSocialSource(
     }
 
     const data = await response.json();
-    return normalizeGatherItems(data, source, output.type);
+    const items = Array.isArray(data?.items) ? data.items : [];
+    return normalizeGatherItems(items, source, output.type);
   } catch (error) {
     console.error(`[collector] fetchSocialSource error:`, error);
     // Fallback to basic info if gather service is down
@@ -958,7 +965,39 @@ function sanitizeGatherConfig(
   delete sanitized.responseFormats;
   delete sanitized.output;
   delete sanitized.driverOptions;
+  delete sanitized.intent;
   return sanitized;
+}
+
+function resolveGatherIntent(
+  config: Record<string, unknown>
+): GatherIntentPayload {
+  const rawIntent = asObject(config.intent);
+  const rawArgs = asObject(rawIntent.args);
+  const intentType =
+    typeof rawIntent.type === "string" && rawIntent.type.trim()
+      ? rawIntent.type.trim()
+      : "search";
+
+  if (Object.keys(rawArgs).length > 0) {
+    return {
+      type: intentType,
+      args: rawArgs,
+    };
+  }
+
+  const legacyPlaywrightArgs = asObject(asObject(config.playwright).args);
+  if (Object.keys(legacyPlaywrightArgs).length > 0) {
+    return {
+      type: intentType,
+      args: legacyPlaywrightArgs,
+    };
+  }
+
+  return {
+    type: intentType,
+    args: {},
+  };
 }
 
 function resolveGatherOutput(

@@ -257,6 +257,8 @@ _PLAYWRIGHT_BROWSER_POOL: dict[str, _PlaywrightBrowserPoolEntry] = {}
 _PLAYWRIGHT_POOL_LOCK = asyncio.Lock()
 _PLAYWRIGHT_RUNTIME = None
 _PLAYWRIGHT_RUNTIME_LOCK = asyncio.Lock()
+_SCRIPT_SAMPLE_LINE_RE = re.compile(r"^\s*//\s*Sample\s+/v3/fetch key parts\s*$")
+_SCRIPT_SAMPLE_ENTRY_RE = re.compile(r"^\s*//\s*([^:]+):\s*(.+?)\s*$")
 
 
 def build_error_response(
@@ -274,6 +276,79 @@ def build_error_response(
 @app.get("/")
 async def root():
     return {"status": "ok", "service": "oak-gather"}
+
+
+def _parse_script_sample_payload(script_content: str) -> dict[str, Any]:
+    sample: dict[str, Any] = {}
+    lines = script_content.splitlines()
+    in_sample_block = False
+
+    for line in lines:
+        if not in_sample_block:
+            if _SCRIPT_SAMPLE_LINE_RE.match(line):
+                in_sample_block = True
+            continue
+
+        matched = _SCRIPT_SAMPLE_ENTRY_RE.match(line)
+        if not matched:
+            if line.strip().startswith("//"):
+                continue
+            break
+
+        raw_key = matched.group(1).strip()
+        raw_value = matched.group(2).strip()
+        if not raw_key:
+            continue
+        try:
+            sample[raw_key] = json.loads(raw_value)
+        except json.JSONDecodeError:
+            sample[raw_key] = raw_value
+
+    return sample
+
+
+def _build_scripts_catalog() -> dict[str, Any]:
+    items: list[dict[str, Any]] = []
+    platform_map: dict[str, set[str]] = {}
+
+    for spec in _SCRIPT_REGISTRY.list_specs():
+        script_file = spec.runtime_path if spec.runtime_path.exists() else spec.source_path
+        sample_payload: dict[str, Any] = {}
+
+        try:
+            script_content = script_file.read_text(encoding="utf-8")
+            sample_payload = _parse_script_sample_payload(script_content)
+        except Exception:
+            sample_payload = {}
+
+        sample_intent = _as_dict(sample_payload.get("intent.args"))
+        sample_output = sample_payload.get("output.field")
+
+        item = {
+            "key": spec.key,
+            "platform": spec.platform.upper(),
+            "intent": spec.intent,
+            "mode": spec.mode,
+            "runtimePath": str(script_file),
+            "sample": {
+                "intentType": sample_payload.get("intent.type", spec.intent),
+                "intentArgs": sample_intent,
+                "outputField": sample_output if isinstance(sample_output, (list, dict)) else None,
+            },
+        }
+        items.append(item)
+        platform_map.setdefault(item["platform"], set()).add(spec.intent)
+
+    platforms = [
+        {"platform": platform, "intents": sorted(intents)}
+        for platform, intents in sorted(platform_map.items(), key=lambda entry: entry[0])
+    ]
+
+    return {
+        "total": len(items),
+        "items": sorted(items, key=lambda entry: (entry["platform"], entry["intent"])),
+        "platforms": platforms,
+    }
 
 
 async def _verify_auth_with_agent_browser_for_whatsapp(request: VerifyAuthRequest) -> VerifyAuthResponse | None:
@@ -3290,6 +3365,13 @@ async def fetch_data_v3(payload: Dict[str, Any]):
         )
         _log_api_io("/v3/fetch", payload, response.body.decode("utf-8"), 500)
         return response
+
+
+@app.get("/v3/scripts/catalog")
+async def list_scripts_catalog():
+    payload = _build_scripts_catalog()
+    _log_api_io("/v3/scripts/catalog", {}, payload, 200)
+    return payload
 
 
 @app.post(

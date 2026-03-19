@@ -108,99 +108,38 @@ const getCredentialKind = (platform: string) => {
   return `${normalized}-cookie`;
 };
 
-type ScriptArgRule = {
+type IntentArgRule = {
   required: boolean;
   description: string;
 };
 
-type ScriptOption = {
+type IntentOption = {
   id: string;
   name: string;
   description: string;
   key: string;
-  version?: string;
   platform: string;
-  scriptPath: string;
-  args: Record<string, ScriptArgRule>;
+  intentType: string;
+  args: Record<string, IntentArgRule>;
 };
 
-type BbPresetApiItem = {
-  id: string;
+type GatherScriptCatalogItem = {
   key: string;
-  version: string;
-  name: string;
-  description: string | null;
   platform: string;
-  scriptRelPath: string;
-  argsSchema: Record<string, unknown> | null;
-  status: "ACTIVE" | "DEPRECATED" | "BROKEN";
-  isActive: boolean;
+  intent: string;
+  mode: string;
+  sample?: {
+    intentType?: string;
+    intentArgs?: Record<string, unknown>;
+    outputField?: Record<string, string> | string[];
+  };
 };
 
-type PlatformPresetStats = {
-  active: number;
-  deprecated: number;
-  broken: number;
+type PlatformIntentStats = {
+  intents: number;
 };
 
-const LEGACY_X_SCRIPT_OPTIONS: ScriptOption[] = [
-  {
-    id: "legacy-twitter-tweets",
-    name: "twitter/tweets",
-    description: "获取用户最近的推文（时间线）",
-    key: "twitter/tweets",
-    platform: "X",
-    scriptPath: "/Users/zangjiaao/Reference/bb-sites/twitter/tweets.js",
-    args: {
-      screen_name: {
-        required: true,
-        description: "Twitter handle (without @)",
-      },
-      count: {
-        required: false,
-        description: "Number of tweets (default 20, max 100)",
-      },
-    },
-  },
-  {
-    id: "legacy-twitter-thread",
-    name: "twitter/thread",
-    description: "获取推文对话线程（原文 + 所有回复）",
-    key: "twitter/thread",
-    platform: "X",
-    scriptPath: "/Users/zangjiaao/Reference/bb-sites/twitter/thread.js",
-    args: {
-      tweet_id: {
-        required: true,
-        description: "Tweet ID (numeric) or full URL",
-      },
-    },
-  },
-  {
-    id: "legacy-twitter-search",
-    name: "twitter/search",
-    description: "搜索推文",
-    key: "twitter/search",
-    platform: "X",
-    scriptPath: "/Users/zangjiaao/Reference/bb-sites/twitter/search.js",
-    args: {
-      query: {
-        required: true,
-        description: "Search query",
-      },
-      count: {
-        required: false,
-        description: "Number of results (default 20, max 50)",
-      },
-      type: {
-        required: false,
-        description: "Result type: latest (default) or top",
-      },
-    },
-  },
-];
-
-type PlaywrightArgRow = {
+type IntentArgRow = {
   id: string;
   key: string;
   value: string;
@@ -220,7 +159,7 @@ type OutputFieldRow = {
   value: string;
 };
 
-const createEmptyArgRow = (): PlaywrightArgRow => ({
+const createEmptyArgRow = (): IntentArgRow => ({
   id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
   key: "",
   value: "",
@@ -299,19 +238,19 @@ const asRecord = (value: unknown): Record<string, unknown> => {
   return {};
 };
 
-const getScriptOptionByPath = (
-  options: ScriptOption[],
-  scriptPath?: string | null
-) => options.find((item) => item.scriptPath === scriptPath) ?? options[0];
+const getIntentOptionByType = (
+  options: IntentOption[],
+  intentType?: string | null
+) => options.find((item) => item.intentType === intentType) ?? options[0];
 
-const buildXArgRows = (
+const buildIntentArgRows = (
   args: Record<string, string>,
-  script: ScriptOption
-): PlaywrightArgRow[] => {
-  const rows: PlaywrightArgRow[] = [];
+  option: IntentOption
+): IntentArgRow[] => {
+  const rows: IntentArgRow[] = [];
   const included = new Set<string>();
 
-  for (const [key, rule] of Object.entries(script.args)) {
+  for (const [key, rule] of Object.entries(option.args)) {
     rows.push({
       id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
       key,
@@ -336,11 +275,11 @@ const buildXArgRows = (
   return rows.length > 0 ? rows : [createEmptyArgRow()];
 };
 
-const toScriptArgRules = (
+const toIntentArgRules = (
   input: Record<string, unknown> | null | undefined
-): Record<string, ScriptArgRule> => {
+): Record<string, IntentArgRule> => {
   if (!input || typeof input !== "object") return {};
-  const output: Record<string, ScriptArgRule> = {};
+  const output: Record<string, IntentArgRule> = {};
   for (const [key, value] of Object.entries(input)) {
     if (!value || typeof value !== "object" || Array.isArray(value)) continue;
     const raw = value as Record<string, unknown>;
@@ -391,7 +330,7 @@ export const SocialMediaFields = ({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [showUploadForm, setShowUploadForm] = useState(false);
   const [newCredentialName, setNewCredentialName] = useState("");
-  const [xArgRows, setXArgRows] = useState<PlaywrightArgRow[]>([
+  const [xArgRows, setXArgRows] = useState<IntentArgRow[]>([
     createEmptyArgRow(),
   ]);
   const [outputFieldRows, setOutputFieldRows] = useState<OutputFieldRow[]>(
@@ -400,8 +339,8 @@ export const SocialMediaFields = ({
   const [agentScriptRows, setAgentScriptRows] = useState<AgentScriptRow[]>([
     createEmptyAgentScriptRow(),
   ]);
-  const [bbPresetOptions, setBbPresetOptions] = useState<ScriptOption[]>([]);
-  const [loadingBbPresets, setLoadingBbPresets] = useState(false);
+  const [catalogOptions, setCatalogOptions] = useState<IntentOption[]>([]);
+  const [loadingCatalog, setLoadingCatalog] = useState(false);
   const [platformPopoverOpen, setPlatformPopoverOpen] = useState(false);
   const commandListCleanup = useRef<(() => void) | null>(null);
   const commandListRef = useCallback((node: HTMLDivElement | null) => {
@@ -438,21 +377,13 @@ export const SocialMediaFields = ({
     };
   }, []);
   const [platformPresetStats, setPlatformPresetStats] = useState<
-    Record<string, PlatformPresetStats>
+    Record<string, PlatformIntentStats>
   >({});
-  const scriptOptions = useMemo(
-    () =>
-      bbPresetOptions.length > 0
-        ? bbPresetOptions
-        : socialPlatform === "X"
-          ? LEGACY_X_SCRIPT_OPTIONS
-          : [],
-    [bbPresetOptions, socialPlatform]
-  );
+  const scriptOptions = useMemo(() => catalogOptions, [catalogOptions]);
   const availablePlatforms = useMemo(() => {
     const base = new Set<string>(SocialPlatformEnum.options);
     for (const [platform, stats] of Object.entries(platformPresetStats)) {
-      if (stats.active > 0) {
+      if (stats.intents > 0) {
         base.add(platform);
       }
     }
@@ -520,35 +451,26 @@ export const SocialMediaFields = ({
     const fetchPlatformPresetStats = async () => {
       try {
         const response = await fetch(
-          "/api/follow/bb-presets?latestOnly=true&includeInactive=true&pageSize=200",
+          "/api/follow/gather-scripts/catalog",
           { signal: controller.signal }
         );
         if (!response.ok) return;
         const data = await response.json();
-        const items = Array.isArray(data?.items)
-          ? (data.items as BbPresetApiItem[])
+        const platforms = Array.isArray(data?.platforms)
+          ? (data.platforms as Array<{ platform: string; intents: string[] }>)
           : [];
 
-        const stats: Record<string, PlatformPresetStats> = {};
-        for (const item of items) {
+        const stats: Record<string, PlatformIntentStats> = {};
+        for (const item of platforms) {
           const platform = item.platform?.toUpperCase?.() ?? "";
           if (!platform) continue;
-          if (!stats[platform]) {
-            stats[platform] = { active: 0, deprecated: 0, broken: 0 };
-          }
-          if (!item.isActive || item.status === "BROKEN") {
-            stats[platform].broken += 1;
-          } else if (item.status === "DEPRECATED") {
-            stats[platform].deprecated += 1;
-          } else {
-            stats[platform].active += 1;
-          }
+          stats[platform] = { intents: Array.isArray(item.intents) ? item.intents.length : 0 };
         }
 
         setPlatformPresetStats(stats);
       } catch (error) {
         if ((error as { name?: string })?.name !== "AbortError") {
-          console.error("Failed to fetch bb preset platform stats:", error);
+          console.error("Failed to fetch gather script platform stats:", error);
         }
       }
     };
@@ -585,49 +507,47 @@ export const SocialMediaFields = ({
 
   useEffect(() => {
     if (!socialPlatform || resolvedDriver !== "playwright") {
-      setBbPresetOptions([]);
+      setCatalogOptions([]);
       return;
     }
 
     const controller = new AbortController();
-    const fetchBbPresets = async () => {
-      setLoadingBbPresets(true);
+    const fetchCatalog = async () => {
+      setLoadingCatalog(true);
       try {
         const response = await fetch(
-          `/api/follow/bb-presets?latestOnly=true&platform=${encodeURIComponent(
+          `/api/follow/gather-scripts/catalog?platform=${encodeURIComponent(
             socialPlatform
           )}`,
           { signal: controller.signal }
         );
         if (!response.ok) return;
         const data = await response.json();
-        const items = Array.isArray(data?.items) ? (data.items as BbPresetApiItem[]) : [];
-        const nextOptions: ScriptOption[] = items
-          .filter((item) => item.isActive && item.status === "ACTIVE")
+        const items = Array.isArray(data?.items)
+          ? (data.items as GatherScriptCatalogItem[])
+          : [];
+        const nextOptions: IntentOption[] = items
           .map((item) => ({
-            id: item.id,
+            id: `${item.platform}:${item.intent}:${item.key}`,
             key: item.key,
-            name: item.name || item.key,
-            version: item.version,
+            name: item.key,
             platform: item.platform,
-            description: item.description || item.key,
-            scriptPath: item.scriptRelPath.startsWith("/")
-              ? item.scriptRelPath
-              : `/Users/zangjiaao/Reference/bb-sites/${item.scriptRelPath}`,
-            args: toScriptArgRules(item.argsSchema),
+            intentType: item.intent,
+            description: `${item.platform.toLowerCase()}.${item.intent}`,
+            args: toIntentArgRules(item.sample?.intentArgs),
           }))
-          .filter((item) => item.scriptPath.trim().length > 0);
-        setBbPresetOptions(nextOptions);
+          .filter((item) => item.intentType.trim().length > 0);
+        setCatalogOptions(nextOptions);
       } catch (error) {
         if ((error as { name?: string })?.name !== "AbortError") {
-          console.error("Failed to fetch bb presets:", error);
+          console.error("Failed to fetch gather scripts catalog:", error);
         }
       } finally {
-        setLoadingBbPresets(false);
+        setLoadingCatalog(false);
       }
     };
 
-    fetchBbPresets();
+    fetchCatalog();
     return () => controller.abort();
   }, [socialPlatform, resolvedDriver]);
 
@@ -667,7 +587,7 @@ export const SocialMediaFields = ({
   ]);
 
   const syncArgsToForm = useCallback(
-    (rows: PlaywrightArgRow[]) => {
+    (rows: IntentArgRow[]) => {
       if (!setValue) return;
       const args = rows.reduce<Record<string, string>>((acc, row) => {
         const key = row.key.trim();
@@ -675,7 +595,7 @@ export const SocialMediaFields = ({
         acc[key] = row.value;
         return acc;
       }, {});
-      setValue("social.config.playwright.args", args, { shouldDirty: true });
+      setValue("social.config.intent.args", args as any, { shouldDirty: true });
     },
     [setValue]
   );
@@ -699,25 +619,25 @@ export const SocialMediaFields = ({
 
   const applyScriptDefaults = useCallback(
     (
-      scriptPath: string,
-      scriptOptions: ScriptOption[],
+      intentType: string,
+      scriptOptions: IntentOption[],
       incomingArgs: unknown,
       config?: {
         markDirty?: boolean;
       }
     ) => {
       if (!setValue) return;
-      const script = getScriptOptionByPath(scriptOptions, scriptPath);
-      if (!script) return;
+      const option = getIntentOptionByType(scriptOptions, intentType);
+      if (!option) return;
       const currentArgs = normalizeArgs(incomingArgs);
       const nextArgs = Object.fromEntries(
-        Object.keys(script.args).map((argKey) => [argKey, currentArgs[argKey] ?? ""])
+        Object.keys(option.args).map((argKey) => [argKey, currentArgs[argKey] ?? ""])
       );
-      const rows = buildXArgRows(nextArgs, script);
-      setValue("social.config.playwright.scriptPath", script.scriptPath, {
+      const rows = buildIntentArgRows(nextArgs, option);
+      setValue("social.config.intent.type", option.intentType, {
         shouldDirty: config?.markDirty ?? false,
       });
-      setValue("social.config.playwright.args", nextArgs, {
+      setValue("social.config.intent.args", nextArgs as any, {
         shouldDirty: config?.markDirty ?? false,
       });
       setXArgRows(rows);
@@ -761,11 +681,24 @@ export const SocialMediaFields = ({
   useEffect(() => {
     if (resolvedDriver !== "playwright") return;
     if (scriptOptions.length === 0) return;
-    const scriptPath = watch("social.config.playwright.scriptPath");
-    const normalizedScriptPath = scriptPath || scriptOptions[0].scriptPath;
-    const rawArgs = watch("social.config.playwright.args");
-    applyScriptDefaults(normalizedScriptPath, scriptOptions, rawArgs);
+    const intentType = watch("social.config.intent.type") as string | undefined;
+    const normalizedIntentType = intentType || scriptOptions[0].intentType;
+    const rawArgs = watch("social.config.intent.args");
+    applyScriptDefaults(normalizedIntentType, scriptOptions, rawArgs);
   }, [resolvedDriver, scriptOptions, watch, applyScriptDefaults]);
+
+  useEffect(() => {
+    if (resolvedDriver !== "playwright") return;
+    if (scriptOptions.length > 0) return;
+    const rawArgs = normalizeArgs(watch("social.config.intent.args"));
+    const rows = Object.entries(rawArgs).map(([key, value]) => ({
+      id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+      key,
+      value,
+      preset: false,
+    })) as IntentArgRow[];
+    setXArgRows(rows.length > 0 ? rows : [createEmptyArgRow()]);
+  }, [resolvedDriver, scriptOptions.length, watch]);
 
   useEffect(() => {
     if (resolvedDriver !== "agent-browser") return;
@@ -1042,12 +975,12 @@ export const SocialMediaFields = ({
 
   // Get selected credential info
   const selectedCredential = credentials.find(c => c.id === currentCredentialId);
-  const selectedScriptPath = watch("social.config.playwright.scriptPath") as
+  const selectedIntentType = watch("social.config.intent.type") as
     | string
     | undefined;
   const selectedScript =
     scriptOptions.length > 0
-      ? getScriptOptionByPath(scriptOptions, selectedScriptPath)
+      ? getIntentOptionByType(scriptOptions, selectedIntentType)
       : null;
   const outputFieldError = getConfigErrorMessage("output.field");
   const outputTypeError = getConfigErrorMessage("output.type");
@@ -1073,7 +1006,15 @@ export const SocialMediaFields = ({
     }
 
     const previewConfig = { ...config };
+    const intentConfig = asRecord(previewConfig.intent);
+    const intentType =
+      typeof intentConfig.type === "string" && intentConfig.type.trim()
+        ? intentConfig.type.trim()
+        : "search";
+    const intentArgs = asRecord(intentConfig.args);
+
     delete previewConfig.driver;
+    delete previewConfig.intent;
     delete previewConfig.output;
     delete previewConfig.responseFormats;
     delete previewConfig.filter;
@@ -1130,6 +1071,10 @@ export const SocialMediaFields = ({
     return {
       sourceId: sourceId ?? "__SOURCE_ID__",
       platform: socialPlatform.toLowerCase(),
+      intent: {
+        type: intentType,
+        args: intentArgs,
+      },
       keywords: [],
       driver,
       output,
@@ -1326,24 +1271,19 @@ export const SocialMediaFields = ({
 
   const renderPlatformBadges = (platform: string) => {
     const stats = platformPresetStats[platform];
-    const isBbOnly = !SocialPlatformEnum.options.includes(
+    const isCatalogOnly = !SocialPlatformEnum.options.includes(
       platform as (typeof SocialPlatformEnum.options)[number]
     );
     return (
       <div className="flex items-center gap-1">
-        {stats?.active ? (
+        {stats?.intents ? (
           <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">
-            bb:{stats.active}
+            intents:{stats.intents}
           </Badge>
         ) : null}
-        {stats && !stats.active && (stats.deprecated > 0 || stats.broken > 0) ? (
+        {isCatalogOnly ? (
           <Badge variant="outline" className="h-5 px-1.5 text-[10px]">
-            bb unavailable
-          </Badge>
-        ) : null}
-        {isBbOnly ? (
-          <Badge variant="outline" className="h-5 px-1.5 text-[10px]">
-            bb-site only
+            catalog only
           </Badge>
         ) : null}
       </div>
@@ -1570,7 +1510,8 @@ export const SocialMediaFields = ({
                                   setValue("social.config.playwright.mode", "eval-js");
                                   setValue("social.config.playwright.headless", false);
                                   setValue("social.config.playwright.targetUrl", "");
-                                  setValue("social.config.playwright.args", {});
+                                  setValue("social.config.intent.type", "search");
+                                  setValue("social.config.intent.args", {} as any);
                                 }
                               }}
                             >
@@ -1598,11 +1539,9 @@ export const SocialMediaFields = ({
             </ErrorMessage>
             {socialPlatform && (
               <p className="text-xs text-muted-foreground">
-                {currentPlatformStats?.active
-                  ? `该平台有 ${currentPlatformStats.active} 个可用 bb-site 脚本，可在 Playwright 中直接选择。`
-                  : currentPlatformStats?.deprecated || currentPlatformStats?.broken
-                    ? "该平台 bb-site 脚本当前不可用（DEPRECATED/BROKEN），你仍可使用自定义 driver 配置。"
-                    : "该平台当前无 bb-site 脚本，使用自定义 driver 配置。"}
+                {currentPlatformStats?.intents
+                  ? `该平台有 ${currentPlatformStats.intents} 个 gather scripts intent，可直接选择。`
+                  : "该平台暂未发现 gather scripts intent，可继续使用自定义 driver 配置。"}
               </p>
             )}
           </div>
@@ -1856,7 +1795,7 @@ export const SocialMediaFields = ({
               <div>
                 <p className="text-sm font-medium">Playwright Option</p>
                 <p className="text-xs text-muted-foreground">
-                  可直接选择 bb-site preset 并自动填充 scriptPath 与 args。
+                  选择 gather scripts intent，并配置 intent args。
                 </p>
               </div>
 
@@ -1905,63 +1844,59 @@ export const SocialMediaFields = ({
                 </div>
 
                 <div className="grid gap-3 md:col-span-2">
-                  <Label htmlFor="social.config.playwright.scriptPath">Script Template</Label>
+                  <Label htmlFor="social.config.intent.type">Intent Template</Label>
                   {scriptOptions.length > 0 && (
                     <Controller
-                      name="social.config.playwright.scriptPath"
+                      name={"social.config.intent.type" as any}
                       control={control}
                       render={({ field }) => (
                         <ControlledSelect
-                          value={(field.value as string) || scriptOptions[0].scriptPath}
+                          value={(field.value as string) || scriptOptions[0].intentType}
                           onValueChange={(value) => {
-                            const nextScriptPath = value || scriptOptions[0].scriptPath;
-                            field.onChange(nextScriptPath);
-                            const args = watch("social.config.playwright.args");
-                            applyScriptDefaults(nextScriptPath, scriptOptions, args, {
+                            const nextIntentType = value || scriptOptions[0].intentType;
+                            field.onChange(nextIntentType);
+                            const args = watch("social.config.intent.args");
+                            applyScriptDefaults(nextIntentType, scriptOptions, args, {
                               markDirty: true,
                             });
                           }}
-                          placeholder="Select script template"
+                          placeholder="Select intent template"
                         >
                           {scriptOptions.map((option) => (
-                            <SelectItem key={option.id} value={option.scriptPath}>
-                              {option.version ? `${option.key}@${option.version}` : option.name}
+                            <SelectItem key={option.id} value={option.intentType}>
+                              {option.name}
                             </SelectItem>
                           ))}
                         </ControlledSelect>
                       )}
                     />
                   )}
-                  {loadingBbPresets && (
-                    <p className="text-xs text-muted-foreground">Loading bb-site presets...</p>
+                  {loadingCatalog && (
+                    <p className="text-xs text-muted-foreground">Loading gather scripts catalog...</p>
                   )}
-                  <ErrorMessage>{getConfigErrorMessage("playwright.scriptPath")}</ErrorMessage>
+                  <ErrorMessage>{getConfigErrorMessage("intent.type")}</ErrorMessage>
                   {selectedScript && (
                     <p className="text-xs text-muted-foreground">
                       {selectedScript.description}
                     </p>
                   )}
                   {scriptOptions.length === 0 && (
-                    <p className="text-xs text-muted-foreground">
-                      当前平台暂无可用 bb-site 脚本，可手动填写 scriptPath。
-                    </p>
+                    <div className="grid gap-2">
+                      <p className="text-xs text-muted-foreground">
+                        当前平台暂无可用 gather intent，可手动配置 intent.type 与 args。
+                      </p>
+                      <Input
+                        placeholder="intent type (e.g. search)"
+                        {...register("social.config.intent.type" as any)}
+                      />
+                    </div>
                   )}
-                  <div className="grid gap-2">
-                    <Label htmlFor="social.config.playwright.scriptPath-input">
-                      Script Path (Editable)
-                    </Label>
-                    <Input
-                      id="social.config.playwright.scriptPath-input"
-                      placeholder="/Users/zangjiaao/Reference/bb-sites/twitter/tweets.js"
-                      {...register("social.config.playwright.scriptPath")}
-                    />
-                  </div>
                 </div>
               </div>
 
               <div className="grid gap-3 border rounded-md p-3 bg-background">
                 <div className="flex items-center justify-between">
-                  <Label className="text-sm font-medium">Args (key:value)</Label>
+                  <Label className="text-sm font-medium">Intent Args (key:value)</Label>
                   <Button type="button" variant="outline" size="sm" onClick={addArgRow}>
                     <Plus className="h-3.5 w-3.5 mr-1" />
                     Add
@@ -1973,7 +1908,7 @@ export const SocialMediaFields = ({
                       <Input
                         value={row.key}
                         onChange={(e) => updateArgRow(row.id, "key", e.target.value)}
-                        placeholder="key (e.g. screen_name)"
+                        placeholder="key (e.g. query)"
                         disabled={Boolean(row.preset)}
                       />
                       <Input
@@ -2001,9 +1936,9 @@ export const SocialMediaFields = ({
                   ))}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  选择 bb-site preset 后会自动填充参数；你也可以新增自定义 key:value。
+                  选择 intent template 后会自动填充推荐参数；你也可以新增自定义 key:value。
                 </p>
-                <ErrorMessage>{getConfigErrorMessage("playwright.args")}</ErrorMessage>
+                <ErrorMessage>{getConfigErrorMessage("intent.args")}</ErrorMessage>
               </div>
             </div>
           )}
