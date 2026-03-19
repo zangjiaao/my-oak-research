@@ -10,6 +10,8 @@ Usage:
     uv run export_chrome_cookies.py telegram
     uv run export_chrome_cookies.py whatsapp
     uv run export_chrome_cookies.py x
+    uv run export_chrome_cookies.py linkedin
+    uv run export_chrome_cookies.py youtube
     uv run export_chrome_cookies.py --help
 
 Requirements:
@@ -119,6 +121,20 @@ PLATFORMS = {
         "url": "https://www.facebook.com",
         "output_file": "facebook_auth.json",
         "display_name": "Facebook",
+        "auth_types": ["cookie"],
+    },
+    "linkedin": {
+        "domains": [".linkedin.com"],
+        "url": "https://www.linkedin.com",
+        "output_file": "linkedin_auth.json",
+        "display_name": "LinkedIn",
+        "auth_types": ["cookie"],
+    },
+    "youtube": {
+        "domains": [".youtube.com"],
+        "url": "https://www.youtube.com",
+        "output_file": "youtube_auth.json",
+        "display_name": "YouTube",
         "auth_types": ["cookie"],
     },
 }
@@ -426,6 +442,8 @@ def main():
   douyin        - 仅 Cookie
   tiktok        - 仅 Cookie
   weibo         - 仅 Cookie
+  linkedin      - 仅 Cookie
+  youtube       - 仅 Cookie
   telegram      - Cookie + localStorage
   whatsapp      - 持久化浏览器配置文件（需要 Playwright）
 

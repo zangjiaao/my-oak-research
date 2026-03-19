@@ -28,6 +28,15 @@ class StubFetchDriver(BaseDriver):
                     "text": f"stub text {args.get('query', '')}".strip(),
                     "url": "https://x.com/openai/status/1",
                     "query": args.get("query"),
+                    "keyword": args.get("keyword"),
+                    "video_url": args.get("url"),
+                    "channel_id": args.get("id"),
+                    "uid": args.get("uid"),
+                    "max_id": args.get("max_id"),
+                    "page": args.get("page"),
+                    "feature": args.get("feature"),
+                    "lang": args.get("lang"),
+                    "transcript_mode": args.get("mode"),
                     "username": args.get("username"),
                     "tweet_id": args.get("tweet_id"),
                     "count": args.get("count"),
@@ -231,6 +240,212 @@ def test_fetch_v3_xhs_user_intent_maps_id(monkeypatch):
     assert payload["meta"]["adapter"] == "xhs.user"
     assert payload["items"][0]["recordContent"]["count"] == "5"
     assert payload["items"][0]["recordContent"]["mode"] == "intercept-xhs-user"
+
+
+def test_fetch_v3_bbc_news_intent_maps_mode_and_limit(monkeypatch):
+    response = _client_with_stub_driver(monkeypatch).post(
+        "/v3/fetch",
+        json={
+            "platform": "bbc",
+            "sourceId": "source_123",
+            "intent": {"type": "news", "args": {"limit": 12}},
+            "keywords": [],
+            "driver": {"name": "playwright", "option": {}},
+            "output": {"field": ["count", "mode"], "type": "bbc-news"},
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["meta"]["adapter"] == "bbc.news"
+    assert payload["items"][0]["recordContent"]["count"] == "12"
+    assert payload["items"][0]["recordContent"]["mode"] == "intercept-bbc-news"
+
+
+def test_fetch_v3_hackernews_top_intent_maps_mode_and_limit(monkeypatch):
+    response = _client_with_stub_driver(monkeypatch).post(
+        "/v3/fetch",
+        json={
+            "platform": "hackernews",
+            "sourceId": "source_123",
+            "intent": {"type": "top", "args": {"limit": 15}},
+            "keywords": [],
+            "driver": {"name": "playwright", "option": {}},
+            "output": {"field": ["count", "mode"], "type": "hn-top"},
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["meta"]["adapter"] == "hackernews.top"
+    assert payload["items"][0]["recordContent"]["count"] == "15"
+    assert payload["items"][0]["recordContent"]["mode"] == "intercept-hackernews-top"
+
+
+def test_fetch_v3_linkedin_search_maps_mode_and_args(monkeypatch):
+    response = _client_with_stub_driver(monkeypatch).post(
+        "/v3/fetch",
+        json={
+            "platform": "linkedin",
+            "sourceId": "source_123",
+            "intent": {
+                "type": "search",
+                "args": {
+                    "query": "software engineer",
+                    "location": "San Francisco",
+                    "start": 5,
+                    "limit": 10,
+                },
+            },
+            "keywords": [],
+            "driver": {"name": "playwright", "option": {}},
+            "output": {"field": ["query", "count", "mode"], "type": "linkedin-job"},
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["meta"]["adapter"] == "linkedin.search"
+    assert payload["items"][0]["recordContent"]["query"] == "software engineer"
+    assert payload["items"][0]["recordContent"]["count"] == "10"
+    assert payload["items"][0]["recordContent"]["mode"] == "intercept-linkedin-search"
+
+
+def test_fetch_v3_linux_do_search_maps_mode_and_keyword(monkeypatch):
+    response = _client_with_stub_driver(monkeypatch).post(
+        "/v3/fetch",
+        json={
+            "platform": "linux-do",
+            "sourceId": "source_123",
+            "intent": {
+                "type": "search",
+                "args": {
+                    "keyword": "playwright",
+                    "limit": 10,
+                },
+            },
+            "keywords": [],
+            "driver": {"name": "playwright", "option": {}},
+            "output": {"field": ["keyword", "count", "mode"], "type": "linux-do-topic"},
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["meta"]["adapter"] == "linux-do.search"
+    assert payload["items"][0]["recordContent"]["keyword"] == "playwright"
+    assert payload["items"][0]["recordContent"]["count"] == "10"
+    assert payload["items"][0]["recordContent"]["mode"] == "intercept-linux-do-search"
+
+
+def test_fetch_v3_youtube_search_maps_mode(monkeypatch):
+    response = _client_with_stub_driver(monkeypatch).post(
+        "/v3/fetch",
+        json={
+            "platform": "youtube",
+            "sourceId": "source_123",
+            "intent": {"type": "search", "args": {"query": "openai", "limit": 12}},
+            "keywords": [],
+            "driver": {"name": "playwright", "option": {}},
+            "output": {"field": ["query", "count", "mode"], "type": "youtube-video"},
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["meta"]["adapter"] == "youtube.search"
+    assert payload["items"][0]["recordContent"]["query"] == "openai"
+    assert payload["items"][0]["recordContent"]["count"] == "12"
+    assert payload["items"][0]["recordContent"]["mode"] == "intercept-youtube-search"
+
+
+def test_fetch_v3_youtube_transcript_maps_url_lang_mode(monkeypatch):
+    response = _client_with_stub_driver(monkeypatch).post(
+        "/v3/fetch",
+        json={
+            "platform": "youtube",
+            "sourceId": "source_123",
+            "intent": {
+                "type": "transcript",
+                "args": {
+                    "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+                    "lang": "en",
+                    "mode": "raw",
+                    "limit": 8,
+                },
+            },
+            "keywords": [],
+            "driver": {"name": "playwright", "option": {}},
+            "output": {"field": ["video_url", "lang", "transcript_mode", "count", "mode"], "type": "youtube-transcript"},
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["meta"]["adapter"] == "youtube.transcript"
+    assert payload["items"][0]["recordContent"]["video_url"] == "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+    assert payload["items"][0]["recordContent"]["lang"] == "en"
+    assert payload["items"][0]["recordContent"]["transcript_mode"] == "raw"
+    assert payload["items"][0]["recordContent"]["count"] == "8"
+    assert payload["items"][0]["recordContent"]["mode"] == "intercept-youtube-transcript"
+
+
+def test_fetch_v3_youtube_channel_maps_channel_id(monkeypatch):
+    response = _client_with_stub_driver(monkeypatch).post(
+        "/v3/fetch",
+        json={
+            "platform": "youtube",
+            "sourceId": "source_123",
+            "intent": {
+                "type": "channel",
+                "args": {
+                    "id": "@openai",
+                    "limit": 6,
+                },
+            },
+            "keywords": [],
+            "driver": {"name": "playwright", "option": {}},
+            "output": {"field": ["channel_id", "count", "mode"], "type": "youtube-channel"},
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["meta"]["adapter"] == "youtube.channel"
+    assert payload["items"][0]["recordContent"]["channel_id"] == "@openai"
+    assert payload["items"][0]["recordContent"]["count"] == "6"
+    assert payload["items"][0]["recordContent"]["mode"] == "intercept-youtube-channel"
+
+
+def test_fetch_v3_weibo_user_posts_maps_mode_and_args(monkeypatch):
+    response = _client_with_stub_driver(monkeypatch).post(
+        "/v3/fetch",
+        json={
+            "platform": "weibo",
+            "sourceId": "source_123",
+            "intent": {
+                "type": "user_posts",
+                "args": {
+                    "uid": "1654184992",
+                    "page": 2,
+                    "feature": 3,
+                    "limit": 9,
+                },
+            },
+            "keywords": [],
+            "driver": {"name": "playwright", "option": {}},
+            "output": {"field": ["uid", "page", "feature", "count", "mode"], "type": "weibo-post"},
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["meta"]["adapter"] == "weibo.user_posts"
+    assert payload["items"][0]["recordContent"]["uid"] == "1654184992"
+    assert payload["items"][0]["recordContent"]["page"] == 2
+    assert payload["items"][0]["recordContent"]["feature"] == 3
+    assert payload["items"][0]["recordContent"]["count"] == "9"
+    assert payload["items"][0]["recordContent"]["mode"] == "intercept-weibo-user_posts"
 
 
 def test_fetch_v3_validation_error():

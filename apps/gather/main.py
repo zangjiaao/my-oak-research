@@ -92,6 +92,12 @@ _SCRIPT_REGISTRY = ScriptRegistry(_SCRIPT_SOURCE_ROOT, _SCRIPT_RUNTIME_ROOT)
 _X_INTERCEPT_INTENTS = _SCRIPT_REGISTRY.intents_for("x")
 _REDDIT_INTERCEPT_INTENTS = _SCRIPT_REGISTRY.intents_for("reddit")
 _XHS_INTERCEPT_INTENTS = _SCRIPT_REGISTRY.intents_for("xhs")
+_BBC_INTERCEPT_INTENTS = _SCRIPT_REGISTRY.intents_for("bbc")
+_HACKERNEWS_INTERCEPT_INTENTS = _SCRIPT_REGISTRY.intents_for("hackernews")
+_LINKEDIN_INTERCEPT_INTENTS = _SCRIPT_REGISTRY.intents_for("linkedin")
+_LINUX_DO_INTERCEPT_INTENTS = _SCRIPT_REGISTRY.intents_for("linux-do")
+_YOUTUBE_INTERCEPT_INTENTS = _SCRIPT_REGISTRY.intents_for("youtube")
+_WEIBO_INTERCEPT_INTENTS = _SCRIPT_REGISTRY.intents_for("weibo")
 _REPO_ROOT = _GATHER_APP_ROOT.parents[1]
 if _RAW_API_IO_LOG_DIR.is_absolute():
     _API_IO_LOG_DIR = _RAW_API_IO_LOG_DIR
@@ -304,6 +310,30 @@ async def _playwright_fetch_data(request: FetchRequest):
         if mode.startswith("intercept-xhs-") and platform in {"xhs", "xiaohongshu"}:
             intent_type = mode.removeprefix("intercept-xhs-").strip().lower()
             return await _run_playwright_intercept_xhs_intent(request, intent_type)
+        if mode.startswith("intercept-bbc-") and platform == "bbc":
+            intent_type = mode.removeprefix("intercept-bbc-").strip().lower()
+            return await _run_playwright_intercept_bbc_intent(request, intent_type)
+        if mode.startswith("intercept-hackernews-") and platform in {"hackernews", "hn"}:
+            intent_type = mode.removeprefix("intercept-hackernews-").strip().lower()
+            return await _run_playwright_intercept_hackernews_intent(request, intent_type)
+        if mode.startswith("intercept-hn-") and platform in {"hackernews", "hn"}:
+            intent_type = mode.removeprefix("intercept-hn-").strip().lower()
+            return await _run_playwright_intercept_hackernews_intent(request, intent_type)
+        if mode.startswith("intercept-linkedin-") and platform == "linkedin":
+            intent_type = mode.removeprefix("intercept-linkedin-").strip().lower()
+            return await _run_playwright_intercept_linkedin_intent(request, intent_type)
+        if mode.startswith("intercept-linux-do-") and platform in {"linux-do", "linuxdo"}:
+            intent_type = mode.removeprefix("intercept-linux-do-").strip().lower()
+            return await _run_playwright_intercept_linux_do_intent(request, intent_type)
+        if mode.startswith("intercept-linuxdo-") and platform in {"linux-do", "linuxdo"}:
+            intent_type = mode.removeprefix("intercept-linuxdo-").strip().lower()
+            return await _run_playwright_intercept_linux_do_intent(request, intent_type)
+        if mode.startswith("intercept-youtube-") and platform == "youtube":
+            intent_type = mode.removeprefix("intercept-youtube-").strip().lower()
+            return await _run_playwright_intercept_youtube_intent(request, intent_type)
+        if mode.startswith("intercept-weibo-") and platform == "weibo":
+            intent_type = mode.removeprefix("intercept-weibo-").strip().lower()
+            return await _run_playwright_intercept_weibo_intent(request, intent_type)
         if mode in {"eval-js", "evaljs", "eval"}:
             return await _run_playwright_eval_script(request)
 
@@ -1354,6 +1384,526 @@ async def _run_playwright_intercept_xhs_intent(request: FetchRequest, intent_typ
     return items
 
 
+async def _run_playwright_intercept_bbc_intent(request: FetchRequest, intent_type: str) -> list[CleanItem]:
+    from playwright.async_api import TimeoutError as PlaywrightTimeoutError
+    from playwright.async_api import async_playwright
+
+    config = request.config if isinstance(request.config, dict) else {}
+    playwright_options = config.get("playwright")
+    if not isinstance(playwright_options, dict):
+        raise HTTPException(status_code=400, detail="config.playwright must be an object")
+
+    args = playwright_options.get("args", {})
+    args_obj = args if isinstance(args, dict) else {}
+    normalized_intent = (intent_type or "").strip().lower()
+    if normalized_intent not in _BBC_INTERCEPT_INTENTS:
+        raise HTTPException(status_code=400, detail=f"unsupported bbc intercept intent: {normalized_intent}")
+
+    raw_limit = args_obj.get("limit", args_obj.get("count", 20))
+    try:
+        limit = int(raw_limit)
+    except (TypeError, ValueError):
+        limit = 20
+    limit = max(1, min(limit, 50))
+
+    headless = bool(playwright_options.get("headless", True))
+    navigation_timeout_ms = playwright_options.get("navigationTimeoutMs", 60000)
+    if not isinstance(navigation_timeout_ms, int) or navigation_timeout_ms < 1000:
+        raise HTTPException(status_code=400, detail="config.playwright.navigationTimeoutMs must be an integer >= 1000")
+    storage_state = _load_playwright_storage_state_from_config(request, playwright_options)
+    if normalized_intent == "news":
+        target_url = "https://feeds.bbci.co.uk/news/rss.xml"
+    else:
+        target_url = "https://www.bbc.com/news"
+
+    script_to_run = build_x_intent_script(
+        _SCRIPT_REGISTRY,
+        normalized_intent,
+        {
+            "__LIMIT__": limit,
+            "__COUNT__": limit,
+        },
+        platform="bbc",
+    )
+
+    try:
+        async with async_playwright() as playwright:
+            browser = await playwright.chromium.launch(headless=headless)
+            context_options: dict[str, Any] = {}
+            if storage_state:
+                context_options["storage_state"] = storage_state
+            context = await browser.new_context(**context_options)
+            page = await context.new_page()
+            try:
+                await page.goto(target_url, wait_until="domcontentloaded", timeout=navigation_timeout_ms)
+                await page.wait_for_timeout(800)
+                eval_result = await page.evaluate(script_to_run)
+            finally:
+                await context.close()
+                await browser.close()
+    except PlaywrightTimeoutError as error:
+        raise HTTPException(status_code=504, detail=f"playwright intercept bbc timeout: {error}") from error
+    except HTTPException:
+        raise
+    except Exception as error:
+        raise HTTPException(status_code=500, detail=f"playwright intercept bbc {normalized_intent} failed: {error}") from error
+
+    items = _normalize_playwright_eval_result(eval_result, request, target_url)
+    if not items:
+        raise HTTPException(status_code=500, detail=f"playwright intercept bbc {normalized_intent} finished without output")
+    return items
+
+
+async def _run_playwright_intercept_hackernews_intent(request: FetchRequest, intent_type: str) -> list[CleanItem]:
+    from playwright.async_api import TimeoutError as PlaywrightTimeoutError
+    from playwright.async_api import async_playwright
+
+    config = request.config if isinstance(request.config, dict) else {}
+    playwright_options = config.get("playwright")
+    if not isinstance(playwright_options, dict):
+        raise HTTPException(status_code=400, detail="config.playwright must be an object")
+
+    args = playwright_options.get("args", {})
+    args_obj = args if isinstance(args, dict) else {}
+    normalized_intent = (intent_type or "").strip().lower()
+    if normalized_intent not in _HACKERNEWS_INTERCEPT_INTENTS:
+        raise HTTPException(status_code=400, detail=f"unsupported hackernews intercept intent: {normalized_intent}")
+
+    raw_limit = args_obj.get("limit", args_obj.get("count", 20))
+    try:
+        limit = int(raw_limit)
+    except (TypeError, ValueError):
+        limit = 20
+    limit = max(1, min(limit, 100))
+
+    headless = bool(playwright_options.get("headless", True))
+    navigation_timeout_ms = playwright_options.get("navigationTimeoutMs", 60000)
+    if not isinstance(navigation_timeout_ms, int) or navigation_timeout_ms < 1000:
+        raise HTTPException(status_code=400, detail="config.playwright.navigationTimeoutMs must be an integer >= 1000")
+    storage_state = _load_playwright_storage_state_from_config(request, playwright_options)
+    target_url = "https://news.ycombinator.com"
+
+    script_to_run = build_x_intent_script(
+        _SCRIPT_REGISTRY,
+        normalized_intent,
+        {
+            "__LIMIT__": limit,
+            "__COUNT__": limit,
+        },
+        platform="hackernews",
+    )
+
+    try:
+        async with async_playwright() as playwright:
+            browser = await playwright.chromium.launch(headless=headless)
+            context_options: dict[str, Any] = {}
+            if storage_state:
+                context_options["storage_state"] = storage_state
+            context = await browser.new_context(**context_options)
+            page = await context.new_page()
+            try:
+                await page.goto(target_url, wait_until="domcontentloaded", timeout=navigation_timeout_ms)
+                await page.wait_for_timeout(500)
+                eval_result = await page.evaluate(script_to_run)
+            finally:
+                await context.close()
+                await browser.close()
+    except PlaywrightTimeoutError as error:
+        raise HTTPException(status_code=504, detail=f"playwright intercept hackernews timeout: {error}") from error
+    except HTTPException:
+        raise
+    except Exception as error:
+        raise HTTPException(status_code=500, detail=f"playwright intercept hackernews {normalized_intent} failed: {error}") from error
+
+    items = _normalize_playwright_eval_result(eval_result, request, target_url)
+    if not items:
+        raise HTTPException(status_code=500, detail=f"playwright intercept hackernews {normalized_intent} finished without output")
+    return items
+
+
+async def _run_playwright_intercept_linkedin_intent(request: FetchRequest, intent_type: str) -> list[CleanItem]:
+    from playwright.async_api import TimeoutError as PlaywrightTimeoutError
+    from playwright.async_api import async_playwright
+
+    config = request.config if isinstance(request.config, dict) else {}
+    playwright_options = config.get("playwright")
+    if not isinstance(playwright_options, dict):
+        raise HTTPException(status_code=400, detail="config.playwright must be an object")
+
+    args = playwright_options.get("args", {})
+    args_obj = args if isinstance(args, dict) else {}
+    normalized_intent = (intent_type or "").strip().lower()
+    if normalized_intent not in _LINKEDIN_INTERCEPT_INTENTS:
+        raise HTTPException(status_code=400, detail=f"unsupported linkedin intercept intent: {normalized_intent}")
+
+    query = str(args_obj.get("query", "")).strip()
+    if normalized_intent == "search" and not query:
+        raise HTTPException(status_code=400, detail="config.playwright.args.query is required for intercept-linkedin-search mode")
+
+    location = str(args_obj.get("location", "")).strip()
+    company = str(args_obj.get("company", "")).strip()
+    experience_level = str(args_obj.get("experience_level", args_obj.get("experienceLevel", ""))).strip()
+    job_type = str(args_obj.get("job_type", args_obj.get("jobType", ""))).strip()
+    date_posted = str(args_obj.get("date_posted", args_obj.get("datePosted", ""))).strip()
+    remote = str(args_obj.get("remote", "")).strip()
+    details = bool(args_obj.get("details", False))
+    raw_start = args_obj.get("start", 0)
+    try:
+        start = int(raw_start)
+    except (TypeError, ValueError):
+        start = 0
+    start = max(0, min(start, 1000))
+    raw_limit = args_obj.get("limit", args_obj.get("count", 20))
+    try:
+        limit = int(raw_limit)
+    except (TypeError, ValueError):
+        limit = 20
+    limit = max(1, min(limit, 100))
+
+    headless = bool(playwright_options.get("headless", True))
+    navigation_timeout_ms = playwright_options.get("navigationTimeoutMs", 60000)
+    if not isinstance(navigation_timeout_ms, int) or navigation_timeout_ms < 1000:
+        raise HTTPException(status_code=400, detail="config.playwright.navigationTimeoutMs must be an integer >= 1000")
+    storage_state = _load_playwright_storage_state_from_config(request, playwright_options)
+    params = [f"keywords={quote(query)}"]
+    if location:
+        params.append(f"location={quote(location)}")
+    target_url = f"https://www.linkedin.com/jobs/search/?{'&'.join(params)}"
+
+    script_to_run = build_x_intent_script(
+        _SCRIPT_REGISTRY,
+        normalized_intent,
+        {
+            "__QUERY_JSON__": json.dumps(query, ensure_ascii=False),
+            "__LOCATION_JSON__": json.dumps(location, ensure_ascii=False),
+            "__COMPANY_JSON__": json.dumps(company, ensure_ascii=False),
+            "__EXPERIENCE_LEVEL_JSON__": json.dumps(experience_level, ensure_ascii=False),
+            "__JOB_TYPE_JSON__": json.dumps(job_type, ensure_ascii=False),
+            "__DATE_POSTED_JSON__": json.dumps(date_posted, ensure_ascii=False),
+            "__REMOTE_JSON__": json.dumps(remote, ensure_ascii=False),
+            "__START__": start,
+            "__LIMIT__": limit,
+            "__COUNT__": limit,
+            "__DETAILS__": "true" if details else "false",
+        },
+        platform="linkedin",
+    )
+
+    try:
+        async with async_playwright() as playwright:
+            browser = await playwright.chromium.launch(headless=headless)
+            context_options: dict[str, Any] = {}
+            if storage_state:
+                context_options["storage_state"] = storage_state
+            context = await browser.new_context(**context_options)
+            page = await context.new_page()
+            try:
+                await page.goto(target_url, wait_until="domcontentloaded", timeout=navigation_timeout_ms)
+                await page.wait_for_timeout(1500)
+                eval_result = await page.evaluate(script_to_run)
+            finally:
+                await context.close()
+                await browser.close()
+    except PlaywrightTimeoutError as error:
+        raise HTTPException(status_code=504, detail=f"playwright intercept linkedin timeout: {error}") from error
+    except HTTPException:
+        raise
+    except Exception as error:
+        raise HTTPException(status_code=500, detail=f"playwright intercept linkedin {normalized_intent} failed: {error}") from error
+
+    items = _normalize_playwright_eval_result(eval_result, request, target_url)
+    if not items:
+        raise HTTPException(status_code=500, detail=f"playwright intercept linkedin {normalized_intent} finished without output")
+    return items
+
+
+async def _run_playwright_intercept_linux_do_intent(request: FetchRequest, intent_type: str) -> list[CleanItem]:
+    from playwright.async_api import TimeoutError as PlaywrightTimeoutError
+    from playwright.async_api import async_playwright
+
+    config = request.config if isinstance(request.config, dict) else {}
+    playwright_options = config.get("playwright")
+    if not isinstance(playwright_options, dict):
+        raise HTTPException(status_code=400, detail="config.playwright must be an object")
+
+    args = playwright_options.get("args", {})
+    args_obj = args if isinstance(args, dict) else {}
+    normalized_intent = (intent_type or "").strip().lower()
+    if normalized_intent not in _LINUX_DO_INTERCEPT_INTENTS:
+        raise HTTPException(status_code=400, detail=f"unsupported linux-do intercept intent: {normalized_intent}")
+
+    keyword = str(args_obj.get("keyword", args_obj.get("query", ""))).strip()
+    slug = str(args_obj.get("slug", "")).strip()
+    raw_period = str(args_obj.get("period", "weekly")).strip().lower()
+    period = raw_period if raw_period in {"all", "daily", "weekly", "monthly", "yearly"} else "weekly"
+    raw_category_id = args_obj.get("id", args_obj.get("category_id"))
+    raw_topic_id = args_obj.get("id", args_obj.get("topic_id"))
+
+    try:
+        category_id = int(raw_category_id)
+    except (TypeError, ValueError):
+        category_id = 0
+    try:
+        topic_id = int(raw_topic_id)
+    except (TypeError, ValueError):
+        topic_id = 0
+
+    if normalized_intent == "search" and not keyword:
+        raise HTTPException(status_code=400, detail="config.playwright.args.keyword is required for intercept-linux-do-search mode")
+    if normalized_intent == "category":
+        if not slug:
+            raise HTTPException(status_code=400, detail="config.playwright.args.slug is required for intercept-linux-do-category mode")
+        if category_id <= 0:
+            raise HTTPException(status_code=400, detail="config.playwright.args.id is required for intercept-linux-do-category mode")
+    if normalized_intent == "topic" and topic_id <= 0:
+        raise HTTPException(status_code=400, detail="config.playwright.args.id is required for intercept-linux-do-topic mode")
+
+    raw_limit = args_obj.get("limit", args_obj.get("count", 20))
+    try:
+        limit = int(raw_limit)
+    except (TypeError, ValueError):
+        limit = 20
+    limit = max(1, min(limit, 100))
+
+    headless = bool(playwright_options.get("headless", True))
+    navigation_timeout_ms = playwright_options.get("navigationTimeoutMs", 60000)
+    if not isinstance(navigation_timeout_ms, int) or navigation_timeout_ms < 1000:
+        raise HTTPException(status_code=400, detail="config.playwright.navigationTimeoutMs must be an integer >= 1000")
+    storage_state = _load_playwright_storage_state_from_config(request, playwright_options)
+    target_url = "https://linux.do"
+
+    script_to_run = build_x_intent_script(
+        _SCRIPT_REGISTRY,
+        normalized_intent,
+        {
+            "__KEYWORD_JSON__": json.dumps(keyword, ensure_ascii=False),
+            "__SLUG_JSON__": json.dumps(slug, ensure_ascii=False),
+            "__PERIOD_JSON__": json.dumps(period, ensure_ascii=False),
+            "__CATEGORY_ID__": category_id,
+            "__TOPIC_ID__": topic_id,
+            "__LIMIT__": limit,
+            "__COUNT__": limit,
+        },
+        platform="linux-do",
+    )
+
+    try:
+        async with async_playwright() as playwright:
+            browser = await playwright.chromium.launch(headless=headless)
+            context_options: dict[str, Any] = {}
+            if storage_state:
+                context_options["storage_state"] = storage_state
+            context = await browser.new_context(**context_options)
+            page = await context.new_page()
+            try:
+                await page.goto(target_url, wait_until="domcontentloaded", timeout=navigation_timeout_ms)
+                await page.wait_for_timeout(1000)
+                eval_result = await page.evaluate(script_to_run)
+            finally:
+                await context.close()
+                await browser.close()
+    except PlaywrightTimeoutError as error:
+        raise HTTPException(status_code=504, detail=f"playwright intercept linux-do timeout: {error}") from error
+    except HTTPException:
+        raise
+    except Exception as error:
+        raise HTTPException(status_code=500, detail=f"playwright intercept linux-do {normalized_intent} failed: {error}") from error
+
+    items = _normalize_playwright_eval_result(eval_result, request, target_url)
+    if not items:
+        raise HTTPException(status_code=500, detail=f"playwright intercept linux-do {normalized_intent} finished without output")
+    return items
+
+
+async def _run_playwright_intercept_youtube_intent(request: FetchRequest, intent_type: str) -> list[CleanItem]:
+    from playwright.async_api import TimeoutError as PlaywrightTimeoutError
+    from playwright.async_api import async_playwright
+
+    config = request.config if isinstance(request.config, dict) else {}
+    playwright_options = config.get("playwright")
+    if not isinstance(playwright_options, dict):
+        raise HTTPException(status_code=400, detail="config.playwright must be an object")
+
+    args = playwright_options.get("args", {})
+    args_obj = args if isinstance(args, dict) else {}
+    normalized_intent = (intent_type or "").strip().lower()
+    if normalized_intent not in _YOUTUBE_INTERCEPT_INTENTS:
+        raise HTTPException(status_code=400, detail=f"unsupported youtube intercept intent: {normalized_intent}")
+
+    query = str(args_obj.get("query", "")).strip()
+    raw_url = str(args_obj.get("url", args_obj.get("video_url", args_obj.get("videoId", args_obj.get("video_id", ""))))).strip()
+    channel_id = str(args_obj.get("id", args_obj.get("channel_id", ""))).strip()
+    lang = str(args_obj.get("lang", "")).strip()
+    mode = str(args_obj.get("mode", "grouped")).strip().lower() or "grouped"
+    if normalized_intent == "search" and not query:
+        raise HTTPException(status_code=400, detail="config.playwright.args.query is required for intercept-youtube-search mode")
+    if normalized_intent in {"video", "transcript"} and not raw_url:
+        raise HTTPException(status_code=400, detail=f"config.playwright.args.url is required for intercept-youtube-{normalized_intent} mode")
+
+    raw_limit = args_obj.get("limit", args_obj.get("count", 20))
+    try:
+        limit = int(raw_limit)
+    except (TypeError, ValueError):
+        limit = 20
+    limit = max(1, min(limit, 100))
+
+    headless = bool(playwright_options.get("headless", True))
+    navigation_timeout_ms = playwright_options.get("navigationTimeoutMs", 60000)
+    if not isinstance(navigation_timeout_ms, int) or navigation_timeout_ms < 1000:
+        raise HTTPException(status_code=400, detail="config.playwright.navigationTimeoutMs must be an integer >= 1000")
+    storage_state = _load_playwright_storage_state_from_config(request, playwright_options)
+
+    if normalized_intent == "search":
+        target_url = "https://www.youtube.com"
+    elif normalized_intent in {"video", "transcript"}:
+        target_url = raw_url if raw_url.startswith("http") else f"https://www.youtube.com/watch?v={quote(raw_url)}"
+    elif normalized_intent == "channel":
+        if channel_id:
+            if channel_id.startswith("@"):
+                target_url = f"https://www.youtube.com/{quote(channel_id)}"
+            elif channel_id.startswith("UC"):
+                target_url = f"https://www.youtube.com/channel/{quote(channel_id)}"
+            else:
+                target_url = f"https://www.youtube.com/{quote(channel_id)}"
+        else:
+            target_url = "https://www.youtube.com"
+    else:
+        target_url = "https://www.youtube.com"
+
+    script_to_run = build_x_intent_script(
+        _SCRIPT_REGISTRY,
+        normalized_intent,
+        {
+            "__QUERY_JSON__": json.dumps(query, ensure_ascii=False),
+            "__URL_JSON__": json.dumps(raw_url, ensure_ascii=False),
+            "__CHANNEL_ID_JSON__": json.dumps(channel_id, ensure_ascii=False),
+            "__LANG_JSON__": json.dumps(lang, ensure_ascii=False),
+            "__MODE_JSON__": json.dumps(mode, ensure_ascii=False),
+            "__LIMIT__": limit,
+            "__COUNT__": limit,
+        },
+        platform="youtube",
+    )
+
+    try:
+        async with async_playwright() as playwright:
+            browser = await playwright.chromium.launch(headless=headless)
+            context_options: dict[str, Any] = {}
+            if storage_state:
+                context_options["storage_state"] = storage_state
+            context = await browser.new_context(**context_options)
+            page = await context.new_page()
+            try:
+                await page.goto(target_url, wait_until="domcontentloaded", timeout=navigation_timeout_ms)
+                await page.wait_for_timeout(1200)
+                eval_result = await page.evaluate(script_to_run)
+            finally:
+                await context.close()
+                await browser.close()
+    except PlaywrightTimeoutError as error:
+        raise HTTPException(status_code=504, detail=f"playwright intercept youtube timeout: {error}") from error
+    except HTTPException:
+        raise
+    except Exception as error:
+        raise HTTPException(status_code=500, detail=f"playwright intercept youtube {normalized_intent} failed: {error}") from error
+
+    items = _normalize_playwright_eval_result(eval_result, request, target_url)
+    if not items:
+        raise HTTPException(status_code=500, detail=f"playwright intercept youtube {normalized_intent} finished without output")
+    return items
+
+
+async def _run_playwright_intercept_weibo_intent(request: FetchRequest, intent_type: str) -> list[CleanItem]:
+    from playwright.async_api import TimeoutError as PlaywrightTimeoutError
+    from playwright.async_api import async_playwright
+
+    config = request.config if isinstance(request.config, dict) else {}
+    playwright_options = config.get("playwright")
+    if not isinstance(playwright_options, dict):
+        raise HTTPException(status_code=400, detail="config.playwright must be an object")
+
+    args = playwright_options.get("args", {})
+    args_obj = args if isinstance(args, dict) else {}
+    normalized_intent = (intent_type or "").strip().lower()
+    if normalized_intent not in _WEIBO_INTERCEPT_INTENTS:
+        raise HTTPException(status_code=400, detail=f"unsupported weibo intercept intent: {normalized_intent}")
+
+    weibo_id = str(args_obj.get("id", "")).strip()
+    weibo_uid = str(args_obj.get("uid", args_obj.get("id", ""))).strip()
+    max_id = str(args_obj.get("max_id", "")).strip()
+    try:
+        page = int(args_obj.get("page", 1))
+    except (TypeError, ValueError):
+        page = 1
+    page = max(1, min(page, 100))
+    try:
+        feature = int(args_obj.get("feature", 0))
+    except (TypeError, ValueError):
+        feature = 0
+    feature = max(0, min(feature, 10))
+
+    if normalized_intent in {"comments", "post", "user"} and not weibo_id:
+        raise HTTPException(status_code=400, detail=f"config.playwright.args.id is required for intercept-weibo-{normalized_intent} mode")
+    if normalized_intent == "user_posts" and not weibo_uid:
+        raise HTTPException(status_code=400, detail="config.playwright.args.uid is required for intercept-weibo-user_posts mode")
+
+    raw_limit = args_obj.get("limit", args_obj.get("count", 20))
+    try:
+        limit = int(raw_limit)
+    except (TypeError, ValueError):
+        limit = 20
+    limit = max(1, min(limit, 100))
+
+    headless = bool(playwright_options.get("headless", True))
+    navigation_timeout_ms = playwright_options.get("navigationTimeoutMs", 60000)
+    if not isinstance(navigation_timeout_ms, int) or navigation_timeout_ms < 1000:
+        raise HTTPException(status_code=400, detail="config.playwright.navigationTimeoutMs must be an integer >= 1000")
+    storage_state = _load_playwright_storage_state_from_config(request, playwright_options)
+    target_url = "https://weibo.com"
+
+    script_to_run = build_x_intent_script(
+        _SCRIPT_REGISTRY,
+        normalized_intent,
+        {
+            "__WEIBO_ID_JSON__": json.dumps(weibo_id, ensure_ascii=False),
+            "__WEIBO_UID_JSON__": json.dumps(weibo_uid, ensure_ascii=False),
+            "__MAX_ID_JSON__": json.dumps(max_id, ensure_ascii=False),
+            "__PAGE__": page,
+            "__FEATURE__": feature,
+            "__COUNT__": limit,
+            "__LIMIT__": limit,
+        },
+        platform="weibo",
+    )
+
+    try:
+        async with async_playwright() as playwright:
+            browser = await playwright.chromium.launch(headless=headless)
+            context_options: dict[str, Any] = {}
+            if storage_state:
+                context_options["storage_state"] = storage_state
+            context = await browser.new_context(**context_options)
+            page_instance = await context.new_page()
+            try:
+                await page_instance.goto(target_url, wait_until="domcontentloaded", timeout=navigation_timeout_ms)
+                await page_instance.wait_for_timeout(1200)
+                eval_result = await page_instance.evaluate(script_to_run)
+            finally:
+                await context.close()
+                await browser.close()
+    except PlaywrightTimeoutError as error:
+        raise HTTPException(status_code=504, detail=f"playwright intercept weibo timeout: {error}") from error
+    except HTTPException:
+        raise
+    except Exception as error:
+        raise HTTPException(status_code=500, detail=f"playwright intercept weibo {normalized_intent} failed: {error}") from error
+
+    items = _normalize_playwright_eval_result(eval_result, request, target_url)
+    if not items:
+        raise HTTPException(status_code=500, detail=f"playwright intercept weibo {normalized_intent} finished without output")
+    return items
+
+
 def _extract_opencli_json_payload(stdout: str) -> Any:
     text = stdout.strip()
     if not text:
@@ -1562,21 +2112,34 @@ def _apply_output_field_map(item: CleanItem, source: dict[str, Any], output_fiel
         for _, source_path in mappings
         if len(source_path) > 1 and isinstance(source.get(source_path[0]), list)
     }
-    can_expand_list = (
-        len(list_prefixes) == 1
-        and all(len(source_path) > 1 and source_path[0] in list_prefixes for _, source_path in mappings)
-    )
-    if can_expand_list:
+    if len(list_prefixes) == 1:
         list_key = next(iter(list_prefixes))
+        list_mappings: list[tuple[list[str], list[str]]] = []
+        scalar_mappings: list[tuple[list[str], list[str]]] = []
+        for target_path, source_path in mappings:
+            if len(source_path) > 1 and source_path[0] == list_key:
+                list_mappings.append((target_path, source_path))
+            else:
+                scalar_mappings.append((target_path, source_path))
+
         raw_rows = source.get(list_key, [])
-        if isinstance(raw_rows, list):
+        if list_mappings and isinstance(raw_rows, list):
             expanded: list[CleanItem] = []
             for index, row in enumerate(raw_rows, start=1):
                 if not isinstance(row, dict):
                     continue
                 mapped_content: dict[str, Any] = {}
-                for target_path, source_path in mappings:
+                has_list_values = False
+                for target_path, source_path in list_mappings:
                     value = _read_nested_field(row, source_path[1:])
+                    if value is _MISSING:
+                        continue
+                    has_list_values = True
+                    _write_nested_field(mapped_content, target_path, value)
+                if not has_list_values:
+                    continue
+                for target_path, source_path in scalar_mappings:
+                    value = _read_nested_field(source, source_path)
                     if value is _MISSING:
                         continue
                     _write_nested_field(mapped_content, target_path, value)
@@ -1852,6 +2415,35 @@ def _merge_v3_intent_into_driver_option(
                 args_obj["query"] = normalized_query
             if (platform or "").strip().lower() == "x" and "type" not in args_obj:
                 args_obj["type"] = "latest"
+            if (platform or "").strip().lower() in {"linux-do", "linuxdo"}:
+                keyword_arg = intent_args.get("keyword", intent_args.get("query"))
+                if isinstance(keyword_arg, str) and keyword_arg.strip() and "keyword" not in args_obj:
+                    args_obj["keyword"] = keyword_arg.strip()
+            normalized_platform = (platform or "").strip().lower()
+            if normalized_platform == "linkedin":
+                if isinstance(intent_args.get("location"), str) and "location" not in args_obj:
+                    args_obj["location"] = intent_args.get("location")
+                if isinstance(intent_args.get("company"), str) and "company" not in args_obj:
+                    args_obj["company"] = intent_args.get("company")
+                experience_level = intent_args.get("experience_level", intent_args.get("experienceLevel"))
+                if isinstance(experience_level, str) and "experience_level" not in args_obj:
+                    args_obj["experience_level"] = experience_level
+                job_type = intent_args.get("job_type", intent_args.get("jobType"))
+                if isinstance(job_type, str) and "job_type" not in args_obj:
+                    args_obj["job_type"] = job_type
+                date_posted = intent_args.get("date_posted", intent_args.get("datePosted"))
+                if isinstance(date_posted, str) and "date_posted" not in args_obj:
+                    args_obj["date_posted"] = date_posted
+                if isinstance(intent_args.get("remote"), str) and "remote" not in args_obj:
+                    args_obj["remote"] = intent_args.get("remote")
+                start_arg = intent_args.get("start")
+                if isinstance(start_arg, int) and "start" not in args_obj:
+                    args_obj["start"] = start_arg
+                details_arg = intent_args.get("details")
+                if isinstance(details_arg, bool) and "details" not in args_obj:
+                    args_obj["details"] = details_arg
+                if "query" in intent_args and isinstance(intent_args.get("query"), str):
+                    args_obj["query"] = intent_args.get("query").strip()
         if intent_type in {"subreddit", "hot"}:
             if normalized_subreddit and (not isinstance(args_obj.get("subreddit"), str) or not args_obj.get("subreddit")):
                 args_obj["subreddit"] = normalized_subreddit
@@ -1871,6 +2463,53 @@ def _merge_v3_intent_into_driver_option(
         if intent_type in {"thread", "article"}:
             if normalized_tweet_id and (not isinstance(args_obj.get("tweet_id"), str) or not args_obj.get("tweet_id")):
                 args_obj["tweet_id"] = normalized_tweet_id
+        if intent_type in {"video", "transcript"}:
+            raw_url_arg = intent_args.get("url", intent_args.get("video_url", intent_args.get("video_id")))
+            if isinstance(raw_url_arg, str) and raw_url_arg.strip() and "url" not in args_obj:
+                args_obj["url"] = raw_url_arg.strip()
+        if intent_type == "channel":
+            channel_id_arg = intent_args.get("id", intent_args.get("channel_id"))
+            if isinstance(channel_id_arg, str) and channel_id_arg.strip() and "id" not in args_obj:
+                args_obj["id"] = channel_id_arg.strip()
+        if intent_type == "transcript":
+            lang_arg = intent_args.get("lang")
+            if isinstance(lang_arg, str) and lang_arg.strip() and "lang" not in args_obj:
+                args_obj["lang"] = lang_arg.strip()
+            mode_arg = intent_args.get("mode")
+            if isinstance(mode_arg, str) and mode_arg.strip() and "mode" not in args_obj:
+                args_obj["mode"] = mode_arg.strip().lower()
+        if intent_type in {"comments", "post", "user"}:
+            weibo_id_arg = intent_args.get("id")
+            if isinstance(weibo_id_arg, str) and weibo_id_arg.strip() and "id" not in args_obj:
+                args_obj["id"] = weibo_id_arg.strip()
+        if intent_type == "user_posts":
+            weibo_uid_arg = intent_args.get("uid", intent_args.get("id"))
+            if isinstance(weibo_uid_arg, str) and weibo_uid_arg.strip() and "uid" not in args_obj:
+                args_obj["uid"] = weibo_uid_arg.strip()
+            page_arg = intent_args.get("page")
+            if isinstance(page_arg, int) and page_arg > 0 and "page" not in args_obj:
+                args_obj["page"] = page_arg
+            feature_arg = intent_args.get("feature")
+            if isinstance(feature_arg, int) and feature_arg >= 0 and "feature" not in args_obj:
+                args_obj["feature"] = feature_arg
+        if intent_type == "comments":
+            max_id_arg = intent_args.get("max_id", intent_args.get("maxId"))
+            if isinstance(max_id_arg, str) and max_id_arg.strip() and "max_id" not in args_obj:
+                args_obj["max_id"] = max_id_arg.strip()
+        if intent_type == "hot":
+            period_arg = intent_args.get("period")
+            if isinstance(period_arg, str) and period_arg.strip() and "period" not in args_obj:
+                args_obj["period"] = period_arg.strip().lower()
+        if intent_type == "category":
+            if isinstance(intent_args.get("slug"), str) and intent_args.get("slug").strip() and "slug" not in args_obj:
+                args_obj["slug"] = intent_args.get("slug").strip()
+            category_id = intent_args.get("id", intent_args.get("category_id"))
+            if isinstance(category_id, int) and category_id > 0 and "id" not in args_obj:
+                args_obj["id"] = category_id
+        if intent_type == "topic":
+            topic_id = intent_args.get("id", intent_args.get("topic_id"))
+            if isinstance(topic_id, int) and topic_id > 0 and "id" not in args_obj:
+                args_obj["id"] = topic_id
         if normalized_limit is not None and "count" not in args_obj:
             args_obj["count"] = str(normalized_limit)
         if normalized_limit is not None and "limit" not in args_obj:
@@ -1899,6 +2538,18 @@ def _merge_v3_intent_into_driver_option(
                     merged_option["mode"] = f"intercept-reddit-{intent_type}"
                 elif normalized_platform in {"xhs", "xiaohongshu"} and intent_type in _XHS_INTERCEPT_INTENTS:
                     merged_option["mode"] = f"intercept-xhs-{intent_type}"
+                elif normalized_platform == "bbc" and intent_type in _BBC_INTERCEPT_INTENTS:
+                    merged_option["mode"] = f"intercept-bbc-{intent_type}"
+                elif normalized_platform in {"hackernews", "hn"} and intent_type in _HACKERNEWS_INTERCEPT_INTENTS:
+                    merged_option["mode"] = f"intercept-hackernews-{intent_type}"
+                elif normalized_platform == "linkedin" and intent_type in _LINKEDIN_INTERCEPT_INTENTS:
+                    merged_option["mode"] = f"intercept-linkedin-{intent_type}"
+                elif normalized_platform in {"linux-do", "linuxdo"} and intent_type in _LINUX_DO_INTERCEPT_INTENTS:
+                    merged_option["mode"] = f"intercept-linux-do-{intent_type}"
+                elif normalized_platform == "youtube" and intent_type in _YOUTUBE_INTERCEPT_INTENTS:
+                    merged_option["mode"] = f"intercept-youtube-{intent_type}"
+                elif normalized_platform == "weibo" and intent_type in _WEIBO_INTERCEPT_INTENTS:
+                    merged_option["mode"] = f"intercept-weibo-{intent_type}"
                 elif intent_type == "search":
                     merged_option["mode"] = "opencli-bridge" if _OPENCLI_BRIDGE_ENABLED else "intercept-x-search"
         return merged_option
