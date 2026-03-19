@@ -240,7 +240,7 @@ const buildIntentArgRows = (
     });
   }
 
-  return rows;
+  return rows.length > 0 ? rows : [createEmptyArgRow()];
 };
 
 const toIntentArgRules = (
@@ -931,7 +931,6 @@ export const SocialMediaFields = ({
     scriptOptions.length > 0
       ? getIntentOptionByType(scriptOptions, selectedIntentType)
       : null;
-  const lockIntentArgKeys = resolvedDriver === "playwright" && scriptOptions.length > 0;
   const outputTypeError = getConfigErrorMessage("output.type");
   const outputKeywordScopeError = getConfigErrorMessage("output.keywordScope");
   const filterMinCharsError = getConfigErrorMessage("filter.minChars");
@@ -1791,33 +1790,26 @@ export const SocialMediaFields = ({
               <div className="grid gap-3 border rounded-md p-3 bg-background">
                 <div className="flex items-center justify-between">
                   <Label className="text-sm font-medium">Intent Args (key:value)</Label>
-                  {!lockIntentArgKeys && (
-                    <Button type="button" variant="outline" size="sm" onClick={addArgRow}>
-                      <Plus className="h-3.5 w-3.5 mr-1" />
-                      Add
-                    </Button>
-                  )}
+                  <Button type="button" variant="outline" size="sm" onClick={addArgRow}>
+                    <Plus className="h-3.5 w-3.5 mr-1" />
+                    Add
+                  </Button>
                 </div>
                 <div className="grid gap-2 max-h-56 overflow-y-auto pr-1">
-                  {xArgRows.length === 0 && lockIntentArgKeys && (
-                    <p className="text-xs text-muted-foreground">
-                      当前 intent 不需要额外参数。
-                    </p>
-                  )}
                   {xArgRows.map((row) => (
                     <div key={row.id} className="grid grid-cols-[1fr_1fr_auto] gap-2 items-center">
                       <Input
                         value={row.key}
                         onChange={(e) => updateArgRow(row.id, "key", e.target.value)}
                         placeholder="key (e.g. query)"
-                        disabled={lockIntentArgKeys || Boolean(row.preset)}
+                        disabled={Boolean(row.preset)}
                       />
                       <Input
                         value={row.value}
                         onChange={(e) => updateArgRow(row.id, "value", e.target.value)}
                         placeholder={row.description || "value"}
                       />
-                      {!lockIntentArgKeys && !row.preset && (
+                      {!row.preset && (
                         <Button
                           type="button"
                           variant="ghost"
@@ -1828,7 +1820,7 @@ export const SocialMediaFields = ({
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       )}
-                      {(lockIntentArgKeys || row.preset) && (
+                      {row.preset && (
                         <span className="text-xs text-muted-foreground text-right">
                           {row.required ? "required" : "optional"}
                         </span>
@@ -1837,9 +1829,7 @@ export const SocialMediaFields = ({
                   ))}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {lockIntentArgKeys
-                    ? "选择 intent template 后参数 key 固定；这里只需填写对应 value。"
-                    : "选择 intent template 后会自动填充推荐参数；你也可以新增自定义 key:value。"}
+                  选择 intent template 后会自动填充推荐参数；你也可以新增自定义 key:value。
                 </p>
                 <ErrorMessage>{getConfigErrorMessage("intent.args")}</ErrorMessage>
               </div>
