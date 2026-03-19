@@ -13,13 +13,11 @@ class FetchRequest(BaseModel):
     output_fields: Optional[List[str]] = None
     output_field_map: Optional[Dict[str, str]] = None
     output_keyword_scope: Optional[List[str]] = None
-    output_record_type: Optional[str] = None
 
 
 class FetchV2Output(BaseModel):
     model_config = ConfigDict(extra="forbid")
     field: Union[List[str], Dict[str, str]]
-    type: Optional[str] = None
     keywordScope: Optional[List[str]] = None
 
 
@@ -56,16 +54,44 @@ class FetchV3Network(BaseModel):
     )
 
 
+class FetchV3Driver(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    name: str
+    filter: Dict[str, Any] = Field(default_factory=dict)
+    script: Optional[FetchV3Intent] = None
+
+    @model_validator(mode="after")
+    def _validate_no_option(self):
+        if isinstance(self.model_extra, dict) and "option" in self.model_extra:
+            raise ValueError(
+                "v3 payload no longer accepts driver.option; move fields directly under driver (e.g. driver.headless)"
+            )
+        return self
+
+
 class FetchV3Request(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     platform: str
     source_id: str = Field(validation_alias=AliasChoices("sourceId", "source_id"))
-    intent: FetchV3Intent
+    intent: Optional[FetchV3Intent] = None
     keywords: List[str] = Field(default_factory=list)
     output: FetchV2Output
-    driver: Optional[FetchV2Driver] = None
+    driver: Optional[FetchV3Driver] = None
     network: Optional[FetchV3Network] = None
+
+    @model_validator(mode="after")
+    def _validate_v3_driver_script(self):
+        if self.intent is not None:
+            raise ValueError(
+                "v3 payload no longer accepts top-level intent; move it to driver.script (e.g. driver.script.type / driver.script.args)"
+            )
+        if self.driver is None or self.driver.script is None:
+            raise ValueError(
+                "v3 payload requires driver.script; please provide driver.script.type and driver.script.args"
+            )
+        return self
 
 
 class FetchV3Meta(BaseModel):

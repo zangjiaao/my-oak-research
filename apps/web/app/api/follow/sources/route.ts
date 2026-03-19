@@ -10,6 +10,34 @@ function jsonOrNull(value: unknown) {
   return value === null ? Prisma.JsonNull : value;
 }
 
+function toPrismaJsonValue(value: unknown): Prisma.InputJsonValue {
+  if (value === null) return null as unknown as Prisma.InputJsonValue;
+  if (
+    typeof value === "string" ||
+    typeof value === "number" ||
+    typeof value === "boolean"
+  ) {
+    return value;
+  }
+  if (Array.isArray(value)) {
+    return value.map((item) => toPrismaJsonValue(item));
+  }
+  if (value && typeof value === "object") {
+    const entries = Object.entries(value).flatMap(([key, item]) =>
+      item === undefined ? [] : [[key, toPrismaJsonValue(item)]]
+    );
+    return Object.fromEntries(entries) as Prisma.InputJsonObject;
+  }
+  return String(value);
+}
+
+function toPrismaJsonObject(value: unknown): Prisma.InputJsonObject {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return {};
+  }
+  return toPrismaJsonValue(value) as Prisma.InputJsonObject;
+}
+
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
@@ -153,7 +181,7 @@ export async function POST(req: Request) {
             data: {
               sourceId: base.id,
               platform: data.social.platform,
-              config: data.social.config,
+              config: toPrismaJsonObject(data.social.config),
               credentialId: data.social.credentialId ?? null,
               proxyId: data.social.proxyId ?? null,
             },

@@ -18,7 +18,7 @@ const eslintConfig = [
       "apps/web/out/**",
       "apps/web/build/**",
       "apps/web/next-env.d.ts",
-      "apps/web/lib/generated/**",
+      "apps/web/app/generated/**",
     ],
   },
 ];

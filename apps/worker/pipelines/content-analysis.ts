@@ -50,8 +50,24 @@ type GatherSocialDriver = "playwright" | "xhttp" | "agent-browser";
 type GatherOutputField = string[] | Record<string, string>;
 type GatherOutputPayload = {
   field: GatherOutputField;
-  type?: string;
   keywordScope?: string[];
+};
+type GatherIntentPayload = {
+  type: string;
+  args: Record<string, unknown>;
+};
+type GatherDriverPayload = {
+  name: GatherSocialDriver;
+  script: GatherIntentPayload;
+  filter?: Record<string, unknown>;
+} & Record<string, unknown>;
+
+type GatherScriptCatalogItem = {
+  platform?: string;
+  intent?: string;
+  sample?: {
+    outputField?: unknown;
+  };
 };
 
 const SOCIAL_PLATFORM_DRIVER_SUPPORT: Record<string, readonly GatherSocialDriver[]> = {
@@ -66,6 +82,10 @@ const SOCIAL_PLATFORM_DRIVER_SUPPORT: Record<string, readonly GatherSocialDriver
   INSTAGRAM: ["playwright", "xhttp", "agent-browser"],
   FACEBOOK: ["playwright", "xhttp", "agent-browser"],
 };
+
+const GATHER_OUTPUT_FIELD_RULE_TTL_MS = 5 * 60 * 1000;
+const gatherOutputFieldRuleCache = new Map<string, GatherOutputField>();
+let gatherOutputFieldRuleCacheExpireAt = 0;
 
 function isWebSource(source: SourceWithRelations): source is WebSource {
   return source.type === SourceType.WEB;
@@ -303,19 +323,12 @@ function mapContentType(sourceType: SourceType): ContentType {
 
 function buildKeywordFilterTerms(
   keywords: Array<{
-    name: string;
     includes: string[];
-    synonyms: string[];
-    enableAiExpand: boolean;
   }>
 ): string[] {
   const terms: string[] = [];
   for (const keyword of keywords) {
-    terms.push(keyword.name);
     terms.push(...keyword.includes);
-    if (keyword.enableAiExpand) {
-      terms.push(...keyword.synonyms);
-    }
   }
   return Array.from(new Set(terms.map((term) => term.trim().toLowerCase()).filter(Boolean)));
 }
@@ -648,7 +661,13 @@ async function fetchSocialSource(
     source.social?.proxy?.url ??
     source.proxy?.url ??
     null;
-  const output = resolveGatherOutput(sourceConfigObj);
+  const intent = resolveGatherIntent(sourceConfigObj);
+  const outputFieldRule = await resolveGatherOutputFieldRule(
+    gatherUrl,
+    gatherPlatform,
+    intent.type
+  );
+  const output = resolveGatherOutput(sourceConfigObj, outputFieldRule);
   const normalizedSocialConfig = normalizeGatherSocialConfig(
     source,
     sourceConfigObj,
@@ -659,20 +678,22 @@ async function fetchSocialSource(
   const keywordFilterOptions = { ...existingKeywordFilter };
   delete keywordFilterOptions.keywords;
   const driverOption = normalizeGatherDriverOption(baseConfig, gatherDriver);
-  const driver =
+  const driver: GatherDriverPayload =
     Object.keys(keywordFilterOptions).length > 0
       ? {
           name: gatherDriver,
-          option: driverOption,
+          ...driverOption,
+          script: intent,
           filter: keywordFilterOptions,
         }
       : {
           name: gatherDriver,
-          option: driverOption,
+          ...driverOption,
+          script: intent,
         };
 
   try {
-    const response = await fetch(`${gatherUrl}/v2/fetch`, {
+    const response = await fetch(`${gatherUrl}/v3/fetch`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -690,21 +711,13 @@ async function fetchSocialSource(
     }
 
     const data = await response.json();
-    return normalizeGatherItems(data, source, output.type);
+    const items = Array.isArray(data?.items) ? data.items : [];
+    return normalizeGatherItems(items, source, intent.type);
   } catch (error) {
     console.error(`[collector] fetchSocialSource error:`, error);
-    // Fallback to basic info if gather service is down
-    return [
-      {
-        title: `${source.social?.platform || "Social"} ${source.name} (Fallback)`,
-        text: `社交平台 ${source.name} (采集服务异常: ${(error as Error).message})`,
-        markdown: `采集服务异常，请检查 GATHER_SERVICE_URL`,
-        platform: source.name,
-        time: new Date(),
-        sourceId: source.id,
-        sourceType: source.type,
-      },
-    ];
+    throw new Error(
+      `Social gather failed for ${source.name}: ${(error as Error).message}`
+    );
   }
 }
 
@@ -752,42 +765,14 @@ function normalizeGatherSocialConfig(
     );
   }
 
-  const platform = source.social?.platform;
-  if ((platform || "").toUpperCase() !== "X" || driver !== "playwright") {
+  if (driver !== "playwright") {
     return sanitizedConfig;
   }
 
   const playwright = asObject(sanitizedConfig.playwright);
-  const args = asObject(playwright.args);
-  const authKey =
-    resolveSourceCredentialId(source, playwright) ||
-    "anonymous-auth";
-  const platformKey = (platform || "unknown").toLowerCase();
-  const driverKey = "playwright";
   const normalizedPlaywright: Record<string, unknown> = {
-    mode:
-      typeof playwright.mode === "string" && playwright.mode.trim()
-        ? playwright.mode
-        : "eval-js",
     headless:
       typeof playwright.headless === "boolean" ? playwright.headless : false,
-    scriptPath:
-      typeof playwright.scriptPath === "string" ? playwright.scriptPath : "",
-    args: Object.fromEntries(
-      Object.entries(args).map(([key, value]) => [key, value == null ? "" : String(value)])
-    ),
-    userId:
-      typeof playwright.userId === "string" && playwright.userId.trim()
-        ? playwright.userId
-        : "",
-    sessionId:
-      typeof playwright.sessionId === "string" && playwright.sessionId.trim()
-        ? playwright.sessionId
-        : `${authKey}:${platformKey}:${driverKey}`,
-    poolDriver:
-      typeof playwright.poolDriver === "string" && playwright.poolDriver.trim()
-        ? playwright.poolDriver
-        : driverKey,
   };
 
   if (typeof playwright.stateFile === "string" && playwright.stateFile.trim()) {
@@ -958,17 +943,46 @@ function sanitizeGatherConfig(
   delete sanitized.responseFormats;
   delete sanitized.output;
   delete sanitized.driverOptions;
+  delete sanitized.intent;
   return sanitized;
 }
 
-function resolveGatherOutput(
+function resolveGatherIntent(
   config: Record<string, unknown>
+): GatherIntentPayload {
+  const rawIntent = asObject(config.intent);
+  const rawArgs = asObject(rawIntent.args);
+  const intentType =
+    typeof rawIntent.type === "string" && rawIntent.type.trim()
+      ? rawIntent.type.trim()
+      : "search";
+
+  if (Object.keys(rawArgs).length > 0) {
+    return {
+      type: intentType,
+      args: rawArgs,
+    };
+  }
+
+  const legacyPlaywrightArgs = asObject(asObject(config.playwright).args);
+  if (Object.keys(legacyPlaywrightArgs).length > 0) {
+    return {
+      type: intentType,
+      args: legacyPlaywrightArgs,
+    };
+  }
+
+  return {
+    type: intentType,
+    args: {},
+  };
+}
+
+function resolveGatherOutput(
+  config: Record<string, unknown>,
+  ruleField?: GatherOutputField
 ): GatherOutputPayload {
   const configuredOutput = asObject(config.output);
-  const outputType =
-    typeof configuredOutput.type === "string" && configuredOutput.type.trim()
-      ? configuredOutput.type.trim()
-      : undefined;
   const outputKeywordScope = normalizeStringArray(
     configuredOutput.keywordScope ?? configuredOutput.scopeFields
   );
@@ -989,7 +1003,6 @@ function resolveGatherOutput(
     if (Object.keys(mappedField).length > 0) {
       return {
         field: mappedField,
-        ...(outputType ? { type: outputType } : {}),
         ...(outputKeywordScope.length > 0 ? { keywordScope: outputKeywordScope } : {}),
       };
     }
@@ -1006,38 +1019,88 @@ function resolveGatherOutput(
     if (normalized.length > 0) {
       return {
         field: normalized,
-        ...(outputType ? { type: outputType } : {}),
         ...(outputKeywordScope.length > 0 ? { keywordScope: outputKeywordScope } : {}),
       };
     }
   }
 
-  const rawFormats =
-    configuredOutput.formats ??
-    configuredOutput.responseFormats ??
-    config.responseFormats;
-  if (Array.isArray(rawFormats)) {
-    const mapped = Array.from(
-      new Set(
-        rawFormats
-          .filter((value): value is string => typeof value === "string")
-          .map((value) => value.trim().toLowerCase())
-          .filter((value): value is "text" | "markdown" => value === "text" || value === "markdown")
-      )
-    );
-    if (mapped.length > 0) {
-      return {
-        field: mapped,
-        ...(outputType ? { type: outputType } : {}),
-        ...(outputKeywordScope.length > 0 ? { keywordScope: outputKeywordScope } : {}),
-      };
-    }
+  if (ruleField) {
+    return {
+      field: ruleField,
+      ...(outputKeywordScope.length > 0 ? { keywordScope: outputKeywordScope } : {}),
+    };
   }
+
   return {
     field: ["text", "markdown", "url"],
-    ...(outputType ? { type: outputType } : {}),
     ...(outputKeywordScope.length > 0 ? { keywordScope: outputKeywordScope } : {}),
   };
+}
+
+function normalizeGatherOutputField(value: unknown): GatherOutputField | null {
+  if (Array.isArray(value)) {
+    const normalized = Array.from(
+      new Set(
+        value
+          .filter((item): item is string => typeof item === "string")
+          .map((item) => item.trim())
+          .filter(Boolean)
+      )
+    );
+    return normalized.length > 0 ? normalized : null;
+  }
+  if (value && typeof value === "object") {
+    const mappedEntries = Object.entries(value as Record<string, unknown>)
+      .map(([key, mapped]) => [key.trim(), String(mapped ?? "").trim()] as const)
+      .filter(([key, mapped]) => key.length > 0 && mapped.length > 0);
+    if (mappedEntries.length > 0) {
+      return Object.fromEntries(mappedEntries);
+    }
+  }
+  return null;
+}
+
+async function resolveGatherOutputFieldRule(
+  gatherUrl: string,
+  platform: string,
+  intentType: string
+): Promise<GatherOutputField | undefined> {
+  const now = Date.now();
+  if (now >= gatherOutputFieldRuleCacheExpireAt) {
+    try {
+      const response = await fetch(`${gatherUrl}/v3/scripts/catalog`, {
+        cache: "no-store",
+        headers: { Accept: "application/json" },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        const items = Array.isArray(data?.items)
+          ? (data.items as GatherScriptCatalogItem[])
+          : [];
+        gatherOutputFieldRuleCache.clear();
+        for (const item of items) {
+          const itemPlatform =
+            typeof item.platform === "string" ? item.platform.trim().toLowerCase() : "";
+          const itemIntent =
+            typeof item.intent === "string" ? item.intent.trim().toLowerCase() : "";
+          if (!itemPlatform || !itemIntent) continue;
+          const normalizedField = normalizeGatherOutputField(item.sample?.outputField);
+          if (!normalizedField) continue;
+          gatherOutputFieldRuleCache.set(
+            `${itemPlatform}:${itemIntent}`,
+            normalizedField
+          );
+        }
+      }
+    } catch {
+      // Best effort: keep existing cache/fallback behavior.
+    } finally {
+      gatherOutputFieldRuleCacheExpireAt = now + GATHER_OUTPUT_FIELD_RULE_TTL_MS;
+    }
+  }
+
+  const cacheKey = `${platform.trim().toLowerCase()}:${intentType.trim().toLowerCase()}`;
+  return gatherOutputFieldRuleCache.get(cacheKey);
 }
 
 function resolveAgentBrowserOwnerId(
@@ -1091,9 +1154,13 @@ function normalizeGatherDriverOption(
   if (driver !== "playwright") {
     return config;
   }
-  const playwright = asObject(config.playwright);
+  const playwright = { ...asObject(config.playwright) };
+  delete playwright.mode;
+  delete playwright.args;
   const rest = { ...config };
   delete rest.playwright;
+  delete (rest as Record<string, unknown>).mode;
+  delete (rest as Record<string, unknown>).args;
   return {
     ...playwright,
     ...rest,
@@ -1148,22 +1215,20 @@ function normalizeStringArray(value: unknown): string[] {
   return [];
 }
 
-function resolveSourceCredentialId(
-  source: SocialMediaSource,
-  playwrightConfig: Record<string, unknown>
-): string | null {
-  const ids = [
-    source.social?.credentialId,
-    source.credentialId,
-    playwrightConfig.credentialId,
-    playwrightConfig.credential_id,
-  ];
-  for (const id of ids) {
-    if (typeof id === "string" && id.trim()) {
-      return id.trim();
+function pickFallbackText(recordContent: Record<string, unknown>): string {
+  const directKeys = ["title", "content", "summary", "description", "author"];
+  for (const key of directKeys) {
+    const value = recordContent[key];
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
     }
   }
-  return null;
+  for (const value of Object.values(recordContent)) {
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
+  }
+  return "";
 }
 
 function normalizeGatherItems(
@@ -1186,7 +1251,7 @@ function normalizeGatherItems(
           ? row.text
           : typeof row.markdown === "string"
             ? row.markdown
-            : "";
+            : pickFallbackText(recordContent);
     if (!text) continue;
 
     const markdown =

@@ -47,11 +47,16 @@ const WebSites = ({ sources, proxies }: Props) => {
       key: "url",
       label: "URL",
       className: "max-w-[300px]",
-      render: (source) => (
-        <div className="truncate" title={source.web?.url}>
-          {source.web?.url || "-"}
-        </div>
-      ),
+      render: (source) => {
+        const urls = source.web?.url ?? [];
+        const display = urls.length > 0 ? urls.join(", ") : "-";
+        const tooltip = urls.length > 0 ? urls.join("\n") : undefined;
+        return (
+          <div className="truncate" title={tooltip}>
+            {display}
+          </div>
+        );
+      },
     },
     {
       key: "proxy",

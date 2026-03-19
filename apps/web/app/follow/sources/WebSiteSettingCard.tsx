@@ -34,10 +34,17 @@ const WebSiteSettingCard = () => {
     [];
 
   const filteredSources = webSources.filter(
-    (source) =>
-      source.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      source.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      source.web?.url?.toLowerCase().includes(searchQuery.toLowerCase())
+    (source) => {
+      const normalizedQuery = searchQuery.toLowerCase();
+      const urlMatched = (source.web?.url ?? []).some((url) =>
+        url.toLowerCase().includes(normalizedQuery)
+      );
+      return (
+        source.name.toLowerCase().includes(normalizedQuery) ||
+        source.description?.toLowerCase().includes(normalizedQuery) ||
+        urlMatched
+      );
+    }
   );
 
   const filterComponent = (

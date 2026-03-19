@@ -257,6 +257,8 @@ _PLAYWRIGHT_BROWSER_POOL: dict[str, _PlaywrightBrowserPoolEntry] = {}
 _PLAYWRIGHT_POOL_LOCK = asyncio.Lock()
 _PLAYWRIGHT_RUNTIME = None
 _PLAYWRIGHT_RUNTIME_LOCK = asyncio.Lock()
+_SCRIPT_SAMPLE_LINE_RE = re.compile(r"^\s*//\s*Sample\s+/v3/fetch key parts\s*$")
+_SCRIPT_SAMPLE_ENTRY_RE = re.compile(r"^\s*//\s*([^:]+):\s*(.+?)\s*$")
 
 
 def build_error_response(
@@ -274,6 +276,79 @@ def build_error_response(
 @app.get("/")
 async def root():
     return {"status": "ok", "service": "oak-gather"}
+
+
+def _parse_script_sample_payload(script_content: str) -> dict[str, Any]:
+    sample: dict[str, Any] = {}
+    lines = script_content.splitlines()
+    in_sample_block = False
+
+    for line in lines:
+        if not in_sample_block:
+            if _SCRIPT_SAMPLE_LINE_RE.match(line):
+                in_sample_block = True
+            continue
+
+        matched = _SCRIPT_SAMPLE_ENTRY_RE.match(line)
+        if not matched:
+            if line.strip().startswith("//"):
+                continue
+            break
+
+        raw_key = matched.group(1).strip()
+        raw_value = matched.group(2).strip()
+        if not raw_key:
+            continue
+        try:
+            sample[raw_key] = json.loads(raw_value)
+        except json.JSONDecodeError:
+            sample[raw_key] = raw_value
+
+    return sample
+
+
+def _build_scripts_catalog() -> dict[str, Any]:
+    items: list[dict[str, Any]] = []
+    platform_map: dict[str, set[str]] = {}
+
+    for spec in _SCRIPT_REGISTRY.list_specs():
+        script_file = spec.runtime_path if spec.runtime_path.exists() else spec.source_path
+        sample_payload: dict[str, Any] = {}
+
+        try:
+            script_content = script_file.read_text(encoding="utf-8")
+            sample_payload = _parse_script_sample_payload(script_content)
+        except Exception:
+            sample_payload = {}
+
+        sample_intent = _as_dict(sample_payload.get("intent.args"))
+        sample_output = sample_payload.get("output.field")
+
+        item = {
+            "key": spec.key,
+            "platform": spec.platform.upper(),
+            "intent": spec.intent,
+            "mode": spec.mode,
+            "runtimePath": str(script_file),
+            "sample": {
+                "intentType": sample_payload.get("intent.type", spec.intent),
+                "intentArgs": sample_intent,
+                "outputField": sample_output if isinstance(sample_output, (list, dict)) else None,
+            },
+        }
+        items.append(item)
+        platform_map.setdefault(item["platform"], set()).add(spec.intent)
+
+    platforms = [
+        {"platform": platform, "intents": sorted(intents)}
+        for platform, intents in sorted(platform_map.items(), key=lambda entry: entry[0])
+    ]
+
+    return {
+        "total": len(items),
+        "items": sorted(items, key=lambda entry: (entry["platform"], entry["intent"])),
+        "platforms": platforms,
+    }
 
 
 async def _verify_auth_with_agent_browser_for_whatsapp(request: VerifyAuthRequest) -> VerifyAuthResponse | None:
@@ -2695,11 +2770,6 @@ def _normalize_v2_fetch_request(request: FetchV2Request) -> FetchRequest:
         }
     elif isinstance(raw_fields, list):
         output_fields = [value for value in raw_fields if isinstance(value, str) and value.strip()]
-    output_record_type = output.get("type")
-    if not isinstance(output_record_type, str) or not output_record_type.strip():
-        output_record_type = None
-    else:
-        output_record_type = output_record_type.strip()
     raw_keyword_scope = output.get("keywordScope")
     if isinstance(raw_keyword_scope, list):
         output_keyword_scope = [
@@ -2731,7 +2801,6 @@ def _normalize_v2_fetch_request(request: FetchV2Request) -> FetchRequest:
         output_fields=output_fields or None,
         output_field_map=output_field_map or None,
         output_keyword_scope=output_keyword_scope or None,
-        output_record_type=output_record_type,
     )
 
 
@@ -2742,12 +2811,19 @@ def _normalize_v3_fetch_request(request: FetchV3Request) -> tuple[FetchRequest, 
     if request.driver is not None:
         if request.driver.name and request.driver.name.strip():
             driver_name = request.driver.name.strip()
-        driver_option = dict(request.driver.option)
         driver_filter = dict(request.driver.filter)
+        dumped_driver = request.driver.model_dump(
+            by_alias=True,
+            exclude_none=True,
+        )
+        for reserved in ("name", "script", "filter"):
+            dumped_driver.pop(reserved, None)
+        driver_option = dumped_driver
     driver_name = driver_name.strip().lower()
 
-    intent_type = request.intent.type.strip().lower() if request.intent.type.strip() else "search"
-    intent_args = dict(request.intent.args) if isinstance(request.intent.args, dict) else {}
+    request_intent = request.driver.script if request.driver is not None else None
+    intent_type = request_intent.type.strip().lower() if request_intent and request_intent.type.strip() else "search"
+    intent_args = dict(request_intent.args) if request_intent and isinstance(request_intent.args, dict) else {}
     adapter = f"{request.platform.lower().strip()}.{intent_type}"
     driver_option = _merge_v3_intent_into_driver_option(
         request.platform,
@@ -3065,9 +3141,6 @@ def _build_validation_error_response(route: str, payload: Dict[str, Any], error:
 async def _execute_fetch_request(request: FetchRequest, driver_name: str) -> list[CleanItem]:
     raw_results = await driver_registry.fetch(request, driver_name=driver_name)
     results = _normalize_clean_items(raw_results)
-    if request.output_record_type:
-        for item in results:
-            item.recordType = request.output_record_type
     results = _apply_output_fields(results, request.output_fields, request.output_field_map)
     results = apply_keyword_hard_filter(request, results)
     if driver_name:
@@ -3290,6 +3363,13 @@ async def fetch_data_v3(payload: Dict[str, Any]):
         )
         _log_api_io("/v3/fetch", payload, response.body.decode("utf-8"), 500)
         return response
+
+
+@app.get("/v3/scripts/catalog")
+async def list_scripts_catalog():
+    payload = _build_scripts_catalog()
+    _log_api_io("/v3/scripts/catalog", {}, payload, 200)
+    return payload
 
 
 @app.post(

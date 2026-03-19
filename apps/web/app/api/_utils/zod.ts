@@ -231,7 +231,7 @@ export const SearchEngineConfigInput = z.object({
 });
 
 const PlaywrightConfigInput = z.object({
-  mode: z.enum(["eval-js"]).default("eval-js"),
+  mode: z.string().trim().min(1).default("eval-js"),
   headless: z.boolean().default(false),
   targetUrl: z.preprocess(
     (val) => (typeof val === "string" && !val.trim() ? undefined : val),
@@ -252,9 +252,15 @@ const PlaywrightConfigInput = z.object({
   }, z.record(z.string().min(1), z.string()).default({})),
 });
 
+const GatherIntentInput = z.object({
+  type: z.string().trim().min(1).default("search"),
+  args: z.preprocess((val) => parseJson(val), z.record(z.string(), z.unknown()).default({})),
+});
+
 const SocialConfigInput = z
   .object({
     driver: SocialDriverEnum.optional(),
+    intent: GatherIntentInput.default({ type: "search", args: {} }),
     responseFormats: GatherResponseFormatsInput,
     keywordFilter: KeywordFilterInput,
     playwright: PlaywrightConfigInput.optional(),
@@ -300,14 +306,6 @@ export const SocialConfigByPlatform = z
         code: z.ZodIssueCode.custom,
         path: ["config", "driver"],
         message: `${platform}: unsupported driver`,
-      });
-    }
-
-    if (platform === "X" && driver === "playwright" && !payload.config.playwright?.scriptPath) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["config", "playwright", "scriptPath"],
-        message: "X: playwright scriptPath is required",
       });
     }
     if (

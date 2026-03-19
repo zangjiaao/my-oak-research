@@ -80,6 +80,9 @@ class ScriptRegistry:
     def resolve_key(self, key: str) -> ScriptSpec | None:
         return self._specs.get(key)
 
+    def list_specs(self) -> list[ScriptSpec]:
+        return list(self._specs.values())
+
     def intents_for(self, platform: str, mode: str = "intercept") -> set[str]:
         normalized_platform = self._normalize_platform(platform.strip().lower())
         normalized_mode = mode.strip().lower()

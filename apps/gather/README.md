@@ -177,7 +177,6 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 - 当映射路径命中数组字段（如 `text.id`、`text.author`）时，会按数组元素自动拆分为多条 record 输出
 - 当原始字段名是 `tweets`（或 `items/posts/results/data/notes`）时，也支持用 `text.xxx` 作为映射路径别名
 
-`output.type` 可选，用于覆盖输出 record 的 `recordType`（例如统一指定为 `x.post`）。
 `output.keywordScope` 可选，限制关键词过滤只检查 `recordContent` 指定字段（例如 `["text"]`）。
 
 `/v2/fetch` 只接受新字段：`sourceId`、`platform`、`keywords`、`driver.name`、`driver.option`、`driver.filter`、`output.field`。不再兼容旧字段。
