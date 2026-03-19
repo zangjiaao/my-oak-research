@@ -233,6 +233,26 @@ def test_fetch_v3_xhs_user_intent_maps_id(monkeypatch):
     assert payload["items"][0]["recordContent"]["mode"] == "intercept-xhs-user"
 
 
+def test_fetch_v3_bbc_news_intent_maps_mode_and_limit(monkeypatch):
+    response = _client_with_stub_driver(monkeypatch).post(
+        "/v3/fetch",
+        json={
+            "platform": "bbc",
+            "sourceId": "source_123",
+            "intent": {"type": "news", "args": {"limit": 12}},
+            "keywords": [],
+            "driver": {"name": "playwright", "option": {}},
+            "output": {"field": ["count", "mode"], "type": "bbc-news"},
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["meta"]["adapter"] == "bbc.news"
+    assert payload["items"][0]["recordContent"]["count"] == "12"
+    assert payload["items"][0]["recordContent"]["mode"] == "intercept-bbc-news"
+
+
 def test_fetch_v3_validation_error():
     client = TestClient(main.app)
     response = client.post(

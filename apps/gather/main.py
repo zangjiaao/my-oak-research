@@ -92,6 +92,7 @@ _SCRIPT_REGISTRY = ScriptRegistry(_SCRIPT_SOURCE_ROOT, _SCRIPT_RUNTIME_ROOT)
 _X_INTERCEPT_INTENTS = _SCRIPT_REGISTRY.intents_for("x")
 _REDDIT_INTERCEPT_INTENTS = _SCRIPT_REGISTRY.intents_for("reddit")
 _XHS_INTERCEPT_INTENTS = _SCRIPT_REGISTRY.intents_for("xhs")
+_BBC_INTERCEPT_INTENTS = _SCRIPT_REGISTRY.intents_for("bbc")
 _REPO_ROOT = _GATHER_APP_ROOT.parents[1]
 if _RAW_API_IO_LOG_DIR.is_absolute():
     _API_IO_LOG_DIR = _RAW_API_IO_LOG_DIR
@@ -304,6 +305,9 @@ async def _playwright_fetch_data(request: FetchRequest):
         if mode.startswith("intercept-xhs-") and platform in {"xhs", "xiaohongshu"}:
             intent_type = mode.removeprefix("intercept-xhs-").strip().lower()
             return await _run_playwright_intercept_xhs_intent(request, intent_type)
+        if mode.startswith("intercept-bbc-") and platform == "bbc":
+            intent_type = mode.removeprefix("intercept-bbc-").strip().lower()
+            return await _run_playwright_intercept_bbc_intent(request, intent_type)
         if mode in {"eval-js", "evaljs", "eval"}:
             return await _run_playwright_eval_script(request)
 
@@ -1354,6 +1358,76 @@ async def _run_playwright_intercept_xhs_intent(request: FetchRequest, intent_typ
     return items
 
 
+async def _run_playwright_intercept_bbc_intent(request: FetchRequest, intent_type: str) -> list[CleanItem]:
+    from playwright.async_api import TimeoutError as PlaywrightTimeoutError
+    from playwright.async_api import async_playwright
+
+    config = request.config if isinstance(request.config, dict) else {}
+    playwright_options = config.get("playwright")
+    if not isinstance(playwright_options, dict):
+        raise HTTPException(status_code=400, detail="config.playwright must be an object")
+
+    args = playwright_options.get("args", {})
+    args_obj = args if isinstance(args, dict) else {}
+    normalized_intent = (intent_type or "").strip().lower()
+    if normalized_intent not in _BBC_INTERCEPT_INTENTS:
+        raise HTTPException(status_code=400, detail=f"unsupported bbc intercept intent: {normalized_intent}")
+
+    raw_limit = args_obj.get("limit", args_obj.get("count", 20))
+    try:
+        limit = int(raw_limit)
+    except (TypeError, ValueError):
+        limit = 20
+    limit = max(1, min(limit, 50))
+
+    headless = bool(playwright_options.get("headless", True))
+    navigation_timeout_ms = playwright_options.get("navigationTimeoutMs", 60000)
+    if not isinstance(navigation_timeout_ms, int) or navigation_timeout_ms < 1000:
+        raise HTTPException(status_code=400, detail="config.playwright.navigationTimeoutMs must be an integer >= 1000")
+    storage_state = _load_playwright_storage_state_from_config(request, playwright_options)
+    if normalized_intent == "news":
+        target_url = "https://feeds.bbci.co.uk/news/rss.xml"
+    else:
+        target_url = "https://www.bbc.com/news"
+
+    script_to_run = build_x_intent_script(
+        _SCRIPT_REGISTRY,
+        normalized_intent,
+        {
+            "__LIMIT__": limit,
+            "__COUNT__": limit,
+        },
+        platform="bbc",
+    )
+
+    try:
+        async with async_playwright() as playwright:
+            browser = await playwright.chromium.launch(headless=headless)
+            context_options: dict[str, Any] = {}
+            if storage_state:
+                context_options["storage_state"] = storage_state
+            context = await browser.new_context(**context_options)
+            page = await context.new_page()
+            try:
+                await page.goto(target_url, wait_until="domcontentloaded", timeout=navigation_timeout_ms)
+                await page.wait_for_timeout(800)
+                eval_result = await page.evaluate(script_to_run)
+            finally:
+                await context.close()
+                await browser.close()
+    except PlaywrightTimeoutError as error:
+        raise HTTPException(status_code=504, detail=f"playwright intercept bbc timeout: {error}") from error
+    except HTTPException:
+        raise
+    except Exception as error:
+        raise HTTPException(status_code=500, detail=f"playwright intercept bbc {normalized_intent} failed: {error}") from error
+
+    items = _normalize_playwright_eval_result(eval_result, request, target_url)
+    if not items:
+        raise HTTPException(status_code=500, detail=f"playwright intercept bbc {normalized_intent} finished without output")
+    return items
+
+
 def _extract_opencli_json_payload(stdout: str) -> Any:
     text = stdout.strip()
     if not text:
@@ -1899,6 +1973,8 @@ def _merge_v3_intent_into_driver_option(
                     merged_option["mode"] = f"intercept-reddit-{intent_type}"
                 elif normalized_platform in {"xhs", "xiaohongshu"} and intent_type in _XHS_INTERCEPT_INTENTS:
                     merged_option["mode"] = f"intercept-xhs-{intent_type}"
+                elif normalized_platform == "bbc" and intent_type in _BBC_INTERCEPT_INTENTS:
+                    merged_option["mode"] = f"intercept-bbc-{intent_type}"
                 elif intent_type == "search":
                     merged_option["mode"] = "opencli-bridge" if _OPENCLI_BRIDGE_ENABLED else "intercept-x-search"
         return merged_option

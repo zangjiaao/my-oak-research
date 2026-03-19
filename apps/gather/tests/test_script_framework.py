@@ -52,6 +52,13 @@ def test_script_registry_auto_discovers_xhs_intents():
     assert "feed" in intents
 
 
+def test_script_registry_auto_discovers_bbc_intents():
+    app_root = Path(__file__).resolve().parents[1]
+    registry = ScriptRegistry(app_root / "scripts", app_root / "scripts-dist")
+    intents = registry.intents_for("bbc")
+    assert "news" in intents
+
+
 def test_build_x_search_intercept_script_renders_placeholders():
     app_root = Path(__file__).resolve().parents[1]
     registry = ScriptRegistry(app_root / "scripts", app_root / "scripts-dist")
@@ -110,3 +117,20 @@ def test_build_reddit_search_script():
     assert "__QUERY_JSON__" not in script
     assert "__LIMIT__" not in script
     assert "search.json" in script
+
+
+def test_build_bbc_news_script():
+    app_root = Path(__file__).resolve().parents[1]
+    registry = ScriptRegistry(app_root / "scripts", app_root / "scripts-dist")
+    script = build_x_intent_script(
+        registry=registry,
+        platform="bbc",
+        intent_type="news",
+        replacements={
+            "__LIMIT__": 20,
+            "__COUNT__": 20,
+        },
+    )
+    assert "__LIMIT__" not in script
+    assert "__COUNT__" not in script
+    assert "feeds.bbci.co.uk/news/rss.xml" in script
