@@ -582,6 +582,7 @@ def test_fetch_v3_bilibili_video_maps_bvid_and_mode(monkeypatch):
         ("reuters", "search", {"query": "ai", "limit": 5}, "intercept-reuters-search"),
         ("toutiao", "search", {"query": "ai", "limit": 5}, "intercept-toutiao-search"),
         ("toutiao", "hot", {"limit": 5}, "intercept-toutiao-hot"),
+        ("hupu", "hot", {"limit": 5}, "intercept-hupu-hot"),
     ],
 )
 def test_fetch_v3_new_web_sources_map_mode(monkeypatch, platform, intent_type, intent_args, expected_mode):

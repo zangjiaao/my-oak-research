@@ -112,6 +112,7 @@ _DUCKDUCKGO_INTERCEPT_INTENTS = _SCRIPT_REGISTRY.intents_for("duckduckgo")
 _GOOGLE_INTERCEPT_INTENTS = _SCRIPT_REGISTRY.intents_for("google")
 _REUTERS_INTERCEPT_INTENTS = _SCRIPT_REGISTRY.intents_for("reuters")
 _TOUTIAO_INTERCEPT_INTENTS = _SCRIPT_REGISTRY.intents_for("toutiao")
+_HUPU_INTERCEPT_INTENTS = _SCRIPT_REGISTRY.intents_for("hupu")
 _GENERIC_INTERCEPT_INTENTS: dict[str, set[str]] = {
     "36kr": _KR36_INTERCEPT_INTENTS,
     "arxiv": _ARXIV_INTERCEPT_INTENTS,
@@ -125,6 +126,7 @@ _GENERIC_INTERCEPT_INTENTS: dict[str, set[str]] = {
     "google": _GOOGLE_INTERCEPT_INTENTS,
     "reuters": _REUTERS_INTERCEPT_INTENTS,
     "toutiao": _TOUTIAO_INTERCEPT_INTENTS,
+    "hupu": _HUPU_INTERCEPT_INTENTS,
 }
 _GENERIC_INTERCEPT_TARGET_URL: dict[str, str] = {
     "36kr": "https://36kr.com",
@@ -139,6 +141,7 @@ _GENERIC_INTERCEPT_TARGET_URL: dict[str, str] = {
     "google": "https://www.google.com",
     "reuters": "https://www.reuters.com",
     "toutiao": "https://www.toutiao.com",
+    "hupu": "https://bbs.hupu.com",
 }
 _REPO_ROOT = _GATHER_APP_ROOT.parents[1]
 if _RAW_API_IO_LOG_DIR.is_absolute():
@@ -418,6 +421,9 @@ async def _playwright_fetch_data(request: FetchRequest):
         if mode.startswith("intercept-toutiao-") and platform == "toutiao":
             intent_type = mode.removeprefix("intercept-toutiao-").strip().lower()
             return await _run_playwright_intercept_generic_intent(request, intent_type, platform="toutiao")
+        if mode.startswith("intercept-hupu-") and platform == "hupu":
+            intent_type = mode.removeprefix("intercept-hupu-").strip().lower()
+            return await _run_playwright_intercept_generic_intent(request, intent_type, platform="hupu")
         if mode in {"eval-js", "evaljs", "eval"}:
             return await _run_playwright_eval_script(request)
 
@@ -2998,6 +3004,8 @@ def _merge_v3_intent_into_driver_option(
                     merged_option["mode"] = f"intercept-reuters-{intent_type}"
                 elif normalized_platform == "toutiao" and intent_type in _TOUTIAO_INTERCEPT_INTENTS:
                     merged_option["mode"] = f"intercept-toutiao-{intent_type}"
+                elif normalized_platform == "hupu" and intent_type in _HUPU_INTERCEPT_INTENTS:
+                    merged_option["mode"] = f"intercept-hupu-{intent_type}"
                 elif intent_type == "search":
                     merged_option["mode"] = "opencli-bridge" if _OPENCLI_BRIDGE_ENABLED else "intercept-x-search"
         return merged_option

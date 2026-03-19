@@ -148,6 +148,7 @@ def test_script_registry_auto_discovers_bilibili_intents():
         ("google", {"search"}),
         ("reuters", {"search"}),
         ("toutiao", {"search", "hot"}),
+        ("hupu", {"hot"}),
     ],
 )
 def test_script_registry_auto_discovers_new_web_source_intents(platform, expected_intents):
@@ -430,3 +431,24 @@ def test_build_toutiao_hot_script():
     )
     assert "__COUNT__" not in script
     assert "hot-board" in script
+
+
+def test_build_hupu_hot_script():
+    app_root = Path(__file__).resolve().parents[1]
+    registry = ScriptRegistry(app_root / "scripts", app_root / "scripts-dist")
+    script = build_x_intent_script(
+        registry=registry,
+        platform="hupu",
+        intent_type="hot",
+        replacements={
+            "__QUERY_JSON__": '""',
+            "__KEYWORD_JSON__": '""',
+            "__ORDER_JSON__": '""',
+            "__TYPE_JSON__": '""',
+            "__PAGE__": 1,
+            "__LIMIT__": 10,
+            "__COUNT__": 10,
+        },
+    )
+    assert "__COUNT__" not in script
+    assert "all-gambia" in script
