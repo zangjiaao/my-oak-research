@@ -2244,6 +2244,8 @@ async def _run_playwright_intercept_generic_intent(
         target_url = f"https://arxiv.org/search/?query={quote(query)}&searchtype=all&source=header"
     if normalized_platform == "cnblogs" and normalized_intent == "search" and query:
         target_url = f"https://zzk.cnblogs.com/s?w={quote(query)}&p={page}"
+    if normalized_platform == "ctrip" and normalized_intent == "search" and query:
+        target_url = f"https://you.ctrip.com/SearchSite/Default/Destination?keyword={quote(query)}"
 
     script_to_run = build_x_intent_script(
         _SCRIPT_REGISTRY,
