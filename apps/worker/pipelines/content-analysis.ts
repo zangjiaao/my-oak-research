@@ -774,8 +774,7 @@ function normalizeGatherSocialConfig(
     );
   }
 
-  const platform = source.social?.platform;
-  if ((platform || "").toUpperCase() !== "X" || driver !== "playwright") {
+  if (driver !== "playwright") {
     return sanitizedConfig;
   }
 
