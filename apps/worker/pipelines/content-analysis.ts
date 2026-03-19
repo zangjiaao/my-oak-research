@@ -63,6 +63,14 @@ type GatherDriverPayload = {
   filter?: Record<string, unknown>;
 };
 
+type GatherScriptCatalogItem = {
+  platform?: string;
+  intent?: string;
+  sample?: {
+    outputField?: unknown;
+  };
+};
+
 const SOCIAL_PLATFORM_DRIVER_SUPPORT: Record<string, readonly GatherSocialDriver[]> = {
   X: ["playwright", "xhttp", "agent-browser"],
   REDDIT: ["playwright", "xhttp", "agent-browser"],
@@ -75,6 +83,10 @@ const SOCIAL_PLATFORM_DRIVER_SUPPORT: Record<string, readonly GatherSocialDriver
   INSTAGRAM: ["playwright", "xhttp", "agent-browser"],
   FACEBOOK: ["playwright", "xhttp", "agent-browser"],
 };
+
+const GATHER_OUTPUT_FIELD_RULE_TTL_MS = 5 * 60 * 1000;
+const gatherOutputFieldRuleCache = new Map<string, GatherOutputField>();
+let gatherOutputFieldRuleCacheExpireAt = 0;
 
 function isWebSource(source: SourceWithRelations): source is WebSource {
   return source.type === SourceType.WEB;
@@ -657,8 +669,13 @@ async function fetchSocialSource(
     source.social?.proxy?.url ??
     source.proxy?.url ??
     null;
-  const output = resolveGatherOutput(sourceConfigObj);
   const intent = resolveGatherIntent(sourceConfigObj);
+  const outputFieldRule = await resolveGatherOutputFieldRule(
+    gatherUrl,
+    gatherPlatform,
+    intent.type
+  );
+  const output = resolveGatherOutput(sourceConfigObj, outputFieldRule);
   const normalizedSocialConfig = normalizeGatherSocialConfig(
     source,
     sourceConfigObj,
@@ -980,7 +997,8 @@ function resolveGatherIntent(
 }
 
 function resolveGatherOutput(
-  config: Record<string, unknown>
+  config: Record<string, unknown>,
+  ruleField?: GatherOutputField
 ): GatherOutputPayload {
   const configuredOutput = asObject(config.output);
   const outputKeywordScope = normalizeStringArray(
@@ -1024,30 +1042,83 @@ function resolveGatherOutput(
     }
   }
 
-  const rawFormats =
-    configuredOutput.formats ??
-    configuredOutput.responseFormats ??
-    config.responseFormats;
-  if (Array.isArray(rawFormats)) {
-    const mapped = Array.from(
-      new Set(
-        rawFormats
-          .filter((value): value is string => typeof value === "string")
-          .map((value) => value.trim().toLowerCase())
-          .filter((value): value is "text" | "markdown" => value === "text" || value === "markdown")
-      )
-    );
-    if (mapped.length > 0) {
-      return {
-        field: mapped,
-        ...(outputKeywordScope.length > 0 ? { keywordScope: outputKeywordScope } : {}),
-      };
-    }
+  if (ruleField) {
+    return {
+      field: ruleField,
+      ...(outputKeywordScope.length > 0 ? { keywordScope: outputKeywordScope } : {}),
+    };
   }
+
   return {
     field: ["text", "markdown", "url"],
     ...(outputKeywordScope.length > 0 ? { keywordScope: outputKeywordScope } : {}),
   };
+}
+
+function normalizeGatherOutputField(value: unknown): GatherOutputField | null {
+  if (Array.isArray(value)) {
+    const normalized = Array.from(
+      new Set(
+        value
+          .filter((item): item is string => typeof item === "string")
+          .map((item) => item.trim())
+          .filter(Boolean)
+      )
+    );
+    return normalized.length > 0 ? normalized : null;
+  }
+  if (value && typeof value === "object") {
+    const mappedEntries = Object.entries(value as Record<string, unknown>)
+      .map(([key, mapped]) => [key.trim(), String(mapped ?? "").trim()] as const)
+      .filter(([key, mapped]) => key.length > 0 && mapped.length > 0);
+    if (mappedEntries.length > 0) {
+      return Object.fromEntries(mappedEntries);
+    }
+  }
+  return null;
+}
+
+async function resolveGatherOutputFieldRule(
+  gatherUrl: string,
+  platform: string,
+  intentType: string
+): Promise<GatherOutputField | undefined> {
+  const now = Date.now();
+  if (now >= gatherOutputFieldRuleCacheExpireAt) {
+    try {
+      const response = await fetch(`${gatherUrl}/v3/scripts/catalog`, {
+        cache: "no-store",
+        headers: { Accept: "application/json" },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        const items = Array.isArray(data?.items)
+          ? (data.items as GatherScriptCatalogItem[])
+          : [];
+        gatherOutputFieldRuleCache.clear();
+        for (const item of items) {
+          const itemPlatform =
+            typeof item.platform === "string" ? item.platform.trim().toLowerCase() : "";
+          const itemIntent =
+            typeof item.intent === "string" ? item.intent.trim().toLowerCase() : "";
+          if (!itemPlatform || !itemIntent) continue;
+          const normalizedField = normalizeGatherOutputField(item.sample?.outputField);
+          if (!normalizedField) continue;
+          gatherOutputFieldRuleCache.set(
+            `${itemPlatform}:${itemIntent}`,
+            normalizedField
+          );
+        }
+      }
+    } catch {
+      // Best effort: keep existing cache/fallback behavior.
+    } finally {
+      gatherOutputFieldRuleCacheExpireAt = now + GATHER_OUTPUT_FIELD_RULE_TTL_MS;
+    }
+  }
+
+  const cacheKey = `${platform.trim().toLowerCase()}:${intentType.trim().toLowerCase()}`;
+  return gatherOutputFieldRuleCache.get(cacheKey);
 }
 
 function resolveAgentBrowserOwnerId(
