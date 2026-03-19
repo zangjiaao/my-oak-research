@@ -9,17 +9,28 @@ async () => {
   const count = Math.max(1, Math.min(__COUNT__, 50));
 
   const parseDoc = (doc: Document) => {
-    const items = Array.from(doc.querySelectorAll("div.g"));
+    const items = Array.from(
+      doc.querySelectorAll(
+        "div.g, #search .tF2Cxc, #search .MjjYud, #search [data-hveid][data-ved]"
+      )
+    );
     const results = [];
+    const seen = new Set<string>();
     for (const item of items) {
-      const anchor = item.querySelector("a[href]");
-      const heading = item.querySelector("h3");
+      const anchor = item.querySelector(
+        ".yuRUbf a[href], a[jsname='UWckNb'][href], a[href]"
+      ) as HTMLAnchorElement | null;
+      const heading = item.querySelector("h3.LC20lb, h3");
       if (!anchor || !heading) continue;
       const link = anchor.getAttribute("href") || "";
-      if (!link || link.startsWith("/search")) continue;
+      if (!link || link.startsWith("/search") || link.startsWith("#")) continue;
+      if (seen.has(link)) continue;
 
       let snippet = "";
-      for (const span of Array.from(item.querySelectorAll("span"))) {
+      const snippetBlocks = Array.from(
+        item.querySelectorAll(".VwiC3b, .s3v9rd, [data-sncf='1'], span")
+      );
+      for (const span of snippetBlocks) {
         const text = String(span.textContent || "").trim();
         if (text.length > 40 && text !== String(heading.textContent || "").trim()) {
           snippet = text;
@@ -35,6 +46,7 @@ async () => {
         snippet = String(cloned.textContent || "").trim().slice(0, 300);
       }
 
+      seen.add(link);
       results.push({ title: String(heading.textContent || "").trim(), url: link, snippet });
       if (results.length >= count) break;
     }
