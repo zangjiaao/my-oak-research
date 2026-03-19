@@ -95,6 +95,19 @@ def test_script_registry_auto_discovers_youtube_intents():
     assert "channel" in intents
 
 
+def test_script_registry_auto_discovers_weibo_intents():
+    app_root = Path(__file__).resolve().parents[1]
+    registry = ScriptRegistry(app_root / "scripts", app_root / "scripts-dist")
+    intents = registry.intents_for("weibo")
+    assert "feed" in intents
+    assert "hot" in intents
+    assert "me" in intents
+    assert "post" in intents
+    assert "comments" in intents
+    assert "user" in intents
+    assert "user_posts" in intents
+
+
 def test_build_x_search_intercept_script_renders_placeholders():
     app_root = Path(__file__).resolve().parents[1]
     registry = ScriptRegistry(app_root / "scripts", app_root / "scripts-dist")
@@ -282,3 +295,24 @@ def test_build_youtube_channel_script():
     assert "__CHANNEL_ID_JSON__" not in script
     assert "__COUNT__" not in script
     assert "youtubei/v1/browse" in script
+
+
+def test_build_weibo_feed_script():
+    app_root = Path(__file__).resolve().parents[1]
+    registry = ScriptRegistry(app_root / "scripts", app_root / "scripts-dist")
+    script = build_x_intent_script(
+        registry=registry,
+        platform="weibo",
+        intent_type="feed",
+        replacements={
+            "__WEIBO_ID_JSON__": '""',
+            "__WEIBO_UID_JSON__": '""',
+            "__MAX_ID_JSON__": '""',
+            "__PAGE__": 1,
+            "__FEATURE__": 0,
+            "__LIMIT__": 20,
+            "__COUNT__": 20,
+        },
+    )
+    assert "__COUNT__" not in script
+    assert "unreadfriendstimeline" in script

@@ -31,6 +31,10 @@ class StubFetchDriver(BaseDriver):
                     "keyword": args.get("keyword"),
                     "video_url": args.get("url"),
                     "channel_id": args.get("id"),
+                    "uid": args.get("uid"),
+                    "max_id": args.get("max_id"),
+                    "page": args.get("page"),
+                    "feature": args.get("feature"),
                     "lang": args.get("lang"),
                     "transcript_mode": args.get("mode"),
                     "username": args.get("username"),
@@ -411,6 +415,37 @@ def test_fetch_v3_youtube_channel_maps_channel_id(monkeypatch):
     assert payload["items"][0]["recordContent"]["channel_id"] == "@openai"
     assert payload["items"][0]["recordContent"]["count"] == "6"
     assert payload["items"][0]["recordContent"]["mode"] == "intercept-youtube-channel"
+
+
+def test_fetch_v3_weibo_user_posts_maps_mode_and_args(monkeypatch):
+    response = _client_with_stub_driver(monkeypatch).post(
+        "/v3/fetch",
+        json={
+            "platform": "weibo",
+            "sourceId": "source_123",
+            "intent": {
+                "type": "user_posts",
+                "args": {
+                    "uid": "1654184992",
+                    "page": 2,
+                    "feature": 3,
+                    "limit": 9,
+                },
+            },
+            "keywords": [],
+            "driver": {"name": "playwright", "option": {}},
+            "output": {"field": ["uid", "page", "feature", "count", "mode"], "type": "weibo-post"},
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["meta"]["adapter"] == "weibo.user_posts"
+    assert payload["items"][0]["recordContent"]["uid"] == "1654184992"
+    assert payload["items"][0]["recordContent"]["page"] == 2
+    assert payload["items"][0]["recordContent"]["feature"] == 3
+    assert payload["items"][0]["recordContent"]["count"] == "9"
+    assert payload["items"][0]["recordContent"]["mode"] == "intercept-weibo-user_posts"
 
 
 def test_fetch_v3_validation_error():

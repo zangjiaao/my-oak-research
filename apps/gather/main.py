@@ -97,6 +97,7 @@ _HACKERNEWS_INTERCEPT_INTENTS = _SCRIPT_REGISTRY.intents_for("hackernews")
 _LINKEDIN_INTERCEPT_INTENTS = _SCRIPT_REGISTRY.intents_for("linkedin")
 _LINUX_DO_INTERCEPT_INTENTS = _SCRIPT_REGISTRY.intents_for("linux-do")
 _YOUTUBE_INTERCEPT_INTENTS = _SCRIPT_REGISTRY.intents_for("youtube")
+_WEIBO_INTERCEPT_INTENTS = _SCRIPT_REGISTRY.intents_for("weibo")
 _REPO_ROOT = _GATHER_APP_ROOT.parents[1]
 if _RAW_API_IO_LOG_DIR.is_absolute():
     _API_IO_LOG_DIR = _RAW_API_IO_LOG_DIR
@@ -330,6 +331,9 @@ async def _playwright_fetch_data(request: FetchRequest):
         if mode.startswith("intercept-youtube-") and platform == "youtube":
             intent_type = mode.removeprefix("intercept-youtube-").strip().lower()
             return await _run_playwright_intercept_youtube_intent(request, intent_type)
+        if mode.startswith("intercept-weibo-") and platform == "weibo":
+            intent_type = mode.removeprefix("intercept-weibo-").strip().lower()
+            return await _run_playwright_intercept_weibo_intent(request, intent_type)
         if mode in {"eval-js", "evaljs", "eval"}:
             return await _run_playwright_eval_script(request)
 
@@ -1809,6 +1813,97 @@ async def _run_playwright_intercept_youtube_intent(request: FetchRequest, intent
     return items
 
 
+async def _run_playwright_intercept_weibo_intent(request: FetchRequest, intent_type: str) -> list[CleanItem]:
+    from playwright.async_api import TimeoutError as PlaywrightTimeoutError
+    from playwright.async_api import async_playwright
+
+    config = request.config if isinstance(request.config, dict) else {}
+    playwright_options = config.get("playwright")
+    if not isinstance(playwright_options, dict):
+        raise HTTPException(status_code=400, detail="config.playwright must be an object")
+
+    args = playwright_options.get("args", {})
+    args_obj = args if isinstance(args, dict) else {}
+    normalized_intent = (intent_type or "").strip().lower()
+    if normalized_intent not in _WEIBO_INTERCEPT_INTENTS:
+        raise HTTPException(status_code=400, detail=f"unsupported weibo intercept intent: {normalized_intent}")
+
+    weibo_id = str(args_obj.get("id", "")).strip()
+    weibo_uid = str(args_obj.get("uid", args_obj.get("id", ""))).strip()
+    max_id = str(args_obj.get("max_id", "")).strip()
+    try:
+        page = int(args_obj.get("page", 1))
+    except (TypeError, ValueError):
+        page = 1
+    page = max(1, min(page, 100))
+    try:
+        feature = int(args_obj.get("feature", 0))
+    except (TypeError, ValueError):
+        feature = 0
+    feature = max(0, min(feature, 10))
+
+    if normalized_intent in {"comments", "post", "user"} and not weibo_id:
+        raise HTTPException(status_code=400, detail=f"config.playwright.args.id is required for intercept-weibo-{normalized_intent} mode")
+    if normalized_intent == "user_posts" and not weibo_uid:
+        raise HTTPException(status_code=400, detail="config.playwright.args.uid is required for intercept-weibo-user_posts mode")
+
+    raw_limit = args_obj.get("limit", args_obj.get("count", 20))
+    try:
+        limit = int(raw_limit)
+    except (TypeError, ValueError):
+        limit = 20
+    limit = max(1, min(limit, 100))
+
+    headless = bool(playwright_options.get("headless", True))
+    navigation_timeout_ms = playwright_options.get("navigationTimeoutMs", 60000)
+    if not isinstance(navigation_timeout_ms, int) or navigation_timeout_ms < 1000:
+        raise HTTPException(status_code=400, detail="config.playwright.navigationTimeoutMs must be an integer >= 1000")
+    storage_state = _load_playwright_storage_state_from_config(request, playwright_options)
+    target_url = "https://weibo.com"
+
+    script_to_run = build_x_intent_script(
+        _SCRIPT_REGISTRY,
+        normalized_intent,
+        {
+            "__WEIBO_ID_JSON__": json.dumps(weibo_id, ensure_ascii=False),
+            "__WEIBO_UID_JSON__": json.dumps(weibo_uid, ensure_ascii=False),
+            "__MAX_ID_JSON__": json.dumps(max_id, ensure_ascii=False),
+            "__PAGE__": page,
+            "__FEATURE__": feature,
+            "__COUNT__": limit,
+            "__LIMIT__": limit,
+        },
+        platform="weibo",
+    )
+
+    try:
+        async with async_playwright() as playwright:
+            browser = await playwright.chromium.launch(headless=headless)
+            context_options: dict[str, Any] = {}
+            if storage_state:
+                context_options["storage_state"] = storage_state
+            context = await browser.new_context(**context_options)
+            page_instance = await context.new_page()
+            try:
+                await page_instance.goto(target_url, wait_until="domcontentloaded", timeout=navigation_timeout_ms)
+                await page_instance.wait_for_timeout(1200)
+                eval_result = await page_instance.evaluate(script_to_run)
+            finally:
+                await context.close()
+                await browser.close()
+    except PlaywrightTimeoutError as error:
+        raise HTTPException(status_code=504, detail=f"playwright intercept weibo timeout: {error}") from error
+    except HTTPException:
+        raise
+    except Exception as error:
+        raise HTTPException(status_code=500, detail=f"playwright intercept weibo {normalized_intent} failed: {error}") from error
+
+    items = _normalize_playwright_eval_result(eval_result, request, target_url)
+    if not items:
+        raise HTTPException(status_code=500, detail=f"playwright intercept weibo {normalized_intent} finished without output")
+    return items
+
+
 def _extract_opencli_json_payload(stdout: str) -> Any:
     text = stdout.strip()
     if not text:
@@ -2383,6 +2478,24 @@ def _merge_v3_intent_into_driver_option(
             mode_arg = intent_args.get("mode")
             if isinstance(mode_arg, str) and mode_arg.strip() and "mode" not in args_obj:
                 args_obj["mode"] = mode_arg.strip().lower()
+        if intent_type in {"comments", "post", "user"}:
+            weibo_id_arg = intent_args.get("id")
+            if isinstance(weibo_id_arg, str) and weibo_id_arg.strip() and "id" not in args_obj:
+                args_obj["id"] = weibo_id_arg.strip()
+        if intent_type == "user_posts":
+            weibo_uid_arg = intent_args.get("uid", intent_args.get("id"))
+            if isinstance(weibo_uid_arg, str) and weibo_uid_arg.strip() and "uid" not in args_obj:
+                args_obj["uid"] = weibo_uid_arg.strip()
+            page_arg = intent_args.get("page")
+            if isinstance(page_arg, int) and page_arg > 0 and "page" not in args_obj:
+                args_obj["page"] = page_arg
+            feature_arg = intent_args.get("feature")
+            if isinstance(feature_arg, int) and feature_arg >= 0 and "feature" not in args_obj:
+                args_obj["feature"] = feature_arg
+        if intent_type == "comments":
+            max_id_arg = intent_args.get("max_id", intent_args.get("maxId"))
+            if isinstance(max_id_arg, str) and max_id_arg.strip() and "max_id" not in args_obj:
+                args_obj["max_id"] = max_id_arg.strip()
         if intent_type == "hot":
             period_arg = intent_args.get("period")
             if isinstance(period_arg, str) and period_arg.strip() and "period" not in args_obj:
@@ -2435,6 +2548,8 @@ def _merge_v3_intent_into_driver_option(
                     merged_option["mode"] = f"intercept-linux-do-{intent_type}"
                 elif normalized_platform == "youtube" and intent_type in _YOUTUBE_INTERCEPT_INTENTS:
                     merged_option["mode"] = f"intercept-youtube-{intent_type}"
+                elif normalized_platform == "weibo" and intent_type in _WEIBO_INTERCEPT_INTENTS:
+                    merged_option["mode"] = f"intercept-weibo-{intent_type}"
                 elif intent_type == "search":
                     merged_option["mode"] = "opencli-bridge" if _OPENCLI_BRIDGE_ENABLED else "intercept-x-search"
         return merged_option

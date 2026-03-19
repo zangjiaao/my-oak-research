@@ -28,6 +28,11 @@ declare global {
   const __LANG_JSON__: string;
   const __MODE_JSON__: string;
   const __CHANNEL_ID_JSON__: string;
+  const __WEIBO_ID_JSON__: string;
+  const __WEIBO_UID_JSON__: string;
+  const __MAX_ID_JSON__: string;
+  const __PAGE__: number;
+  const __FEATURE__: number;
 
   interface Window {
     __oakGatherCapture?: any[];
