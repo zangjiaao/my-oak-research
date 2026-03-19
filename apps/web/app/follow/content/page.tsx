@@ -98,31 +98,31 @@ const FollowContent = () => {
   if (isLoading && !sortedContents.length) {
     return (
       <div className="h-[calc(100vh-7rem)] px-4 lg:px-0">
-        <Card className="mx-auto h-full bg-gray-100 px-8 py-14">
-          <CardHeader className="space-y-4">
+        <Card className="mx-auto h-full border-border/80 bg-card/95 shadow-sm">
+          <CardHeader className="space-y-4 px-6 pt-6 pb-5 lg:px-8 lg:pt-7">
             <CardTitle className="mb-4">
               <div className="flex items-center gap-4">
-                <Skeleton className="h-10 flex-1 bg-white/70" />
-                <Skeleton className="h-10 w-10 rounded-full bg-white/70" />
+                <Skeleton className="h-10 flex-1 bg-muted/60" />
+                <Skeleton className="h-10 w-10 rounded-full bg-muted/60" />
               </div>
             </CardTitle>
             <div className="space-y-2">
-              <Skeleton className="h-4 w-full bg-white/70" />
-              <Skeleton className="h-4 w-5/6 bg-white/70" />
-              <Skeleton className="h-4 w-2/3 bg-white/70" />
+              <Skeleton className="h-4 w-full bg-muted/60" />
+              <Skeleton className="h-4 w-5/6 bg-muted/60" />
+              <Skeleton className="h-4 w-2/3 bg-muted/60" />
             </div>
           </CardHeader>
-          <CardContent className="px-6">
+          <CardContent className="px-6 py-5 lg:px-8">
             <div className="space-y-3">
               {Array.from({ length: 12 }).map((_, idx) => (
                 <Skeleton
                   key={idx}
-                  className={`h-4 bg-white/70 ${
+                  className={`h-4 bg-muted/60 ${
                     idx % 3 === 0 ? "w-full" : idx % 3 === 1 ? "w-5/6" : "w-2/3"
                   }`}
                 />
               ))}
-              <Skeleton className="h-64 w-full bg-white/70" />
+              <Skeleton className="h-64 w-full bg-muted/60" />
             </div>
           </CardContent>
         </Card>

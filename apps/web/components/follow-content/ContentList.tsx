@@ -30,30 +30,30 @@ export const ContentList = () => {
             {Array.from({ length: 3 }).map((_, idx) => (
               <Card
                 key={`content-skeleton-${idx}`}
-                className="ring-1 ring-gray-200 rounded-xl shadow-md"
+                className="rounded-xl border-border/80 bg-card/95 shadow-sm"
               >
-                <CardContent className="px-5 py-1">
-                  <div className="flex flex-col gap-3 justify-between overflow-hidden min-h-36 w-full">
-                    <div className="space-y-2">
-                      <Skeleton className="h-6 w-12/12" />
-                      <Skeleton className="h-6 w-8/12" />
+                <CardContent className="px-5 py-4">
+                  <div className="flex min-h-32 w-full flex-col justify-between gap-3 overflow-hidden">
+                    <div className="space-y-2.5">
+                      <Skeleton className="h-6 w-full bg-muted/60" />
+                      <Skeleton className="h-6 w-9/12 bg-muted/60" />
                     </div>
-                    <div className="space-y-2">
+                    <div className="space-y-2.5">
                       <div className="flex items-center gap-2">
-                        <Skeleton className="h-4 w-3/12" />
-                        <Skeleton className="h-4 w-8/12" />
+                        <Skeleton className="h-4 w-4/12 bg-muted/60" />
+                        <Skeleton className="h-4 w-7/12 bg-muted/60" />
                       </div>
                       <div className="flex items-center gap-2">
-                        <Skeleton className="h-4 w-5/12" />
-                        <Skeleton className="h-4 w-5/12" />
+                        <Skeleton className="h-4 w-6/12 bg-muted/60" />
+                        <Skeleton className="h-4 w-4/12 bg-muted/60" />
                       </div>
                     </div>
                     <div className="flex items-center justify-between pt-1">
                       <div className="flex gap-2">
-                        <Skeleton className="h-5 w-20 rounded-full" />
-                        <Skeleton className="h-5 w-20 rounded-full" />
+                        <Skeleton className="h-5 w-20 rounded-full bg-muted/60" />
+                        <Skeleton className="h-5 w-20 rounded-full bg-muted/60" />
                       </div>
-                      <Skeleton className="h-5 w-5 rounded-full" />
+                      <Skeleton className="h-5 w-5 rounded-full bg-muted/60" />
                     </div>
                   </div>
                 </CardContent>
