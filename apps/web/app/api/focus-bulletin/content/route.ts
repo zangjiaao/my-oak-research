@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import prisma from "@/lib/prisma";
 import type { Prisma, Content } from "@/app/generated/prisma";
+import { buildRecordContentViews } from "@/lib/follow-content/record-content-view";
 
 const contentTypeSchema = z.enum(["Web", "Client", "Darknet"]);
 const ContentQuerySchema = z.object({
@@ -14,17 +15,25 @@ const ContentQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(50).default(20),
 });
 
-const mapContent = (item: Content & { image?: string | null }) => ({
-  id: item.id,
-  title: item.title,
-  summary: item.summary,
-  markdown: item.markdown,
-  platform: item.platform,
-  time: item.time.toISOString(),
-  url: item.url,
-  image: item.image ?? null, // 封面图（可选），null 或 undefined 时返回 null
-  type: item.type,
-});
+const mapContent = (item: Content & { image?: string | null }) => {
+  const views = buildRecordContentViews(item);
+  return {
+    id: item.id,
+    title: views.summaryView.title,
+    summary: views.summaryView.summary,
+    markdown: views.detailView.markdown,
+    platform: item.platform,
+    time: views.summaryView.ingestedAt,
+    url: views.detailView.sourceUrl ?? item.url,
+    image: views.detailView.images[0] ?? item.image ?? null,
+    type: item.type,
+    summaryView: views.summaryView,
+    detailView: views.detailView,
+    relation: views.relation,
+    rawRecordContent: views.rawRecordContent,
+    media: views.media ?? [],
+  };
+};
 
 type ContentResponse = {
   items: ReturnType<typeof mapContent>[];

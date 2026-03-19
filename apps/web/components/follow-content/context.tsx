@@ -19,8 +19,47 @@ export type ContentItem = {
   platform: string;
   time: string;
   url?: string | null;
-  image?: string; // 封面图（可选）
+  image?: string | null; // 封面图（可选）
   type: string;
+  summaryView?: {
+    title: string;
+    summary: string;
+    source: string;
+    ingestedAt: string;
+    previewMediaType?: "image" | "audio" | "video" | "file" | "text";
+    mediaCount?: number;
+    hasImage: boolean;
+    layout: "image" | "text";
+  };
+  detailView?: {
+    title: string;
+    author: string | null;
+    content: string;
+    markdown: string;
+    images: string[];
+    audios?: string[];
+    files?: string[];
+    links: string[];
+    sourceUrl: string | null;
+    publishedAt: string;
+    recordId: string | null;
+    recordType: string | null;
+  };
+  media?: Array<{
+    type: "image" | "audio" | "video" | "file";
+    url: string;
+    mimeType: string | null;
+    name: string | null;
+    size: number | null;
+    duration: number | null;
+    thumbnailUrl: string | null;
+  }>;
+  relation?: {
+    recordId: string | null;
+    recordIndex: number | null;
+    relatedKey: string;
+  };
+  rawRecordContent?: Record<string, unknown>;
 };
 
 type FollowContentFilters = {

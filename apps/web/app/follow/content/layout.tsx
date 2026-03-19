@@ -9,16 +9,30 @@ import { ContentFilters } from "@/components/follow-content/ContentFilters";
 import { ContentList } from "@/components/follow-content/ContentList";
 import { Button } from "@/components/ui/button";
 import { ChevronRight } from "lucide-react";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
 const InnerLayout = ({ children }: { children: React.ReactNode }) => {
   const { selectedContent } = useFollowContent();
   const [isContentVisible, setIsContentVisible] = useState(true);
+  const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
     if (selectedContent) {
       setIsContentVisible(true);
     }
   }, [selectedContent]);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(max-width: 1023px)");
+    const sync = (event?: MediaQueryListEvent) => {
+      setIsMobile(event ? event.matches : mediaQuery.matches);
+    };
+    sync();
+    mediaQuery.addEventListener("change", sync);
+    return () => {
+      mediaQuery.removeEventListener("change", sync);
+    };
+  }, []);
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-5 gap-2 relative">
@@ -33,14 +47,12 @@ const InnerLayout = ({ children }: { children: React.ReactNode }) => {
 
       <div
         className={`
-          fixed inset-0 z-50 bg-background transition-transform duration-300 flex flex-col gap-2
-          ${isContentVisible ? "translate-x-0" : "translate-x-full pointer-events-none"}
-          lg:static lg:bg-transparent lg:transition-none lg:translate-x-0 lg:pointer-events-auto
-          ${isContentVisible ? "lg:flex lg:col-span-3" : "lg:hidden"}
+          hidden lg:flex lg:flex-col lg:gap-2
+          ${isContentVisible ? "lg:col-span-3" : "lg:hidden"}
         `}
       >
         <div
-          className={`absolute top-1/2 -translate-y-1/2 z-10 ${
+          className={`absolute top-1/2 -translate-y-1/2 z-10 hidden lg:block ${
             isContentVisible ? "left-0 lg:-translate-x-1/2" : "hidden"
           }`}
         >
@@ -56,6 +68,20 @@ const InnerLayout = ({ children }: { children: React.ReactNode }) => {
         </div>
         {children}
       </div>
+      {isMobile ? (
+        <Sheet
+          open={Boolean(selectedContent) && isContentVisible}
+          onOpenChange={setIsContentVisible}
+        >
+          <SheetContent side="right" className="w-full max-w-none p-0 sm:max-w-none">
+            <SheetHeader className="border-b px-4 py-3">
+              <SheetTitle>内容详情</SheetTitle>
+              <SheetDescription>查看记录详情并执行收藏/删除操作。</SheetDescription>
+            </SheetHeader>
+            <div className="h-[calc(100%-4.5rem)] p-2">{children}</div>
+          </SheetContent>
+        </Sheet>
+      ) : null}
     </div>
   );
 };
