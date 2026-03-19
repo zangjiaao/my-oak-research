@@ -14,12 +14,25 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 const InnerLayout = ({ children }: { children: React.ReactNode }) => {
   const { selectedContent } = useFollowContent();
   const [isContentVisible, setIsContentVisible] = useState(true);
+  const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
     if (selectedContent) {
       setIsContentVisible(true);
     }
   }, [selectedContent]);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(max-width: 1023px)");
+    const sync = (event?: MediaQueryListEvent) => {
+      setIsMobile(event ? event.matches : mediaQuery.matches);
+    };
+    sync();
+    mediaQuery.addEventListener("change", sync);
+    return () => {
+      mediaQuery.removeEventListener("change", sync);
+    };
+  }, []);
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-5 gap-2 relative">
@@ -55,18 +68,20 @@ const InnerLayout = ({ children }: { children: React.ReactNode }) => {
         </div>
         {children}
       </div>
-      <Sheet
-        open={Boolean(selectedContent) && isContentVisible}
-        onOpenChange={setIsContentVisible}
-      >
-        <SheetContent side="right" className="w-full max-w-none p-0 sm:max-w-none lg:hidden">
-          <SheetHeader className="border-b px-4 py-3">
-            <SheetTitle>内容详情</SheetTitle>
-            <SheetDescription>查看记录详情并执行收藏/删除操作。</SheetDescription>
-          </SheetHeader>
-          <div className="h-[calc(100%-4.5rem)] p-2">{children}</div>
-        </SheetContent>
-      </Sheet>
+      {isMobile ? (
+        <Sheet
+          open={Boolean(selectedContent) && isContentVisible}
+          onOpenChange={setIsContentVisible}
+        >
+          <SheetContent side="right" className="w-full max-w-none p-0 sm:max-w-none">
+            <SheetHeader className="border-b px-4 py-3">
+              <SheetTitle>内容详情</SheetTitle>
+              <SheetDescription>查看记录详情并执行收藏/删除操作。</SheetDescription>
+            </SheetHeader>
+            <div className="h-[calc(100%-4.5rem)] p-2">{children}</div>
+          </SheetContent>
+        </Sheet>
+      ) : null}
     </div>
   );
 };
