@@ -38,10 +38,17 @@ const DarknetSettingCard = () => {
     sources?.filter(isDarknetSource) ?? [];
 
   const filteredSources: DarknetSource[] = darknetSources.filter(
-    (source) =>
-      source.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      source.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      source.darknet?.url?.toLowerCase().includes(searchQuery.toLowerCase())
+    (source) => {
+      const normalizedQuery = searchQuery.toLowerCase();
+      const urlMatched = (source.darknet?.url ?? []).some((url) =>
+        url.toLowerCase().includes(normalizedQuery)
+      );
+      return (
+        source.name.toLowerCase().includes(normalizedQuery) ||
+        source.description?.toLowerCase().includes(normalizedQuery) ||
+        urlMatched
+      );
+    }
   );
 
   const filterComponent = (

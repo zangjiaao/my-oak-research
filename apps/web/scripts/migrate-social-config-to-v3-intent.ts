@@ -1,5 +1,6 @@
 import path from "node:path";
 
+import { Prisma } from "../app/generated/prisma";
 import prisma from "../lib/prisma";
 
 type JsonObject = Record<string, unknown>;
@@ -102,6 +103,27 @@ function buildNextConfig(config: JsonObject): JsonObject {
   return next;
 }
 
+function toPrismaJsonValue(value: unknown): Prisma.InputJsonValue {
+  if (value === null) return null as unknown as Prisma.InputJsonValue;
+  if (
+    typeof value === "string" ||
+    typeof value === "number" ||
+    typeof value === "boolean"
+  ) {
+    return value;
+  }
+  if (Array.isArray(value)) {
+    return value.map((item) => toPrismaJsonValue(item));
+  }
+  if (value && typeof value === "object") {
+    const entries = Object.entries(value).flatMap(([key, item]) =>
+      item === undefined ? [] : [[key, toPrismaJsonValue(item)]]
+    );
+    return Object.fromEntries(entries) as Prisma.InputJsonObject;
+  }
+  return String(value);
+}
+
 async function main() {
   const rows = await prisma.socialMediaSourceConfig.findMany({
     select: {
@@ -127,7 +149,7 @@ async function main() {
 
     await prisma.socialMediaSourceConfig.update({
       where: { sourceId: row.sourceId },
-      data: { config: nextConfig },
+      data: { config: toPrismaJsonValue(nextConfig) },
     });
     updated += 1;
     migrated.push({
