@@ -59,6 +59,13 @@ def test_script_registry_auto_discovers_bbc_intents():
     assert "news" in intents
 
 
+def test_script_registry_auto_discovers_hackernews_intents():
+    app_root = Path(__file__).resolve().parents[1]
+    registry = ScriptRegistry(app_root / "scripts", app_root / "scripts-dist")
+    intents = registry.intents_for("hackernews")
+    assert "top" in intents
+
+
 def test_build_x_search_intercept_script_renders_placeholders():
     app_root = Path(__file__).resolve().parents[1]
     registry = ScriptRegistry(app_root / "scripts", app_root / "scripts-dist")
@@ -134,3 +141,20 @@ def test_build_bbc_news_script():
     assert "__LIMIT__" not in script
     assert "__COUNT__" not in script
     assert "feeds.bbci.co.uk/news/rss.xml" in script
+
+
+def test_build_hackernews_top_script():
+    app_root = Path(__file__).resolve().parents[1]
+    registry = ScriptRegistry(app_root / "scripts", app_root / "scripts-dist")
+    script = build_x_intent_script(
+        registry=registry,
+        platform="hackernews",
+        intent_type="top",
+        replacements={
+            "__LIMIT__": 20,
+            "__COUNT__": 20,
+        },
+    )
+    assert "__LIMIT__" not in script
+    assert "__COUNT__" not in script
+    assert "topstories.json" in script

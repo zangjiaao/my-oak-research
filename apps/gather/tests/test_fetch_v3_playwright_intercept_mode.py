@@ -205,3 +205,42 @@ def test_fetch_v3_uses_intercept_bbc_news_mode(monkeypatch):
     assert payload["items"][0]["recordContent"]["count"] == "10"
     assert payload["items"][0]["recordContent"]["intent_type"] == "news"
     assert payload["items"][0]["recordContent"]["mode"] == "intercept-bbc-news"
+
+
+def test_fetch_v3_uses_intercept_hackernews_top_mode(monkeypatch):
+    async def fake_run_playwright_intercept_hackernews_intent(request, intent_type):  # noqa: ANN001
+        return [
+            CleanItem(
+                platform=request.platform,
+                sourceId=request.source_id,
+                sourceType="NEWS",
+                recordContent={
+                    "count": request.config.get("playwright", {}).get("args", {}).get("count"),
+                    "mode": request.config.get("playwright", {}).get("mode"),
+                    "intent_type": intent_type,
+                    "items": [{"rank": 1, "title": "HN headline"}],
+                },
+            )
+        ]
+
+    monkeypatch.setattr(main, "_run_playwright_intercept_hackernews_intent", fake_run_playwright_intercept_hackernews_intent)
+
+    client = TestClient(main.app)
+    response = client.post(
+        "/v3/fetch",
+        json={
+            "platform": "hackernews",
+            "sourceId": "source_123",
+            "intent": {"type": "top", "args": {"limit": 10}},
+            "keywords": [],
+            "driver": {"name": "playwright", "option": {}},
+            "output": {"field": ["count", "intent_type", "mode"], "type": "hn-top"},
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["meta"]["adapter"] == "hackernews.top"
+    assert payload["items"][0]["recordContent"]["count"] == "10"
+    assert payload["items"][0]["recordContent"]["intent_type"] == "top"
+    assert payload["items"][0]["recordContent"]["mode"] == "intercept-hackernews-top"

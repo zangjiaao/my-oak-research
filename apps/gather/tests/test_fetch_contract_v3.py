@@ -253,6 +253,26 @@ def test_fetch_v3_bbc_news_intent_maps_mode_and_limit(monkeypatch):
     assert payload["items"][0]["recordContent"]["mode"] == "intercept-bbc-news"
 
 
+def test_fetch_v3_hackernews_top_intent_maps_mode_and_limit(monkeypatch):
+    response = _client_with_stub_driver(monkeypatch).post(
+        "/v3/fetch",
+        json={
+            "platform": "hackernews",
+            "sourceId": "source_123",
+            "intent": {"type": "top", "args": {"limit": 15}},
+            "keywords": [],
+            "driver": {"name": "playwright", "option": {}},
+            "output": {"field": ["count", "mode"], "type": "hn-top"},
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["meta"]["adapter"] == "hackernews.top"
+    assert payload["items"][0]["recordContent"]["count"] == "15"
+    assert payload["items"][0]["recordContent"]["mode"] == "intercept-hackernews-top"
+
+
 def test_fetch_v3_validation_error():
     client = TestClient(main.app)
     response = client.post(
