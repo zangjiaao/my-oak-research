@@ -322,3 +322,42 @@ def test_fetch_v3_uses_intercept_linux_do_search_mode(monkeypatch):
     assert payload["items"][0]["recordContent"]["keyword"] == "playwright"
     assert payload["items"][0]["recordContent"]["intent_type"] == "search"
     assert payload["items"][0]["recordContent"]["mode"] == "intercept-linux-do-search"
+
+
+def test_fetch_v3_uses_intercept_youtube_search_mode(monkeypatch):
+    async def fake_run_playwright_intercept_youtube_intent(request, intent_type):  # noqa: ANN001
+        return [
+            CleanItem(
+                platform=request.platform,
+                sourceId=request.source_id,
+                sourceType="VIDEO_PLATFORM",
+                recordContent={
+                    "query": request.config.get("playwright", {}).get("args", {}).get("query"),
+                    "mode": request.config.get("playwright", {}).get("mode"),
+                    "intent_type": intent_type,
+                    "videos": [{"rank": 1, "title": "OpenAI video"}],
+                },
+            )
+        ]
+
+    monkeypatch.setattr(main, "_run_playwright_intercept_youtube_intent", fake_run_playwright_intercept_youtube_intent)
+
+    client = TestClient(main.app)
+    response = client.post(
+        "/v3/fetch",
+        json={
+            "platform": "youtube",
+            "sourceId": "source_123",
+            "intent": {"type": "search", "args": {"query": "openai", "limit": 10}},
+            "keywords": [],
+            "driver": {"name": "playwright", "option": {}},
+            "output": {"field": ["query", "intent_type", "mode"], "type": "youtube-video"},
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["meta"]["adapter"] == "youtube.search"
+    assert payload["items"][0]["recordContent"]["query"] == "openai"
+    assert payload["items"][0]["recordContent"]["intent_type"] == "search"
+    assert payload["items"][0]["recordContent"]["mode"] == "intercept-youtube-search"

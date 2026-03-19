@@ -29,6 +29,9 @@ class StubFetchDriver(BaseDriver):
                     "url": "https://x.com/openai/status/1",
                     "query": args.get("query"),
                     "keyword": args.get("keyword"),
+                    "video_url": args.get("url"),
+                    "lang": args.get("lang"),
+                    "transcript_mode": args.get("mode"),
                     "username": args.get("username"),
                     "tweet_id": args.get("tweet_id"),
                     "count": args.get("count"),
@@ -328,6 +331,58 @@ def test_fetch_v3_linux_do_search_maps_mode_and_keyword(monkeypatch):
     assert payload["items"][0]["recordContent"]["keyword"] == "playwright"
     assert payload["items"][0]["recordContent"]["count"] == "10"
     assert payload["items"][0]["recordContent"]["mode"] == "intercept-linux-do-search"
+
+
+def test_fetch_v3_youtube_search_maps_mode(monkeypatch):
+    response = _client_with_stub_driver(monkeypatch).post(
+        "/v3/fetch",
+        json={
+            "platform": "youtube",
+            "sourceId": "source_123",
+            "intent": {"type": "search", "args": {"query": "openai", "limit": 12}},
+            "keywords": [],
+            "driver": {"name": "playwright", "option": {}},
+            "output": {"field": ["query", "count", "mode"], "type": "youtube-video"},
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["meta"]["adapter"] == "youtube.search"
+    assert payload["items"][0]["recordContent"]["query"] == "openai"
+    assert payload["items"][0]["recordContent"]["count"] == "12"
+    assert payload["items"][0]["recordContent"]["mode"] == "intercept-youtube-search"
+
+
+def test_fetch_v3_youtube_transcript_maps_url_lang_mode(monkeypatch):
+    response = _client_with_stub_driver(monkeypatch).post(
+        "/v3/fetch",
+        json={
+            "platform": "youtube",
+            "sourceId": "source_123",
+            "intent": {
+                "type": "transcript",
+                "args": {
+                    "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+                    "lang": "en",
+                    "mode": "raw",
+                    "limit": 8,
+                },
+            },
+            "keywords": [],
+            "driver": {"name": "playwright", "option": {}},
+            "output": {"field": ["video_url", "lang", "transcript_mode", "count", "mode"], "type": "youtube-transcript"},
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["meta"]["adapter"] == "youtube.transcript"
+    assert payload["items"][0]["recordContent"]["video_url"] == "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+    assert payload["items"][0]["recordContent"]["lang"] == "en"
+    assert payload["items"][0]["recordContent"]["transcript_mode"] == "raw"
+    assert payload["items"][0]["recordContent"]["count"] == "8"
+    assert payload["items"][0]["recordContent"]["mode"] == "intercept-youtube-transcript"
 
 
 def test_fetch_v3_validation_error():

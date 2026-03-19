@@ -85,6 +85,15 @@ def test_script_registry_auto_discovers_linux_do_intents():
     assert "topic" in intents
 
 
+def test_script_registry_auto_discovers_youtube_intents():
+    app_root = Path(__file__).resolve().parents[1]
+    registry = ScriptRegistry(app_root / "scripts", app_root / "scripts-dist")
+    intents = registry.intents_for("youtube")
+    assert "search" in intents
+    assert "video" in intents
+    assert "transcript" in intents
+
+
 def test_build_x_search_intercept_script_renders_placeholders():
     app_root = Path(__file__).resolve().parents[1]
     registry = ScriptRegistry(app_root / "scripts", app_root / "scripts-dist")
@@ -228,3 +237,24 @@ def test_build_linux_do_search_script():
     assert "__LIMIT__" not in script
     assert "__COUNT__" not in script
     assert "/search.json" in script
+
+
+def test_build_youtube_search_script():
+    app_root = Path(__file__).resolve().parents[1]
+    registry = ScriptRegistry(app_root / "scripts", app_root / "scripts-dist")
+    script = build_x_intent_script(
+        registry=registry,
+        platform="youtube",
+        intent_type="search",
+        replacements={
+            "__QUERY_JSON__": '"openai"',
+            "__URL_JSON__": '""',
+            "__LANG_JSON__": '""',
+            "__MODE_JSON__": '"grouped"',
+            "__LIMIT__": 20,
+            "__COUNT__": 20,
+        },
+    )
+    assert "__QUERY_JSON__" not in script
+    assert "__COUNT__" not in script
+    assert "youtubei/v1/search" in script

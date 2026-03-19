@@ -96,6 +96,7 @@ _BBC_INTERCEPT_INTENTS = _SCRIPT_REGISTRY.intents_for("bbc")
 _HACKERNEWS_INTERCEPT_INTENTS = _SCRIPT_REGISTRY.intents_for("hackernews")
 _LINKEDIN_INTERCEPT_INTENTS = _SCRIPT_REGISTRY.intents_for("linkedin")
 _LINUX_DO_INTERCEPT_INTENTS = _SCRIPT_REGISTRY.intents_for("linux-do")
+_YOUTUBE_INTERCEPT_INTENTS = _SCRIPT_REGISTRY.intents_for("youtube")
 _REPO_ROOT = _GATHER_APP_ROOT.parents[1]
 if _RAW_API_IO_LOG_DIR.is_absolute():
     _API_IO_LOG_DIR = _RAW_API_IO_LOG_DIR
@@ -326,6 +327,9 @@ async def _playwright_fetch_data(request: FetchRequest):
         if mode.startswith("intercept-linuxdo-") and platform in {"linux-do", "linuxdo"}:
             intent_type = mode.removeprefix("intercept-linuxdo-").strip().lower()
             return await _run_playwright_intercept_linux_do_intent(request, intent_type)
+        if mode.startswith("intercept-youtube-") and platform == "youtube":
+            intent_type = mode.removeprefix("intercept-youtube-").strip().lower()
+            return await _run_playwright_intercept_youtube_intent(request, intent_type)
         if mode in {"eval-js", "evaljs", "eval"}:
             return await _run_playwright_eval_script(request)
 
@@ -1707,6 +1711,92 @@ async def _run_playwright_intercept_linux_do_intent(request: FetchRequest, inten
     return items
 
 
+async def _run_playwright_intercept_youtube_intent(request: FetchRequest, intent_type: str) -> list[CleanItem]:
+    from playwright.async_api import TimeoutError as PlaywrightTimeoutError
+    from playwright.async_api import async_playwright
+
+    config = request.config if isinstance(request.config, dict) else {}
+    playwright_options = config.get("playwright")
+    if not isinstance(playwright_options, dict):
+        raise HTTPException(status_code=400, detail="config.playwright must be an object")
+
+    args = playwright_options.get("args", {})
+    args_obj = args if isinstance(args, dict) else {}
+    normalized_intent = (intent_type or "").strip().lower()
+    if normalized_intent not in _YOUTUBE_INTERCEPT_INTENTS:
+        raise HTTPException(status_code=400, detail=f"unsupported youtube intercept intent: {normalized_intent}")
+
+    query = str(args_obj.get("query", "")).strip()
+    raw_url = str(args_obj.get("url", args_obj.get("video_url", args_obj.get("videoId", args_obj.get("video_id", ""))))).strip()
+    lang = str(args_obj.get("lang", "")).strip()
+    mode = str(args_obj.get("mode", "grouped")).strip().lower() or "grouped"
+    if normalized_intent == "search" and not query:
+        raise HTTPException(status_code=400, detail="config.playwright.args.query is required for intercept-youtube-search mode")
+    if normalized_intent in {"video", "transcript"} and not raw_url:
+        raise HTTPException(status_code=400, detail=f"config.playwright.args.url is required for intercept-youtube-{normalized_intent} mode")
+
+    raw_limit = args_obj.get("limit", args_obj.get("count", 20))
+    try:
+        limit = int(raw_limit)
+    except (TypeError, ValueError):
+        limit = 20
+    limit = max(1, min(limit, 100))
+
+    headless = bool(playwright_options.get("headless", True))
+    navigation_timeout_ms = playwright_options.get("navigationTimeoutMs", 60000)
+    if not isinstance(navigation_timeout_ms, int) or navigation_timeout_ms < 1000:
+        raise HTTPException(status_code=400, detail="config.playwright.navigationTimeoutMs must be an integer >= 1000")
+    storage_state = _load_playwright_storage_state_from_config(request, playwright_options)
+
+    if normalized_intent == "search":
+        target_url = "https://www.youtube.com"
+    elif normalized_intent in {"video", "transcript"}:
+        target_url = raw_url if raw_url.startswith("http") else f"https://www.youtube.com/watch?v={quote(raw_url)}"
+    else:
+        target_url = "https://www.youtube.com"
+
+    script_to_run = build_x_intent_script(
+        _SCRIPT_REGISTRY,
+        normalized_intent,
+        {
+            "__QUERY_JSON__": json.dumps(query, ensure_ascii=False),
+            "__URL_JSON__": json.dumps(raw_url, ensure_ascii=False),
+            "__LANG_JSON__": json.dumps(lang, ensure_ascii=False),
+            "__MODE_JSON__": json.dumps(mode, ensure_ascii=False),
+            "__LIMIT__": limit,
+            "__COUNT__": limit,
+        },
+        platform="youtube",
+    )
+
+    try:
+        async with async_playwright() as playwright:
+            browser = await playwright.chromium.launch(headless=headless)
+            context_options: dict[str, Any] = {}
+            if storage_state:
+                context_options["storage_state"] = storage_state
+            context = await browser.new_context(**context_options)
+            page = await context.new_page()
+            try:
+                await page.goto(target_url, wait_until="domcontentloaded", timeout=navigation_timeout_ms)
+                await page.wait_for_timeout(1200)
+                eval_result = await page.evaluate(script_to_run)
+            finally:
+                await context.close()
+                await browser.close()
+    except PlaywrightTimeoutError as error:
+        raise HTTPException(status_code=504, detail=f"playwright intercept youtube timeout: {error}") from error
+    except HTTPException:
+        raise
+    except Exception as error:
+        raise HTTPException(status_code=500, detail=f"playwright intercept youtube {normalized_intent} failed: {error}") from error
+
+    items = _normalize_playwright_eval_result(eval_result, request, target_url)
+    if not items:
+        raise HTTPException(status_code=500, detail=f"playwright intercept youtube {normalized_intent} finished without output")
+    return items
+
+
 def _extract_opencli_json_payload(stdout: str) -> Any:
     text = stdout.strip()
     if not text:
@@ -2232,6 +2322,8 @@ def _merge_v3_intent_into_driver_option(
                 details_arg = intent_args.get("details")
                 if isinstance(details_arg, bool) and "details" not in args_obj:
                     args_obj["details"] = details_arg
+                if "query" in intent_args and isinstance(intent_args.get("query"), str):
+                    args_obj["query"] = intent_args.get("query").strip()
         if intent_type in {"subreddit", "hot"}:
             if normalized_subreddit and (not isinstance(args_obj.get("subreddit"), str) or not args_obj.get("subreddit")):
                 args_obj["subreddit"] = normalized_subreddit
@@ -2251,6 +2343,17 @@ def _merge_v3_intent_into_driver_option(
         if intent_type in {"thread", "article"}:
             if normalized_tweet_id and (not isinstance(args_obj.get("tweet_id"), str) or not args_obj.get("tweet_id")):
                 args_obj["tweet_id"] = normalized_tweet_id
+        if intent_type in {"video", "transcript"}:
+            raw_url_arg = intent_args.get("url", intent_args.get("video_url", intent_args.get("video_id")))
+            if isinstance(raw_url_arg, str) and raw_url_arg.strip() and "url" not in args_obj:
+                args_obj["url"] = raw_url_arg.strip()
+        if intent_type == "transcript":
+            lang_arg = intent_args.get("lang")
+            if isinstance(lang_arg, str) and lang_arg.strip() and "lang" not in args_obj:
+                args_obj["lang"] = lang_arg.strip()
+            mode_arg = intent_args.get("mode")
+            if isinstance(mode_arg, str) and mode_arg.strip() and "mode" not in args_obj:
+                args_obj["mode"] = mode_arg.strip().lower()
         if intent_type == "hot":
             period_arg = intent_args.get("period")
             if isinstance(period_arg, str) and period_arg.strip() and "period" not in args_obj:
@@ -2301,6 +2404,8 @@ def _merge_v3_intent_into_driver_option(
                     merged_option["mode"] = f"intercept-linkedin-{intent_type}"
                 elif normalized_platform in {"linux-do", "linuxdo"} and intent_type in _LINUX_DO_INTERCEPT_INTENTS:
                     merged_option["mode"] = f"intercept-linux-do-{intent_type}"
+                elif normalized_platform == "youtube" and intent_type in _YOUTUBE_INTERCEPT_INTENTS:
+                    merged_option["mode"] = f"intercept-youtube-{intent_type}"
                 elif intent_type == "search":
                     merged_option["mode"] = "opencli-bridge" if _OPENCLI_BRIDGE_ENABLED else "intercept-x-search"
         return merged_option

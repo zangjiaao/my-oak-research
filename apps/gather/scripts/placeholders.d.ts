@@ -24,12 +24,18 @@ declare global {
   const __PERIOD_JSON__: string;
   const __CATEGORY_ID__: number;
   const __TOPIC_ID__: number;
+  const __URL_JSON__: string;
+  const __LANG_JSON__: string;
+  const __MODE_JSON__: string;
 
   interface Window {
     __oakGatherCapture?: any[];
     __oakXhsPostedHooked?: boolean;
     __oakXhsFeedHooked?: boolean;
     __oakXhsNotificationHooked?: boolean;
+    ytcfg?: { data_?: Record<string, any> };
+    ytInitialPlayerResponse?: any;
+    ytInitialData?: any;
   }
 }
 
