@@ -7,7 +7,6 @@ async () => {
     if (!query)
         return { error: "Missing argument: query", hint: "Provide a search query string" };
     const count = Math.max(1, Math.min(__COUNT__, 50));
-    const pageSize = Math.max(10, Math.min(count, 20));
     const maxScrollRounds = Math.min(8, Math.max(2, Math.ceil(count / 5)));
     const parseDoc = (doc) => {
         const items = Array.from(doc.querySelectorAll("div.g, #search .tF2Cxc, #search .MjjYud, #search [data-hveid][data-ved]"));
@@ -49,6 +48,27 @@ async () => {
         }
         return results;
     };
+    const extractNextPageUrl = (doc) => {
+        const direct = doc.querySelector("#pnnext") ||
+            doc.querySelector("a[aria-label='下一页']") ||
+            doc.querySelector("a[aria-label='Next']");
+        if (direct) {
+            const href = direct.getAttribute("href") || "";
+            if (href)
+                return new URL(href, "https://www.google.com").toString();
+        }
+        const nextSpan = Array.from(doc.querySelectorAll("span.oeN89d")).find((node) => {
+            const text = String(node.textContent || "").trim();
+            return text === "下一页" || text.toLowerCase() === "next";
+        });
+        if (nextSpan) {
+            const anchor = nextSpan.closest("a");
+            const href = anchor?.getAttribute("href") || "";
+            if (href)
+                return new URL(href, "https://www.google.com").toString();
+        }
+        return "";
+    };
     const mergeResults = (base, incoming) => {
         const merged = [...base];
         const seen = new Set(merged.map((item) => item.url).filter(Boolean));
@@ -78,9 +98,10 @@ async () => {
         return merged;
     };
     let results = await captureFromCurrentPageWithScroll();
+    let nextPageUrl = extractNextPageUrl(document);
     if (results.length === 0) {
         try {
-            const url = `https://www.google.com/search?q=${encodeURIComponent(query)}&num=${pageSize}&start=0`;
+            const url = `https://www.google.com/search?q=${encodeURIComponent(query)}&num=20`;
             const response = await fetch(url, { credentials: "include" });
             if (!response.ok) {
                 return { query, count: 0, results: [], hint: `google fetch status ${response.status}` };
@@ -89,28 +110,29 @@ async () => {
             const parser = new DOMParser();
             const doc = parser.parseFromString(html, "text/html");
             results = parseDoc(doc);
+            nextPageUrl = extractNextPageUrl(doc);
         }
         catch (_error) {
             return { query, count: 0, results: [], hint: "google fetch failed in page context" };
         }
     }
-    if (results.length < count) {
+    if (results.length < count && nextPageUrl) {
         let merged = [...results];
-        const maxPages = Math.min(5, Math.ceil(count / 10));
-        for (let page = 1; page < maxPages && merged.length < count; page += 1) {
-            const start = page * 10;
+        const maxPages = Math.min(8, Math.ceil(count / 10) + 1);
+        for (let page = 0; page < maxPages && merged.length < count && nextPageUrl; page += 1) {
             try {
-                const url = `https://www.google.com/search?q=${encodeURIComponent(query)}&num=${pageSize}&start=${start}`;
-                const response = await fetch(url, { credentials: "include" });
+                const response = await fetch(nextPageUrl, { credentials: "include" });
                 if (!response.ok)
                     break;
                 const html = await response.text();
                 const parser = new DOMParser();
                 const doc = parser.parseFromString(html, "text/html");
                 const pageResults = parseDoc(doc);
+                const candidateNext = extractNextPageUrl(doc);
                 const beforeSignature = JSON.stringify(merged.map((item) => item.url));
                 merged = mergeResults(merged, pageResults);
                 const afterSignature = JSON.stringify(merged.map((item) => item.url));
+                nextPageUrl = candidateNext;
                 if (afterSignature === beforeSignature)
                     break;
             }
