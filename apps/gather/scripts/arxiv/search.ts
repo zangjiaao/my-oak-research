@@ -87,7 +87,7 @@ async () => {
 
   let parsed = parseDoc(document);
   if (parsed.papers.length === 0) {
-    const url = `https://arxiv.org/search/?query=${encodeURIComponent(query)}&searchtype=all&source=header&size=${count}`;
+    const url = `https://arxiv.org/search/?query=${encodeURIComponent(query)}&searchtype=all&source=header`;
     const response = await fetch(url, { credentials: "include" });
     if (response.ok) {
       const html = await response.text();
