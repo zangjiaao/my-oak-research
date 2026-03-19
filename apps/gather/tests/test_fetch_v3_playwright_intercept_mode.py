@@ -283,3 +283,42 @@ def test_fetch_v3_uses_intercept_linkedin_search_mode(monkeypatch):
     assert payload["items"][0]["recordContent"]["query"] == "software engineer"
     assert payload["items"][0]["recordContent"]["intent_type"] == "search"
     assert payload["items"][0]["recordContent"]["mode"] == "intercept-linkedin-search"
+
+
+def test_fetch_v3_uses_intercept_linux_do_search_mode(monkeypatch):
+    async def fake_run_playwright_intercept_linux_do_intent(request, intent_type):  # noqa: ANN001
+        return [
+            CleanItem(
+                platform=request.platform,
+                sourceId=request.source_id,
+                sourceType="FORUM",
+                recordContent={
+                    "keyword": request.config.get("playwright", {}).get("args", {}).get("keyword"),
+                    "mode": request.config.get("playwright", {}).get("mode"),
+                    "intent_type": intent_type,
+                    "topics": [{"rank": 1, "title": "linux.do topic"}],
+                },
+            )
+        ]
+
+    monkeypatch.setattr(main, "_run_playwright_intercept_linux_do_intent", fake_run_playwright_intercept_linux_do_intent)
+
+    client = TestClient(main.app)
+    response = client.post(
+        "/v3/fetch",
+        json={
+            "platform": "linux-do",
+            "sourceId": "source_123",
+            "intent": {"type": "search", "args": {"keyword": "playwright", "limit": 10}},
+            "keywords": [],
+            "driver": {"name": "playwright", "option": {}},
+            "output": {"field": ["keyword", "intent_type", "mode"], "type": "linux-do-topic"},
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["meta"]["adapter"] == "linux-do.search"
+    assert payload["items"][0]["recordContent"]["keyword"] == "playwright"
+    assert payload["items"][0]["recordContent"]["intent_type"] == "search"
+    assert payload["items"][0]["recordContent"]["mode"] == "intercept-linux-do-search"

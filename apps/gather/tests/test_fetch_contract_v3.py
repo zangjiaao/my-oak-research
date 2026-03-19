@@ -28,6 +28,7 @@ class StubFetchDriver(BaseDriver):
                     "text": f"stub text {args.get('query', '')}".strip(),
                     "url": "https://x.com/openai/status/1",
                     "query": args.get("query"),
+                    "keyword": args.get("keyword"),
                     "username": args.get("username"),
                     "tweet_id": args.get("tweet_id"),
                     "count": args.get("count"),
@@ -300,6 +301,33 @@ def test_fetch_v3_linkedin_search_maps_mode_and_args(monkeypatch):
     assert payload["items"][0]["recordContent"]["query"] == "software engineer"
     assert payload["items"][0]["recordContent"]["count"] == "10"
     assert payload["items"][0]["recordContent"]["mode"] == "intercept-linkedin-search"
+
+
+def test_fetch_v3_linux_do_search_maps_mode_and_keyword(monkeypatch):
+    response = _client_with_stub_driver(monkeypatch).post(
+        "/v3/fetch",
+        json={
+            "platform": "linux-do",
+            "sourceId": "source_123",
+            "intent": {
+                "type": "search",
+                "args": {
+                    "keyword": "playwright",
+                    "limit": 10,
+                },
+            },
+            "keywords": [],
+            "driver": {"name": "playwright", "option": {}},
+            "output": {"field": ["keyword", "count", "mode"], "type": "linux-do-topic"},
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["meta"]["adapter"] == "linux-do.search"
+    assert payload["items"][0]["recordContent"]["keyword"] == "playwright"
+    assert payload["items"][0]["recordContent"]["count"] == "10"
+    assert payload["items"][0]["recordContent"]["mode"] == "intercept-linux-do-search"
 
 
 def test_fetch_v3_validation_error():

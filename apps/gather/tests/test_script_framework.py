@@ -73,6 +73,18 @@ def test_script_registry_auto_discovers_linkedin_intents():
     assert "search" in intents
 
 
+def test_script_registry_auto_discovers_linux_do_intents():
+    app_root = Path(__file__).resolve().parents[1]
+    registry = ScriptRegistry(app_root / "scripts", app_root / "scripts-dist")
+    intents = registry.intents_for("linux-do")
+    assert "search" in intents
+    assert "latest" in intents
+    assert "hot" in intents
+    assert "categories" in intents
+    assert "category" in intents
+    assert "topic" in intents
+
+
 def test_build_x_search_intercept_script_renders_placeholders():
     app_root = Path(__file__).resolve().parents[1]
     registry = ScriptRegistry(app_root / "scripts", app_root / "scripts-dist")
@@ -193,3 +205,26 @@ def test_build_linkedin_search_script():
     assert "__LIMIT__" not in script
     assert "__COUNT__" not in script
     assert "voyagerJobsDashJobCards" in script
+
+
+def test_build_linux_do_search_script():
+    app_root = Path(__file__).resolve().parents[1]
+    registry = ScriptRegistry(app_root / "scripts", app_root / "scripts-dist")
+    script = build_x_intent_script(
+        registry=registry,
+        platform="linux-do",
+        intent_type="search",
+        replacements={
+            "__KEYWORD_JSON__": '"playwright"',
+            "__SLUG_JSON__": '""',
+            "__PERIOD_JSON__": '"weekly"',
+            "__CATEGORY_ID__": 0,
+            "__TOPIC_ID__": 0,
+            "__LIMIT__": 20,
+            "__COUNT__": 20,
+        },
+    )
+    assert "__KEYWORD_JSON__" not in script
+    assert "__LIMIT__" not in script
+    assert "__COUNT__" not in script
+    assert "/search.json" in script
