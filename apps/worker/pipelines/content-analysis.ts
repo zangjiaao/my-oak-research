@@ -324,19 +324,12 @@ function mapContentType(sourceType: SourceType): ContentType {
 
 function buildKeywordFilterTerms(
   keywords: Array<{
-    name: string;
     includes: string[];
-    synonyms: string[];
-    enableAiExpand: boolean;
   }>
 ): string[] {
   const terms: string[] = [];
   for (const keyword of keywords) {
-    terms.push(keyword.name);
     terms.push(...keyword.includes);
-    if (keyword.enableAiExpand) {
-      terms.push(...keyword.synonyms);
-    }
   }
   return Array.from(new Set(terms.map((term) => term.trim().toLowerCase()).filter(Boolean)));
 }
