@@ -7,6 +7,7 @@ async () => {
   const query = String(__QUERY_JSON__ || "").trim();
   if (!query) return { error: "Missing argument: query", hint: "Provide a search query string" };
   const count = Math.max(1, Math.min(__COUNT__, 50));
+  const pageSize = Math.max(10, Math.min(count, 20));
 
   const parseDoc = (doc: Document) => {
     const items = Array.from(
@@ -56,7 +57,7 @@ async () => {
   let results = parseDoc(document);
   if (results.length === 0) {
     try {
-      const url = `https://www.google.com/search?q=${encodeURIComponent(query)}&num=${count}`;
+      const url = `https://www.google.com/search?q=${encodeURIComponent(query)}&num=${pageSize}&start=0`;
       const response = await fetch(url, { credentials: "include" });
       if (!response.ok) {
         return { query, count: 0, results: [], hint: `google fetch status ${response.status}` };
@@ -70,5 +71,30 @@ async () => {
     }
   }
 
-  return { query, count: results.length, results };
+  if (results.length < count) {
+    const seen = new Set(results.map((item) => item.url).filter(Boolean));
+    const maxPages = Math.min(5, Math.ceil(count / 10));
+    for (let page = 1; page < maxPages && results.length < count; page += 1) {
+      const start = page * 10;
+      try {
+        const url = `https://www.google.com/search?q=${encodeURIComponent(query)}&num=${pageSize}&start=${start}`;
+        const response = await fetch(url, { credentials: "include" });
+        if (!response.ok) break;
+        const html = await response.text();
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, "text/html");
+        const pageResults = parseDoc(doc);
+        for (const item of pageResults) {
+          if (!item.url || seen.has(item.url)) continue;
+          seen.add(item.url);
+          results.push(item);
+          if (results.length >= count) break;
+        }
+      } catch (_error) {
+        break;
+      }
+    }
+  }
+
+  return { query, count: results.length, results: results.slice(0, count) };
 };
