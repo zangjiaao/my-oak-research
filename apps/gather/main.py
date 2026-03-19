@@ -2248,6 +2248,8 @@ async def _run_playwright_intercept_generic_intent(
         target_url = f"https://zzk.cnblogs.com/s?w={quote(query)}&p={page}"
     if normalized_platform == "toutiao" and normalized_intent == "search" and query:
         target_url = f"https://so.toutiao.com/search?keyword={quote(query)}&pd=information&dvpf=pc"
+    if normalized_platform == "toutiao" and normalized_intent == "hot":
+        target_url = "https://www.toutiao.com/hot-event/hot-board/?origin=toutiao_pc"
     if normalized_platform == "devto" and normalized_intent == "search" and query:
         target_url = f"https://dev.to/search?q={quote(query)}"
 
