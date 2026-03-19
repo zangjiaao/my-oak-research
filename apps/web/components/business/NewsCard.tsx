@@ -12,6 +12,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { cn } from "@/lib/utils";
 
 export interface NewsCardProps {
   title: string;
@@ -23,6 +24,7 @@ export interface NewsCardProps {
   mediaCount?: number;
   url?: string;
   mark?: boolean;
+  selected?: boolean;
   onBookmarkToggle?: () => void;
 }
 
@@ -36,6 +38,7 @@ const NewsCard = ({
   mediaCount,
   url,
   mark,
+  selected,
   onBookmarkToggle,
 }: NewsCardProps) => {
   // 检测是否为 SVG：检查扩展名或可能返回 SVG 的域名
@@ -61,7 +64,14 @@ const NewsCard = ({
   }, [image]);
 
   return (
-    <Card className="border-border/80 bg-card/95 shadow-sm backdrop-blur-sm">
+    <Card
+      className={cn(
+        "border-border/80 bg-card/95 shadow-sm backdrop-blur-sm transition-all duration-200",
+        selected
+          ? "border-primary/35 shadow-[0_0_0_1px_hsl(var(--primary)/0.12)]"
+          : "hover:border-border"
+      )}
+    >
       <CardContent className="px-5 py-4">
         <div className="flex items-stretch gap-4">
           {image && (
