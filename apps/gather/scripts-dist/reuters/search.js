@@ -23,12 +23,12 @@ async () => {
                     section: article?.taxonomy?.section?.name || article?.section?.name || "",
                     authors: (article?.authors || []).map((author) => author?.name).filter(Boolean).join(", "),
                 }));
-                return { query, source: "api", count: results.length, results };
+                return { query, source: "api", count: results.length, results, items: results };
             }
         }
     }
     catch (_error) { }
-    const searchUrl = `https://www.reuters.com/site-search/?query=${encodeURIComponent(query)}`;
+    const searchUrl = `https://www.reuters.com/site-search/?query=${encodeURIComponent(query)}&offset=0`;
     const response = await fetch(searchUrl, { credentials: "include" });
     if (!response.ok)
         return { error: `HTTP ${response.status}`, hint: "Make sure a reuters.com tab is open" };
@@ -65,7 +65,52 @@ async () => {
         seen.add(fullUrl);
         results.push({ title, description, date, url: fullUrl });
     }
-    if (results.length === 0)
-        return { query, count: 0, results: [], hint: "No results found" };
-    return { query, source: "html", count: results.length, results };
+    if (results.length === 0) {
+        const links = doc.querySelectorAll("a[href]");
+        for (const anchor of Array.from(links)) {
+            if (results.length >= count)
+                break;
+            const href = anchor.getAttribute("href") || "";
+            if (!(href.includes("/world/") ||
+                href.includes("/business/") ||
+                href.includes("/markets/") ||
+                href.includes("/technology/") ||
+                href.includes("/science/") ||
+                href.includes("/sports/") ||
+                href.includes("/legal/") ||
+                href.includes("/sustainability/"))) {
+                continue;
+            }
+            const fullUrl = href.startsWith("http") ? href : `https://www.reuters.com${href}`;
+            if (seen.has(fullUrl))
+                continue;
+            const heading = anchor.querySelector("h1, h2, h3, h4, span");
+            const title = String((heading?.textContent || anchor.textContent || "")).trim();
+            if (!title || title.length < 8)
+                continue;
+            seen.add(fullUrl);
+            let description = "";
+            const parent = anchor.closest("li, div, article, section");
+            if (parent) {
+                for (const paragraph of Array.from(parent.querySelectorAll("p"))) {
+                    const text = String(paragraph.textContent || "").trim();
+                    if (text.length > 15 && text !== title) {
+                        description = text.slice(0, 500);
+                        break;
+                    }
+                }
+            }
+            results.push({ title, description, url: fullUrl });
+        }
+    }
+    if (results.length === 0) {
+        return {
+            query,
+            count: 0,
+            results: [],
+            items: [],
+            hint: "No results found. Ensure reuters.com is open and not blocked by captcha.",
+        };
+    }
+    return { query, source: "html", count: results.length, results, items: results };
 };

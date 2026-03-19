@@ -15,6 +15,8 @@ Usage:
     uv run export_chrome_cookies.py zhihu
     uv run export_chrome_cookies.py bilibili
     uv run export_chrome_cookies.py cnblogs
+    uv run export_chrome_cookies.py reuters
+    uv run export_chrome_cookies.py google
     uv run export_chrome_cookies.py --help
 
 Requirements:
@@ -159,6 +161,20 @@ PLATFORMS = {
         "url": "https://zzk.cnblogs.com",
         "output_file": "cnblogs_auth.json",
         "display_name": "CNBlogs",
+        "auth_types": ["cookie"],
+    },
+    "reuters": {
+        "domains": [".reuters.com"],
+        "url": "https://www.reuters.com",
+        "output_file": "reuters_auth.json",
+        "display_name": "Reuters",
+        "auth_types": ["cookie"],
+    },
+    "google": {
+        "domains": [".google.com"],
+        "url": "https://www.google.com",
+        "output_file": "google_auth.json",
+        "display_name": "Google",
         "auth_types": ["cookie"],
     },
 }
@@ -471,6 +487,8 @@ def main():
   zhihu         - 仅 Cookie
   bilibili      - 仅 Cookie
   cnblogs       - 仅 Cookie
+  reuters       - 仅 Cookie
+  google        - 仅 Cookie
   telegram      - Cookie + localStorage
   whatsapp      - 持久化浏览器配置文件（需要 Playwright）
 

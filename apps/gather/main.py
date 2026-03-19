@@ -2252,6 +2252,8 @@ async def _run_playwright_intercept_generic_intent(
         target_url = "https://www.toutiao.com/hot-event/hot-board/?origin=toutiao_pc"
     if normalized_platform == "devto" and normalized_intent == "search" and query:
         target_url = f"https://dev.to/search?q={quote(query)}"
+    if normalized_platform == "reuters" and normalized_intent == "search" and query:
+        target_url = f"https://www.reuters.com/site-search/?query={quote(query)}&offset=0"
 
     script_to_run = build_x_intent_script(
         _SCRIPT_REGISTRY,
@@ -2474,9 +2476,15 @@ def _resolve_source_path(source: dict[str, Any], source_path: list[str]) -> list
         return source_path
     if source_path[0] in source:
         return source_path
+    list_aliases = ("tweets", "items", "posts", "results", "data", "notes")
+    if len(source_path) > 1 and source_path[0] in list_aliases:
+        if source_path[1] in source:
+            return source_path[1:]
+        for alias in list_aliases:
+            if isinstance(source.get(alias), list):
+                return [alias, *source_path[1:]]
     if source_path[0] == "text":
-        candidate_keys = ("tweets", "items", "posts", "results", "data", "notes")
-        for key in candidate_keys:
+        for key in list_aliases:
             if isinstance(source.get(key), list):
                 return [key, *source_path[1:]]
     return source_path

@@ -7,19 +7,24 @@ async () => {
     if (!query)
         return { error: "Missing argument: query", hint: "Provide a search query string" };
     const count = Math.max(1, Math.min(__COUNT__, 50));
+    const maxScrollRounds = Math.min(8, Math.max(2, Math.ceil(count / 5)));
     const parseDoc = (doc) => {
-        const items = Array.from(doc.querySelectorAll("div.g"));
+        const items = Array.from(doc.querySelectorAll("div.g, #search .tF2Cxc, #search .MjjYud, #search [data-hveid][data-ved]"));
         const results = [];
+        const seen = new Set();
         for (const item of items) {
-            const anchor = item.querySelector("a[href]");
-            const heading = item.querySelector("h3");
+            const anchor = item.querySelector(".yuRUbf a[href], a[jsname='UWckNb'][href], a[href]");
+            const heading = item.querySelector("h3.LC20lb, h3");
             if (!anchor || !heading)
                 continue;
             const link = anchor.getAttribute("href") || "";
-            if (!link || link.startsWith("/search"))
+            if (!link || link.startsWith("/search") || link.startsWith("#"))
+                continue;
+            if (seen.has(link))
                 continue;
             let snippet = "";
-            for (const span of Array.from(item.querySelectorAll("span"))) {
+            const snippetBlocks = Array.from(item.querySelectorAll(".VwiC3b, .s3v9rd, [data-sncf='1'], span"));
+            for (const span of snippetBlocks) {
                 const text = String(span.textContent || "").trim();
                 if (text.length > 40 && text !== String(heading.textContent || "").trim()) {
                     snippet = text;
@@ -36,16 +41,62 @@ async () => {
                     a.remove();
                 snippet = String(cloned.textContent || "").trim().slice(0, 300);
             }
+            seen.add(link);
             results.push({ title: String(heading.textContent || "").trim(), url: link, snippet });
             if (results.length >= count)
                 break;
         }
         return results;
     };
-    let results = parseDoc(document);
+    const extractNextPageUrl = (doc) => {
+        const direct = doc.querySelector("#pnnext") ||
+            doc.querySelector("a[aria-label='下一页']") ||
+            doc.querySelector("a[aria-label='Next']");
+        if (direct) {
+            const href = direct.getAttribute("href") || "";
+            if (href)
+                return new URL(href, "https://www.google.com").toString();
+        }
+        const nextSpan = Array.from(doc.querySelectorAll("span.oeN89d")).find((node) => {
+            const text = String(node.textContent || "").trim();
+            return text === "下一页" || text.toLowerCase() === "next";
+        });
+        if (nextSpan) {
+            const anchor = nextSpan.closest("a");
+            const href = anchor?.getAttribute("href") || "";
+            if (href)
+                return new URL(href, "https://www.google.com").toString();
+        }
+        return "";
+    };
+    const mergeResults = (base, incoming) => {
+        const merged = [...base];
+        const seen = new Set(merged.map((item) => item.url).filter(Boolean));
+        for (const item of incoming) {
+            if (!item.url || seen.has(item.url))
+                continue;
+            seen.add(item.url);
+            merged.push(item);
+            if (merged.length >= count)
+                break;
+        }
+        return merged;
+    };
+    const captureFromCurrentPageWithScroll = async () => {
+        let merged = parseDoc(document);
+        for (let round = 0; round < maxScrollRounds && merged.length < count; round += 1) {
+            window.scrollTo(0, document.body.scrollHeight);
+            await new Promise((resolve) => setTimeout(resolve, 700));
+            const nextBatch = parseDoc(document);
+            merged = mergeResults(merged, nextBatch);
+        }
+        return merged;
+    };
+    let results = await captureFromCurrentPageWithScroll();
+    let nextPageUrl = extractNextPageUrl(document);
     if (results.length === 0) {
         try {
-            const url = `https://www.google.com/search?q=${encodeURIComponent(query)}&num=${count}`;
+            const url = `https://www.google.com/search?q=${encodeURIComponent(query)}&num=20`;
             const response = await fetch(url, { credentials: "include" });
             if (!response.ok) {
                 return { query, count: 0, results: [], hint: `google fetch status ${response.status}` };
@@ -54,10 +105,34 @@ async () => {
             const parser = new DOMParser();
             const doc = parser.parseFromString(html, "text/html");
             results = parseDoc(doc);
+            nextPageUrl = extractNextPageUrl(doc);
         }
         catch (_error) {
             return { query, count: 0, results: [], hint: "google fetch failed in page context" };
         }
     }
-    return { query, count: results.length, results };
+    if (results.length < count && nextPageUrl) {
+        let merged = [...results];
+        const maxPages = Math.min(8, Math.ceil(count / 10) + 1);
+        for (let page = 0; page < maxPages && merged.length < count && nextPageUrl; page += 1) {
+            try {
+                const currentPageUrl = nextPageUrl;
+                const response = await fetch(nextPageUrl, { credentials: "include" });
+                if (!response.ok)
+                    break;
+                const html = await response.text();
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, "text/html");
+                const pageResults = parseDoc(doc);
+                const candidateNext = extractNextPageUrl(doc);
+                merged = mergeResults(merged, pageResults);
+                nextPageUrl = candidateNext && candidateNext !== currentPageUrl ? candidateNext : "";
+            }
+            catch (_error) {
+                break;
+            }
+        }
+        results = merged;
+    }
+    return { query, count: results.length, results: results.slice(0, count) };
 };
