@@ -61,11 +61,11 @@ const NewsCard = ({
   }, [image]);
 
   return (
-    <Card>
-      <CardContent>
-        <div className="flex gap-4 items-stretch">
+    <Card className="border-border/80 bg-card/95 shadow-sm backdrop-blur-sm">
+      <CardContent className="px-5 py-4">
+        <div className="flex items-stretch gap-4">
           {image && (
-            <div className="bg-gray-200 flex-shrink-0 rounded-md w-36 overflow-hidden relative">
+            <div className="relative w-32 flex-shrink-0 overflow-hidden rounded-lg border bg-muted/40">
               {isSvg ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
@@ -86,26 +86,28 @@ const NewsCard = ({
             </div>
           )}
 
-          <div className="flex flex-col gap-2 justify-between overflow-hidden min-h-36 w-full">
+          <div className="flex min-h-32 w-full flex-col justify-between gap-3 overflow-hidden">
             <div className="flex flex-col gap-2">
-              <h1 className="text-lg font-bold">{title}</h1>
-              <p className="text-sm text-muted-foreground break-words line-clamp-3">
+              <h1 className="line-clamp-2 text-lg font-semibold leading-snug tracking-tight">
+                {title}
+              </h1>
+              <p className="line-clamp-3 break-words text-sm leading-6 text-muted-foreground">
                 {summary}
               </p>
             </div>
 
-            <div className="flex gap-2 justify-between items-center">
-              <div className="flex gap-2">
-                <Badge variant="outline">
-                  <Globe />
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex flex-wrap gap-2">
+                <Badge variant="secondary" className="gap-1.5">
+                  <Globe className="size-3.5" />
                   {platform}
                 </Badge>
-                <Badge variant="outline">
-                  <Calendar />
+                <Badge variant="outline" className="gap-1.5">
+                  <Calendar className="size-3.5" />
                   {time}
                 </Badge>
                 {mediaLabel ? (
-                  <Badge variant="secondary">
+                  <Badge variant="outline" className="capitalize">
                     {mediaLabel}
                     {mediaCount && mediaCount > 0 ? ` x${mediaCount}` : ""}
                   </Badge>
@@ -116,10 +118,11 @@ const NewsCard = ({
                   <Button
                     variant="ghost"
                     size="icon"
+                    className="h-8 w-8 rounded-full"
                     aria-label="More actions"
                     onClick={(event) => event.stopPropagation()}
                   >
-                    <MoreHorizontal className="size-5" />
+                    <MoreHorizontal className="size-4" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">

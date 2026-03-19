@@ -78,10 +78,10 @@ export const ContentList = () => {
             <div
               key={content.id}
               onClick={() => selectContent(content.id)}
-              className={`cursor-pointer transition-all duration-200 ${
+              className={`cursor-pointer rounded-2xl p-1 transition-all duration-200 ${
                 isActive
-                  ? "rounded-xl bg-muted shadow-md"
-                  : "hover:-translate-y-0.5"
+                  ? "bg-emerald-50/50 shadow-sm"
+                  : "bg-transparent hover:bg-muted/30"
               }`}
             >
               <NewsCard
