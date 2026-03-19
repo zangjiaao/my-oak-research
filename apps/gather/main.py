@@ -2017,21 +2017,34 @@ def _apply_output_field_map(item: CleanItem, source: dict[str, Any], output_fiel
         for _, source_path in mappings
         if len(source_path) > 1 and isinstance(source.get(source_path[0]), list)
     }
-    can_expand_list = (
-        len(list_prefixes) == 1
-        and all(len(source_path) > 1 and source_path[0] in list_prefixes for _, source_path in mappings)
-    )
-    if can_expand_list:
+    if len(list_prefixes) == 1:
         list_key = next(iter(list_prefixes))
+        list_mappings: list[tuple[list[str], list[str]]] = []
+        scalar_mappings: list[tuple[list[str], list[str]]] = []
+        for target_path, source_path in mappings:
+            if len(source_path) > 1 and source_path[0] == list_key:
+                list_mappings.append((target_path, source_path))
+            else:
+                scalar_mappings.append((target_path, source_path))
+
         raw_rows = source.get(list_key, [])
-        if isinstance(raw_rows, list):
+        if list_mappings and isinstance(raw_rows, list):
             expanded: list[CleanItem] = []
             for index, row in enumerate(raw_rows, start=1):
                 if not isinstance(row, dict):
                     continue
                 mapped_content: dict[str, Any] = {}
-                for target_path, source_path in mappings:
+                has_list_values = False
+                for target_path, source_path in list_mappings:
                     value = _read_nested_field(row, source_path[1:])
+                    if value is _MISSING:
+                        continue
+                    has_list_values = True
+                    _write_nested_field(mapped_content, target_path, value)
+                if not has_list_values:
+                    continue
+                for target_path, source_path in scalar_mappings:
+                    value = _read_nested_field(source, source_path)
                     if value is _MISSING:
                         continue
                     _write_nested_field(mapped_content, target_path, value)

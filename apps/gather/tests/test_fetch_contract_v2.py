@@ -352,6 +352,35 @@ def test_fetch_v2_output_field_mapping_supports_text_alias_for_tweets(monkeypatc
     assert items[1]["recordId"] == "22"
 
 
+def test_fetch_v2_output_field_mapping_expands_list_with_scalar_fields(monkeypatch):
+    response = _client_with_list_mapping_driver(monkeypatch).post(
+        "/v2/fetch",
+        json={
+            "platform": "x",
+            "sourceId": "source-x-001",
+            "keywords": [],
+            "driver": {"name": "playwright", "option": {}},
+            "output": {
+                "field": {
+                    "channel_query": "query",
+                    "id": "text.id",
+                    "author": "text.author",
+                    "title": "text.text",
+                },
+                "type": "text",
+            },
+        },
+    )
+
+    assert response.status_code == 200
+    items = response.json()
+    assert len(items) == 2
+    assert items[0]["recordContent"]["channel_query"] == "openai"
+    assert items[0]["recordContent"]["id"] == "1"
+    assert items[1]["recordContent"]["channel_query"] == "openai"
+    assert items[1]["recordContent"]["id"] == "2"
+
+
 def test_fetch_v2_rejects_nested_playwright_option(monkeypatch):
     response = _client_with_stub_driver(monkeypatch).post(
         "/v2/fetch",
