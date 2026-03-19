@@ -2821,18 +2821,9 @@ def _normalize_v3_fetch_request(request: FetchV3Request) -> tuple[FetchRequest, 
         driver_filter = dict(request.driver.filter)
     driver_name = driver_name.strip().lower()
 
-    request_intent = request.intent
-    if request.driver is not None and getattr(request.driver, "script", None) is not None:
-        request_intent = request.driver.script
-    if request_intent is not None and request_intent.type.strip():
-        intent_type = request_intent.type.strip().lower()
-    else:
-        intent_type = "search"
-    intent_args = (
-        dict(request_intent.args)
-        if request_intent is not None and isinstance(request_intent.args, dict)
-        else {}
-    )
+    request_intent = request.driver.script if request.driver is not None else None
+    intent_type = request_intent.type.strip().lower() if request_intent and request_intent.type.strip() else "search"
+    intent_args = dict(request_intent.args) if request_intent and isinstance(request_intent.args, dict) else {}
     adapter = f"{request.platform.lower().strip()}.{intent_type}"
     driver_option = _merge_v3_intent_into_driver_option(
         request.platform,

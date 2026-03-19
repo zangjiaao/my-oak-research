@@ -71,6 +71,18 @@ class FetchV3Request(BaseModel):
     driver: Optional[FetchV3Driver] = None
     network: Optional[FetchV3Network] = None
 
+    @model_validator(mode="after")
+    def _validate_v3_driver_script(self):
+        if self.intent is not None:
+            raise ValueError(
+                "v3 payload no longer accepts top-level intent; move it to driver.script (e.g. driver.script.type / driver.script.args)"
+            )
+        if self.driver is None or self.driver.script is None:
+            raise ValueError(
+                "v3 payload requires driver.script; please provide driver.script.type and driver.script.args"
+            )
+        return self
+
 
 class FetchV3Meta(BaseModel):
     adapter: str
