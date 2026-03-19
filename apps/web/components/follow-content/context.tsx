@@ -26,6 +26,8 @@ export type ContentItem = {
     summary: string;
     source: string;
     ingestedAt: string;
+    previewMediaType?: "image" | "audio" | "video" | "file" | "text";
+    mediaCount?: number;
     hasImage: boolean;
     layout: "image" | "text";
   };
@@ -35,12 +37,23 @@ export type ContentItem = {
     content: string;
     markdown: string;
     images: string[];
+    audios?: string[];
+    files?: string[];
     links: string[];
     sourceUrl: string | null;
     publishedAt: string;
     recordId: string | null;
     recordType: string | null;
   };
+  media?: Array<{
+    type: "image" | "audio" | "video" | "file";
+    url: string;
+    mimeType: string | null;
+    name: string | null;
+    size: number | null;
+    duration: number | null;
+    thumbnailUrl: string | null;
+  }>;
   relation?: {
     recordId: string | null;
     recordIndex: number | null;

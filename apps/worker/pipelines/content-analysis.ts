@@ -14,6 +14,7 @@ import {
 import { llmGateway, browserAgent } from "@oak/agents";
 import { publishTaskEvent, publishContentEvent } from "@/lib/queue";
 import { redact, stripPromptLike } from "@/lib/security";
+import { buildNormalizedRecordContent } from "./record-content-normalizer";
 
 const SummarySchema = z.object({
   summary: z.string().min(30).max(400),
@@ -42,6 +43,7 @@ type CleanItem = {
   recordContent?: Record<string, unknown>;
   schemaVersion?: string;
   recordIndex?: number;
+  intent?: string;
 };
 
 type GatherSocialDriver = "playwright" | "xhttp" | "agent-browser";
@@ -192,17 +194,34 @@ export async function runFocusCollector(runId: string, queryId: string) {
       );
     }
 
+    const contentTitle =
+      item.title ??
+      (summary.summary.slice(0, 40).replace(/\s+/g, " ").trim() ||
+        `来源 ${item.platform}`);
+    const contentTime = item.recordTime ?? item.time ?? new Date();
+    const normalizedRecordContent = buildNormalizedRecordContent({
+      platform: item.platform,
+      intent: item.intent,
+      sourceId: item.sourceId,
+      fallbackTitle: contentTitle,
+      fallbackSummary: summary.summary,
+      fallbackMarkdown: item.markdown,
+      fallbackUrl: item.url,
+      fallbackTimeIso: contentTime.toISOString(),
+      recordId: item.recordId,
+      recordType: item.recordType,
+      recordIndex: item.recordIndex,
+      rawRecordContent: item.recordContent,
+    });
+
     const content = await prisma.content.create({
       data: {
-        title:
-          item.title ??
-          (summary.summary.slice(0, 40).replace(/\s+/g, " ").trim() ||
-            `来源 ${item.platform}`),
+        title: contentTitle,
         summary: summary.summary,
         markdown: item.markdown,
         platform: item.platform,
         type: mapContentType(item.sourceType),
-        time: item.recordTime ?? item.time ?? new Date(),
+        time: contentTime,
         url: item.url,
         meta: {
           queryId,
@@ -211,17 +230,17 @@ export async function runFocusCollector(runId: string, queryId: string) {
           driver: item.driver,
           matchedKeywords: item.matchedKeywords ?? [],
           keywordMatchScore: item.keywordMatchScore ?? null,
-          recordId: item.recordId ?? null,
-          recordType: item.recordType ?? null,
-          recordTime: (item.recordTime ?? item.time ?? new Date()).toISOString(),
-          recordContent:
-            ((item.recordContent ?? { text: item.text, markdown: item.markdown }) as Prisma.InputJsonValue),
-          schemaVersion: item.schemaVersion ?? "content.v1",
-          recordIndex: item.recordIndex ?? null,
+          recordId: normalizedRecordContent.relation.recordId,
+          recordType: normalizedRecordContent.relation.recordType,
+          recordTime: normalizedRecordContent.detailView.publishedAt,
+          recordContent: normalizedRecordContent as Prisma.InputJsonValue,
+          schemaVersion: normalizedRecordContent.schemaVersion,
+          recordIndex: normalizedRecordContent.relation.recordIndex,
           keywords: expandedKeywords,
           summaryRelevance: summary.relevance,
           sourceId: item.sourceId,
           sourceType: item.sourceType,
+          intent: item.intent ?? null,
         },
       },
     });
@@ -671,7 +690,7 @@ async function fetchSocialSource(
     }
 
     const data = await response.json();
-    return normalizeGatherItems(data, source);
+    return normalizeGatherItems(data, source, output.type);
   } catch (error) {
     console.error(`[collector] fetchSocialSource error:`, error);
     // Fallback to basic info if gather service is down
@@ -1147,7 +1166,11 @@ function resolveSourceCredentialId(
   return null;
 }
 
-function normalizeGatherItems(payload: unknown, source: SocialMediaSource): CleanItem[] {
+function normalizeGatherItems(
+  payload: unknown,
+  source: SocialMediaSource,
+  intent?: string
+): CleanItem[] {
   if (!Array.isArray(payload)) {
     return [];
   }
@@ -1184,7 +1207,9 @@ function normalizeGatherItems(payload: unknown, source: SocialMediaSource): Clea
     const recordType =
       typeof row.recordType === "string" && row.recordType.trim()
         ? row.recordType.trim()
-        : undefined;
+        : typeof intent === "string" && intent.trim()
+          ? intent.trim()
+          : undefined;
 
     normalized.push({
       title: typeof row.title === "string" ? row.title : undefined,
@@ -1220,6 +1245,7 @@ function normalizeGatherItems(payload: unknown, source: SocialMediaSource): Clea
       },
       schemaVersion: typeof row.schemaVersion === "string" ? row.schemaVersion : undefined,
       recordIndex: typeof row.recordIndex === "number" ? row.recordIndex : undefined,
+      intent: typeof intent === "string" && intent.trim() ? intent.trim() : undefined,
     });
   }
   return normalized;

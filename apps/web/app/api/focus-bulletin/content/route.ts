@@ -31,6 +31,7 @@ const mapContent = (item: Content & { image?: string | null }) => {
     detailView: views.detailView,
     relation: views.relation,
     rawRecordContent: views.rawRecordContent,
+    media: views.media ?? [],
   };
 };
 

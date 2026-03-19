@@ -92,6 +92,8 @@ export type NormalizedSummaryView = {
   summary: string;
   source: string;
   ingestedAt: string;
+  previewMediaType?: "image" | "audio" | "video" | "file" | "text";
+  mediaCount?: number;
   hasImage: boolean;
   layout: "image" | "text";
 };
@@ -102,6 +104,8 @@ export type NormalizedDetailView = {
   content: string;
   markdown: string;
   images: string[];
+  audios?: string[];
+  files?: string[];
   links: string[];
   sourceUrl: string | null;
   publishedAt: string;
@@ -120,6 +124,15 @@ export type NormalizedContentViews = {
   detailView: NormalizedDetailView;
   relation: NormalizedRelation;
   rawRecordContent: JsonObject;
+  media?: Array<{
+    type: "image" | "audio" | "video" | "file";
+    url: string;
+    mimeType: string | null;
+    name: string | null;
+    size: number | null;
+    duration: number | null;
+    thumbnailUrl: string | null;
+  }>;
   mappingSource: typeof SCAN_SCRIPT_FIELD_MAP;
 };
 
@@ -128,6 +141,17 @@ function asObject(value: unknown): JsonObject {
     return value as JsonObject;
   }
   return {};
+}
+
+function isNormalizedV2RecordContent(value: JsonObject): boolean {
+  const summaryView = asObject(value.summaryView);
+  const detailView = asObject(value.detailView);
+  const relation = asObject(value.relation);
+  return (
+    typeof summaryView.title === "string" &&
+    typeof detailView.content === "string" &&
+    typeof relation.relatedKey === "string"
+  );
 }
 
 function toStringValue(value: unknown): string | null {
@@ -226,6 +250,134 @@ function normalizeRecordRelatedKey(content: Content, meta: JsonObject, recordId:
 export function buildRecordContentViews(content: Content): NormalizedContentViews {
   const meta = asObject(content.meta);
   const recordContent = asObject(meta.recordContent);
+  if (isNormalizedV2RecordContent(recordContent)) {
+    const summaryViewObj = asObject(recordContent.summaryView);
+    const detailViewObj = asObject(recordContent.detailView);
+    const relationObj = asObject(recordContent.relation);
+    const mediaItems = Array.isArray(recordContent.media)
+      ? recordContent.media
+          .map((item) => asObject(item))
+          .map((item) => ({
+            type: (item.type === "image" ||
+            item.type === "audio" ||
+            item.type === "video" ||
+            item.type === "file"
+              ? item.type
+              : "file") as "image" | "audio" | "video" | "file",
+            url: toStringValue(item.url) ?? "",
+            mimeType: toStringValue(item.mimeType),
+            name: toStringValue(item.name),
+            size: typeof item.size === "number" ? item.size : null,
+            duration: typeof item.duration === "number" ? item.duration : null,
+            thumbnailUrl: toStringValue(item.thumbnailUrl),
+          }))
+          .filter((item) => item.url)
+      : [];
+
+    const images = Array.from(
+      new Set([
+        ...pickMany(detailViewObj, ["images"]).filter((value) => /^https?:\/\//i.test(value)),
+        ...mediaItems.filter((item) => item.type === "image").map((item) => item.url),
+      ])
+    );
+    const audios = Array.from(
+      new Set([
+        ...pickMany(detailViewObj, ["audios"]).filter((value) => /^https?:\/\//i.test(value)),
+        ...mediaItems.filter((item) => item.type === "audio").map((item) => item.url),
+      ])
+    );
+    const files = Array.from(
+      new Set([
+        ...pickMany(detailViewObj, ["files"]).filter((value) => /^https?:\/\//i.test(value)),
+        ...mediaItems
+          .filter((item) => item.type === "file" || item.type === "video")
+          .map((item) => item.url),
+      ])
+    );
+    const links = Array.from(
+      new Set([
+        ...pickMany(detailViewObj, ["links"]).filter((value) => /^https?:\/\//i.test(value)),
+        ...(content.url ? [content.url] : []),
+      ])
+    );
+    const sourceUrl = links[0] ?? null;
+    const ingestedAt =
+      toStringValue(summaryViewObj.ingestedAt) ?? content.time.toISOString();
+    const previewMediaType = toStringValue(summaryViewObj.previewMediaType);
+    const normalizedPreviewMediaType =
+      previewMediaType === "image" ||
+      previewMediaType === "audio" ||
+      previewMediaType === "video" ||
+      previewMediaType === "file" ||
+      previewMediaType === "text"
+        ? previewMediaType
+        : images.length > 0
+          ? "image"
+          : audios.length > 0
+            ? "audio"
+            : files.length > 0
+              ? "file"
+              : "text";
+    const mediaCount =
+      typeof summaryViewObj.mediaCount === "number"
+        ? summaryViewObj.mediaCount
+        : mediaItems.length;
+
+    return {
+      summaryView: {
+        title:
+          toStringValue(summaryViewObj.title) ??
+          toStringValue(detailViewObj.title) ??
+          content.title,
+        summary: toStringValue(summaryViewObj.summary) ?? content.summary,
+        source: toStringValue(summaryViewObj.source) ?? content.platform,
+        ingestedAt,
+        previewMediaType: normalizedPreviewMediaType,
+        mediaCount,
+        hasImage: images.length > 0,
+        layout: images.length > 0 ? "image" : "text",
+      },
+      detailView: {
+        title:
+          toStringValue(detailViewObj.title) ??
+          toStringValue(summaryViewObj.title) ??
+          content.title,
+        author: toStringValue(detailViewObj.author),
+        content: toStringValue(detailViewObj.content) ?? content.markdown,
+        markdown:
+          toStringValue(detailViewObj.content) ??
+          toStringValue(detailViewObj.markdown) ??
+          content.markdown,
+        images,
+        audios,
+        files,
+        links,
+        sourceUrl,
+        publishedAt:
+          toStringValue(detailViewObj.publishedAt) ?? content.time.toISOString(),
+        recordId:
+          toStringValue(relationObj.recordId) ?? toStringValue(meta.recordId),
+        recordType:
+          toStringValue(relationObj.recordType) ?? toStringValue(meta.recordType),
+      },
+      relation: {
+        recordId:
+          toStringValue(relationObj.recordId) ?? toStringValue(meta.recordId),
+        recordIndex:
+          typeof relationObj.recordIndex === "number"
+            ? relationObj.recordIndex
+            : typeof meta.recordIndex === "number"
+              ? meta.recordIndex
+              : null,
+        relatedKey:
+          toStringValue(relationObj.relatedKey) ??
+          `${toStringValue(meta.sourceId) ?? content.platform}:content:${content.id}`,
+      },
+      rawRecordContent: asObject(recordContent.raw),
+      media: mediaItems,
+      mappingSource: SCAN_SCRIPT_FIELD_MAP,
+    };
+  }
   const recordId = toStringValue(meta.recordId);
   const recordType = toStringValue(meta.recordType);
   const recordIndexRaw = meta.recordIndex;

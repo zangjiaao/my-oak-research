@@ -178,6 +178,8 @@ const FollowContent = () => {
                 publishedAt={content.detailView?.publishedAt ?? content.time}
                 links={content.detailView?.links ?? (content.url ? [content.url] : [])}
                 images={content.detailView?.images ?? (content.image ? [content.image] : [])}
+                audios={content.detailView?.audios ?? []}
+                files={content.detailView?.files ?? []}
                 bookmarked={isBookmarked(content.id)}
                 onBookmarkToggle={() => {
                   const currentlyBookmarked = isBookmarked(content.id);

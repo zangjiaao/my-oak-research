@@ -16,6 +16,8 @@ const NewsDetailCard = ({
   publishedAt,
   links,
   images,
+  audios,
+  files,
   className,
   bookmarked,
   onBookmarkToggle,
@@ -30,6 +32,8 @@ const NewsDetailCard = ({
   publishedAt?: string;
   links?: string[];
   images?: string[];
+  audios?: string[];
+  files?: string[];
   className?: string;
   bookmarked?: boolean;
   onBookmarkToggle?: () => void;
@@ -123,6 +127,28 @@ const NewsDetailCard = ({
                 className="truncate text-blue-600 hover:underline"
               >
                 {link}
+              </a>
+            ))}
+          </div>
+        ) : null}
+        {audios && audios.length > 0 ? (
+          <div className="mb-6 flex flex-col gap-2">
+            {audios.slice(0, 2).map((audioUrl, index) => (
+              <audio key={`${audioUrl}-${index}`} controls src={audioUrl} className="w-full" />
+            ))}
+          </div>
+        ) : null}
+        {files && files.length > 0 ? (
+          <div className="mb-6 flex flex-col gap-1 text-sm">
+            {files.slice(0, 4).map((fileUrl, index) => (
+              <a
+                key={`${fileUrl}-${index}`}
+                href={fileUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="truncate text-blue-600 hover:underline"
+              >
+                {fileUrl}
               </a>
             ))}
           </div>
