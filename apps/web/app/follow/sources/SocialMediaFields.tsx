@@ -1720,7 +1720,7 @@ export const SocialMediaFields = ({
               </div>
 
               <div className="grid gap-4 md:grid-cols-2">
-                <div className="flex items-center gap-3 pt-8">
+                <div className="flex items-center gap-3">
                   <Controller
                     name="social.config.playwright.headless"
                     control={control}
