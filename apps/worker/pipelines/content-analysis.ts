@@ -771,36 +771,9 @@ function normalizeGatherSocialConfig(
   }
 
   const playwright = asObject(sanitizedConfig.playwright);
-  const args = asObject(playwright.args);
-  const authKey =
-    resolveSourceCredentialId(source, playwright) ||
-    "anonymous-auth";
-  const platformKey = (platform || "unknown").toLowerCase();
-  const driverKey = "playwright";
   const normalizedPlaywright: Record<string, unknown> = {
-    mode:
-      typeof playwright.mode === "string" && playwright.mode.trim()
-        ? playwright.mode
-        : "eval-js",
     headless:
       typeof playwright.headless === "boolean" ? playwright.headless : false,
-    scriptPath:
-      typeof playwright.scriptPath === "string" ? playwright.scriptPath : "",
-    args: Object.fromEntries(
-      Object.entries(args).map(([key, value]) => [key, value == null ? "" : String(value)])
-    ),
-    userId:
-      typeof playwright.userId === "string" && playwright.userId.trim()
-        ? playwright.userId
-        : "",
-    sessionId:
-      typeof playwright.sessionId === "string" && playwright.sessionId.trim()
-        ? playwright.sessionId
-        : `${authKey}:${platformKey}:${driverKey}`,
-    poolDriver:
-      typeof playwright.poolDriver === "string" && playwright.poolDriver.trim()
-        ? playwright.poolDriver
-        : driverKey,
   };
 
   if (typeof playwright.stateFile === "string" && playwright.stateFile.trim()) {
@@ -1187,24 +1160,6 @@ function normalizeStringArray(value: unknown): string[] {
     );
   }
   return [];
-}
-
-function resolveSourceCredentialId(
-  source: SocialMediaSource,
-  playwrightConfig: Record<string, unknown>
-): string | null {
-  const ids = [
-    source.social?.credentialId,
-    source.credentialId,
-    playwrightConfig.credentialId,
-    playwrightConfig.credential_id,
-  ];
-  for (const id of ids) {
-    if (typeof id === "string" && id.trim()) {
-      return id.trim();
-    }
-  }
-  return null;
 }
 
 function normalizeGatherItems(
