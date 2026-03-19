@@ -1215,6 +1215,22 @@ function normalizeStringArray(value: unknown): string[] {
   return [];
 }
 
+function pickFallbackText(recordContent: Record<string, unknown>): string {
+  const directKeys = ["title", "content", "summary", "description", "author"];
+  for (const key of directKeys) {
+    const value = recordContent[key];
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
+  }
+  for (const value of Object.values(recordContent)) {
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
+  }
+  return "";
+}
+
 function normalizeGatherItems(
   payload: unknown,
   source: SocialMediaSource,
@@ -1235,7 +1251,7 @@ function normalizeGatherItems(
           ? row.text
           : typeof row.markdown === "string"
             ? row.markdown
-            : "";
+            : pickFallbackText(recordContent);
     if (!text) continue;
 
     const markdown =
