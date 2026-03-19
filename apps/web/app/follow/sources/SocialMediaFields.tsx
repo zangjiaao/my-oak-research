@@ -121,6 +121,7 @@ type IntentOption = {
   platform: string;
   intentType: string;
   args: Record<string, IntentArgRule>;
+  outputField?: Record<string, string> | string[];
 };
 
 type GatherScriptCatalogItem = {
@@ -183,6 +184,33 @@ const toDelimitedStringArray = (value: unknown): string[] => {
           .filter(Boolean)
       )
     );
+  }
+  return [];
+};
+
+type OutputFieldEntry = {
+  key: string;
+  path: string;
+};
+
+const toOutputFieldEntries = (value: unknown): OutputFieldEntry[] => {
+  if (Array.isArray(value)) {
+    return Array.from(
+      new Set(
+        value
+          .filter((item): item is string => typeof item === "string")
+          .map((item) => item.trim())
+          .filter(Boolean)
+      )
+    ).map((item) => ({ key: item, path: item }));
+  }
+  if (value && typeof value === "object") {
+    return Object.entries(value as Record<string, unknown>)
+      .map(([key, rawValue]) => ({
+        key: key.trim(),
+        path: String(rawValue ?? "").trim(),
+      }))
+      .filter((item) => item.key.length > 0 && item.path.length > 0);
   }
   return [];
 };
@@ -511,6 +539,7 @@ export const SocialMediaFields = ({
             intentType: item.intent,
             description: `${item.platform.toLowerCase()}.${item.intent}`,
             args: toIntentArgRules(item.sample?.intentArgs),
+            outputField: item.sample?.outputField,
           }))
           .filter((item) => item.intentType.trim().length > 0);
         setCatalogOptions(nextOptions);
@@ -937,6 +966,16 @@ export const SocialMediaFields = ({
     scriptOptions.length > 0
       ? getIntentOptionByType(scriptOptions, selectedIntentType)
       : null;
+  const configuredOutputField = (watch as any)("social.config.output.field");
+  const outputFieldEntries = useMemo(() => {
+    const fromConfig = toOutputFieldEntries(configuredOutputField);
+    if (fromConfig.length > 0) return fromConfig;
+    return toOutputFieldEntries(selectedScript?.outputField);
+  }, [configuredOutputField, selectedScript]);
+  const outputFieldKeys = useMemo(
+    () => Array.from(new Set(outputFieldEntries.map((item) => item.key))),
+    [outputFieldEntries]
+  );
   const outputTypeError = getConfigErrorMessage("output.type");
   const outputKeywordScopeError = getConfigErrorMessage("output.keywordScope");
   const filterMinCharsError = getConfigErrorMessage("filter.minChars");
@@ -1273,6 +1312,27 @@ export const SocialMediaFields = ({
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-4">
+      <div className="grid gap-2">
+        <Label>Output Fields (Worker Managed)</Label>
+        <div className="rounded-md border bg-muted/30 p-3 text-xs">
+          {outputFieldEntries.length > 0 ? (
+            <div className="grid gap-1 font-mono">
+              {outputFieldEntries.map((item) => (
+                <p key={`${item.key}:${item.path}`}>
+                  {item.key}: {item.path}
+                </p>
+              ))}
+            </div>
+          ) : (
+            <p className="text-muted-foreground">
+              当前 intent 未返回 output.field 示例，keywordScope 请先按约定字段填写。
+            </p>
+          )}
+        </div>
+        <p className="text-xs text-muted-foreground">
+          output.field 由 worker 规则维护，这里仅展示给 keywordScope 参考。
+        </p>
+      </div>
 
       <div className="grid gap-2 md:max-w-md">
         <Label htmlFor="social.config.output.type">Output Type</Label>
@@ -1302,7 +1362,11 @@ export const SocialMediaFields = ({
             <Textarea
               id="social.config.output.keywordScope"
               rows={2}
-              placeholder={"text\nmarkdown"}
+              placeholder={
+                outputFieldKeys.length > 0
+                  ? outputFieldKeys.join("\n")
+                  : "text\nmarkdown"
+              }
               value={
                 Array.isArray(field.value)
                   ? field.value.join("\n")
