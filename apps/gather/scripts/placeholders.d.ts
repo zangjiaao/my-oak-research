@@ -9,6 +9,7 @@ declare global {
   const __SCROLL_TIMES__: number;
   const __USERNAME_JSON__: string;
   const __TWEET_ID_JSON__: string;
+  const __QUESTION_ID_JSON__: string;
   const __XHS_USER_ID_JSON__: string;
   const __NOTIFICATION_TYPE_JSON__: string;
   const __LOCATION_JSON__: string;
@@ -22,6 +23,10 @@ declare global {
   const __KEYWORD_JSON__: string;
   const __SLUG_JSON__: string;
   const __PERIOD_JSON__: string;
+  const __BVID_JSON__: string;
+  const __ORDER_JSON__: string;
+  const __TYPE_JSON__: string;
+  const __SORT__: number;
   const __CATEGORY_ID__: number;
   const __TOPIC_ID__: number;
   const __URL_JSON__: string;

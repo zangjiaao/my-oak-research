@@ -12,6 +12,9 @@ Usage:
     uv run export_chrome_cookies.py x
     uv run export_chrome_cookies.py linkedin
     uv run export_chrome_cookies.py youtube
+    uv run export_chrome_cookies.py zhihu
+    uv run export_chrome_cookies.py bilibili
+    uv run export_chrome_cookies.py cnblogs
     uv run export_chrome_cookies.py --help
 
 Requirements:
@@ -135,6 +138,27 @@ PLATFORMS = {
         "url": "https://www.youtube.com",
         "output_file": "youtube_auth.json",
         "display_name": "YouTube",
+        "auth_types": ["cookie"],
+    },
+    "zhihu": {
+        "domains": [".zhihu.com"],
+        "url": "https://www.zhihu.com",
+        "output_file": "zhihu_auth.json",
+        "display_name": "知乎 (Zhihu)",
+        "auth_types": ["cookie"],
+    },
+    "bilibili": {
+        "domains": [".bilibili.com"],
+        "url": "https://www.bilibili.com",
+        "output_file": "bilibili_auth.json",
+        "display_name": "Bilibili",
+        "auth_types": ["cookie"],
+    },
+    "cnblogs": {
+        "domains": [".cnblogs.com"],
+        "url": "https://zzk.cnblogs.com",
+        "output_file": "cnblogs_auth.json",
+        "display_name": "CNBlogs",
         "auth_types": ["cookie"],
     },
 }
@@ -444,6 +468,9 @@ def main():
   weibo         - 仅 Cookie
   linkedin      - 仅 Cookie
   youtube       - 仅 Cookie
+  zhihu         - 仅 Cookie
+  bilibili      - 仅 Cookie
+  cnblogs       - 仅 Cookie
   telegram      - Cookie + localStorage
   whatsapp      - 持久化浏览器配置文件（需要 Playwright）
 

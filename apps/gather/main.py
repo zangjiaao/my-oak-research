@@ -98,6 +98,51 @@ _LINKEDIN_INTERCEPT_INTENTS = _SCRIPT_REGISTRY.intents_for("linkedin")
 _LINUX_DO_INTERCEPT_INTENTS = _SCRIPT_REGISTRY.intents_for("linux-do")
 _YOUTUBE_INTERCEPT_INTENTS = _SCRIPT_REGISTRY.intents_for("youtube")
 _WEIBO_INTERCEPT_INTENTS = _SCRIPT_REGISTRY.intents_for("weibo")
+_ZHIHU_INTERCEPT_INTENTS = _SCRIPT_REGISTRY.intents_for("zhihu")
+_BILIBILI_INTERCEPT_INTENTS = _SCRIPT_REGISTRY.intents_for("bilibili")
+_KR36_INTERCEPT_INTENTS = _SCRIPT_REGISTRY.intents_for("36kr")
+_ARXIV_INTERCEPT_INTENTS = _SCRIPT_REGISTRY.intents_for("arxiv")
+_BAIDU_INTERCEPT_INTENTS = _SCRIPT_REGISTRY.intents_for("baidu")
+_BING_INTERCEPT_INTENTS = _SCRIPT_REGISTRY.intents_for("bing")
+_CNBLOGS_INTERCEPT_INTENTS = _SCRIPT_REGISTRY.intents_for("cnblogs")
+_CSDN_INTERCEPT_INTENTS = _SCRIPT_REGISTRY.intents_for("csdn")
+_CTRIP_INTERCEPT_INTENTS = _SCRIPT_REGISTRY.intents_for("ctrip")
+_DEVTO_INTERCEPT_INTENTS = _SCRIPT_REGISTRY.intents_for("devto")
+_DUCKDUCKGO_INTERCEPT_INTENTS = _SCRIPT_REGISTRY.intents_for("duckduckgo")
+_GOOGLE_INTERCEPT_INTENTS = _SCRIPT_REGISTRY.intents_for("google")
+_REUTERS_INTERCEPT_INTENTS = _SCRIPT_REGISTRY.intents_for("reuters")
+_TOUTIAO_INTERCEPT_INTENTS = _SCRIPT_REGISTRY.intents_for("toutiao")
+_HUPU_INTERCEPT_INTENTS = _SCRIPT_REGISTRY.intents_for("hupu")
+_GENERIC_INTERCEPT_INTENTS: dict[str, set[str]] = {
+    "36kr": _KR36_INTERCEPT_INTENTS,
+    "arxiv": _ARXIV_INTERCEPT_INTENTS,
+    "baidu": _BAIDU_INTERCEPT_INTENTS,
+    "bing": _BING_INTERCEPT_INTENTS,
+    "cnblogs": _CNBLOGS_INTERCEPT_INTENTS,
+    "csdn": _CSDN_INTERCEPT_INTENTS,
+    "ctrip": _CTRIP_INTERCEPT_INTENTS,
+    "devto": _DEVTO_INTERCEPT_INTENTS,
+    "duckduckgo": _DUCKDUCKGO_INTERCEPT_INTENTS,
+    "google": _GOOGLE_INTERCEPT_INTENTS,
+    "reuters": _REUTERS_INTERCEPT_INTENTS,
+    "toutiao": _TOUTIAO_INTERCEPT_INTENTS,
+    "hupu": _HUPU_INTERCEPT_INTENTS,
+}
+_GENERIC_INTERCEPT_TARGET_URL: dict[str, str] = {
+    "36kr": "https://36kr.com",
+    "arxiv": "https://arxiv.org",
+    "baidu": "https://www.baidu.com",
+    "bing": "https://www.bing.com",
+    "cnblogs": "https://zzk.cnblogs.com",
+    "csdn": "https://so.csdn.net",
+    "ctrip": "https://www.ctrip.com",
+    "devto": "https://dev.to",
+    "duckduckgo": "https://duckduckgo.com",
+    "google": "https://www.google.com",
+    "reuters": "https://www.reuters.com",
+    "toutiao": "https://www.toutiao.com",
+    "hupu": "https://bbs.hupu.com",
+}
 _REPO_ROOT = _GATHER_APP_ROOT.parents[1]
 if _RAW_API_IO_LOG_DIR.is_absolute():
     _API_IO_LOG_DIR = _RAW_API_IO_LOG_DIR
@@ -334,6 +379,51 @@ async def _playwright_fetch_data(request: FetchRequest):
         if mode.startswith("intercept-weibo-") and platform == "weibo":
             intent_type = mode.removeprefix("intercept-weibo-").strip().lower()
             return await _run_playwright_intercept_weibo_intent(request, intent_type)
+        if mode.startswith("intercept-zhihu-") and platform == "zhihu":
+            intent_type = mode.removeprefix("intercept-zhihu-").strip().lower()
+            return await _run_playwright_intercept_zhihu_intent(request, intent_type)
+        if mode.startswith("intercept-bilibili-") and platform == "bilibili":
+            intent_type = mode.removeprefix("intercept-bilibili-").strip().lower()
+            return await _run_playwright_intercept_bilibili_intent(request, intent_type)
+        if mode.startswith("intercept-36kr-") and platform == "36kr":
+            intent_type = mode.removeprefix("intercept-36kr-").strip().lower()
+            return await _run_playwright_intercept_generic_intent(request, intent_type, platform="36kr")
+        if mode.startswith("intercept-arxiv-") and platform == "arxiv":
+            intent_type = mode.removeprefix("intercept-arxiv-").strip().lower()
+            return await _run_playwright_intercept_generic_intent(request, intent_type, platform="arxiv")
+        if mode.startswith("intercept-baidu-") and platform == "baidu":
+            intent_type = mode.removeprefix("intercept-baidu-").strip().lower()
+            return await _run_playwright_intercept_generic_intent(request, intent_type, platform="baidu")
+        if mode.startswith("intercept-bing-") and platform == "bing":
+            intent_type = mode.removeprefix("intercept-bing-").strip().lower()
+            return await _run_playwright_intercept_generic_intent(request, intent_type, platform="bing")
+        if mode.startswith("intercept-cnblogs-") and platform == "cnblogs":
+            intent_type = mode.removeprefix("intercept-cnblogs-").strip().lower()
+            return await _run_playwright_intercept_generic_intent(request, intent_type, platform="cnblogs")
+        if mode.startswith("intercept-csdn-") and platform == "csdn":
+            intent_type = mode.removeprefix("intercept-csdn-").strip().lower()
+            return await _run_playwright_intercept_generic_intent(request, intent_type, platform="csdn")
+        if mode.startswith("intercept-ctrip-") and platform == "ctrip":
+            intent_type = mode.removeprefix("intercept-ctrip-").strip().lower()
+            return await _run_playwright_intercept_generic_intent(request, intent_type, platform="ctrip")
+        if mode.startswith("intercept-devto-") and platform == "devto":
+            intent_type = mode.removeprefix("intercept-devto-").strip().lower()
+            return await _run_playwright_intercept_generic_intent(request, intent_type, platform="devto")
+        if mode.startswith("intercept-duckduckgo-") and platform == "duckduckgo":
+            intent_type = mode.removeprefix("intercept-duckduckgo-").strip().lower()
+            return await _run_playwright_intercept_generic_intent(request, intent_type, platform="duckduckgo")
+        if mode.startswith("intercept-google-") and platform == "google":
+            intent_type = mode.removeprefix("intercept-google-").strip().lower()
+            return await _run_playwright_intercept_generic_intent(request, intent_type, platform="google")
+        if mode.startswith("intercept-reuters-") and platform == "reuters":
+            intent_type = mode.removeprefix("intercept-reuters-").strip().lower()
+            return await _run_playwright_intercept_generic_intent(request, intent_type, platform="reuters")
+        if mode.startswith("intercept-toutiao-") and platform == "toutiao":
+            intent_type = mode.removeprefix("intercept-toutiao-").strip().lower()
+            return await _run_playwright_intercept_generic_intent(request, intent_type, platform="toutiao")
+        if mode.startswith("intercept-hupu-") and platform == "hupu":
+            intent_type = mode.removeprefix("intercept-hupu-").strip().lower()
+            return await _run_playwright_intercept_generic_intent(request, intent_type, platform="hupu")
         if mode in {"eval-js", "evaljs", "eval"}:
             return await _run_playwright_eval_script(request)
 
@@ -1904,6 +1994,308 @@ async def _run_playwright_intercept_weibo_intent(request: FetchRequest, intent_t
     return items
 
 
+async def _run_playwright_intercept_zhihu_intent(request: FetchRequest, intent_type: str) -> list[CleanItem]:
+    from playwright.async_api import TimeoutError as PlaywrightTimeoutError
+    from playwright.async_api import async_playwright
+
+    config = request.config if isinstance(request.config, dict) else {}
+    playwright_options = config.get("playwright")
+    if not isinstance(playwright_options, dict):
+        raise HTTPException(status_code=400, detail="config.playwright must be an object")
+
+    args = playwright_options.get("args", {})
+    args_obj = args if isinstance(args, dict) else {}
+    normalized_intent = (intent_type or "").strip().lower()
+    if normalized_intent not in _ZHIHU_INTERCEPT_INTENTS:
+        raise HTTPException(status_code=400, detail=f"unsupported zhihu intercept intent: {normalized_intent}")
+
+    query = str(args_obj.get("keyword", args_obj.get("query", ""))).strip()
+    question_id = str(args_obj.get("id", "")).strip()
+    raw_limit = args_obj.get("limit", args_obj.get("count", 20))
+    try:
+        limit = int(raw_limit)
+    except (TypeError, ValueError):
+        limit = 20
+    limit = max(1, min(limit, 100))
+
+    if normalized_intent == "question" and not question_id:
+        raise HTTPException(status_code=400, detail="config.playwright.args.id is required for intercept-zhihu-question mode")
+    if normalized_intent == "search" and not query:
+        raise HTTPException(status_code=400, detail="config.playwright.args.keyword or config.playwright.args.query is required for intercept-zhihu-search mode")
+
+    headless = bool(playwright_options.get("headless", True))
+    navigation_timeout_ms = playwright_options.get("navigationTimeoutMs", 60000)
+    if not isinstance(navigation_timeout_ms, int) or navigation_timeout_ms < 1000:
+        raise HTTPException(status_code=400, detail="config.playwright.navigationTimeoutMs must be an integer >= 1000")
+    storage_state = _load_playwright_storage_state_from_config(request, playwright_options)
+    if normalized_intent == "search" and query:
+        target_url = f"https://www.zhihu.com/search?type=content&q={quote(query)}"
+    elif normalized_intent == "hot":
+        target_url = "https://www.zhihu.com/hot"
+    elif normalized_intent == "question" and question_id:
+        target_url = f"https://www.zhihu.com/question/{quote(question_id)}"
+    else:
+        target_url = "https://www.zhihu.com"
+
+    script_to_run = build_x_intent_script(
+        _SCRIPT_REGISTRY,
+        normalized_intent,
+        {
+            "__KEYWORD_JSON__": json.dumps(query, ensure_ascii=False),
+            "__QUESTION_ID_JSON__": json.dumps(question_id, ensure_ascii=False),
+            "__COUNT__": limit,
+            "__LIMIT__": limit,
+        },
+        platform="zhihu",
+    )
+
+    try:
+        async with async_playwright() as playwright:
+            browser = await playwright.chromium.launch(headless=headless)
+            context_options: dict[str, Any] = {}
+            if storage_state:
+                context_options["storage_state"] = storage_state
+            context = await browser.new_context(**context_options)
+            page = await context.new_page()
+            try:
+                await page.goto(target_url, wait_until="domcontentloaded", timeout=navigation_timeout_ms)
+                await page.wait_for_timeout(1200)
+                eval_result = await page.evaluate(script_to_run)
+            finally:
+                await context.close()
+                await browser.close()
+    except PlaywrightTimeoutError as error:
+        raise HTTPException(status_code=504, detail=f"playwright intercept zhihu timeout: {error}") from error
+    except HTTPException:
+        raise
+    except Exception as error:
+        raise HTTPException(status_code=500, detail=f"playwright intercept zhihu {normalized_intent} failed: {error}") from error
+
+    items = _normalize_playwright_eval_result(eval_result, request, target_url)
+    if not items:
+        raise HTTPException(status_code=500, detail=f"playwright intercept zhihu {normalized_intent} finished without output")
+    return items
+
+
+async def _run_playwright_intercept_bilibili_intent(request: FetchRequest, intent_type: str) -> list[CleanItem]:
+    from playwright.async_api import TimeoutError as PlaywrightTimeoutError
+    from playwright.async_api import async_playwright
+
+    config = request.config if isinstance(request.config, dict) else {}
+    playwright_options = config.get("playwright")
+    if not isinstance(playwright_options, dict):
+        raise HTTPException(status_code=400, detail="config.playwright must be an object")
+
+    args = playwright_options.get("args", {})
+    args_obj = args if isinstance(args, dict) else {}
+    normalized_intent = (intent_type or "").strip().lower()
+    if normalized_intent not in _BILIBILI_INTERCEPT_INTENTS:
+        raise HTTPException(status_code=400, detail=f"unsupported bilibili intercept intent: {normalized_intent}")
+
+    keyword = str(args_obj.get("keyword", args_obj.get("query", ""))).strip()
+    bvid = str(args_obj.get("bvid", "")).strip()
+    raw_order = str(args_obj.get("order", "totalrank")).strip().lower()
+    order = raw_order if raw_order in {"totalrank", "click", "pubdate", "dm", "stow"} else "totalrank"
+    raw_type = str(args_obj.get("type", "all")).strip().lower()
+    feed_type = raw_type if raw_type in {"all", "video", "article", "draw"} else "all"
+    raw_limit = args_obj.get("limit", args_obj.get("count", 20))
+    raw_page = args_obj.get("page", 1)
+    raw_sort = args_obj.get("sort", 2)
+    raw_category = args_obj.get("category", 0)
+
+    try:
+        limit = int(raw_limit)
+    except (TypeError, ValueError):
+        limit = 20
+    limit = max(1, min(limit, 100))
+
+    try:
+        page = int(raw_page)
+    except (TypeError, ValueError):
+        page = 1
+    page = max(1, min(page, 1000))
+
+    try:
+        sort = int(raw_sort)
+    except (TypeError, ValueError):
+        sort = 2
+    if sort not in {0, 2}:
+        sort = 2
+
+    try:
+        category = int(raw_category)
+    except (TypeError, ValueError):
+        category = 0
+    category = max(0, min(category, 9999))
+
+    if normalized_intent == "search" and not keyword:
+        raise HTTPException(status_code=400, detail="config.playwright.args.keyword or config.playwright.args.query is required for intercept-bilibili-search mode")
+    if normalized_intent in {"video", "comments"} and not bvid:
+        raise HTTPException(status_code=400, detail=f"config.playwright.args.bvid is required for intercept-bilibili-{normalized_intent} mode")
+
+    headless = bool(playwright_options.get("headless", True))
+    navigation_timeout_ms = playwright_options.get("navigationTimeoutMs", 60000)
+    if not isinstance(navigation_timeout_ms, int) or navigation_timeout_ms < 1000:
+        raise HTTPException(status_code=400, detail="config.playwright.navigationTimeoutMs must be an integer >= 1000")
+    storage_state = _load_playwright_storage_state_from_config(request, playwright_options)
+
+    if normalized_intent == "search" and keyword:
+        target_url = f"https://search.bilibili.com/all?keyword={quote(keyword)}"
+    elif normalized_intent in {"video", "comments"} and bvid:
+        target_url = f"https://www.bilibili.com/video/{quote(bvid)}"
+    else:
+        target_url = "https://www.bilibili.com"
+
+    script_to_run = build_x_intent_script(
+        _SCRIPT_REGISTRY,
+        normalized_intent,
+        {
+            "__KEYWORD_JSON__": json.dumps(keyword, ensure_ascii=False),
+            "__BVID_JSON__": json.dumps(bvid, ensure_ascii=False),
+            "__ORDER_JSON__": json.dumps(order, ensure_ascii=False),
+            "__TYPE_JSON__": json.dumps(feed_type, ensure_ascii=False),
+            "__PAGE__": page,
+            "__SORT__": sort,
+            "__CATEGORY_ID__": category,
+            "__COUNT__": limit,
+            "__LIMIT__": limit,
+        },
+        platform="bilibili",
+    )
+
+    try:
+        async with async_playwright() as playwright:
+            browser = await playwright.chromium.launch(headless=headless)
+            context_options: dict[str, Any] = {}
+            if storage_state:
+                context_options["storage_state"] = storage_state
+            context = await browser.new_context(**context_options)
+            page_instance = await context.new_page()
+            try:
+                await page_instance.goto(target_url, wait_until="domcontentloaded", timeout=navigation_timeout_ms)
+                await page_instance.wait_for_timeout(1200)
+                eval_result = await page_instance.evaluate(script_to_run)
+            finally:
+                await context.close()
+                await browser.close()
+    except PlaywrightTimeoutError as error:
+        raise HTTPException(status_code=504, detail=f"playwright intercept bilibili timeout: {error}") from error
+    except HTTPException:
+        raise
+    except Exception as error:
+        raise HTTPException(status_code=500, detail=f"playwright intercept bilibili {normalized_intent} failed: {error}") from error
+
+    items = _normalize_playwright_eval_result(eval_result, request, target_url)
+    if not items:
+        raise HTTPException(status_code=500, detail=f"playwright intercept bilibili {normalized_intent} finished without output")
+    return items
+
+
+async def _run_playwright_intercept_generic_intent(
+    request: FetchRequest,
+    intent_type: str,
+    platform: str,
+) -> list[CleanItem]:
+    from playwright.async_api import TimeoutError as PlaywrightTimeoutError
+    from playwright.async_api import async_playwright
+
+    normalized_platform = (platform or "").strip().lower()
+    supported_intents = _GENERIC_INTERCEPT_INTENTS.get(normalized_platform, set())
+    if not supported_intents:
+        raise HTTPException(status_code=400, detail=f"unsupported generic intercept platform: {normalized_platform}")
+
+    config = request.config if isinstance(request.config, dict) else {}
+    playwright_options = config.get("playwright")
+    if not isinstance(playwright_options, dict):
+        raise HTTPException(status_code=400, detail="config.playwright must be an object")
+
+    args = playwright_options.get("args", {})
+    args_obj = args if isinstance(args, dict) else {}
+    normalized_intent = (intent_type or "").strip().lower()
+    if normalized_intent not in supported_intents:
+        raise HTTPException(status_code=400, detail=f"unsupported {normalized_platform} intercept intent: {normalized_intent}")
+
+    query = str(args_obj.get("query", args_obj.get("keyword", ""))).strip()
+    if normalized_intent == "search" and not query:
+        raise HTTPException(status_code=400, detail=f"config.playwright.args.query is required for intercept-{normalized_platform}-search mode")
+
+    raw_limit = args_obj.get("limit", args_obj.get("count", 20))
+    raw_page = args_obj.get("page", 1)
+    raw_order = str(args_obj.get("order", "totalrank")).strip()
+    raw_type = str(args_obj.get("type", "all")).strip()
+    try:
+        limit = int(raw_limit)
+    except (TypeError, ValueError):
+        limit = 20
+    limit = max(1, min(limit, 100))
+    try:
+        page = int(raw_page)
+    except (TypeError, ValueError):
+        page = 1
+    page = max(1, min(page, 1000))
+
+    headless = bool(playwright_options.get("headless", True))
+    navigation_timeout_ms = playwright_options.get("navigationTimeoutMs", 60000)
+    if not isinstance(navigation_timeout_ms, int) or navigation_timeout_ms < 1000:
+        raise HTTPException(status_code=400, detail="config.playwright.navigationTimeoutMs must be an integer >= 1000")
+    storage_state = _load_playwright_storage_state_from_config(request, playwright_options)
+    target_url = _GENERIC_INTERCEPT_TARGET_URL.get(normalized_platform, "https://example.com")
+    if normalized_platform == "arxiv" and normalized_intent == "search" and query:
+        target_url = f"https://arxiv.org/search/?query={quote(query)}&searchtype=all&source=header"
+    if normalized_platform == "google" and normalized_intent == "search" and query:
+        target_url = f"https://www.google.com/search?q={quote(query)}&num={limit}"
+    if normalized_platform == "cnblogs" and normalized_intent == "search" and query:
+        target_url = f"https://zzk.cnblogs.com/s?w={quote(query)}&p={page}"
+    if normalized_platform == "toutiao" and normalized_intent == "search" and query:
+        target_url = f"https://so.toutiao.com/search?keyword={quote(query)}&pd=information&dvpf=pc"
+    if normalized_platform == "toutiao" and normalized_intent == "hot":
+        target_url = "https://www.toutiao.com/hot-event/hot-board/?origin=toutiao_pc"
+    if normalized_platform == "devto" and normalized_intent == "search" and query:
+        target_url = f"https://dev.to/search?q={quote(query)}"
+
+    script_to_run = build_x_intent_script(
+        _SCRIPT_REGISTRY,
+        normalized_intent,
+        {
+            "__QUERY_JSON__": json.dumps(query, ensure_ascii=False),
+            "__KEYWORD_JSON__": json.dumps(query, ensure_ascii=False),
+            "__ORDER_JSON__": json.dumps(raw_order, ensure_ascii=False),
+            "__TYPE_JSON__": json.dumps(raw_type, ensure_ascii=False),
+            "__PAGE__": page,
+            "__COUNT__": limit,
+            "__LIMIT__": limit,
+        },
+        platform=normalized_platform,
+    )
+
+    try:
+        async with async_playwright() as playwright:
+            browser = await playwright.chromium.launch(headless=headless)
+            context_options: dict[str, Any] = {}
+            if storage_state:
+                context_options["storage_state"] = storage_state
+            context = await browser.new_context(**context_options)
+            page_instance = await context.new_page()
+            try:
+                await page_instance.goto(target_url, wait_until="domcontentloaded", timeout=navigation_timeout_ms)
+                await page_instance.wait_for_timeout(1200)
+                eval_result = await page_instance.evaluate(script_to_run)
+            finally:
+                await context.close()
+                await browser.close()
+    except PlaywrightTimeoutError as error:
+        raise HTTPException(status_code=504, detail=f"playwright intercept {normalized_platform} timeout: {error}") from error
+    except HTTPException:
+        raise
+    except Exception as error:
+        raise HTTPException(status_code=500, detail=f"playwright intercept {normalized_platform} {normalized_intent} failed: {error}") from error
+
+    items = _normalize_playwright_eval_result(eval_result, request, target_url)
+    if not items:
+        raise HTTPException(status_code=500, detail=f"playwright intercept {normalized_platform} {normalized_intent} finished without output")
+    return items
+
+
 def _extract_opencli_json_payload(stdout: str) -> Any:
     text = stdout.strip()
     if not text:
@@ -2394,6 +2786,8 @@ def _merge_v3_intent_into_driver_option(
     username = intent_args.get("username")
     xhs_user_id = intent_args.get("id", intent_args.get("user_id"))
     tweet_id = intent_args.get("tweet_id", intent_args.get("tweetId"))
+    question_id = intent_args.get("id", intent_args.get("question_id", intent_args.get("questionId")))
+    bvid = intent_args.get("bvid", intent_args.get("id"))
     url = intent_args.get("url")
     limit = intent_args.get("limit")
     normalized_query = query.strip() if isinstance(query, str) else ""
@@ -2403,6 +2797,8 @@ def _merge_v3_intent_into_driver_option(
     if normalized_username.lower().startswith("u/"):
         normalized_username = normalized_username[2:]
     normalized_tweet_id = _extract_tweet_id(tweet_id)
+    normalized_question_id = str(question_id).strip() if question_id is not None else ""
+    normalized_bvid = str(bvid).strip() if bvid is not None else ""
     if not normalized_tweet_id and isinstance(url, str):
         normalized_tweet_id = _extract_tweet_id(url)
     normalized_limit = limit if isinstance(limit, int) and limit > 0 else None
@@ -2416,6 +2812,14 @@ def _merge_v3_intent_into_driver_option(
             if (platform or "").strip().lower() == "x" and "type" not in args_obj:
                 args_obj["type"] = "latest"
             if (platform or "").strip().lower() in {"linux-do", "linuxdo"}:
+                keyword_arg = intent_args.get("keyword", intent_args.get("query"))
+                if isinstance(keyword_arg, str) and keyword_arg.strip() and "keyword" not in args_obj:
+                    args_obj["keyword"] = keyword_arg.strip()
+            if (platform or "").strip().lower() == "zhihu":
+                keyword_arg = intent_args.get("keyword", intent_args.get("query"))
+                if isinstance(keyword_arg, str) and keyword_arg.strip() and "keyword" not in args_obj:
+                    args_obj["keyword"] = keyword_arg.strip()
+            if (platform or "").strip().lower() == "bilibili":
                 keyword_arg = intent_args.get("keyword", intent_args.get("query"))
                 if isinstance(keyword_arg, str) and keyword_arg.strip() and "keyword" not in args_obj:
                     args_obj["keyword"] = keyword_arg.strip()
@@ -2463,6 +2867,40 @@ def _merge_v3_intent_into_driver_option(
         if intent_type in {"thread", "article"}:
             if normalized_tweet_id and (not isinstance(args_obj.get("tweet_id"), str) or not args_obj.get("tweet_id")):
                 args_obj["tweet_id"] = normalized_tweet_id
+        if intent_type == "question":
+            if normalized_question_id and (not isinstance(args_obj.get("id"), str) or not args_obj.get("id")):
+                args_obj["id"] = normalized_question_id
+        if intent_type in {"video", "comments"}:
+            if normalized_bvid and (not isinstance(args_obj.get("bvid"), str) or not args_obj.get("bvid")):
+                args_obj["bvid"] = normalized_bvid
+        if intent_type in {"popular", "comments"}:
+            page_arg = intent_args.get("page")
+            if isinstance(page_arg, int) and page_arg > 0 and "page" not in args_obj:
+                args_obj["page"] = page_arg
+        if intent_type == "search":
+            page_arg = intent_args.get("page")
+            if isinstance(page_arg, int) and page_arg > 0 and "page" not in args_obj:
+                args_obj["page"] = page_arg
+        if intent_type == "search":
+            order_arg = intent_args.get("order")
+            if isinstance(order_arg, str) and order_arg.strip() and "order" not in args_obj:
+                args_obj["order"] = order_arg.strip()
+        if intent_type == "feed":
+            type_arg = intent_args.get("type")
+            if isinstance(type_arg, str) and type_arg.strip() and "type" not in args_obj:
+                args_obj["type"] = type_arg.strip().lower()
+        if intent_type == "ranking":
+            category_arg = intent_args.get("category")
+            if isinstance(category_arg, int) and "category" not in args_obj:
+                args_obj["category"] = category_arg
+        if intent_type == "comments":
+            sort_arg = intent_args.get("sort")
+            if isinstance(sort_arg, int) and "sort" not in args_obj:
+                args_obj["sort"] = sort_arg
+        if intent_type == "ranking":
+            category_arg = intent_args.get("category")
+            if isinstance(category_arg, int) and "category" not in args_obj:
+                args_obj["category"] = category_arg
         if intent_type in {"video", "transcript"}:
             raw_url_arg = intent_args.get("url", intent_args.get("video_url", intent_args.get("video_id")))
             if isinstance(raw_url_arg, str) and raw_url_arg.strip() and "url" not in args_obj:
@@ -2550,6 +2988,36 @@ def _merge_v3_intent_into_driver_option(
                     merged_option["mode"] = f"intercept-youtube-{intent_type}"
                 elif normalized_platform == "weibo" and intent_type in _WEIBO_INTERCEPT_INTENTS:
                     merged_option["mode"] = f"intercept-weibo-{intent_type}"
+                elif normalized_platform == "zhihu" and intent_type in _ZHIHU_INTERCEPT_INTENTS:
+                    merged_option["mode"] = f"intercept-zhihu-{intent_type}"
+                elif normalized_platform == "bilibili" and intent_type in _BILIBILI_INTERCEPT_INTENTS:
+                    merged_option["mode"] = f"intercept-bilibili-{intent_type}"
+                elif normalized_platform == "36kr" and intent_type in _KR36_INTERCEPT_INTENTS:
+                    merged_option["mode"] = f"intercept-36kr-{intent_type}"
+                elif normalized_platform == "arxiv" and intent_type in _ARXIV_INTERCEPT_INTENTS:
+                    merged_option["mode"] = f"intercept-arxiv-{intent_type}"
+                elif normalized_platform == "baidu" and intent_type in _BAIDU_INTERCEPT_INTENTS:
+                    merged_option["mode"] = f"intercept-baidu-{intent_type}"
+                elif normalized_platform == "bing" and intent_type in _BING_INTERCEPT_INTENTS:
+                    merged_option["mode"] = f"intercept-bing-{intent_type}"
+                elif normalized_platform == "cnblogs" and intent_type in _CNBLOGS_INTERCEPT_INTENTS:
+                    merged_option["mode"] = f"intercept-cnblogs-{intent_type}"
+                elif normalized_platform == "csdn" and intent_type in _CSDN_INTERCEPT_INTENTS:
+                    merged_option["mode"] = f"intercept-csdn-{intent_type}"
+                elif normalized_platform == "ctrip" and intent_type in _CTRIP_INTERCEPT_INTENTS:
+                    merged_option["mode"] = f"intercept-ctrip-{intent_type}"
+                elif normalized_platform == "devto" and intent_type in _DEVTO_INTERCEPT_INTENTS:
+                    merged_option["mode"] = f"intercept-devto-{intent_type}"
+                elif normalized_platform == "duckduckgo" and intent_type in _DUCKDUCKGO_INTERCEPT_INTENTS:
+                    merged_option["mode"] = f"intercept-duckduckgo-{intent_type}"
+                elif normalized_platform == "google" and intent_type in _GOOGLE_INTERCEPT_INTENTS:
+                    merged_option["mode"] = f"intercept-google-{intent_type}"
+                elif normalized_platform == "reuters" and intent_type in _REUTERS_INTERCEPT_INTENTS:
+                    merged_option["mode"] = f"intercept-reuters-{intent_type}"
+                elif normalized_platform == "toutiao" and intent_type in _TOUTIAO_INTERCEPT_INTENTS:
+                    merged_option["mode"] = f"intercept-toutiao-{intent_type}"
+                elif normalized_platform == "hupu" and intent_type in _HUPU_INTERCEPT_INTENTS:
+                    merged_option["mode"] = f"intercept-hupu-{intent_type}"
                 elif intent_type == "search":
                     merged_option["mode"] = "opencli-bridge" if _OPENCLI_BRIDGE_ENABLED else "intercept-x-search"
         return merged_option

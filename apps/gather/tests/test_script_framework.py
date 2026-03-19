@@ -108,6 +108,56 @@ def test_script_registry_auto_discovers_weibo_intents():
     assert "user_posts" in intents
 
 
+def test_script_registry_auto_discovers_zhihu_intents():
+    app_root = Path(__file__).resolve().parents[1]
+    registry = ScriptRegistry(app_root / "scripts", app_root / "scripts-dist")
+    intents = registry.intents_for("zhihu")
+    assert "search" in intents
+    assert "hot" in intents
+    assert "question" in intents
+    assert "me" in intents
+
+
+def test_script_registry_auto_discovers_bilibili_intents():
+    app_root = Path(__file__).resolve().parents[1]
+    registry = ScriptRegistry(app_root / "scripts", app_root / "scripts-dist")
+    intents = registry.intents_for("bilibili")
+    assert "search" in intents
+    assert "video" in intents
+    assert "comments" in intents
+    assert "me" in intents
+    assert "feed" in intents
+    assert "popular" in intents
+    assert "ranking" in intents
+    assert "trending" in intents
+    assert "history" in intents
+
+
+@pytest.mark.parametrize(
+    ("platform", "expected_intents"),
+    [
+        ("36kr", {"newsflash"}),
+        ("arxiv", {"search"}),
+        ("baidu", {"search"}),
+        ("bing", {"search"}),
+        ("cnblogs", {"search"}),
+        ("csdn", {"search"}),
+        ("ctrip", {"search"}),
+        ("devto", {"search"}),
+        ("duckduckgo", {"search"}),
+        ("google", {"search"}),
+        ("reuters", {"search"}),
+        ("toutiao", {"search", "hot"}),
+        ("hupu", {"hot"}),
+    ],
+)
+def test_script_registry_auto_discovers_new_web_source_intents(platform, expected_intents):
+    app_root = Path(__file__).resolve().parents[1]
+    registry = ScriptRegistry(app_root / "scripts", app_root / "scripts-dist")
+    intents = registry.intents_for(platform)
+    assert expected_intents.issubset(intents)
+
+
 def test_build_x_search_intercept_script_renders_placeholders():
     app_root = Path(__file__).resolve().parents[1]
     registry = ScriptRegistry(app_root / "scripts", app_root / "scripts-dist")
@@ -316,3 +366,89 @@ def test_build_weibo_feed_script():
     )
     assert "__COUNT__" not in script
     assert "unreadfriendstimeline" in script
+
+
+def test_build_zhihu_search_script():
+    app_root = Path(__file__).resolve().parents[1]
+    registry = ScriptRegistry(app_root / "scripts", app_root / "scripts-dist")
+    script = build_x_intent_script(
+        registry=registry,
+        platform="zhihu",
+        intent_type="search",
+        replacements={
+            "__KEYWORD_JSON__": '"openai"',
+            "__QUESTION_ID_JSON__": '""',
+            "__LIMIT__": 10,
+            "__COUNT__": 10,
+        },
+    )
+    assert "__KEYWORD_JSON__" not in script
+    assert "__COUNT__" not in script
+    assert "search_v3" in script
+
+
+def test_build_bilibili_search_script():
+    app_root = Path(__file__).resolve().parents[1]
+    registry = ScriptRegistry(app_root / "scripts", app_root / "scripts-dist")
+    script = build_x_intent_script(
+        registry=registry,
+        platform="bilibili",
+        intent_type="search",
+        replacements={
+            "__KEYWORD_JSON__": '"openai"',
+            "__BVID_JSON__": '""',
+            "__ORDER_JSON__": '"totalrank"',
+            "__TYPE_JSON__": '"all"',
+            "__PAGE__": 1,
+            "__SORT__": 2,
+            "__CATEGORY_ID__": 0,
+            "__LIMIT__": 10,
+            "__COUNT__": 10,
+        },
+    )
+    assert "__KEYWORD_JSON__" not in script
+    assert "__COUNT__" not in script
+    assert "__ORDER_JSON__" not in script
+    assert "wbi/search/type" in script
+
+
+def test_build_toutiao_hot_script():
+    app_root = Path(__file__).resolve().parents[1]
+    registry = ScriptRegistry(app_root / "scripts", app_root / "scripts-dist")
+    script = build_x_intent_script(
+        registry=registry,
+        platform="toutiao",
+        intent_type="hot",
+        replacements={
+            "__QUERY_JSON__": '""',
+            "__KEYWORD_JSON__": '""',
+            "__ORDER_JSON__": '""',
+            "__TYPE_JSON__": '""',
+            "__PAGE__": 1,
+            "__LIMIT__": 10,
+            "__COUNT__": 10,
+        },
+    )
+    assert "__COUNT__" not in script
+    assert "hot-board" in script
+
+
+def test_build_hupu_hot_script():
+    app_root = Path(__file__).resolve().parents[1]
+    registry = ScriptRegistry(app_root / "scripts", app_root / "scripts-dist")
+    script = build_x_intent_script(
+        registry=registry,
+        platform="hupu",
+        intent_type="hot",
+        replacements={
+            "__QUERY_JSON__": '""',
+            "__KEYWORD_JSON__": '""',
+            "__ORDER_JSON__": '""',
+            "__TYPE_JSON__": '""',
+            "__PAGE__": 1,
+            "__LIMIT__": 10,
+            "__COUNT__": 10,
+        },
+    )
+    assert "__COUNT__" not in script
+    assert "all-gambia" in script
