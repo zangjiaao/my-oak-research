@@ -148,7 +148,7 @@ const FollowContent = () => {
               ref={(node) => {
                 detailRefs.current[content.id] = node;
               }}
-              className="rounded-2xl bg-transparent p-1 transition-all"
+              className="rounded-2xl bg-transparent p-1.5 transition-all"
               onClick={() => selectContent(content.id)}
             >
               <NewsDetailCard
@@ -184,7 +184,7 @@ const FollowContent = () => {
                 deleting={deleting && deleteTargetId === content.id}
                 className={
                   selectedContent?.id === content.id
-                    ? "border-emerald-300 bg-emerald-50/40 shadow-sm"
+                    ? "border-primary/35 bg-card shadow-[0_0_0_1px_hsl(var(--primary)/0.12)]"
                     : "border-border/80"
                 }
               />

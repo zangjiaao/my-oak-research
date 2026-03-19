@@ -78,10 +78,10 @@ export const ContentList = () => {
             <div
               key={content.id}
               onClick={() => selectContent(content.id)}
-              className={`cursor-pointer rounded-2xl border p-1 transition-all duration-200 ${
+              className={`cursor-pointer rounded-2xl border p-1.5 transition-all duration-200 ${
                 isActive
-                  ? "border-emerald-300 bg-emerald-50/40 shadow-sm"
-                  : "border-transparent bg-transparent hover:bg-muted/30"
+                  ? "border-primary/35 bg-card shadow-[0_0_0_1px_hsl(var(--primary)/0.12)]"
+                  : "border-transparent bg-transparent hover:border-border/60 hover:bg-muted/20"
               }`}
             >
               <NewsCard
