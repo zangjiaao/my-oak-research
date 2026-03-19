@@ -715,18 +715,9 @@ async function fetchSocialSource(
     return normalizeGatherItems(items, source, intent.type);
   } catch (error) {
     console.error(`[collector] fetchSocialSource error:`, error);
-    // Fallback to basic info if gather service is down
-    return [
-      {
-        title: `${source.social?.platform || "Social"} ${source.name} (Fallback)`,
-        text: `社交平台 ${source.name} (采集服务异常: ${(error as Error).message})`,
-        markdown: `采集服务异常，请检查 GATHER_SERVICE_URL`,
-        platform: source.name,
-        time: new Date(),
-        sourceId: source.id,
-        sourceType: source.type,
-      },
-    ];
+    throw new Error(
+      `Social gather failed for ${source.name}: ${(error as Error).message}`
+    );
   }
 }
 
