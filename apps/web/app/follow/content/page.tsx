@@ -149,17 +149,17 @@ const FollowContent = () => {
   return (
     <div className="h-full lg:h-[calc(100vh-7rem)]">
       <ScrollArea className="h-full">
-        <div className="flex flex-col gap-3 pb-6 pr-2">
+        <div className="flex flex-col gap-3 overflow-visible pb-6 pr-2 pl-1">
           {sortedContents.map((content) => (
             <div
               key={content.id}
               ref={(node) => {
                 detailRefs.current[content.id] = node;
               }}
-              className={`rounded-xl transition-shadow ${
+              className={`rounded-2xl p-1 transition-all ${
                 activeHighlightId === content.id
-                  ? "ring-2 ring-emerald-500 shadow-md"
-                  : ""
+                  ? "bg-emerald-100/60 shadow-sm"
+                  : "bg-transparent"
               }`}
               onClick={() => selectContent(content.id)}
             >
@@ -196,8 +196,8 @@ const FollowContent = () => {
                 deleting={deleting && deleteTargetId === content.id}
                 className={
                   selectedContent?.id === content.id
-                    ? "ring-1 ring-emerald-300"
-                    : undefined
+                    ? "border-emerald-300 bg-emerald-50/40 shadow-sm"
+                    : "border-border/80"
                 }
               />
             </div>
