@@ -1009,6 +1009,11 @@ export const SocialMediaFields = ({
         output.field = Object.fromEntries(mappedEntries);
       }
     }
+    if (!("field" in output) && outputFieldEntries.length > 0) {
+      output.field = Object.fromEntries(
+        outputFieldEntries.map((item) => [item.key, item.path])
+      );
+    }
     const keywordScope = toDelimitedStringArray(outputConfig.keywordScope);
     if (keywordScope.length > 0) {
       output.keywordScope = keywordScope;
@@ -1057,6 +1062,10 @@ export const SocialMediaFields = ({
     }
 
     const normalizedDriverOption = { ...driverOption };
+    if (resolvedDriver === "playwright") {
+      delete normalizedDriverOption.mode;
+      delete normalizedDriverOption.args;
+    }
     if (selectedProxy?.url) {
       normalizedDriverOption.network = {
         ...asRecord(normalizedDriverOption.network),
@@ -1088,7 +1097,14 @@ export const SocialMediaFields = ({
       driver,
       output,
     };
-  }, [socialPlatform, sourceId, resolvedDriver, watch, selectedProxy]);
+  }, [
+    socialPlatform,
+    sourceId,
+    resolvedDriver,
+    watch,
+    selectedProxy,
+    outputFieldEntries,
+  ]);
 
   // Render auth status indicator
   const renderAuthStatus = () => {

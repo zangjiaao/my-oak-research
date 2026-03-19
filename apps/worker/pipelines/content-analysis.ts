@@ -1128,9 +1128,13 @@ function normalizeGatherDriverOption(
   if (driver !== "playwright") {
     return config;
   }
-  const playwright = asObject(config.playwright);
+  const playwright = { ...asObject(config.playwright) };
+  delete playwright.mode;
+  delete playwright.args;
   const rest = { ...config };
   delete rest.playwright;
+  delete (rest as Record<string, unknown>).mode;
+  delete (rest as Record<string, unknown>).args;
   return {
     ...playwright,
     ...rest,
