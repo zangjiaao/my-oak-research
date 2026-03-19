@@ -85,15 +85,10 @@ async () => {
     const captureFromCurrentPageWithScroll = async () => {
         let merged = parseDoc(document);
         for (let round = 0; round < maxScrollRounds && merged.length < count; round += 1) {
-            const beforeSignature = JSON.stringify(merged.map((item) => item.url));
             window.scrollTo(0, document.body.scrollHeight);
             await new Promise((resolve) => setTimeout(resolve, 700));
             const nextBatch = parseDoc(document);
             merged = mergeResults(merged, nextBatch);
-            const afterSignature = JSON.stringify(merged.map((item) => item.url));
-            if (afterSignature === beforeSignature) {
-                break;
-            }
         }
         return merged;
     };
@@ -121,6 +116,7 @@ async () => {
         const maxPages = Math.min(8, Math.ceil(count / 10) + 1);
         for (let page = 0; page < maxPages && merged.length < count && nextPageUrl; page += 1) {
             try {
+                const currentPageUrl = nextPageUrl;
                 const response = await fetch(nextPageUrl, { credentials: "include" });
                 if (!response.ok)
                     break;
@@ -129,12 +125,8 @@ async () => {
                 const doc = parser.parseFromString(html, "text/html");
                 const pageResults = parseDoc(doc);
                 const candidateNext = extractNextPageUrl(doc);
-                const beforeSignature = JSON.stringify(merged.map((item) => item.url));
                 merged = mergeResults(merged, pageResults);
-                const afterSignature = JSON.stringify(merged.map((item) => item.url));
-                nextPageUrl = candidateNext;
-                if (afterSignature === beforeSignature)
-                    break;
+                nextPageUrl = candidateNext && candidateNext !== currentPageUrl ? candidateNext : "";
             }
             catch (_error) {
                 break;
