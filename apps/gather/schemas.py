@@ -56,15 +56,19 @@ class FetchV3Network(BaseModel):
     )
 
 
+class FetchV3Driver(FetchV2Driver):
+    script: Optional[FetchV3Intent] = None
+
+
 class FetchV3Request(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     platform: str
     source_id: str = Field(validation_alias=AliasChoices("sourceId", "source_id"))
-    intent: FetchV3Intent
+    intent: Optional[FetchV3Intent] = None
     keywords: List[str] = Field(default_factory=list)
     output: FetchV2Output
-    driver: Optional[FetchV2Driver] = None
+    driver: Optional[FetchV3Driver] = None
     network: Optional[FetchV3Network] = None
 
 

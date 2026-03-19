@@ -57,6 +57,12 @@ type GatherIntentPayload = {
   type: string;
   args: Record<string, unknown>;
 };
+type GatherDriverPayload = {
+  name: GatherSocialDriver;
+  option: Record<string, unknown>;
+  script: GatherIntentPayload;
+  filter?: Record<string, unknown>;
+};
 
 const SOCIAL_PLATFORM_DRIVER_SUPPORT: Record<string, readonly GatherSocialDriver[]> = {
   X: ["playwright", "xhttp", "agent-browser"],
@@ -664,16 +670,18 @@ async function fetchSocialSource(
   const keywordFilterOptions = { ...existingKeywordFilter };
   delete keywordFilterOptions.keywords;
   const driverOption = normalizeGatherDriverOption(baseConfig, gatherDriver);
-  const driver =
+  const driver: GatherDriverPayload =
     Object.keys(keywordFilterOptions).length > 0
       ? {
           name: gatherDriver,
           option: driverOption,
+          script: intent,
           filter: keywordFilterOptions,
         }
       : {
           name: gatherDriver,
           option: driverOption,
+          script: intent,
         };
 
   try {
@@ -682,7 +690,6 @@ async function fetchSocialSource(
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         platform: gatherPlatform,
-        intent,
         keywords: keywordFilterTerms,
         driver,
         sourceId: source.id,

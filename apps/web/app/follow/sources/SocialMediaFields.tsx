@@ -1076,6 +1076,10 @@ export const SocialMediaFields = ({
     const driver: Record<string, unknown> = {
       name: resolvedDriver,
       option: normalizedDriverOption,
+      script: {
+        type: intentType,
+        args: intentArgs,
+      },
     };
     if (Object.keys(filter).length > 0) {
       driver.filter = filter;
@@ -1084,10 +1088,6 @@ export const SocialMediaFields = ({
     return {
       sourceId: sourceId ?? "__SOURCE_ID__",
       platform: socialPlatform.toLowerCase(),
-      intent: {
-        type: intentType,
-        args: intentArgs,
-      },
       keywords: [],
       driver,
       output,
