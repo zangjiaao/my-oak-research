@@ -1,6 +1,6 @@
 import React from "react";
 import Image from "next/image";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import {
   AudioLines,
   Bookmark,
@@ -105,22 +105,15 @@ const NewsDetailCard = ({
             ) : null}
           </div>
         </div>
-        <CardTitle className="mb-0">
-          <div className="flex items-start justify-between gap-4">
-            <p className="text-2xl font-semibold leading-snug tracking-tight lg:text-3xl">
-              {title ? title : "News Title"}
-            </p>
-            <div className="flex items-center gap-2">
-              {(images?.length || audios?.length || files?.length) ? (
-                <Badge variant="secondary" className="hidden sm:inline-flex">
-                  媒体 {images?.length ?? 0}/{audios?.length ?? 0}/{files?.length ?? 0}
-                </Badge>
-              ) : null}
-            </div>
-          </div>
-        </CardTitle>
+        <div className="flex items-center gap-2">
+          {(images?.length || audios?.length || files?.length) ? (
+            <Badge variant="secondary" className="hidden sm:inline-flex">
+              媒体 {images?.length ?? 0}/{audios?.length ?? 0}/{files?.length ?? 0}
+            </Badge>
+          ) : null}
+        </div>
         <p className="max-w-3xl text-sm leading-6 text-muted-foreground line-clamp-3">
-          {summary ? summary : "News Summary News Summary News Summary"}
+          {summary || title || "News Summary"}
         </p>
       </CardHeader>
       <Separator />
