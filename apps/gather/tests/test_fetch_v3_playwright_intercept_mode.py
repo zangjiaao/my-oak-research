@@ -439,3 +439,42 @@ def test_fetch_v3_uses_intercept_weibo_user_posts_mode(monkeypatch):
     assert payload["items"][0]["recordContent"]["uid"] == "1654184992"
     assert payload["items"][0]["recordContent"]["intent_type"] == "user_posts"
     assert payload["items"][0]["recordContent"]["mode"] == "intercept-weibo-user_posts"
+
+
+def test_fetch_v3_uses_intercept_zhihu_search_mode(monkeypatch):
+    async def fake_run_playwright_intercept_zhihu_intent(request, intent_type):  # noqa: ANN001
+        return [
+            CleanItem(
+                platform=request.platform,
+                sourceId=request.source_id,
+                sourceType="KNOWLEDGE",
+                recordContent={
+                    "keyword": request.config.get("playwright", {}).get("args", {}).get("keyword"),
+                    "mode": request.config.get("playwright", {}).get("mode"),
+                    "intent_type": intent_type,
+                    "results": [{"title": "OpenAI"}],
+                },
+            )
+        ]
+
+    monkeypatch.setattr(main, "_run_playwright_intercept_zhihu_intent", fake_run_playwright_intercept_zhihu_intent)
+
+    client = TestClient(main.app)
+    response = client.post(
+        "/v3/fetch",
+        json={
+            "platform": "zhihu",
+            "sourceId": "source_123",
+            "intent": {"type": "search", "args": {"query": "openai", "limit": 10}},
+            "keywords": [],
+            "driver": {"name": "playwright", "option": {}},
+            "output": {"field": ["keyword", "intent_type", "mode"], "type": "zhihu-search"},
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["meta"]["adapter"] == "zhihu.search"
+    assert payload["items"][0]["recordContent"]["keyword"] == "openai"
+    assert payload["items"][0]["recordContent"]["intent_type"] == "search"
+    assert payload["items"][0]["recordContent"]["mode"] == "intercept-zhihu-search"

@@ -108,6 +108,16 @@ def test_script_registry_auto_discovers_weibo_intents():
     assert "user_posts" in intents
 
 
+def test_script_registry_auto_discovers_zhihu_intents():
+    app_root = Path(__file__).resolve().parents[1]
+    registry = ScriptRegistry(app_root / "scripts", app_root / "scripts-dist")
+    intents = registry.intents_for("zhihu")
+    assert "search" in intents
+    assert "hot" in intents
+    assert "question" in intents
+    assert "me" in intents
+
+
 def test_build_x_search_intercept_script_renders_placeholders():
     app_root = Path(__file__).resolve().parents[1]
     registry = ScriptRegistry(app_root / "scripts", app_root / "scripts-dist")
@@ -316,3 +326,22 @@ def test_build_weibo_feed_script():
     )
     assert "__COUNT__" not in script
     assert "unreadfriendstimeline" in script
+
+
+def test_build_zhihu_search_script():
+    app_root = Path(__file__).resolve().parents[1]
+    registry = ScriptRegistry(app_root / "scripts", app_root / "scripts-dist")
+    script = build_x_intent_script(
+        registry=registry,
+        platform="zhihu",
+        intent_type="search",
+        replacements={
+            "__KEYWORD_JSON__": '"openai"',
+            "__QUESTION_ID_JSON__": '""',
+            "__LIMIT__": 10,
+            "__COUNT__": 10,
+        },
+    )
+    assert "__KEYWORD_JSON__" not in script
+    assert "__COUNT__" not in script
+    assert "search_v3" in script

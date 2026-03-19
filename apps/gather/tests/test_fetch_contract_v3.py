@@ -448,6 +448,60 @@ def test_fetch_v3_weibo_user_posts_maps_mode_and_args(monkeypatch):
     assert payload["items"][0]["recordContent"]["mode"] == "intercept-weibo-user_posts"
 
 
+def test_fetch_v3_zhihu_search_maps_keyword_and_mode(monkeypatch):
+    response = _client_with_stub_driver(monkeypatch).post(
+        "/v3/fetch",
+        json={
+            "platform": "zhihu",
+            "sourceId": "source_123",
+            "intent": {
+                "type": "search",
+                "args": {
+                    "query": "openai",
+                    "limit": 8,
+                },
+            },
+            "keywords": [],
+            "driver": {"name": "playwright", "option": {}},
+            "output": {"field": ["query", "keyword", "count", "mode"], "type": "zhihu-search"},
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["meta"]["adapter"] == "zhihu.search"
+    assert payload["items"][0]["recordContent"]["query"] == "openai"
+    assert payload["items"][0]["recordContent"]["keyword"] == "openai"
+    assert payload["items"][0]["recordContent"]["count"] == "8"
+    assert payload["items"][0]["recordContent"]["mode"] == "intercept-zhihu-search"
+
+
+def test_fetch_v3_zhihu_question_maps_id_and_mode(monkeypatch):
+    response = _client_with_stub_driver(monkeypatch).post(
+        "/v3/fetch",
+        json={
+            "platform": "zhihu",
+            "sourceId": "source_123",
+            "intent": {
+                "type": "question",
+                "args": {
+                    "question_id": "34816524",
+                    "limit": 5,
+                },
+            },
+            "keywords": [],
+            "driver": {"name": "playwright", "option": {}},
+            "output": {"field": ["count", "mode"], "type": "zhihu-question"},
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["meta"]["adapter"] == "zhihu.question"
+    assert payload["items"][0]["recordContent"]["count"] == "5"
+    assert payload["items"][0]["recordContent"]["mode"] == "intercept-zhihu-question"
+
+
 def test_fetch_v3_validation_error():
     client = TestClient(main.app)
     response = client.post(
