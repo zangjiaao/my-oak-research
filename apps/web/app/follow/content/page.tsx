@@ -28,7 +28,6 @@ const FollowContent = () => {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
-  const [activeHighlightId, setActiveHighlightId] = useState<string | null>(null);
   const detailRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   // 获取所有收藏的内容 ID，用于判断是否已收藏
@@ -60,13 +59,6 @@ const FollowContent = () => {
     const target = detailRefs.current[selectedContent.id];
     if (target) {
       target.scrollIntoView({ behavior: "smooth", block: "start" });
-      setActiveHighlightId(selectedContent.id);
-      const timer = window.setTimeout(() => {
-        setActiveHighlightId((current) =>
-          current === selectedContent.id ? null : current
-        );
-      }, 1200);
-      return () => window.clearTimeout(timer);
     }
     return;
   }, [selectedContent?.id]);
@@ -156,11 +148,7 @@ const FollowContent = () => {
               ref={(node) => {
                 detailRefs.current[content.id] = node;
               }}
-              className={`rounded-2xl p-1 transition-all ${
-                activeHighlightId === content.id
-                  ? "bg-emerald-100/60 shadow-sm"
-                  : "bg-transparent"
-              }`}
+              className="rounded-2xl bg-transparent p-1 transition-all"
               onClick={() => selectContent(content.id)}
             >
               <NewsDetailCard
