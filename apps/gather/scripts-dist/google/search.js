@@ -8,6 +8,7 @@ async () => {
         return { error: "Missing argument: query", hint: "Provide a search query string" };
     const count = Math.max(1, Math.min(__COUNT__, 50));
     const pageSize = Math.max(10, Math.min(count, 20));
+    const maxScrollRounds = Math.min(8, Math.max(2, Math.ceil(count / 5)));
     const parseDoc = (doc) => {
         const items = Array.from(doc.querySelectorAll("div.g, #search .tF2Cxc, #search .MjjYud, #search [data-hveid][data-ved]"));
         const results = [];
@@ -48,7 +49,35 @@ async () => {
         }
         return results;
     };
-    let results = parseDoc(document);
+    const mergeResults = (base, incoming) => {
+        const merged = [...base];
+        const seen = new Set(merged.map((item) => item.url).filter(Boolean));
+        for (const item of incoming) {
+            if (!item.url || seen.has(item.url))
+                continue;
+            seen.add(item.url);
+            merged.push(item);
+            if (merged.length >= count)
+                break;
+        }
+        return merged;
+    };
+    const captureFromCurrentPageWithScroll = async () => {
+        let merged = parseDoc(document);
+        for (let round = 0; round < maxScrollRounds && merged.length < count; round += 1) {
+            const beforeSignature = JSON.stringify(merged.map((item) => item.url));
+            window.scrollTo(0, document.body.scrollHeight);
+            await new Promise((resolve) => setTimeout(resolve, 700));
+            const nextBatch = parseDoc(document);
+            merged = mergeResults(merged, nextBatch);
+            const afterSignature = JSON.stringify(merged.map((item) => item.url));
+            if (afterSignature === beforeSignature) {
+                break;
+            }
+        }
+        return merged;
+    };
+    let results = await captureFromCurrentPageWithScroll();
     if (results.length === 0) {
         try {
             const url = `https://www.google.com/search?q=${encodeURIComponent(query)}&num=${pageSize}&start=0`;
@@ -66,9 +95,9 @@ async () => {
         }
     }
     if (results.length < count) {
-        const seen = new Set(results.map((item) => item.url).filter(Boolean));
+        let merged = [...results];
         const maxPages = Math.min(5, Math.ceil(count / 10));
-        for (let page = 1; page < maxPages && results.length < count; page += 1) {
+        for (let page = 1; page < maxPages && merged.length < count; page += 1) {
             const start = page * 10;
             try {
                 const url = `https://www.google.com/search?q=${encodeURIComponent(query)}&num=${pageSize}&start=${start}`;
@@ -79,19 +108,17 @@ async () => {
                 const parser = new DOMParser();
                 const doc = parser.parseFromString(html, "text/html");
                 const pageResults = parseDoc(doc);
-                for (const item of pageResults) {
-                    if (!item.url || seen.has(item.url))
-                        continue;
-                    seen.add(item.url);
-                    results.push(item);
-                    if (results.length >= count)
-                        break;
-                }
+                const beforeSignature = JSON.stringify(merged.map((item) => item.url));
+                merged = mergeResults(merged, pageResults);
+                const afterSignature = JSON.stringify(merged.map((item) => item.url));
+                if (afterSignature === beforeSignature)
+                    break;
             }
             catch (_error) {
                 break;
             }
         }
+        results = merged;
     }
     return { query, count: results.length, results: results.slice(0, count) };
 };
