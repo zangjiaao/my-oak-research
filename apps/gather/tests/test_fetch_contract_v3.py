@@ -29,6 +29,11 @@ class StubFetchDriver(BaseDriver):
                     "url": "https://x.com/openai/status/1",
                     "query": args.get("query"),
                     "keyword": args.get("keyword"),
+                    "bvid": args.get("bvid"),
+                    "order": args.get("order"),
+                    "sort": args.get("sort"),
+                    "category": args.get("category"),
+                    "feed_type": args.get("type"),
                     "video_url": args.get("url"),
                     "channel_id": args.get("id"),
                     "uid": args.get("uid"),
@@ -500,6 +505,64 @@ def test_fetch_v3_zhihu_question_maps_id_and_mode(monkeypatch):
     assert payload["meta"]["adapter"] == "zhihu.question"
     assert payload["items"][0]["recordContent"]["count"] == "5"
     assert payload["items"][0]["recordContent"]["mode"] == "intercept-zhihu-question"
+
+
+def test_fetch_v3_bilibili_search_maps_keyword_order_page_and_mode(monkeypatch):
+    response = _client_with_stub_driver(monkeypatch).post(
+        "/v3/fetch",
+        json={
+            "platform": "bilibili",
+            "sourceId": "source_123",
+            "intent": {
+                "type": "search",
+                "args": {
+                    "query": "openai",
+                    "order": "pubdate",
+                    "page": 2,
+                    "limit": 9,
+                },
+            },
+            "keywords": [],
+            "driver": {"name": "playwright", "option": {}},
+            "output": {"field": ["keyword", "order", "page", "count", "mode"], "type": "bilibili-video"},
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["meta"]["adapter"] == "bilibili.search"
+    assert payload["items"][0]["recordContent"]["keyword"] == "openai"
+    assert payload["items"][0]["recordContent"]["order"] == "pubdate"
+    assert payload["items"][0]["recordContent"]["page"] == 2
+    assert payload["items"][0]["recordContent"]["count"] == "9"
+    assert payload["items"][0]["recordContent"]["mode"] == "intercept-bilibili-search"
+
+
+def test_fetch_v3_bilibili_video_maps_bvid_and_mode(monkeypatch):
+    response = _client_with_stub_driver(monkeypatch).post(
+        "/v3/fetch",
+        json={
+            "platform": "bilibili",
+            "sourceId": "source_123",
+            "intent": {
+                "type": "video",
+                "args": {
+                    "bvid": "BV1LGwHzrE4A",
+                    "limit": 3,
+                },
+            },
+            "keywords": [],
+            "driver": {"name": "playwright", "option": {}},
+            "output": {"field": ["bvid", "count", "mode"], "type": "bilibili-video"},
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["meta"]["adapter"] == "bilibili.video"
+    assert payload["items"][0]["recordContent"]["bvid"] == "BV1LGwHzrE4A"
+    assert payload["items"][0]["recordContent"]["count"] == "3"
+    assert payload["items"][0]["recordContent"]["mode"] == "intercept-bilibili-video"
 
 
 def test_fetch_v3_validation_error():

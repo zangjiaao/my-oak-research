@@ -23,6 +23,10 @@ declare global {
   const __KEYWORD_JSON__: string;
   const __SLUG_JSON__: string;
   const __PERIOD_JSON__: string;
+  const __BVID_JSON__: string;
+  const __ORDER_JSON__: string;
+  const __TYPE_JSON__: string;
+  const __SORT__: number;
   const __CATEGORY_ID__: number;
   const __TOPIC_ID__: number;
   const __URL_JSON__: string;
