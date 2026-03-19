@@ -59,8 +59,8 @@ const NewsDetailCard = ({
         className
       )}
     >
-      <CardHeader className="flex-shrink-0 space-y-4 px-6 pt-6 pb-5 lg:px-8 lg:pt-7">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+      <CardHeader className="flex-shrink-0 space-y-2.5 px-6 pt-4 pb-3 lg:px-8 lg:pt-5 lg:pb-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex flex-wrap items-center gap-2">
             {source ? <Badge variant="secondary">{source}</Badge> : null}
             {author ? <Badge variant="outline">作者: {author}</Badge> : null}
@@ -74,7 +74,7 @@ const NewsDetailCard = ({
             <Button
               variant="ghost"
               size="icon"
-              className="h-9 w-9 rounded-full"
+              className="h-8 w-8 rounded-full"
               onClick={(event) => {
                 event.stopPropagation();
                 onBookmarkToggle?.();
@@ -93,7 +93,7 @@ const NewsDetailCard = ({
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-9 w-9 rounded-full text-destructive"
+                className="h-8 w-8 rounded-full text-destructive"
                 disabled={Boolean(deleting)}
                 onClick={(event) => {
                   event.stopPropagation();
@@ -105,19 +105,19 @@ const NewsDetailCard = ({
             ) : null}
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          {(images?.length || audios?.length || files?.length) ? (
+        {(images?.length || audios?.length || files?.length) ? (
+          <div className="flex items-center gap-2">
             <Badge variant="secondary" className="hidden sm:inline-flex">
               媒体 {images?.length ?? 0}/{audios?.length ?? 0}/{files?.length ?? 0}
             </Badge>
-          ) : null}
-        </div>
-        <p className="max-w-3xl text-sm leading-6 text-muted-foreground line-clamp-3">
+          </div>
+        ) : null}
+        <p className="max-w-3xl text-sm leading-6 text-muted-foreground/90 line-clamp-2">
           {summary || title || "News Summary"}
         </p>
       </CardHeader>
       <Separator />
-      <CardContent className="flex-1 min-h-0 overflow-y-auto scrollbar-hide px-6 py-5 lg:px-8">
+      <CardContent className="flex-1 min-h-0 overflow-y-auto scrollbar-hide px-6 py-4 lg:px-8">
         <Tabs defaultValue="content" className="h-full">
           <TabsList className="w-full justify-start bg-muted/70 p-1">
             <TabsTrigger value="content">正文</TabsTrigger>
@@ -125,8 +125,8 @@ const NewsDetailCard = ({
             <TabsTrigger value="links">链接</TabsTrigger>
             <TabsTrigger value="raw">原始</TabsTrigger>
           </TabsList>
-          <TabsContent value="content" className="pt-5">
-            <article className="prose prose-slate max-w-3xl text-[15px] leading-7 dark:prose-invert">
+          <TabsContent value="content" className="pt-4">
+            <article className="prose prose-slate max-w-3xl text-[15px] leading-7 text-foreground/90 prose-p:my-0 prose-p:leading-7 prose-p:text-foreground/90 prose-headings:mb-3 prose-headings:mt-5 prose-headings:font-semibold prose-headings:text-foreground prose-li:my-1 prose-li:text-foreground/90 prose-strong:text-foreground prose-a:text-primary prose-a:no-underline hover:prose-a:underline">
               <ReactMarkdown>{markdown}</ReactMarkdown>
             </article>
           </TabsContent>
