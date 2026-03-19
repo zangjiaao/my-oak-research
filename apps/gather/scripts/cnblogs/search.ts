@@ -30,7 +30,7 @@ async () => {
 
   let results = parseDoc(document);
   if (results.length === 0) {
-    const url = `https://zzk.cnblogs.com/s?w=${encodeURIComponent(query)}&p=${page}`;
+    const url = `https://zzk.cnblogs.com/s/news?w=${encodeURIComponent(query)}`;
     try {
       const response = await fetch(url, { credentials: "include" });
       if (!response.ok) return { error: `HTTP ${response.status}` };
