@@ -637,12 +637,17 @@ async function fetchSearchSource(
   source: SearchEngineSource
 ): Promise<CleanItem[]> {
   console.log(`[collector] fetchSearchSource ${source.name}`);
-  const apiUrl = source.search?.apiEndpoint;
-  if (!apiUrl) {
+  const query = source.search?.query?.trim();
+  if (!query) {
+    return [];
+  }
+
+  const provider = detectSearchProvider(source.search?.apiEndpoint, source.search?.options);
+  const request = buildSearchRequest(source, provider);
+  if (!request.url) {
     return [
       {
-        text: `搜索引擎 ${source.name} 未配置 API，使用默认查询 ${source.search?.query || "unknown"
-          }`,
+        text: `搜索引擎 ${source.name} 未配置 API Endpoint，当前 query: ${query}`,
         markdown: `搜索引擎 ${source.name} 结果占位`,
         platform: source.name,
         time: new Date(),
@@ -651,14 +656,11 @@ async function fetchSearchSource(
       },
     ];
   }
-  const payload = {
-    query: source.search.query,
-    options: source.search.options,
-  };
-  const response = await fetchWithTimeout(apiUrl, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
+
+  const response = await fetchWithTimeout(request.url, {
+    method: request.method,
+    headers: request.headers,
+    body: request.body,
   });
   const data = parseSearchResult(response);
   if (!data.length) {
@@ -1523,24 +1525,288 @@ type SearchResultItem = {
   title?: string;
   snippet?: string;
   summary?: string;
+  content?: string;
   link?: string;
+  url?: string;
+  excerpts?: string[] | Array<{ text?: string; content?: string }>;
+  publish_date?: string;
+  date?: string;
   publishedAt?: string;
 };
+
+type SearchProvider = "parallel" | "tavily" | "anspire" | "generic";
+
+type SearchRequestConfig = {
+  url: string;
+  method: "GET" | "POST";
+  headers: Record<string, string>;
+  body?: string;
+};
+
+function detectSearchProvider(
+  apiEndpoint?: string | null,
+  rawOptions?: unknown
+): SearchProvider {
+  const options = asObject(rawOptions);
+  const explicitProvider = String(options.provider ?? options.platform ?? "")
+    .trim()
+    .toLowerCase();
+  if (explicitProvider.includes("parallel")) return "parallel";
+  if (explicitProvider.includes("tavily")) return "tavily";
+  if (explicitProvider.includes("anspire")) return "anspire";
+
+  const endpoint = String(apiEndpoint ?? "").toLowerCase();
+  if (endpoint.includes("parallel.ai")) return "parallel";
+  if (endpoint.includes("tavily.com")) return "tavily";
+  if (endpoint.includes("anspire.cn")) return "anspire";
+  return "generic";
+}
+
+function buildSearchRequest(
+  source: SearchEngineSource,
+  provider: SearchProvider
+): SearchRequestConfig {
+  const search = source.search;
+  const options = asObject(search?.options);
+  const query = search?.query ?? "";
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+
+  if (provider === "parallel") {
+    const apiKey = resolveApiKey(options, process.env.PARALLEL_API_KEY);
+    if (apiKey) {
+      headers["x-api-key"] = apiKey;
+    }
+    const payload: Record<string, unknown> = {
+      mode: pickString(options.mode) ?? "one-shot",
+      objective: query,
+      search_queries: toStringArrayOption(options.search_queries, options.searchQueries),
+      max_results: toNumberOption(options.max_results, options.maxResults),
+      excerpts: asObjectOrUndefined(options.excerpts),
+      source_policy: asObjectOrUndefined(options.source_policy, options.sourcePolicy),
+      fetch_policy: pickString(options.fetch_policy, options.fetchPolicy),
+    };
+    return {
+      url: search?.apiEndpoint || "https://api.parallel.ai/v1beta/search",
+      method: "POST",
+      headers,
+      body: JSON.stringify(stripUndefined(payload)),
+    };
+  }
+
+  if (provider === "tavily") {
+    const apiKey = resolveApiKey(options, process.env.TAVILY_API_KEY);
+    const payload: Record<string, unknown> = {
+      api_key: apiKey,
+      query,
+      topic: pickString(options.topic),
+      search_depth: pickString(options.search_depth, options.searchDepth),
+      max_results: toNumberOption(options.max_results, options.maxResults),
+      include_answer: toBooleanOption(options.include_answer, options.includeAnswer),
+      include_raw_content: toBooleanOption(
+        options.include_raw_content,
+        options.includeRawContent
+      ),
+      include_images: toBooleanOption(options.include_images, options.includeImages),
+      include_domains: toStringArrayOption(options.include_domains, options.includeDomains),
+      exclude_domains: toStringArrayOption(options.exclude_domains, options.excludeDomains),
+      time_range: pickString(options.time_range, options.timeRange),
+      days: toNumberOption(options.days),
+    };
+    return {
+      url: search?.apiEndpoint || "https://api.tavily.com/search",
+      method: "POST",
+      headers,
+      body: JSON.stringify(stripUndefined(payload)),
+    };
+  }
+
+  if (provider === "anspire") {
+    const apiKey = resolveApiKey(options, process.env.ANSPIRE_API_KEY);
+    if (apiKey) {
+      headers.Authorization = `Bearer ${apiKey}`;
+    }
+    const queryParams = new URLSearchParams({
+      query,
+      ...(pickString(options.top_k, options.topK)
+        ? { top_k: pickString(options.top_k, options.topK)! }
+        : {}),
+      ...(pickString(options.insite, options.Insite)
+        ? { Insite: pickString(options.insite, options.Insite)! }
+        : {}),
+      ...(pickString(options.from_time, options.FromTime)
+        ? { FromTime: pickString(options.from_time, options.FromTime)! }
+        : {}),
+      ...(pickString(options.to_time, options.ToTime)
+        ? { ToTime: pickString(options.to_time, options.ToTime)! }
+        : {}),
+    });
+    return {
+      url:
+        `${search?.apiEndpoint || "https://plugin.anspire.cn/api/ntsearch/search"}?${queryParams.toString()}`,
+      method: "GET",
+      headers,
+    };
+  }
+
+  return {
+    url: search?.apiEndpoint || "",
+    method: "POST",
+    headers,
+    body: JSON.stringify({
+      query,
+      options: search?.options,
+    }),
+  };
+}
 
 function parseSearchResult(payload: string) {
   try {
     const json = JSON.parse(payload);
-    if (Array.isArray(json.items)) {
-      return (json.items as SearchResultItem[]).map((item) => ({
-        title: item.title,
-        text: item.snippet || item.summary || "",
-        markdown: item.snippet || item.summary || "",
-        url: item.link,
-        time: item.publishedAt,
-      }));
+    const root = asObject(json);
+    const candidates = [
+      root.items,
+      root.results,
+      root.data,
+      root.output,
+    ];
+    const rows = candidates.find((candidate) => Array.isArray(candidate));
+    if (Array.isArray(rows)) {
+      return (rows as SearchResultItem[])
+        .map((item) => normalizeSearchResultItem(item))
+        .filter((item) => Boolean(item.text));
     }
   } catch {
     // ignore
   }
   return [];
+}
+
+function normalizeSearchResultItem(item: SearchResultItem) {
+  const excerpts = normalizeExcerpts(item.excerpts);
+  const text =
+    item.snippet ||
+    item.summary ||
+    item.content ||
+    excerpts ||
+    "";
+
+  return {
+    title: item.title,
+    text,
+    markdown: text,
+    url: item.link || item.url,
+    time: item.publishedAt || item.publish_date || item.date,
+  };
+}
+
+function normalizeExcerpts(value: unknown): string {
+  if (Array.isArray(value)) {
+    const normalized = value
+      .map((entry) => {
+        if (typeof entry === "string") {
+          return entry.trim();
+        }
+        if (entry && typeof entry === "object") {
+          const row = entry as Record<string, unknown>;
+          if (typeof row.text === "string") {
+            return row.text.trim();
+          }
+          if (typeof row.content === "string") {
+            return row.content.trim();
+          }
+        }
+        return "";
+      })
+      .filter(Boolean);
+    return normalized.join("\n\n");
+  }
+  return "";
+}
+
+function pickString(...values: unknown[]): string | undefined {
+  for (const value of values) {
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
+  }
+  return undefined;
+}
+
+function toNumberOption(...values: unknown[]): number | undefined {
+  for (const value of values) {
+    if (typeof value === "number" && Number.isFinite(value)) {
+      return value;
+    }
+    if (typeof value === "string" && value.trim()) {
+      const num = Number(value);
+      if (Number.isFinite(num)) {
+        return num;
+      }
+    }
+  }
+  return undefined;
+}
+
+function toBooleanOption(...values: unknown[]): boolean | undefined {
+  for (const value of values) {
+    if (typeof value === "boolean") {
+      return value;
+    }
+    if (typeof value === "string") {
+      const normalized = value.trim().toLowerCase();
+      if (normalized === "true") return true;
+      if (normalized === "false") return false;
+    }
+  }
+  return undefined;
+}
+
+function toStringArrayOption(...values: unknown[]): string[] | undefined {
+  for (const value of values) {
+    if (Array.isArray(value)) {
+      const normalized = value
+        .map((item) => (typeof item === "string" ? item.trim() : ""))
+        .filter(Boolean);
+      if (normalized.length > 0) {
+        return normalized;
+      }
+    }
+    if (typeof value === "string" && value.trim()) {
+      const parts = value
+        .split(/[,\n\r，、;；\t]+/g)
+        .map((item) => item.trim())
+        .filter(Boolean);
+      if (parts.length > 0) {
+        return parts;
+      }
+    }
+  }
+  return undefined;
+}
+
+function asObjectOrUndefined(...values: unknown[]): Record<string, unknown> | undefined {
+  for (const value of values) {
+    const obj = asObject(value);
+    if (Object.keys(obj).length > 0) {
+      return obj;
+    }
+  }
+  return undefined;
+}
+
+function resolveApiKey(options: Record<string, unknown>, fallback?: string): string | undefined {
+  return pickString(
+    options.apiKey,
+    options.api_key,
+    options.key,
+    options.token,
+    fallback
+  );
+}
+
+function stripUndefined<T extends Record<string, unknown>>(payload: T): T {
+  const entries = Object.entries(payload).filter(([, value]) => value !== undefined);
+  return Object.fromEntries(entries) as T;
 }

@@ -550,6 +550,7 @@ const SourceDialog = ({
             errors={errors}
             proxies={proxies}
             watch={watch}
+            setValue={setValue}
           />
         )}
         {/* Add other source type fields here */}
