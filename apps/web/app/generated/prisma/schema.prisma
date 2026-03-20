@@ -90,6 +90,13 @@ enum SearchEngineKind {
   CUSTOM
 }
 
+enum SearchPlatform {
+  PARALLEL
+  TAVILY
+  ANSPIRE
+  CUSTOM
+}
+
 model Proxy {
   id        String    @id @default(cuid())
   name      String
@@ -252,11 +259,10 @@ model SearchEngineSourceConfig {
   sourceId String @id
   source   Source @relation(fields: [sourceId], references: [id])
 
+  platform    SearchPlatform   @default(CUSTOM)
   engine      SearchEngineKind
   // 标准字段
-  query       String
-  region      String? // "us", "tw", ...
-  lang        String? // "en", "zh", ...
+  objective   String
   // API 调用端点（某些场景用自建 SearXNG 或第三方 API）
   apiEndpoint String?
   // 透传额外参数（时间窗、结果数、safe mode 等）

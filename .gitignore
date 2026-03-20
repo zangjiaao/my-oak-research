@@ -91,3 +91,6 @@ ENV/
 
 # Gather API IO logs
 apps/gather/logs/
+
+# Worker API IO logs
+apps/worker/logs/

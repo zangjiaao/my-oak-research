@@ -13,7 +13,9 @@ import {
 } from "@/lib/types";
 import { llmGateway, browserAgent } from "@oak/agents";
 import { publishTaskEvent, publishContentEvent } from "@/lib/queue";
+import { logger } from "@/lib/logger";
 import { redact, stripPromptLike } from "@/lib/security";
+import { writeWorkerApiIoLog } from "./api-io-log";
 import { buildNormalizedRecordContent } from "./record-content-normalizer";
 
 const SummarySchema = z.object({
@@ -44,6 +46,7 @@ type CleanItem = {
   schemaVersion?: string;
   recordIndex?: number;
   intent?: string;
+  sourceRequestId?: string;
 };
 
 type GatherSocialDriver = "playwright" | "xhttp" | "agent-browser";
@@ -149,8 +152,44 @@ export async function runFocusCollector(runId: string, queryId: string) {
     }
   });
   const keywordFilterTerms = buildKeywordFilterTerms(query.keywords);
-  const rawItems = await fetchBySources(normalizedSources, runId, keywordFilterTerms);
+  const rawItems = await fetchBySources(
+    normalizedSources,
+    runId,
+    queryId,
+    keywordFilterTerms
+  );
   const cleaned = await cleanAndDedup(rawItems, runId);
+  const sourceStats = new Map<
+    string,
+    {
+      sourceName: string;
+      sourceType: SourceType;
+      fetched: number;
+      cleaned: number;
+      dedupSkipped: number;
+      inserted: number;
+    }
+  >();
+  for (const source of normalizedSources) {
+    sourceStats.set(source.id, {
+      sourceName: source.name,
+      sourceType: source.type,
+      fetched: 0,
+      cleaned: 0,
+      dedupSkipped: 0,
+      inserted: 0,
+    });
+  }
+  for (const item of rawItems) {
+    const stats = sourceStats.get(item.sourceId);
+    if (!stats) continue;
+    stats.fetched += 1;
+  }
+  for (const item of cleaned) {
+    const stats = sourceStats.get(item.sourceId);
+    if (!stats) continue;
+    stats.cleaned += 1;
+  }
 
   if (!cleaned.length) {
     await send({ type: "done", message: "未抓取到内容", progress: 100 });
@@ -174,6 +213,10 @@ export async function runFocusCollector(runId: string, queryId: string) {
     const item = cleaned[i];
     const existingContent = await findExistingContentBySourceRecord(item);
     if (existingContent) {
+      const stats = sourceStats.get(item.sourceId);
+      if (stats) {
+        stats.dedupSkipped += 1;
+      }
       const progress = Math.min(
         100,
         Math.floor(((i + 1) / cleaned.length) * 100)
@@ -246,6 +289,7 @@ export async function runFocusCollector(runId: string, queryId: string) {
         meta: {
           queryId,
           runId,
+          sourceRequestId: item.sourceRequestId ?? null,
           sourceFingerprint: item.fingerprint,
           driver: item.driver,
           matchedKeywords: item.matchedKeywords ?? [],
@@ -287,6 +331,10 @@ export async function runFocusCollector(runId: string, queryId: string) {
       100,
       Math.floor(((i + 1) / cleaned.length) * 100)
     );
+    const stats = sourceStats.get(item.sourceId);
+    if (stats) {
+      stats.inserted += 1;
+    }
     await prisma.queryRun.update({
       where: { id: runId },
       data: { progress },
@@ -310,6 +358,30 @@ export async function runFocusCollector(runId: string, queryId: string) {
     progress: 100,
     summaryCount: cleaned.length,
   });
+  for (const [sourceId, stats] of sourceStats.entries()) {
+    logger.info("collector source summary", {
+      runId,
+      queryId,
+      sourceId,
+      sourceName: stats.sourceName,
+      sourceType: stats.sourceType,
+      fetched: stats.fetched,
+      cleaned: stats.cleaned,
+      dedupSkipped: stats.dedupSkipped,
+      inserted: stats.inserted,
+    });
+    if (stats.fetched > 0 && stats.inserted === 0) {
+      logger.warn("collector source inserted 0 items", {
+        runId,
+        queryId,
+        sourceId,
+        sourceName: stats.sourceName,
+        fetched: stats.fetched,
+        cleaned: stats.cleaned,
+        dedupSkipped: stats.dedupSkipped,
+      });
+    }
+  }
 }
 
 function mapContentType(sourceType: SourceType): ContentType {
@@ -361,6 +433,7 @@ async function cleanAndDedup(
 async function fetchBySources(
   sources: SourceWithRelations[],
   runId: string,
+  queryId: string,
   keywordFilterTerms: string[]
 ): Promise<CleanItem[]> {
   const sourceConcurrency = resolveSourceFetchConcurrency();
@@ -379,7 +452,13 @@ async function fetchBySources(
         driver,
       });
       try {
-        const fetched = await executeFetchDriver(source, driver, keywordFilterTerms);
+        const fetched = await executeFetchDriver(
+          source,
+          driver,
+          runId,
+          queryId,
+          keywordFilterTerms
+        );
         console.log(
           `[collector] fetched ${fetched.length} items from ${source.name}`
         );
@@ -469,6 +548,8 @@ function resolveFetchDriver(
 async function executeFetchDriver(
   source: SourceWithRelations,
   driver: "fetch" | "playwright" | "ai",
+  runId: string,
+  queryId: string,
   keywordFilterTerms: string[]
 ): Promise<CleanItem[]> {
   switch (driver) {
@@ -481,14 +562,16 @@ async function executeFetchDriver(
       }
       return [];
     case "ai":
-      return fetchAICrawlerSource(source, keywordFilterTerms);
+      return fetchAICrawlerSource(source, runId, queryId, keywordFilterTerms);
     default:
-      return fetchWithDefaultSource(source, keywordFilterTerms);
+      return fetchWithDefaultSource(source, runId, queryId, keywordFilterTerms);
   }
 }
 
 async function fetchWithDefaultSource(
   source: SourceWithRelations,
+  runId: string,
+  queryId: string,
   keywordFilterTerms: string[]
 ): Promise<CleanItem[]> {
   console.log(
@@ -500,7 +583,7 @@ async function fetchWithDefaultSource(
     case SourceType.DARKNET:
       return fetchHtmlSource(source as DarknetSource);
     case SourceType.SEARCH_ENGINE:
-      return fetchSearchSource(source as SearchEngineSource);
+      return fetchSearchSource(source as SearchEngineSource, { runId, queryId });
     case SourceType.SOCIAL_MEDIA:
       return fetchSocialSource(source as SocialMediaSource, keywordFilterTerms);
     default:
@@ -559,6 +642,8 @@ async function fetchBrowserSource(
 
 async function fetchAICrawlerSource(
   source: SourceWithRelations,
+  runId: string,
+  queryId: string,
   keywordFilterTerms: string[]
 ): Promise<CleanItem[]> {
   if (isWebSource(source) || isDarknetSource(source)) {
@@ -571,7 +656,7 @@ async function fetchAICrawlerSource(
     console.log(
       `[collector] fetchAICrawlerSource -> fetchSearchSource ${source.name}`
     );
-    return fetchSearchSource(source as SearchEngineSource);
+    return fetchSearchSource(source as SearchEngineSource, { runId, queryId });
   }
   console.log(
     `[collector] fetchAICrawlerSource -> fetchSocialSource ${source.name}`
@@ -634,15 +719,27 @@ async function fetchHtmlSource(
 }
 
 async function fetchSearchSource(
-  source: SearchEngineSource
+  source: SearchEngineSource,
+  context?: { runId?: string; queryId?: string }
 ): Promise<CleanItem[]> {
   console.log(`[collector] fetchSearchSource ${source.name}`);
-  const apiUrl = source.search?.apiEndpoint;
-  if (!apiUrl) {
+  const objective = (
+    (source.search as unknown as { objective?: string })?.objective ?? ""
+  ).trim();
+  if (!objective) {
+    return [];
+  }
+
+  const provider = detectSearchProvider(
+    (source.search as unknown as { platform?: string | null })?.platform,
+    source.search?.apiEndpoint,
+    source.search?.options
+  );
+  const request = buildSearchRequest(source, provider);
+  if (!request.url) {
     return [
       {
-        text: `搜索引擎 ${source.name} 未配置 API，使用默认查询 ${source.search?.query || "unknown"
-          }`,
+        text: `搜索引擎 ${source.name} 未配置 API Endpoint，当前 objective: ${objective}`,
         markdown: `搜索引擎 ${source.name} 结果占位`,
         platform: source.name,
         time: new Date(),
@@ -651,17 +748,39 @@ async function fetchSearchSource(
       },
     ];
   }
-  const payload = {
-    query: source.search.query,
-    options: source.search.options,
-  };
-  const response = await fetchWithTimeout(apiUrl, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
+
+  const response = await fetchWithTimeoutDetailed(request.url, {
+    method: request.method,
+    headers: request.headers,
+    body: request.body,
   });
-  const data = parseSearchResult(response);
-  if (!data.length) {
+  const parsedResult = parseSearchResult(response.text);
+  writeWorkerApiIoLog({
+    event: "search-request-response",
+    runId: context?.runId,
+    queryId: context?.queryId,
+    sourceId: source.id,
+    sourceName: source.name,
+    platform:
+      (
+        (source.search as unknown as { platform?: string | null })?.platform ??
+        "unknown"
+      ).toString(),
+    provider,
+    url: request.url,
+    method: request.method,
+    statusCode: response.statusCode,
+    request: {
+      headers: request.headers,
+      body: request.body ?? null,
+    },
+    response: {
+      body: response.text,
+    },
+    parsedCount: parsedResult.items.length,
+    requestId: parsedResult.requestId,
+  });
+  if (!parsedResult.items.length) {
     return [
       {
         text: `搜索引擎 ${source.name} 返回空数据`,
@@ -673,7 +792,7 @@ async function fetchSearchSource(
       },
     ];
   }
-  return data.map((item) => ({
+  return parsedResult.items.map((item) => ({
     title: item.title,
     text: item.text,
     markdown: item.markdown,
@@ -682,6 +801,7 @@ async function fetchSearchSource(
     time: item.time ? new Date(item.time) : new Date(),
     sourceId: source.id,
     sourceType: source.type,
+    sourceRequestId: parsedResult.requestId,
   }));
 }
 
@@ -1491,7 +1611,17 @@ async function fetchWithTimeout(
   url: string,
   options: RequestInit = {}
 ): Promise<string> {
-  console.log(`[collector] fetchWithTimeout ${url}`, options);
+  const detailed = await fetchWithTimeoutDetailed(url, options);
+  return detailed.text;
+}
+
+async function fetchWithTimeoutDetailed(
+  url: string,
+  options: RequestInit = {}
+): Promise<{ text: string; statusCode: number }> {
+  console.log(`[collector] fetchWithTimeout ${url}`, {
+    method: options.method ?? "GET",
+  });
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 12_000);
   const response = await fetch(url, { ...options, signal: controller.signal });
@@ -1499,7 +1629,11 @@ async function fetchWithTimeout(
   if (!response.ok) {
     throw new Error(`请求 ${url} 失败 (${response.status})`);
   }
-  return response.text();
+  const text = await response.text();
+  return {
+    text,
+    statusCode: response.status,
+  };
 }
 
 function toMarkdown(html: string) {
@@ -1523,24 +1657,386 @@ type SearchResultItem = {
   title?: string;
   snippet?: string;
   summary?: string;
+  content?: string;
   link?: string;
+  url?: string;
+  excerpts?: string[] | Array<{ text?: string; content?: string }>;
+  publish_date?: string;
+  date?: string;
   publishedAt?: string;
 };
 
-function parseSearchResult(payload: string) {
+type SearchProvider = "parallel" | "tavily" | "anspire" | "generic";
+
+type SearchRequestConfig = {
+  url: string;
+  method: "GET" | "POST";
+  headers: Record<string, string>;
+  body?: string;
+};
+
+const SEARCH_PROVIDER_ENDPOINTS = {
+  parallel:
+    process.env.PARALLEL_API_ENDPOINT || "https://api.parallel.ai/v1beta/search",
+  tavily:
+    process.env.TAVILY_API_ENDPOINT || "https://api.tavily.com/search",
+  anspire:
+    process.env.ANSPIRE_API_ENDPOINT ||
+    "https://plugin.anspire.cn/api/ntsearch/prosearch",
+} as const;
+
+function detectSearchProvider(
+  platform?: string | null,
+  apiEndpoint?: string | null,
+  rawOptions?: unknown
+): SearchProvider {
+  const normalizedPlatform = String(platform ?? "")
+    .trim()
+    .toLowerCase();
+  if (normalizedPlatform === "parallel") return "parallel";
+  if (normalizedPlatform === "tavily") return "tavily";
+  if (normalizedPlatform === "anspire") return "anspire";
+
+  const options = asObject(rawOptions);
+  const explicitProvider = String(options.provider ?? options.platform ?? "")
+    .trim()
+    .toLowerCase();
+  if (explicitProvider.includes("parallel")) return "parallel";
+  if (explicitProvider.includes("tavily")) return "tavily";
+  if (explicitProvider.includes("anspire")) return "anspire";
+
+  const endpoint = String(apiEndpoint ?? "").toLowerCase();
+  if (endpoint.includes("parallel.ai")) return "parallel";
+  if (endpoint.includes("tavily.com")) return "tavily";
+  if (endpoint.includes("anspire.cn")) return "anspire";
+  return "generic";
+}
+
+function buildSearchRequest(
+  source: SearchEngineSource,
+  provider: SearchProvider
+): SearchRequestConfig {
+  const search = source.search;
+  const options = asObject(search?.options);
+  const objective =
+    (search as unknown as { objective?: string })?.objective ?? "";
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+
+  if (provider === "parallel") {
+    const apiKey = resolveApiKey(options, process.env.PARALLEL_API_KEY);
+    if (apiKey) {
+      headers["x-api-key"] = apiKey;
+    }
+
+    const excerpts = asObject(options.excerpts);
+    const sourcePolicy = asObjectOrUndefined(
+      options.source_policy,
+      options.sourcePolicy
+    );
+    const sourcePolicyObject = asObject(sourcePolicy);
+    const fetchPolicy = asObjectOrUndefined(
+      options.fetch_policy,
+      options.fetchPolicy
+    );
+    const fetchPolicyObject = asObject(fetchPolicy);
+
+    const payload: Record<string, unknown> = {
+      mode: pickString(options.mode) ?? "one-shot",
+      objective,
+      search_queries:
+        toStringArrayOption(options.search_queries, options.searchQueries) ?? [],
+      max_results: toNumberOption(options.max_results, options.maxResults) ?? 20,
+      excerpts: {
+        max_chars_per_result:
+          toNumberOption(excerpts.max_chars_per_result) ?? 20000,
+        max_chars_total: toNumberOption(excerpts.max_chars_total) ?? 200000,
+      },
+      source_policy: {
+        include_domains:
+          toStringArrayOption(sourcePolicyObject.include_domains) ?? [],
+        exclude_domains:
+          toStringArrayOption(sourcePolicyObject.exclude_domains) ?? [],
+        ...(pickString(sourcePolicyObject.after_date)
+          ? { after_date: pickString(sourcePolicyObject.after_date) }
+          : {}),
+      },
+      fetch_policy: {
+        disable_cache_fallback:
+          toBooleanOption(fetchPolicyObject.disable_cache_fallback) ?? true,
+        max_age_seconds:
+          toNumberOption(fetchPolicyObject.max_age_seconds) ?? 172800,
+        timeout_seconds:
+          toNumberOption(fetchPolicyObject.timeout_seconds) ?? 120,
+      },
+    };
+    return {
+      url: SEARCH_PROVIDER_ENDPOINTS.parallel,
+      method: "POST",
+      headers,
+      body: JSON.stringify(stripUndefined(payload)),
+    };
+  }
+
+  if (provider === "tavily") {
+    const apiKey = resolveApiKey(options, process.env.TAVILY_API_KEY);
+    const payload: Record<string, unknown> = {
+      api_key: apiKey,
+      query: objective,
+      topic: pickString(options.topic) ?? "general",
+      search_depth: pickString(options.search_depth, options.searchDepth) ?? "basic",
+      max_results: toNumberOption(options.max_results, options.maxResults) ?? 10,
+      include_answer:
+        toBooleanOption(options.include_answer, options.includeAnswer) ?? false,
+      include_raw_content:
+        toBooleanOrStringOption(
+          options.include_raw_content,
+          options.includeRawContent
+        ) ?? false,
+      include_images:
+        toBooleanOption(options.include_images, options.includeImages) ?? false,
+      include_image_descriptions:
+        toBooleanOption(
+          options.include_image_descriptions,
+          options.includeImageDescriptions
+        ) ?? false,
+      include_favicon:
+        toBooleanOption(options.include_favicon, options.includeFavicon) ?? false,
+      include_usage:
+        toBooleanOption(options.include_usage, options.includeUsage) ?? false,
+      chunks_per_source:
+        toNumberOption(options.chunks_per_source, options.chunksPerSource) ?? 4,
+      include_domains:
+        toStringArrayOption(options.include_domains, options.includeDomains) ?? [],
+      exclude_domains:
+        toStringArrayOption(options.exclude_domains, options.excludeDomains) ?? [],
+      time_range: pickString(options.time_range, options.timeRange),
+      days: toNumberOption(options.days),
+      start_date: pickString(options.start_date, options.startDate),
+      end_date: pickString(options.end_date, options.endDate),
+    };
+    return {
+      url: SEARCH_PROVIDER_ENDPOINTS.tavily,
+      method: "POST",
+      headers,
+      body: JSON.stringify(stripUndefined(payload)),
+    };
+  }
+
+  if (provider === "anspire") {
+    const apiKey = resolveApiKey(options, process.env.ANSPIRE_API_KEY);
+    if (apiKey) {
+      headers.Authorization = `Bearer ${apiKey}`;
+    }
+    const queryParams = new URLSearchParams({
+      query: objective,
+      ...(pickString(options.top_k, options.topK)
+        ? { top_k: pickString(options.top_k, options.topK)! }
+        : {}),
+      ...(pickString(options.insite, options.Insite)
+        ? { Insite: pickString(options.insite, options.Insite)! }
+        : {}),
+      ...(pickString(options.from_time, options.FromTime)
+        ? { FromTime: pickString(options.from_time, options.FromTime)! }
+        : {}),
+      ...(pickString(options.to_time, options.ToTime)
+        ? { ToTime: pickString(options.to_time, options.ToTime)! }
+        : {}),
+    });
+    return {
+      url:
+        `${SEARCH_PROVIDER_ENDPOINTS.anspire}?${queryParams.toString()}`,
+      method: "GET",
+      headers,
+    };
+  }
+
+  return {
+    url: search?.apiEndpoint || "",
+    method: "POST",
+    headers,
+    body: JSON.stringify({
+      query: objective,
+      options: search?.options,
+    }),
+  };
+}
+
+function parseSearchResult(payload: string): {
+  items: Array<{
+    title?: string;
+    text: string;
+    markdown: string;
+    url?: string;
+    time?: string;
+  }>;
+  requestId?: string;
+} {
   try {
     const json = JSON.parse(payload);
-    if (Array.isArray(json.items)) {
-      return (json.items as SearchResultItem[]).map((item) => ({
-        title: item.title,
-        text: item.snippet || item.summary || "",
-        markdown: item.snippet || item.summary || "",
-        url: item.link,
-        time: item.publishedAt,
-      }));
+    const root = asObject(json);
+    const requestId = pickString(root.Uuid, root.uuid, root.requestId);
+    const candidates = [
+      root.items,
+      root.results,
+      root.data,
+      root.output,
+    ];
+    const rows = candidates.find((candidate) => Array.isArray(candidate));
+    if (Array.isArray(rows)) {
+      const items = (rows as SearchResultItem[])
+        .map((item) => normalizeSearchResultItem(item))
+        .filter((item) => Boolean(item.text));
+      return { items, requestId };
     }
   } catch {
     // ignore
   }
-  return [];
+  return { items: [] };
+}
+
+function normalizeSearchResultItem(item: SearchResultItem) {
+  const excerpts = normalizeExcerpts(item.excerpts);
+  const text =
+    item.snippet ||
+    item.summary ||
+    item.content ||
+    excerpts ||
+    "";
+
+  return {
+    title: item.title,
+    text,
+    markdown: text,
+    url: item.link || item.url,
+    time: item.publishedAt || item.publish_date || item.date,
+  };
+}
+
+function normalizeExcerpts(value: unknown): string {
+  if (Array.isArray(value)) {
+    const normalized = value
+      .map((entry) => {
+        if (typeof entry === "string") {
+          return entry.trim();
+        }
+        if (entry && typeof entry === "object") {
+          const row = entry as Record<string, unknown>;
+          if (typeof row.text === "string") {
+            return row.text.trim();
+          }
+          if (typeof row.content === "string") {
+            return row.content.trim();
+          }
+        }
+        return "";
+      })
+      .filter(Boolean);
+    return normalized.join("\n\n");
+  }
+  return "";
+}
+
+function pickString(...values: unknown[]): string | undefined {
+  for (const value of values) {
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
+  }
+  return undefined;
+}
+
+function toNumberOption(...values: unknown[]): number | undefined {
+  for (const value of values) {
+    if (typeof value === "number" && Number.isFinite(value)) {
+      return value;
+    }
+    if (typeof value === "string" && value.trim()) {
+      const num = Number(value);
+      if (Number.isFinite(num)) {
+        return num;
+      }
+    }
+  }
+  return undefined;
+}
+
+function toBooleanOption(...values: unknown[]): boolean | undefined {
+  for (const value of values) {
+    if (typeof value === "boolean") {
+      return value;
+    }
+    if (typeof value === "string") {
+      const normalized = value.trim().toLowerCase();
+      if (normalized === "true") return true;
+      if (normalized === "false") return false;
+    }
+  }
+  return undefined;
+}
+
+function toBooleanOrStringOption(
+  ...values: unknown[]
+): boolean | string | undefined {
+  for (const value of values) {
+    if (typeof value === "boolean") {
+      return value;
+    }
+    if (typeof value === "string") {
+      const normalized = value.trim().toLowerCase();
+      if (normalized === "true") return true;
+      if (normalized === "false") return false;
+      if (value.trim()) return value.trim();
+    }
+  }
+  return undefined;
+}
+
+function toStringArrayOption(...values: unknown[]): string[] | undefined {
+  for (const value of values) {
+    if (Array.isArray(value)) {
+      const normalized = value
+        .map((item) => (typeof item === "string" ? item.trim() : ""))
+        .filter(Boolean);
+      if (normalized.length > 0) {
+        return normalized;
+      }
+    }
+    if (typeof value === "string" && value.trim()) {
+      const parts = value
+        .split(/[,\n\r，、;；\t]+/g)
+        .map((item) => item.trim())
+        .filter(Boolean);
+      if (parts.length > 0) {
+        return parts;
+      }
+    }
+  }
+  return undefined;
+}
+
+function asObjectOrUndefined(...values: unknown[]): Record<string, unknown> | undefined {
+  for (const value of values) {
+    const obj = asObject(value);
+    if (Object.keys(obj).length > 0) {
+      return obj;
+    }
+  }
+  return undefined;
+}
+
+function resolveApiKey(options: Record<string, unknown>, fallback?: string): string | undefined {
+  return pickString(
+    options.apiKey,
+    options.api_key,
+    options.key,
+    options.token,
+    fallback
+  );
+}
+
+function stripUndefined<T extends Record<string, unknown>>(payload: T): T {
+  const entries = Object.entries(payload).filter(([, value]) => value !== undefined);
+  return Object.fromEntries(entries) as T;
 }

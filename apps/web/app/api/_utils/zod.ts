@@ -127,6 +127,12 @@ export const SearchEngineKindEnum = z.enum([
   "SEARXNG",
   "CUSTOM",
 ]);
+export const SearchPlatformEnum = z.enum([
+  "PARALLEL",
+  "TAVILY",
+  "ANSPIRE",
+  "CUSTOM",
+]);
 export const SocialPlatformEnum = z.enum(["X", "TELEGRAM", "REDDIT", "XIAOHONGSHU", "DOUYIN", "TIKTOK", "WEIBO", "WHATSAPP", "INSTAGRAM", "FACEBOOK"]);
 export const SocialDriverEnum = z.enum(["xhttp", "playwright", "agent-browser"]);
 const GatherResponseFormatEnum = z.enum(["text", "markdown"]);
@@ -220,10 +226,19 @@ export const DarknetConfigInput = z.object({
 });
 
 export const SearchEngineConfigInput = z.object({
-  engine: SearchEngineKindEnum,
-  query: z.string().min(1),
-  region: z.string().optional().nullable(),
-  lang: LangEnum,
+  platform: SearchPlatformEnum.default("PARALLEL"),
+  engine: SearchEngineKindEnum.optional().default("CUSTOM"),
+  objective: z.string().min(1),
+  apiEndpoint: z.url().optional().nullable(),
+  options: z.preprocess((val) => parseJson(val), z.record(z.string(), z.any()).optional().nullable()),
+  customConfig: z.preprocess((val) => parseJson(val), z.any().optional().nullable()),
+  credentialId: cuidOpt,
+});
+
+export const SearchEngineConfigUpdateInput = z.object({
+  platform: SearchPlatformEnum.optional(),
+  engine: SearchEngineKindEnum.optional(),
+  objective: z.string().min(1).optional(),
   apiEndpoint: z.url().optional().nullable(),
   options: z.preprocess((val) => parseJson(val), z.record(z.string(), z.any()).optional().nullable()),
   customConfig: z.preprocess((val) => parseJson(val), z.any().optional().nullable()),
@@ -406,7 +421,7 @@ export const SourceUpdateSchema = z.object({
   // 子配置：
   web: WebConfigInput.partial().optional(),
   darknet: DarknetConfigInput.partial().optional(),
-  search: SearchEngineConfigInput.partial().optional(),
+  search: SearchEngineConfigUpdateInput.optional(),
   social: SocialConfigUpdateInput.optional(),
 });
 
