@@ -73,7 +73,6 @@ const isSearchSource = (
   source: SourceWithRelations | undefined
 ): source is SearchEngineSource => source?.type === "SEARCH_ENGINE";
 
-const SUPPORTED_LANGS = ["zh", "en", "ja", "auto"] as const;
 const SUPPORTED_SEARCH_PLATFORMS = [
   "PARALLEL",
   "TAVILY",
@@ -273,13 +272,6 @@ const getDefaultValues = (
     }
     case "SEARCH_ENGINE": {
       const searchRelation = isSearchSource(source) ? source.search : undefined;
-      const rawLang = searchRelation?.lang ?? "auto";
-      const allowedLangs = SUPPORTED_LANGS;
-      const langValue = allowedLangs.includes(
-        rawLang as (typeof allowedLangs)[number]
-      )
-        ? (rawLang as SearchFormValues["search"]["lang"])
-        : "auto";
       const searchConfig: SearchFormValues["search"] = {
         platform: searchRelation
           ? inferSearchPlatform(
@@ -289,9 +281,8 @@ const getDefaultValues = (
             )
           : "PARALLEL",
         engine: searchRelation?.engine ?? "CUSTOM",
-        query: searchRelation?.query ?? "",
-        region: searchRelation?.region ?? null,
-        lang: langValue,
+        objective:
+          (searchRelation as unknown as { objective?: string })?.objective ?? "",
         apiEndpoint: searchRelation?.apiEndpoint ?? null,
         options:
           (searchRelation?.options as

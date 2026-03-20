@@ -15564,9 +15564,7 @@ export namespace Prisma {
     sourceId: string | null
     platform: $Enums.SearchPlatform | null
     engine: $Enums.SearchEngineKind | null
-    query: string | null
-    region: string | null
-    lang: string | null
+    objective: string | null
     apiEndpoint: string | null
     credentialId: string | null
     createdAt: Date | null
@@ -15577,9 +15575,7 @@ export namespace Prisma {
     sourceId: string | null
     platform: $Enums.SearchPlatform | null
     engine: $Enums.SearchEngineKind | null
-    query: string | null
-    region: string | null
-    lang: string | null
+    objective: string | null
     apiEndpoint: string | null
     credentialId: string | null
     createdAt: Date | null
@@ -15590,9 +15586,7 @@ export namespace Prisma {
     sourceId: number
     platform: number
     engine: number
-    query: number
-    region: number
-    lang: number
+    objective: number
     apiEndpoint: number
     options: number
     credentialId: number
@@ -15606,9 +15600,7 @@ export namespace Prisma {
     sourceId?: true
     platform?: true
     engine?: true
-    query?: true
-    region?: true
-    lang?: true
+    objective?: true
     apiEndpoint?: true
     credentialId?: true
     createdAt?: true
@@ -15619,9 +15611,7 @@ export namespace Prisma {
     sourceId?: true
     platform?: true
     engine?: true
-    query?: true
-    region?: true
-    lang?: true
+    objective?: true
     apiEndpoint?: true
     credentialId?: true
     createdAt?: true
@@ -15632,9 +15622,7 @@ export namespace Prisma {
     sourceId?: true
     platform?: true
     engine?: true
-    query?: true
-    region?: true
-    lang?: true
+    objective?: true
     apiEndpoint?: true
     options?: true
     credentialId?: true
@@ -15719,9 +15707,7 @@ export namespace Prisma {
     sourceId: string
     platform: $Enums.SearchPlatform
     engine: $Enums.SearchEngineKind
-    query: string
-    region: string | null
-    lang: string | null
+    objective: string
     apiEndpoint: string | null
     options: JsonValue | null
     credentialId: string | null
@@ -15750,9 +15736,7 @@ export namespace Prisma {
     sourceId?: boolean
     platform?: boolean
     engine?: boolean
-    query?: boolean
-    region?: boolean
-    lang?: boolean
+    objective?: boolean
     apiEndpoint?: boolean
     options?: boolean
     credentialId?: boolean
@@ -15766,9 +15750,7 @@ export namespace Prisma {
     sourceId?: boolean
     platform?: boolean
     engine?: boolean
-    query?: boolean
-    region?: boolean
-    lang?: boolean
+    objective?: boolean
     apiEndpoint?: boolean
     options?: boolean
     credentialId?: boolean
@@ -15782,9 +15764,7 @@ export namespace Prisma {
     sourceId?: boolean
     platform?: boolean
     engine?: boolean
-    query?: boolean
-    region?: boolean
-    lang?: boolean
+    objective?: boolean
     apiEndpoint?: boolean
     options?: boolean
     credentialId?: boolean
@@ -15798,9 +15778,7 @@ export namespace Prisma {
     sourceId?: boolean
     platform?: boolean
     engine?: boolean
-    query?: boolean
-    region?: boolean
-    lang?: boolean
+    objective?: boolean
     apiEndpoint?: boolean
     options?: boolean
     credentialId?: boolean
@@ -15808,7 +15786,7 @@ export namespace Prisma {
     updatedAt?: boolean
   }
 
-  export type SearchEngineSourceConfigOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"sourceId" | "platform" | "engine" | "query" | "region" | "lang" | "apiEndpoint" | "options" | "credentialId" | "createdAt" | "updatedAt", ExtArgs["result"]["searchEngineSourceConfig"]>
+  export type SearchEngineSourceConfigOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"sourceId" | "platform" | "engine" | "objective" | "apiEndpoint" | "options" | "credentialId" | "createdAt" | "updatedAt", ExtArgs["result"]["searchEngineSourceConfig"]>
   export type SearchEngineSourceConfigInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     source?: boolean | SourceDefaultArgs<ExtArgs>
     credential?: boolean | SearchEngineSourceConfig$credentialArgs<ExtArgs>
@@ -15832,9 +15810,7 @@ export namespace Prisma {
       sourceId: string
       platform: $Enums.SearchPlatform
       engine: $Enums.SearchEngineKind
-      query: string
-      region: string | null
-      lang: string | null
+      objective: string
       apiEndpoint: string | null
       options: Prisma.JsonValue | null
       credentialId: string | null
@@ -16268,9 +16244,7 @@ export namespace Prisma {
     readonly sourceId: FieldRef<"SearchEngineSourceConfig", 'String'>
     readonly platform: FieldRef<"SearchEngineSourceConfig", 'SearchPlatform'>
     readonly engine: FieldRef<"SearchEngineSourceConfig", 'SearchEngineKind'>
-    readonly query: FieldRef<"SearchEngineSourceConfig", 'String'>
-    readonly region: FieldRef<"SearchEngineSourceConfig", 'String'>
-    readonly lang: FieldRef<"SearchEngineSourceConfig", 'String'>
+    readonly objective: FieldRef<"SearchEngineSourceConfig", 'String'>
     readonly apiEndpoint: FieldRef<"SearchEngineSourceConfig", 'String'>
     readonly options: FieldRef<"SearchEngineSourceConfig", 'Json'>
     readonly credentialId: FieldRef<"SearchEngineSourceConfig", 'String'>
@@ -34824,9 +34798,7 @@ export namespace Prisma {
     sourceId: 'sourceId',
     platform: 'platform',
     engine: 'engine',
-    query: 'query',
-    region: 'region',
-    lang: 'lang',
+    objective: 'objective',
     apiEndpoint: 'apiEndpoint',
     options: 'options',
     credentialId: 'credentialId',
@@ -36187,9 +36159,7 @@ export namespace Prisma {
     sourceId?: StringFilter<"SearchEngineSourceConfig"> | string
     platform?: EnumSearchPlatformFilter<"SearchEngineSourceConfig"> | $Enums.SearchPlatform
     engine?: EnumSearchEngineKindFilter<"SearchEngineSourceConfig"> | $Enums.SearchEngineKind
-    query?: StringFilter<"SearchEngineSourceConfig"> | string
-    region?: StringNullableFilter<"SearchEngineSourceConfig"> | string | null
-    lang?: StringNullableFilter<"SearchEngineSourceConfig"> | string | null
+    objective?: StringFilter<"SearchEngineSourceConfig"> | string
     apiEndpoint?: StringNullableFilter<"SearchEngineSourceConfig"> | string | null
     options?: JsonNullableFilter<"SearchEngineSourceConfig">
     credentialId?: StringNullableFilter<"SearchEngineSourceConfig"> | string | null
@@ -36203,9 +36173,7 @@ export namespace Prisma {
     sourceId?: SortOrder
     platform?: SortOrder
     engine?: SortOrder
-    query?: SortOrder
-    region?: SortOrderInput | SortOrder
-    lang?: SortOrderInput | SortOrder
+    objective?: SortOrder
     apiEndpoint?: SortOrderInput | SortOrder
     options?: SortOrderInput | SortOrder
     credentialId?: SortOrderInput | SortOrder
@@ -36222,9 +36190,7 @@ export namespace Prisma {
     NOT?: SearchEngineSourceConfigWhereInput | SearchEngineSourceConfigWhereInput[]
     platform?: EnumSearchPlatformFilter<"SearchEngineSourceConfig"> | $Enums.SearchPlatform
     engine?: EnumSearchEngineKindFilter<"SearchEngineSourceConfig"> | $Enums.SearchEngineKind
-    query?: StringFilter<"SearchEngineSourceConfig"> | string
-    region?: StringNullableFilter<"SearchEngineSourceConfig"> | string | null
-    lang?: StringNullableFilter<"SearchEngineSourceConfig"> | string | null
+    objective?: StringFilter<"SearchEngineSourceConfig"> | string
     apiEndpoint?: StringNullableFilter<"SearchEngineSourceConfig"> | string | null
     options?: JsonNullableFilter<"SearchEngineSourceConfig">
     credentialId?: StringNullableFilter<"SearchEngineSourceConfig"> | string | null
@@ -36238,9 +36204,7 @@ export namespace Prisma {
     sourceId?: SortOrder
     platform?: SortOrder
     engine?: SortOrder
-    query?: SortOrder
-    region?: SortOrderInput | SortOrder
-    lang?: SortOrderInput | SortOrder
+    objective?: SortOrder
     apiEndpoint?: SortOrderInput | SortOrder
     options?: SortOrderInput | SortOrder
     credentialId?: SortOrderInput | SortOrder
@@ -36258,9 +36222,7 @@ export namespace Prisma {
     sourceId?: StringWithAggregatesFilter<"SearchEngineSourceConfig"> | string
     platform?: EnumSearchPlatformWithAggregatesFilter<"SearchEngineSourceConfig"> | $Enums.SearchPlatform
     engine?: EnumSearchEngineKindWithAggregatesFilter<"SearchEngineSourceConfig"> | $Enums.SearchEngineKind
-    query?: StringWithAggregatesFilter<"SearchEngineSourceConfig"> | string
-    region?: StringNullableWithAggregatesFilter<"SearchEngineSourceConfig"> | string | null
-    lang?: StringNullableWithAggregatesFilter<"SearchEngineSourceConfig"> | string | null
+    objective?: StringWithAggregatesFilter<"SearchEngineSourceConfig"> | string
     apiEndpoint?: StringNullableWithAggregatesFilter<"SearchEngineSourceConfig"> | string | null
     options?: JsonNullableWithAggregatesFilter<"SearchEngineSourceConfig">
     credentialId?: StringNullableWithAggregatesFilter<"SearchEngineSourceConfig"> | string | null
@@ -38322,9 +38284,7 @@ export namespace Prisma {
   export type SearchEngineSourceConfigCreateInput = {
     platform?: $Enums.SearchPlatform
     engine: $Enums.SearchEngineKind
-    query: string
-    region?: string | null
-    lang?: string | null
+    objective: string
     apiEndpoint?: string | null
     options?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: Date | string
@@ -38337,9 +38297,7 @@ export namespace Prisma {
     sourceId: string
     platform?: $Enums.SearchPlatform
     engine: $Enums.SearchEngineKind
-    query: string
-    region?: string | null
-    lang?: string | null
+    objective: string
     apiEndpoint?: string | null
     options?: NullableJsonNullValueInput | InputJsonValue
     credentialId?: string | null
@@ -38350,9 +38308,7 @@ export namespace Prisma {
   export type SearchEngineSourceConfigUpdateInput = {
     platform?: EnumSearchPlatformFieldUpdateOperationsInput | $Enums.SearchPlatform
     engine?: EnumSearchEngineKindFieldUpdateOperationsInput | $Enums.SearchEngineKind
-    query?: StringFieldUpdateOperationsInput | string
-    region?: NullableStringFieldUpdateOperationsInput | string | null
-    lang?: NullableStringFieldUpdateOperationsInput | string | null
+    objective?: StringFieldUpdateOperationsInput | string
     apiEndpoint?: NullableStringFieldUpdateOperationsInput | string | null
     options?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -38365,9 +38321,7 @@ export namespace Prisma {
     sourceId?: StringFieldUpdateOperationsInput | string
     platform?: EnumSearchPlatformFieldUpdateOperationsInput | $Enums.SearchPlatform
     engine?: EnumSearchEngineKindFieldUpdateOperationsInput | $Enums.SearchEngineKind
-    query?: StringFieldUpdateOperationsInput | string
-    region?: NullableStringFieldUpdateOperationsInput | string | null
-    lang?: NullableStringFieldUpdateOperationsInput | string | null
+    objective?: StringFieldUpdateOperationsInput | string
     apiEndpoint?: NullableStringFieldUpdateOperationsInput | string | null
     options?: NullableJsonNullValueInput | InputJsonValue
     credentialId?: NullableStringFieldUpdateOperationsInput | string | null
@@ -38379,9 +38333,7 @@ export namespace Prisma {
     sourceId: string
     platform?: $Enums.SearchPlatform
     engine: $Enums.SearchEngineKind
-    query: string
-    region?: string | null
-    lang?: string | null
+    objective: string
     apiEndpoint?: string | null
     options?: NullableJsonNullValueInput | InputJsonValue
     credentialId?: string | null
@@ -38392,9 +38344,7 @@ export namespace Prisma {
   export type SearchEngineSourceConfigUpdateManyMutationInput = {
     platform?: EnumSearchPlatformFieldUpdateOperationsInput | $Enums.SearchPlatform
     engine?: EnumSearchEngineKindFieldUpdateOperationsInput | $Enums.SearchEngineKind
-    query?: StringFieldUpdateOperationsInput | string
-    region?: NullableStringFieldUpdateOperationsInput | string | null
-    lang?: NullableStringFieldUpdateOperationsInput | string | null
+    objective?: StringFieldUpdateOperationsInput | string
     apiEndpoint?: NullableStringFieldUpdateOperationsInput | string | null
     options?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -38405,9 +38355,7 @@ export namespace Prisma {
     sourceId?: StringFieldUpdateOperationsInput | string
     platform?: EnumSearchPlatformFieldUpdateOperationsInput | $Enums.SearchPlatform
     engine?: EnumSearchEngineKindFieldUpdateOperationsInput | $Enums.SearchEngineKind
-    query?: StringFieldUpdateOperationsInput | string
-    region?: NullableStringFieldUpdateOperationsInput | string | null
-    lang?: NullableStringFieldUpdateOperationsInput | string | null
+    objective?: StringFieldUpdateOperationsInput | string
     apiEndpoint?: NullableStringFieldUpdateOperationsInput | string | null
     options?: NullableJsonNullValueInput | InputJsonValue
     credentialId?: NullableStringFieldUpdateOperationsInput | string | null
@@ -40528,9 +40476,7 @@ export namespace Prisma {
     sourceId?: SortOrder
     platform?: SortOrder
     engine?: SortOrder
-    query?: SortOrder
-    region?: SortOrder
-    lang?: SortOrder
+    objective?: SortOrder
     apiEndpoint?: SortOrder
     options?: SortOrder
     credentialId?: SortOrder
@@ -40542,9 +40488,7 @@ export namespace Prisma {
     sourceId?: SortOrder
     platform?: SortOrder
     engine?: SortOrder
-    query?: SortOrder
-    region?: SortOrder
-    lang?: SortOrder
+    objective?: SortOrder
     apiEndpoint?: SortOrder
     credentialId?: SortOrder
     createdAt?: SortOrder
@@ -40555,9 +40499,7 @@ export namespace Prisma {
     sourceId?: SortOrder
     platform?: SortOrder
     engine?: SortOrder
-    query?: SortOrder
-    region?: SortOrder
-    lang?: SortOrder
+    objective?: SortOrder
     apiEndpoint?: SortOrder
     credentialId?: SortOrder
     createdAt?: SortOrder
@@ -44133,9 +44075,7 @@ export namespace Prisma {
   export type SearchEngineSourceConfigCreateWithoutCredentialInput = {
     platform?: $Enums.SearchPlatform
     engine: $Enums.SearchEngineKind
-    query: string
-    region?: string | null
-    lang?: string | null
+    objective: string
     apiEndpoint?: string | null
     options?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: Date | string
@@ -44147,9 +44087,7 @@ export namespace Prisma {
     sourceId: string
     platform?: $Enums.SearchPlatform
     engine: $Enums.SearchEngineKind
-    query: string
-    region?: string | null
-    lang?: string | null
+    objective: string
     apiEndpoint?: string | null
     options?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: Date | string
@@ -44221,9 +44159,7 @@ export namespace Prisma {
     sourceId?: StringFilter<"SearchEngineSourceConfig"> | string
     platform?: EnumSearchPlatformFilter<"SearchEngineSourceConfig"> | $Enums.SearchPlatform
     engine?: EnumSearchEngineKindFilter<"SearchEngineSourceConfig"> | $Enums.SearchEngineKind
-    query?: StringFilter<"SearchEngineSourceConfig"> | string
-    region?: StringNullableFilter<"SearchEngineSourceConfig"> | string | null
-    lang?: StringNullableFilter<"SearchEngineSourceConfig"> | string | null
+    objective?: StringFilter<"SearchEngineSourceConfig"> | string
     apiEndpoint?: StringNullableFilter<"SearchEngineSourceConfig"> | string | null
     options?: JsonNullableFilter<"SearchEngineSourceConfig">
     credentialId?: StringNullableFilter<"SearchEngineSourceConfig"> | string | null
@@ -44348,9 +44284,7 @@ export namespace Prisma {
   export type SearchEngineSourceConfigCreateWithoutSourceInput = {
     platform?: $Enums.SearchPlatform
     engine: $Enums.SearchEngineKind
-    query: string
-    region?: string | null
-    lang?: string | null
+    objective: string
     apiEndpoint?: string | null
     options?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: Date | string
@@ -44361,9 +44295,7 @@ export namespace Prisma {
   export type SearchEngineSourceConfigUncheckedCreateWithoutSourceInput = {
     platform?: $Enums.SearchPlatform
     engine: $Enums.SearchEngineKind
-    query: string
-    region?: string | null
-    lang?: string | null
+    objective: string
     apiEndpoint?: string | null
     options?: NullableJsonNullValueInput | InputJsonValue
     credentialId?: string | null
@@ -44612,9 +44544,7 @@ export namespace Prisma {
   export type SearchEngineSourceConfigUpdateWithoutSourceInput = {
     platform?: EnumSearchPlatformFieldUpdateOperationsInput | $Enums.SearchPlatform
     engine?: EnumSearchEngineKindFieldUpdateOperationsInput | $Enums.SearchEngineKind
-    query?: StringFieldUpdateOperationsInput | string
-    region?: NullableStringFieldUpdateOperationsInput | string | null
-    lang?: NullableStringFieldUpdateOperationsInput | string | null
+    objective?: StringFieldUpdateOperationsInput | string
     apiEndpoint?: NullableStringFieldUpdateOperationsInput | string | null
     options?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -44625,9 +44555,7 @@ export namespace Prisma {
   export type SearchEngineSourceConfigUncheckedUpdateWithoutSourceInput = {
     platform?: EnumSearchPlatformFieldUpdateOperationsInput | $Enums.SearchPlatform
     engine?: EnumSearchEngineKindFieldUpdateOperationsInput | $Enums.SearchEngineKind
-    query?: StringFieldUpdateOperationsInput | string
-    region?: NullableStringFieldUpdateOperationsInput | string | null
-    lang?: NullableStringFieldUpdateOperationsInput | string | null
+    objective?: StringFieldUpdateOperationsInput | string
     apiEndpoint?: NullableStringFieldUpdateOperationsInput | string | null
     options?: NullableJsonNullValueInput | InputJsonValue
     credentialId?: NullableStringFieldUpdateOperationsInput | string | null
@@ -47670,9 +47598,7 @@ export namespace Prisma {
     sourceId: string
     platform?: $Enums.SearchPlatform
     engine: $Enums.SearchEngineKind
-    query: string
-    region?: string | null
-    lang?: string | null
+    objective: string
     apiEndpoint?: string | null
     options?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: Date | string
@@ -47763,9 +47689,7 @@ export namespace Prisma {
   export type SearchEngineSourceConfigUpdateWithoutCredentialInput = {
     platform?: EnumSearchPlatformFieldUpdateOperationsInput | $Enums.SearchPlatform
     engine?: EnumSearchEngineKindFieldUpdateOperationsInput | $Enums.SearchEngineKind
-    query?: StringFieldUpdateOperationsInput | string
-    region?: NullableStringFieldUpdateOperationsInput | string | null
-    lang?: NullableStringFieldUpdateOperationsInput | string | null
+    objective?: StringFieldUpdateOperationsInput | string
     apiEndpoint?: NullableStringFieldUpdateOperationsInput | string | null
     options?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -47777,9 +47701,7 @@ export namespace Prisma {
     sourceId?: StringFieldUpdateOperationsInput | string
     platform?: EnumSearchPlatformFieldUpdateOperationsInput | $Enums.SearchPlatform
     engine?: EnumSearchEngineKindFieldUpdateOperationsInput | $Enums.SearchEngineKind
-    query?: StringFieldUpdateOperationsInput | string
-    region?: NullableStringFieldUpdateOperationsInput | string | null
-    lang?: NullableStringFieldUpdateOperationsInput | string | null
+    objective?: StringFieldUpdateOperationsInput | string
     apiEndpoint?: NullableStringFieldUpdateOperationsInput | string | null
     options?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -47790,9 +47712,7 @@ export namespace Prisma {
     sourceId?: StringFieldUpdateOperationsInput | string
     platform?: EnumSearchPlatformFieldUpdateOperationsInput | $Enums.SearchPlatform
     engine?: EnumSearchEngineKindFieldUpdateOperationsInput | $Enums.SearchEngineKind
-    query?: StringFieldUpdateOperationsInput | string
-    region?: NullableStringFieldUpdateOperationsInput | string | null
-    lang?: NullableStringFieldUpdateOperationsInput | string | null
+    objective?: StringFieldUpdateOperationsInput | string
     apiEndpoint?: NullableStringFieldUpdateOperationsInput | string | null
     options?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string

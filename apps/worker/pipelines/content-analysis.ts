@@ -637,8 +637,10 @@ async function fetchSearchSource(
   source: SearchEngineSource
 ): Promise<CleanItem[]> {
   console.log(`[collector] fetchSearchSource ${source.name}`);
-  const query = source.search?.query?.trim();
-  if (!query) {
+  const objective = (
+    (source.search as unknown as { objective?: string })?.objective ?? ""
+  ).trim();
+  if (!objective) {
     return [];
   }
 
@@ -651,7 +653,7 @@ async function fetchSearchSource(
   if (!request.url) {
     return [
       {
-        text: `搜索引擎 ${source.name} 未配置 API Endpoint，当前 query: ${query}`,
+        text: `搜索引擎 ${source.name} 未配置 API Endpoint，当前 objective: ${objective}`,
         markdown: `搜索引擎 ${source.name} 结果占位`,
         platform: source.name,
         time: new Date(),
@@ -1580,7 +1582,8 @@ function buildSearchRequest(
 ): SearchRequestConfig {
   const search = source.search;
   const options = asObject(search?.options);
-  const query = search?.query ?? "";
+  const objective =
+    (search as unknown as { objective?: string })?.objective ?? "";
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
   };
@@ -1592,7 +1595,7 @@ function buildSearchRequest(
     }
     const payload: Record<string, unknown> = {
       mode: pickString(options.mode) ?? "one-shot",
-      objective: query,
+      objective,
       search_queries: toStringArrayOption(options.search_queries, options.searchQueries),
       max_results: toNumberOption(options.max_results, options.maxResults),
       excerpts: asObjectOrUndefined(options.excerpts),
@@ -1611,7 +1614,7 @@ function buildSearchRequest(
     const apiKey = resolveApiKey(options, process.env.TAVILY_API_KEY);
     const payload: Record<string, unknown> = {
       api_key: apiKey,
-      query,
+      query: objective,
       topic: pickString(options.topic),
       search_depth: pickString(options.search_depth, options.searchDepth),
       max_results: toNumberOption(options.max_results, options.maxResults),
@@ -1640,7 +1643,7 @@ function buildSearchRequest(
       headers.Authorization = `Bearer ${apiKey}`;
     }
     const queryParams = new URLSearchParams({
-      query,
+      query: objective,
       ...(pickString(options.top_k, options.topK)
         ? { top_k: pickString(options.top_k, options.topK)! }
         : {}),
@@ -1667,7 +1670,7 @@ function buildSearchRequest(
     method: "POST",
     headers,
     body: JSON.stringify({
-      query,
+      query: objective,
       options: search?.options,
     }),
   };

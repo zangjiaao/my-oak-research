@@ -228,9 +228,7 @@ export const DarknetConfigInput = z.object({
 export const SearchEngineConfigInput = z.object({
   platform: SearchPlatformEnum.default("PARALLEL"),
   engine: SearchEngineKindEnum.optional().default("CUSTOM"),
-  query: z.string().min(1),
-  region: z.string().optional().nullable(),
-  lang: LangEnum,
+  objective: z.string().min(1),
   apiEndpoint: z.url().optional().nullable(),
   options: z.preprocess((val) => parseJson(val), z.record(z.string(), z.any()).optional().nullable()),
   customConfig: z.preprocess((val) => parseJson(val), z.any().optional().nullable()),
@@ -240,9 +238,7 @@ export const SearchEngineConfigInput = z.object({
 export const SearchEngineConfigUpdateInput = z.object({
   platform: SearchPlatformEnum.optional(),
   engine: SearchEngineKindEnum.optional(),
-  query: z.string().min(1).optional(),
-  region: z.string().optional().nullable(),
-  lang: LangEnum.optional(),
+  objective: z.string().min(1).optional(),
   apiEndpoint: z.url().optional().nullable(),
   options: z.preprocess((val) => parseJson(val), z.record(z.string(), z.any()).optional().nullable()),
   customConfig: z.preprocess((val) => parseJson(val), z.any().optional().nullable()),

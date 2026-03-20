@@ -213,10 +213,8 @@ export async function PATCH(
           updateData.platform = searchData.platform;
         if (searchData.engine !== undefined)
           updateData.engine = searchData.engine;
-        if (searchData.query !== undefined) updateData.query = searchData.query;
-        if (searchData.region !== undefined)
-          updateData.region = searchData.region;
-        if (searchData.lang !== undefined) updateData.lang = searchData.lang;
+        if (searchData.objective !== undefined)
+          updateData.objective = searchData.objective;
         if (searchData.apiEndpoint !== undefined)
           updateData.apiEndpoint = searchData.apiEndpoint;
         if (searchData.options !== undefined)

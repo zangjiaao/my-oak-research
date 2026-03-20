@@ -60,7 +60,9 @@ const SearchEngineSettingCard = () => {
     (source) =>
       source.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       source.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      source.search?.query?.toLowerCase().includes(searchQuery.toLowerCase())
+      (source.search as unknown as { objective?: string })?.objective
+        ?.toLowerCase()
+        .includes(searchQuery.toLowerCase())
   );
 
   const columns: DataTableColumn<SearchEngineSource>[] = [
@@ -78,12 +80,12 @@ const SearchEngineSettingCard = () => {
       ),
     },
     {
-      key: "query",
-      label: "Query",
+      key: "objective",
+      label: "Objective",
       className: "max-w-xs",
       render: (source) => (
         <span className="text-sm break-all whitespace-normal">
-          {source.search.query}
+          {(source.search as unknown as { objective?: string })?.objective}
         </span>
       ),
     },
