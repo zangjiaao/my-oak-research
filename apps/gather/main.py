@@ -2684,6 +2684,7 @@ def _normalize_v2_fetch_request(request: FetchV2Request) -> FetchRequest:
     normalized_driver = request.driver.name.strip().lower()
     raw_option = dict(request.driver.option)
     config = raw_option
+    normalized_user_id = request.user_id.strip() if isinstance(request.user_id, str) else ""
 
     if normalized_driver == "playwright":
         if "playwright" in raw_option:
@@ -2693,6 +2694,8 @@ def _normalize_v2_fetch_request(request: FetchV2Request) -> FetchRequest:
             )
         network = raw_option.get("network")
         playwright_option = {k: v for k, v in raw_option.items() if k != "network"}
+        if normalized_user_id and not str(playwright_option.get("userId", "")).strip():
+            playwright_option["userId"] = normalized_user_id
         config = {"playwright": playwright_option}
         if network is not None:
             config["network"] = network
@@ -2753,6 +2756,7 @@ def _normalize_v2_fetch_request(request: FetchV2Request) -> FetchRequest:
         platform=request.platform,
         config=config,
         source_id=request.source_id,
+        user_id=normalized_user_id or None,
         keywords=request.keywords,
         output_fields=output_fields or None,
         output_field_map=output_field_map or None,
@@ -2792,6 +2796,7 @@ def _normalize_v3_fetch_request(request: FetchV3Request) -> tuple[FetchRequest, 
     v2_request = FetchV2Request(
         platform=request.platform,
         sourceId=request.source_id,
+        userId=request.user_id,
         keywords=request.keywords,
         driver={
             "name": driver_name,

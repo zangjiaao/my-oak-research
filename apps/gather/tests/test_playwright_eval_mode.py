@@ -258,3 +258,43 @@ def test_run_playwright_eval_script_pooled_success_does_not_reraise(monkeypatch)
     items = asyncio.run(main._run_playwright_eval_script(request))
 
     assert items == expected_items
+
+
+def test_normalize_v2_fetch_request_maps_top_level_user_id_to_playwright_option():
+    request = main.FetchV2Request(
+        platform="x",
+        sourceId="source-x-001",
+        userId="user-123",
+        keywords=[],
+        driver={
+            "name": "playwright",
+            "option": {
+                "mode": "intercept-x-search",
+                "args": {"query": "openai"},
+            },
+            "filter": {},
+        },
+        output={"field": ["text"]},
+    )
+
+    normalized = main._normalize_v2_fetch_request(request)
+    playwright_config = normalized.config.get("playwright", {})
+    assert playwright_config.get("userId") == "user-123"
+
+
+def test_normalize_v3_fetch_request_maps_top_level_user_id_to_playwright_option():
+    request = main.FetchV3Request(
+        platform="x",
+        sourceId="source-x-001",
+        userId="user-123",
+        keywords=[],
+        driver={
+            "name": "playwright",
+            "script": {"type": "search", "args": {"query": "openai"}},
+        },
+        output={"field": ["text"]},
+    )
+
+    normalized, _, _ = main._normalize_v3_fetch_request(request)
+    playwright_config = normalized.config.get("playwright", {})
+    assert playwright_config.get("userId") == "user-123"

@@ -8,6 +8,7 @@ class FetchRequest(BaseModel):
     platform: str
     config: Dict[str, Any]
     source_id: str
+    user_id: Optional[str] = None
     auth_data: Optional[Dict[str, Any]] = None
     keywords: List[str] = Field(default_factory=list)
     output_fields: Optional[List[str]] = None
@@ -33,6 +34,7 @@ class FetchV2Request(BaseModel):
 
     platform: str
     source_id: str = Field(validation_alias=AliasChoices("sourceId"))
+    user_id: Optional[str] = Field(default=None, validation_alias=AliasChoices("userId", "user_id"))
     keywords: List[str] = Field(default_factory=list)
     driver: FetchV2Driver
     output: FetchV2Output
@@ -75,6 +77,7 @@ class FetchV3Request(BaseModel):
 
     platform: str
     source_id: str = Field(validation_alias=AliasChoices("sourceId", "source_id"))
+    user_id: Optional[str] = Field(default=None, validation_alias=AliasChoices("userId", "user_id"))
     intent: Optional[FetchV3Intent] = None
     keywords: List[str] = Field(default_factory=list)
     output: FetchV2Output

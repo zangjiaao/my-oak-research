@@ -42,12 +42,10 @@ npm run dev:web
 npm run dev:worker
 ```
 
-Gather service (from `apps/gather`):
+Gather service:
 
 ```bash
-uv sync
-playwright install chromium
-uv run main.py
+npm run dev:gather
 ```
 
 ### Quality checks

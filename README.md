@@ -124,10 +124,7 @@ npm run dev:worker
 Gather service:
 
 ```bash
-cd apps/gather
-uv sync
-playwright install chromium
-uv run main.py
+npm run dev:gather
 ```
 
 Default endpoints:
