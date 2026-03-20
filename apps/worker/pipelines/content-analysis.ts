@@ -705,7 +705,11 @@ async function fetchWithDefaultSource(
         recallQueries,
       });
     case SourceType.SOCIAL_MEDIA:
-      return fetchSocialSource(source as SocialMediaSource, keywordFilterTerms);
+      return fetchSocialSource(
+        source as SocialMediaSource,
+        keywordFilterTerms,
+        recallQueries
+      );
     default:
       return [];
   }
@@ -786,7 +790,11 @@ async function fetchAICrawlerSource(
   console.log(
     `[collector] fetchAICrawlerSource -> fetchSocialSource ${source.name}`
   );
-  return fetchSocialSource(source as SocialMediaSource, keywordFilterTerms);
+  return fetchSocialSource(
+    source as SocialMediaSource,
+    keywordFilterTerms,
+    recallQueries
+  );
 }
 
 function normalizeCleanItem(item: CleanItem): CleanItem {
@@ -945,7 +953,8 @@ async function fetchSearchSource(
 
 async function fetchSocialSource(
   source: SocialMediaSource,
-  keywordFilterTerms: string[]
+  keywordFilterTerms: string[],
+  recallQueries: string[]
 ): Promise<CleanItem[]> {
   console.log(`[collector] fetchSocialSource ${source.name} via Python Gather`);
 
@@ -979,42 +988,58 @@ async function fetchSocialSource(
   delete keywordFilterOptions.keywords;
   const driverOption = normalizeGatherDriverOption(baseConfig, gatherDriver);
   const gatherUserId = resolveGatherPoolUserId(source, sourceConfigObj, driverOption);
-  const driver: GatherDriverPayload =
-    Object.keys(keywordFilterOptions).length > 0
-      ? {
-          name: gatherDriver,
-          ...driverOption,
-          script: intent,
-          filter: keywordFilterOptions,
-        }
-      : {
-          name: gatherDriver,
-          ...driverOption,
-          script: intent,
-        };
+  const normalizedIntentType = intent.type.trim().toLowerCase();
+  const batchedQueries =
+    normalizedIntentType === "search" && recallQueries.length > 0
+      ? Array.from(new Set(recallQueries.map((query) => query.trim()).filter(Boolean)))
+      : [""];
+  const normalizedBatchedQueries = batchedQueries.length > 0 ? batchedQueries : [""];
+  const normalizedItems: CleanItem[] = [];
 
   try {
-    const response = await fetch(`${gatherUrl}/v3/fetch`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        platform: gatherPlatform,
-        userId: gatherUserId,
-        keywords: keywordFilterTerms,
-        driver,
-        sourceId: source.id,
-        output,
-      }),
-    });
+    for (const recallQuery of normalizedBatchedQueries) {
+      const intentForRequest = injectRecallQueryIntoIntent(intent, recallQuery);
+      const driver: GatherDriverPayload =
+        Object.keys(keywordFilterOptions).length > 0
+          ? {
+              name: gatherDriver,
+              ...driverOption,
+              script: intentForRequest,
+              filter: keywordFilterOptions,
+            }
+          : {
+              name: gatherDriver,
+              ...driverOption,
+              script: intentForRequest,
+            };
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Gather service returned ${response.status}: ${errorText}`);
+      const response = await fetch(`${gatherUrl}/v3/fetch`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          platform: gatherPlatform,
+          userId: gatherUserId,
+          keywords: keywordFilterTerms,
+          driver,
+          sourceId: source.id,
+          output,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(
+          `Gather service returned ${response.status}: ${errorText}`
+        );
+      }
+
+      const data = await response.json();
+      const items = Array.isArray(data?.items) ? data.items : [];
+      normalizedItems.push(
+        ...normalizeGatherItems(items, source, intentForRequest.type)
+      );
     }
-
-    const data = await response.json();
-    const items = Array.isArray(data?.items) ? data.items : [];
-    return normalizeGatherItems(items, source, intent.type);
+    return deduplicateItemsByUrlAndFingerprint(normalizedItems);
   } catch (error) {
     console.error(`[collector] fetchSocialSource error:`, error);
     throw new Error(
@@ -1277,6 +1302,26 @@ function resolveGatherIntent(
   return {
     type: intentType,
     args: {},
+  };
+}
+
+function injectRecallQueryIntoIntent(
+  intent: GatherIntentPayload,
+  recallQuery: string
+): GatherIntentPayload {
+  if (intent.type.trim().toLowerCase() !== "search") {
+    return intent;
+  }
+  const normalizedQuery = recallQuery.trim();
+  if (!normalizedQuery) {
+    return intent;
+  }
+  return {
+    ...intent,
+    args: {
+      ...intent.args,
+      query: normalizedQuery,
+    },
   };
 }
 

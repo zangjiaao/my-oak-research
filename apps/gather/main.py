@@ -102,6 +102,7 @@ def _env_flag(name: str, default: bool = False) -> bool:
 
 _API_IO_LOG_ENABLED = _env_flag("GATHER_API_IO_LOG_ENABLED", False)
 _OPENCLI_BRIDGE_ENABLED = _env_flag("GATHER_OPENCLI_BRIDGE_ENABLED", False)
+_SEARCH_ALIAS_COMPAT_ENABLED = _env_flag("GATHER_SEARCH_ALIAS_COMPAT_ENABLED", True)
 _OPENCLI_BIN = os.getenv("GATHER_OPENCLI_BIN", "opencli").strip() or "opencli"
 _OPENCLI_CWD = os.getenv("GATHER_OPENCLI_CWD", "").strip() or None
 _RAW_API_IO_LOG_DIR = Path(
@@ -135,6 +136,7 @@ _GOOGLE_INTERCEPT_INTENTS = _SCRIPT_REGISTRY.intents_for("google")
 _REUTERS_INTERCEPT_INTENTS = _SCRIPT_REGISTRY.intents_for("reuters")
 _TOUTIAO_INTERCEPT_INTENTS = _SCRIPT_REGISTRY.intents_for("toutiao")
 _HUPU_INTERCEPT_INTENTS = _SCRIPT_REGISTRY.intents_for("hupu")
+_SEARCH_INTENTS = {"search"}
 _GENERIC_INTERCEPT_INTENTS: dict[str, set[str]] = {
     "36kr": _KR36_INTERCEPT_INTENTS,
     "arxiv": _ARXIV_INTERCEPT_INTENTS,
@@ -347,6 +349,11 @@ def _build_scripts_catalog() -> dict[str, Any]:
             sample_payload = {}
 
         sample_intent = _as_dict(sample_payload.get("intent.args"))
+        if spec.intent in _SEARCH_INTENTS:
+            sample_intent = _normalize_search_intent_args_for_catalog(
+                spec.platform,
+                sample_intent,
+            )
         sample_output = sample_payload.get("output.field")
 
         item = {
@@ -374,6 +381,17 @@ def _build_scripts_catalog() -> dict[str, Any]:
         "items": sorted(items, key=lambda entry: (entry["platform"], entry["intent"])),
         "platforms": platforms,
     }
+
+
+def _normalize_search_intent_args_for_catalog(
+    platform: str, intent_args: dict[str, Any]
+) -> dict[str, Any]:
+    query, _ = _extract_search_query(platform, intent_args, strict=False)
+    normalized = dict(intent_args)
+    if query:
+        normalized["query"] = query
+    normalized.pop("keyword", None)
+    return normalized
 
 
 async def _verify_auth_with_agent_browser_for_whatsapp(request: VerifyAuthRequest) -> VerifyAuthResponse | None:
@@ -2819,6 +2837,32 @@ def _normalize_v3_fetch_request(request: FetchV3Request) -> tuple[FetchRequest, 
     return normalized_request, driver_name, meta
 
 
+def _extract_search_query(
+    platform: str,
+    intent_args: dict[str, Any],
+    strict: bool,
+) -> tuple[str, bool]:
+    raw_query = intent_args.get("query")
+    if isinstance(raw_query, str) and raw_query.strip():
+        return raw_query.strip(), False
+
+    raw_keyword = intent_args.get("keyword")
+    if isinstance(raw_keyword, str) and raw_keyword.strip():
+        if not _SEARCH_ALIAS_COMPAT_ENABLED:
+            raise HTTPException(
+                status_code=400,
+                detail=f"driver.script.args.query is required for {platform or 'unknown'} search intent",
+            )
+        return raw_keyword.strip(), True
+
+    if strict:
+        raise HTTPException(
+            status_code=400,
+            detail=f"driver.script.args.query is required for {platform or 'unknown'} search intent",
+        )
+    return "", False
+
+
 def _merge_v3_intent_into_driver_option(
     platform: str,
     intent_type: str,
@@ -2827,7 +2871,19 @@ def _merge_v3_intent_into_driver_option(
     option: dict[str, Any],
 ) -> dict[str, Any]:
     merged_option = dict(option)
-    query = intent_args.get("query")
+    normalized_platform = (platform or "").strip().lower()
+    normalized_query, used_alias = _extract_search_query(
+        normalized_platform,
+        intent_args,
+        strict=intent_type in _SEARCH_INTENTS,
+    )
+    if used_alias:
+        print(
+            f"[gather][intent-args][deprecated] "
+            f"{json.dumps({'platform': normalized_platform, 'intent': intent_type, 'message': 'use query instead of keyword'}, ensure_ascii=False)}"
+        )
+
+    query = normalized_query
     subreddit = intent_args.get("subreddit", intent_args.get("name"))
     sort = intent_args.get("sort")
     time_filter = intent_args.get("time")
@@ -2859,19 +2915,9 @@ def _merge_v3_intent_into_driver_option(
                 args_obj["query"] = normalized_query
             if (platform or "").strip().lower() == "x" and "type" not in args_obj:
                 args_obj["type"] = "latest"
-            if (platform or "").strip().lower() in {"linux-do", "linuxdo"}:
-                keyword_arg = intent_args.get("keyword", intent_args.get("query"))
-                if isinstance(keyword_arg, str) and keyword_arg.strip() and "keyword" not in args_obj:
-                    args_obj["keyword"] = keyword_arg.strip()
-            if (platform or "").strip().lower() == "zhihu":
-                keyword_arg = intent_args.get("keyword", intent_args.get("query"))
-                if isinstance(keyword_arg, str) and keyword_arg.strip() and "keyword" not in args_obj:
-                    args_obj["keyword"] = keyword_arg.strip()
-            if (platform or "").strip().lower() == "bilibili":
-                keyword_arg = intent_args.get("keyword", intent_args.get("query"))
-                if isinstance(keyword_arg, str) and keyword_arg.strip() and "keyword" not in args_obj:
-                    args_obj["keyword"] = keyword_arg.strip()
-            normalized_platform = (platform or "").strip().lower()
+            if normalized_platform in {"linux-do", "linuxdo", "zhihu", "bilibili"}:
+                if normalized_query and "keyword" not in args_obj:
+                    args_obj["keyword"] = normalized_query
             if normalized_platform == "linkedin":
                 if isinstance(intent_args.get("location"), str) and "location" not in args_obj:
                     args_obj["location"] = intent_args.get("location")
@@ -2894,8 +2940,8 @@ def _merge_v3_intent_into_driver_option(
                 details_arg = intent_args.get("details")
                 if isinstance(details_arg, bool) and "details" not in args_obj:
                     args_obj["details"] = details_arg
-                if "query" in intent_args and isinstance(intent_args.get("query"), str):
-                    args_obj["query"] = intent_args.get("query").strip()
+                if normalized_query:
+                    args_obj["query"] = normalized_query
         if intent_type in {"subreddit", "hot"}:
             if normalized_subreddit and (not isinstance(args_obj.get("subreddit"), str) or not args_obj.get("subreddit")):
                 args_obj["subreddit"] = normalized_subreddit
