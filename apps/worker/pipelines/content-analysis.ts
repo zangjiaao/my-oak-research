@@ -363,43 +363,85 @@ async function fetchBySources(
   runId: string,
   keywordFilterTerms: string[]
 ): Promise<CleanItem[]> {
-  const results: CleanItem[] = [];
-  for (const source of sources) {
-    console.log(
-      `[collector] fetchBySources start ${source.name} (${source.type})`
-    );
-    const driver = resolveFetchDriver(source);
-    await publishTaskEvent(runId, {
-      type: "fetch-driver",
-      message: `开始抓取 ${source.name}`,
-      sourceId: source.id,
-      driver,
-    });
-    try {
-      const fetched = await executeFetchDriver(source, driver, keywordFilterTerms);
+  const sourceConcurrency = resolveSourceFetchConcurrency();
+  const batches = await mapWithConcurrency(
+    sources,
+    sourceConcurrency,
+    async (source): Promise<CleanItem[]> => {
       console.log(
-        `[collector] fetched ${fetched.length} items from ${source.name}`
+        `[collector] fetchBySources start ${source.name} (${source.type})`
       );
-      fetched.forEach((item) => {
-        item.driver = driver;
-      });
+      const driver = resolveFetchDriver(source);
       await publishTaskEvent(runId, {
-        type: "fetch-success",
-        message: `抓取 ${source.name} 完成`,
-        count: fetched.length,
+        type: "fetch-driver",
+        message: `开始抓取 ${source.name}`,
         sourceId: source.id,
         driver,
       });
-      results.push(...fetched);
-    } catch (error) {
-      await publishTaskEvent(runId, {
-        type: "error",
-        message: `抓取来源 ${source.name} 失败：${(error as Error).message}`,
-        sourceId: source.id,
-        driver,
-      });
+      try {
+        const fetched = await executeFetchDriver(source, driver, keywordFilterTerms);
+        console.log(
+          `[collector] fetched ${fetched.length} items from ${source.name}`
+        );
+        fetched.forEach((item) => {
+          item.driver = driver;
+        });
+        await publishTaskEvent(runId, {
+          type: "fetch-success",
+          message: `抓取 ${source.name} 完成`,
+          count: fetched.length,
+          sourceId: source.id,
+          driver,
+        });
+        return fetched;
+      } catch (error) {
+        await publishTaskEvent(runId, {
+          type: "error",
+          message: `抓取来源 ${source.name} 失败：${(error as Error).message}`,
+          sourceId: source.id,
+          driver,
+        });
+        return [];
+      }
     }
+  );
+  return batches.flat();
+}
+
+function resolveSourceFetchConcurrency(): number {
+  const raw = process.env.COLLECT_SOURCE_CONCURRENCY;
+  if (!raw) return 3;
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed) || parsed < 1) {
+    return 3;
   }
+  return Math.floor(parsed);
+}
+
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  concurrency: number,
+  worker: (item: T, index: number) => Promise<R>
+): Promise<R[]> {
+  const normalizedConcurrency = Math.max(1, Math.floor(concurrency));
+  const results: R[] = new Array(items.length);
+  let cursor = 0;
+  const run = async () => {
+    while (true) {
+      const index = cursor;
+      cursor += 1;
+      if (index >= items.length) {
+        return;
+      }
+      results[index] = await worker(items[index] as T, index);
+    }
+  };
+  await Promise.all(
+    Array.from(
+      { length: Math.min(normalizedConcurrency, items.length) },
+      () => run()
+    )
+  );
   return results;
 }
 
