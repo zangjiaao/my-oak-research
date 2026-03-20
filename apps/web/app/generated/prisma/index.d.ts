@@ -213,6 +213,16 @@ export const SearchEngineKind: {
 export type SearchEngineKind = (typeof SearchEngineKind)[keyof typeof SearchEngineKind]
 
 
+export const SearchPlatform: {
+  PARALLEL: 'PARALLEL',
+  TAVILY: 'TAVILY',
+  ANSPIRE: 'ANSPIRE',
+  CUSTOM: 'CUSTOM'
+};
+
+export type SearchPlatform = (typeof SearchPlatform)[keyof typeof SearchPlatform]
+
+
 export const QueryFrequency: {
   MANUAL: 'MANUAL',
   HOURLY: 'HOURLY',
@@ -286,6 +296,10 @@ export const ProxyType: typeof $Enums.ProxyType
 export type SearchEngineKind = $Enums.SearchEngineKind
 
 export const SearchEngineKind: typeof $Enums.SearchEngineKind
+
+export type SearchPlatform = $Enums.SearchPlatform
+
+export const SearchPlatform: typeof $Enums.SearchPlatform
 
 export type QueryFrequency = $Enums.QueryFrequency
 
@@ -15548,6 +15562,7 @@ export namespace Prisma {
 
   export type SearchEngineSourceConfigMinAggregateOutputType = {
     sourceId: string | null
+    platform: $Enums.SearchPlatform | null
     engine: $Enums.SearchEngineKind | null
     query: string | null
     region: string | null
@@ -15560,6 +15575,7 @@ export namespace Prisma {
 
   export type SearchEngineSourceConfigMaxAggregateOutputType = {
     sourceId: string | null
+    platform: $Enums.SearchPlatform | null
     engine: $Enums.SearchEngineKind | null
     query: string | null
     region: string | null
@@ -15572,6 +15588,7 @@ export namespace Prisma {
 
   export type SearchEngineSourceConfigCountAggregateOutputType = {
     sourceId: number
+    platform: number
     engine: number
     query: number
     region: number
@@ -15587,6 +15604,7 @@ export namespace Prisma {
 
   export type SearchEngineSourceConfigMinAggregateInputType = {
     sourceId?: true
+    platform?: true
     engine?: true
     query?: true
     region?: true
@@ -15599,6 +15617,7 @@ export namespace Prisma {
 
   export type SearchEngineSourceConfigMaxAggregateInputType = {
     sourceId?: true
+    platform?: true
     engine?: true
     query?: true
     region?: true
@@ -15611,6 +15630,7 @@ export namespace Prisma {
 
   export type SearchEngineSourceConfigCountAggregateInputType = {
     sourceId?: true
+    platform?: true
     engine?: true
     query?: true
     region?: true
@@ -15697,6 +15717,7 @@ export namespace Prisma {
 
   export type SearchEngineSourceConfigGroupByOutputType = {
     sourceId: string
+    platform: $Enums.SearchPlatform
     engine: $Enums.SearchEngineKind
     query: string
     region: string | null
@@ -15727,6 +15748,7 @@ export namespace Prisma {
 
   export type SearchEngineSourceConfigSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
     sourceId?: boolean
+    platform?: boolean
     engine?: boolean
     query?: boolean
     region?: boolean
@@ -15742,6 +15764,7 @@ export namespace Prisma {
 
   export type SearchEngineSourceConfigSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
     sourceId?: boolean
+    platform?: boolean
     engine?: boolean
     query?: boolean
     region?: boolean
@@ -15757,6 +15780,7 @@ export namespace Prisma {
 
   export type SearchEngineSourceConfigSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
     sourceId?: boolean
+    platform?: boolean
     engine?: boolean
     query?: boolean
     region?: boolean
@@ -15772,6 +15796,7 @@ export namespace Prisma {
 
   export type SearchEngineSourceConfigSelectScalar = {
     sourceId?: boolean
+    platform?: boolean
     engine?: boolean
     query?: boolean
     region?: boolean
@@ -15783,7 +15808,7 @@ export namespace Prisma {
     updatedAt?: boolean
   }
 
-  export type SearchEngineSourceConfigOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"sourceId" | "engine" | "query" | "region" | "lang" | "apiEndpoint" | "options" | "credentialId" | "createdAt" | "updatedAt", ExtArgs["result"]["searchEngineSourceConfig"]>
+  export type SearchEngineSourceConfigOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"sourceId" | "platform" | "engine" | "query" | "region" | "lang" | "apiEndpoint" | "options" | "credentialId" | "createdAt" | "updatedAt", ExtArgs["result"]["searchEngineSourceConfig"]>
   export type SearchEngineSourceConfigInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     source?: boolean | SourceDefaultArgs<ExtArgs>
     credential?: boolean | SearchEngineSourceConfig$credentialArgs<ExtArgs>
@@ -15805,6 +15830,7 @@ export namespace Prisma {
     }
     scalars: $Extensions.GetPayloadResult<{
       sourceId: string
+      platform: $Enums.SearchPlatform
       engine: $Enums.SearchEngineKind
       query: string
       region: string | null
@@ -16240,6 +16266,7 @@ export namespace Prisma {
    */
   interface SearchEngineSourceConfigFieldRefs {
     readonly sourceId: FieldRef<"SearchEngineSourceConfig", 'String'>
+    readonly platform: FieldRef<"SearchEngineSourceConfig", 'SearchPlatform'>
     readonly engine: FieldRef<"SearchEngineSourceConfig", 'SearchEngineKind'>
     readonly query: FieldRef<"SearchEngineSourceConfig", 'String'>
     readonly region: FieldRef<"SearchEngineSourceConfig", 'String'>
@@ -34795,6 +34822,7 @@ export namespace Prisma {
 
   export const SearchEngineSourceConfigScalarFieldEnum: {
     sourceId: 'sourceId',
+    platform: 'platform',
     engine: 'engine',
     query: 'query',
     region: 'region',
@@ -35205,6 +35233,20 @@ export namespace Prisma {
    * Reference to a field of type 'CrawlerEngine[]'
    */
   export type ListEnumCrawlerEngineFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'CrawlerEngine[]'>
+    
+
+
+  /**
+   * Reference to a field of type 'SearchPlatform'
+   */
+  export type EnumSearchPlatformFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'SearchPlatform'>
+    
+
+
+  /**
+   * Reference to a field of type 'SearchPlatform[]'
+   */
+  export type ListEnumSearchPlatformFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'SearchPlatform[]'>
     
 
 
@@ -36143,6 +36185,7 @@ export namespace Prisma {
     OR?: SearchEngineSourceConfigWhereInput[]
     NOT?: SearchEngineSourceConfigWhereInput | SearchEngineSourceConfigWhereInput[]
     sourceId?: StringFilter<"SearchEngineSourceConfig"> | string
+    platform?: EnumSearchPlatformFilter<"SearchEngineSourceConfig"> | $Enums.SearchPlatform
     engine?: EnumSearchEngineKindFilter<"SearchEngineSourceConfig"> | $Enums.SearchEngineKind
     query?: StringFilter<"SearchEngineSourceConfig"> | string
     region?: StringNullableFilter<"SearchEngineSourceConfig"> | string | null
@@ -36158,6 +36201,7 @@ export namespace Prisma {
 
   export type SearchEngineSourceConfigOrderByWithRelationInput = {
     sourceId?: SortOrder
+    platform?: SortOrder
     engine?: SortOrder
     query?: SortOrder
     region?: SortOrderInput | SortOrder
@@ -36176,6 +36220,7 @@ export namespace Prisma {
     AND?: SearchEngineSourceConfigWhereInput | SearchEngineSourceConfigWhereInput[]
     OR?: SearchEngineSourceConfigWhereInput[]
     NOT?: SearchEngineSourceConfigWhereInput | SearchEngineSourceConfigWhereInput[]
+    platform?: EnumSearchPlatformFilter<"SearchEngineSourceConfig"> | $Enums.SearchPlatform
     engine?: EnumSearchEngineKindFilter<"SearchEngineSourceConfig"> | $Enums.SearchEngineKind
     query?: StringFilter<"SearchEngineSourceConfig"> | string
     region?: StringNullableFilter<"SearchEngineSourceConfig"> | string | null
@@ -36191,6 +36236,7 @@ export namespace Prisma {
 
   export type SearchEngineSourceConfigOrderByWithAggregationInput = {
     sourceId?: SortOrder
+    platform?: SortOrder
     engine?: SortOrder
     query?: SortOrder
     region?: SortOrderInput | SortOrder
@@ -36210,6 +36256,7 @@ export namespace Prisma {
     OR?: SearchEngineSourceConfigScalarWhereWithAggregatesInput[]
     NOT?: SearchEngineSourceConfigScalarWhereWithAggregatesInput | SearchEngineSourceConfigScalarWhereWithAggregatesInput[]
     sourceId?: StringWithAggregatesFilter<"SearchEngineSourceConfig"> | string
+    platform?: EnumSearchPlatformWithAggregatesFilter<"SearchEngineSourceConfig"> | $Enums.SearchPlatform
     engine?: EnumSearchEngineKindWithAggregatesFilter<"SearchEngineSourceConfig"> | $Enums.SearchEngineKind
     query?: StringWithAggregatesFilter<"SearchEngineSourceConfig"> | string
     region?: StringNullableWithAggregatesFilter<"SearchEngineSourceConfig"> | string | null
@@ -38273,6 +38320,7 @@ export namespace Prisma {
   }
 
   export type SearchEngineSourceConfigCreateInput = {
+    platform?: $Enums.SearchPlatform
     engine: $Enums.SearchEngineKind
     query: string
     region?: string | null
@@ -38287,6 +38335,7 @@ export namespace Prisma {
 
   export type SearchEngineSourceConfigUncheckedCreateInput = {
     sourceId: string
+    platform?: $Enums.SearchPlatform
     engine: $Enums.SearchEngineKind
     query: string
     region?: string | null
@@ -38299,6 +38348,7 @@ export namespace Prisma {
   }
 
   export type SearchEngineSourceConfigUpdateInput = {
+    platform?: EnumSearchPlatformFieldUpdateOperationsInput | $Enums.SearchPlatform
     engine?: EnumSearchEngineKindFieldUpdateOperationsInput | $Enums.SearchEngineKind
     query?: StringFieldUpdateOperationsInput | string
     region?: NullableStringFieldUpdateOperationsInput | string | null
@@ -38313,6 +38363,7 @@ export namespace Prisma {
 
   export type SearchEngineSourceConfigUncheckedUpdateInput = {
     sourceId?: StringFieldUpdateOperationsInput | string
+    platform?: EnumSearchPlatformFieldUpdateOperationsInput | $Enums.SearchPlatform
     engine?: EnumSearchEngineKindFieldUpdateOperationsInput | $Enums.SearchEngineKind
     query?: StringFieldUpdateOperationsInput | string
     region?: NullableStringFieldUpdateOperationsInput | string | null
@@ -38326,6 +38377,7 @@ export namespace Prisma {
 
   export type SearchEngineSourceConfigCreateManyInput = {
     sourceId: string
+    platform?: $Enums.SearchPlatform
     engine: $Enums.SearchEngineKind
     query: string
     region?: string | null
@@ -38338,6 +38390,7 @@ export namespace Prisma {
   }
 
   export type SearchEngineSourceConfigUpdateManyMutationInput = {
+    platform?: EnumSearchPlatformFieldUpdateOperationsInput | $Enums.SearchPlatform
     engine?: EnumSearchEngineKindFieldUpdateOperationsInput | $Enums.SearchEngineKind
     query?: StringFieldUpdateOperationsInput | string
     region?: NullableStringFieldUpdateOperationsInput | string | null
@@ -38350,6 +38403,7 @@ export namespace Prisma {
 
   export type SearchEngineSourceConfigUncheckedUpdateManyInput = {
     sourceId?: StringFieldUpdateOperationsInput | string
+    platform?: EnumSearchPlatformFieldUpdateOperationsInput | $Enums.SearchPlatform
     engine?: EnumSearchEngineKindFieldUpdateOperationsInput | $Enums.SearchEngineKind
     query?: StringFieldUpdateOperationsInput | string
     region?: NullableStringFieldUpdateOperationsInput | string | null
@@ -40456,6 +40510,13 @@ export namespace Prisma {
     updatedAt?: SortOrder
   }
 
+  export type EnumSearchPlatformFilter<$PrismaModel = never> = {
+    equals?: $Enums.SearchPlatform | EnumSearchPlatformFieldRefInput<$PrismaModel>
+    in?: $Enums.SearchPlatform[] | ListEnumSearchPlatformFieldRefInput<$PrismaModel>
+    notIn?: $Enums.SearchPlatform[] | ListEnumSearchPlatformFieldRefInput<$PrismaModel>
+    not?: NestedEnumSearchPlatformFilter<$PrismaModel> | $Enums.SearchPlatform
+  }
+
   export type EnumSearchEngineKindFilter<$PrismaModel = never> = {
     equals?: $Enums.SearchEngineKind | EnumSearchEngineKindFieldRefInput<$PrismaModel>
     in?: $Enums.SearchEngineKind[] | ListEnumSearchEngineKindFieldRefInput<$PrismaModel>
@@ -40465,6 +40526,7 @@ export namespace Prisma {
 
   export type SearchEngineSourceConfigCountOrderByAggregateInput = {
     sourceId?: SortOrder
+    platform?: SortOrder
     engine?: SortOrder
     query?: SortOrder
     region?: SortOrder
@@ -40478,6 +40540,7 @@ export namespace Prisma {
 
   export type SearchEngineSourceConfigMaxOrderByAggregateInput = {
     sourceId?: SortOrder
+    platform?: SortOrder
     engine?: SortOrder
     query?: SortOrder
     region?: SortOrder
@@ -40490,6 +40553,7 @@ export namespace Prisma {
 
   export type SearchEngineSourceConfigMinOrderByAggregateInput = {
     sourceId?: SortOrder
+    platform?: SortOrder
     engine?: SortOrder
     query?: SortOrder
     region?: SortOrder
@@ -40498,6 +40562,16 @@ export namespace Prisma {
     credentialId?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
+  }
+
+  export type EnumSearchPlatformWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: $Enums.SearchPlatform | EnumSearchPlatformFieldRefInput<$PrismaModel>
+    in?: $Enums.SearchPlatform[] | ListEnumSearchPlatformFieldRefInput<$PrismaModel>
+    notIn?: $Enums.SearchPlatform[] | ListEnumSearchPlatformFieldRefInput<$PrismaModel>
+    not?: NestedEnumSearchPlatformWithAggregatesFilter<$PrismaModel> | $Enums.SearchPlatform
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedEnumSearchPlatformFilter<$PrismaModel>
+    _max?: NestedEnumSearchPlatformFilter<$PrismaModel>
   }
 
   export type EnumSearchEngineKindWithAggregatesFilter<$PrismaModel = never> = {
@@ -42157,6 +42231,10 @@ export namespace Prisma {
     connect?: CredentialWhereUniqueInput
   }
 
+  export type EnumSearchPlatformFieldUpdateOperationsInput = {
+    set?: $Enums.SearchPlatform
+  }
+
   export type EnumSearchEngineKindFieldUpdateOperationsInput = {
     set?: $Enums.SearchEngineKind
   }
@@ -43352,11 +43430,28 @@ export namespace Prisma {
     _max?: NestedEnumCrawlerEngineFilter<$PrismaModel>
   }
 
+  export type NestedEnumSearchPlatformFilter<$PrismaModel = never> = {
+    equals?: $Enums.SearchPlatform | EnumSearchPlatformFieldRefInput<$PrismaModel>
+    in?: $Enums.SearchPlatform[] | ListEnumSearchPlatformFieldRefInput<$PrismaModel>
+    notIn?: $Enums.SearchPlatform[] | ListEnumSearchPlatformFieldRefInput<$PrismaModel>
+    not?: NestedEnumSearchPlatformFilter<$PrismaModel> | $Enums.SearchPlatform
+  }
+
   export type NestedEnumSearchEngineKindFilter<$PrismaModel = never> = {
     equals?: $Enums.SearchEngineKind | EnumSearchEngineKindFieldRefInput<$PrismaModel>
     in?: $Enums.SearchEngineKind[] | ListEnumSearchEngineKindFieldRefInput<$PrismaModel>
     notIn?: $Enums.SearchEngineKind[] | ListEnumSearchEngineKindFieldRefInput<$PrismaModel>
     not?: NestedEnumSearchEngineKindFilter<$PrismaModel> | $Enums.SearchEngineKind
+  }
+
+  export type NestedEnumSearchPlatformWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: $Enums.SearchPlatform | EnumSearchPlatformFieldRefInput<$PrismaModel>
+    in?: $Enums.SearchPlatform[] | ListEnumSearchPlatformFieldRefInput<$PrismaModel>
+    notIn?: $Enums.SearchPlatform[] | ListEnumSearchPlatformFieldRefInput<$PrismaModel>
+    not?: NestedEnumSearchPlatformWithAggregatesFilter<$PrismaModel> | $Enums.SearchPlatform
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedEnumSearchPlatformFilter<$PrismaModel>
+    _max?: NestedEnumSearchPlatformFilter<$PrismaModel>
   }
 
   export type NestedEnumSearchEngineKindWithAggregatesFilter<$PrismaModel = never> = {
@@ -44036,6 +44131,7 @@ export namespace Prisma {
   }
 
   export type SearchEngineSourceConfigCreateWithoutCredentialInput = {
+    platform?: $Enums.SearchPlatform
     engine: $Enums.SearchEngineKind
     query: string
     region?: string | null
@@ -44049,6 +44145,7 @@ export namespace Prisma {
 
   export type SearchEngineSourceConfigUncheckedCreateWithoutCredentialInput = {
     sourceId: string
+    platform?: $Enums.SearchPlatform
     engine: $Enums.SearchEngineKind
     query: string
     region?: string | null
@@ -44122,6 +44219,7 @@ export namespace Prisma {
     OR?: SearchEngineSourceConfigScalarWhereInput[]
     NOT?: SearchEngineSourceConfigScalarWhereInput | SearchEngineSourceConfigScalarWhereInput[]
     sourceId?: StringFilter<"SearchEngineSourceConfig"> | string
+    platform?: EnumSearchPlatformFilter<"SearchEngineSourceConfig"> | $Enums.SearchPlatform
     engine?: EnumSearchEngineKindFilter<"SearchEngineSourceConfig"> | $Enums.SearchEngineKind
     query?: StringFilter<"SearchEngineSourceConfig"> | string
     region?: StringNullableFilter<"SearchEngineSourceConfig"> | string | null
@@ -44248,6 +44346,7 @@ export namespace Prisma {
   }
 
   export type SearchEngineSourceConfigCreateWithoutSourceInput = {
+    platform?: $Enums.SearchPlatform
     engine: $Enums.SearchEngineKind
     query: string
     region?: string | null
@@ -44260,6 +44359,7 @@ export namespace Prisma {
   }
 
   export type SearchEngineSourceConfigUncheckedCreateWithoutSourceInput = {
+    platform?: $Enums.SearchPlatform
     engine: $Enums.SearchEngineKind
     query: string
     region?: string | null
@@ -44510,6 +44610,7 @@ export namespace Prisma {
   }
 
   export type SearchEngineSourceConfigUpdateWithoutSourceInput = {
+    platform?: EnumSearchPlatformFieldUpdateOperationsInput | $Enums.SearchPlatform
     engine?: EnumSearchEngineKindFieldUpdateOperationsInput | $Enums.SearchEngineKind
     query?: StringFieldUpdateOperationsInput | string
     region?: NullableStringFieldUpdateOperationsInput | string | null
@@ -44522,6 +44623,7 @@ export namespace Prisma {
   }
 
   export type SearchEngineSourceConfigUncheckedUpdateWithoutSourceInput = {
+    platform?: EnumSearchPlatformFieldUpdateOperationsInput | $Enums.SearchPlatform
     engine?: EnumSearchEngineKindFieldUpdateOperationsInput | $Enums.SearchEngineKind
     query?: StringFieldUpdateOperationsInput | string
     region?: NullableStringFieldUpdateOperationsInput | string | null
@@ -47566,6 +47668,7 @@ export namespace Prisma {
 
   export type SearchEngineSourceConfigCreateManyCredentialInput = {
     sourceId: string
+    platform?: $Enums.SearchPlatform
     engine: $Enums.SearchEngineKind
     query: string
     region?: string | null
@@ -47658,6 +47761,7 @@ export namespace Prisma {
   }
 
   export type SearchEngineSourceConfigUpdateWithoutCredentialInput = {
+    platform?: EnumSearchPlatformFieldUpdateOperationsInput | $Enums.SearchPlatform
     engine?: EnumSearchEngineKindFieldUpdateOperationsInput | $Enums.SearchEngineKind
     query?: StringFieldUpdateOperationsInput | string
     region?: NullableStringFieldUpdateOperationsInput | string | null
@@ -47671,6 +47775,7 @@ export namespace Prisma {
 
   export type SearchEngineSourceConfigUncheckedUpdateWithoutCredentialInput = {
     sourceId?: StringFieldUpdateOperationsInput | string
+    platform?: EnumSearchPlatformFieldUpdateOperationsInput | $Enums.SearchPlatform
     engine?: EnumSearchEngineKindFieldUpdateOperationsInput | $Enums.SearchEngineKind
     query?: StringFieldUpdateOperationsInput | string
     region?: NullableStringFieldUpdateOperationsInput | string | null
@@ -47683,6 +47788,7 @@ export namespace Prisma {
 
   export type SearchEngineSourceConfigUncheckedUpdateManyWithoutCredentialInput = {
     sourceId?: StringFieldUpdateOperationsInput | string
+    platform?: EnumSearchPlatformFieldUpdateOperationsInput | $Enums.SearchPlatform
     engine?: EnumSearchEngineKindFieldUpdateOperationsInput | $Enums.SearchEngineKind
     query?: StringFieldUpdateOperationsInput | string
     region?: NullableStringFieldUpdateOperationsInput | string | null

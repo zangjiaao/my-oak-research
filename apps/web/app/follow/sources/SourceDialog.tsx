@@ -74,6 +74,45 @@ const isSearchSource = (
 ): source is SearchEngineSource => source?.type === "SEARCH_ENGINE";
 
 const SUPPORTED_LANGS = ["zh", "en", "ja", "auto"] as const;
+const SUPPORTED_SEARCH_PLATFORMS = [
+  "PARALLEL",
+  "TAVILY",
+  "ANSPIRE",
+  "CUSTOM",
+] as const;
+
+function inferSearchPlatform(
+  platform: unknown,
+  apiEndpoint: unknown,
+  options: unknown
+): (typeof SUPPORTED_SEARCH_PLATFORMS)[number] {
+  if (
+    typeof platform === "string" &&
+    SUPPORTED_SEARCH_PLATFORMS.includes(
+      platform as (typeof SUPPORTED_SEARCH_PLATFORMS)[number]
+    )
+  ) {
+    return platform as (typeof SUPPORTED_SEARCH_PLATFORMS)[number];
+  }
+  const optionProvider =
+    options && typeof options === "object" && !Array.isArray(options)
+      ? String(
+          (options as Record<string, unknown>).provider ??
+            (options as Record<string, unknown>).platform ??
+            ""
+        ).toLowerCase()
+      : "";
+  if (optionProvider.includes("parallel")) return "PARALLEL";
+  if (optionProvider.includes("tavily")) return "TAVILY";
+  if (optionProvider.includes("anspire")) return "ANSPIRE";
+
+  const endpoint = String(apiEndpoint ?? "").toLowerCase();
+  if (endpoint.includes("parallel.ai")) return "PARALLEL";
+  if (endpoint.includes("tavily.com")) return "TAVILY";
+  if (endpoint.includes("anspire.cn")) return "ANSPIRE";
+  return "CUSTOM";
+}
+
 function asRecord(value: unknown): Record<string, unknown> {
   if (value && typeof value === "object" && !Array.isArray(value)) {
     return value as Record<string, unknown>;
@@ -242,7 +281,14 @@ const getDefaultValues = (
         ? (rawLang as SearchFormValues["search"]["lang"])
         : "auto";
       const searchConfig: SearchFormValues["search"] = {
-        engine: searchRelation?.engine ?? "GOOGLE",
+        platform: searchRelation
+          ? inferSearchPlatform(
+              (searchRelation as unknown as { platform?: unknown })?.platform,
+              searchRelation?.apiEndpoint,
+              searchRelation?.options
+            )
+          : "PARALLEL",
+        engine: searchRelation?.engine ?? "CUSTOM",
         query: searchRelation?.query ?? "",
         region: searchRelation?.region ?? null,
         lang: langValue,
@@ -548,7 +594,6 @@ const SourceDialog = ({
             register={register}
             control={control}
             errors={errors}
-            proxies={proxies}
             watch={watch}
             setValue={setValue}
           />

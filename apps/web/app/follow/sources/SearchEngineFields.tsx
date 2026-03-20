@@ -1,39 +1,64 @@
+import { useMemo, useState } from "react";
 import {
   Control,
-  UseFormRegister,
+  Controller,
   FieldErrors,
-  UseFormWatch,
+  UseFormRegister,
   UseFormSetValue,
+  UseFormWatch,
 } from "react-hook-form";
 import { z } from "zod";
+import { Check, ChevronsUpDown } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ErrorMessage } from "@/components/business";
-import SelectProxy from "./SelectProxy";
-import { Proxy } from "@/app/generated/prisma";
-import {
-  SourceCreateSchema,
-  SearchEngineKindEnum,
-  SearchEngineSourceCreateSchema,
-} from "@/app/api/_utils/zod";
-import { Controller } from "react-hook-form";
-import { ControlledSelect } from "@/components/ui/controlled-select";
-import { SelectItem } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { ErrorMessage } from "@/components/business";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  SearchPlatformEnum,
+  SearchEngineSourceCreateSchema,
+  SourceCreateSchema,
+} from "@/app/api/_utils/zod";
 
 interface SearchEngineFieldsProps {
   register: UseFormRegister<z.infer<typeof SourceCreateSchema>>;
   control: Control<z.infer<typeof SourceCreateSchema>>;
   errors: FieldErrors<z.infer<typeof SourceCreateSchema>>;
-  proxies: Proxy[];
   watch: UseFormWatch<z.infer<typeof SourceCreateSchema>>;
   setValue: UseFormSetValue<z.infer<typeof SourceCreateSchema>>;
 }
 
-const SEARCH_PROVIDER_PRESETS = [
-  {
-    id: "parallel-ai",
+type SearchPlatform = z.infer<typeof SearchPlatformEnum>;
+
+type PlatformPreset = {
+  label: string;
+  apiEndpoint: string;
+  options: Record<string, unknown>;
+};
+
+const PLATFORM_PRESETS: Record<SearchPlatform, PlatformPreset> = {
+  PARALLEL: {
     label: "Parallel.ai",
     apiEndpoint: "https://api.parallel.ai/v1beta/search",
     options: {
@@ -42,8 +67,7 @@ const SEARCH_PROVIDER_PRESETS = [
       max_results: 10,
     },
   },
-  {
-    id: "tavily",
+  TAVILY: {
     label: "Tavily",
     apiEndpoint: "https://api.tavily.com/search",
     options: {
@@ -54,8 +78,7 @@ const SEARCH_PROVIDER_PRESETS = [
       include_raw_content: false,
     },
   },
-  {
-    id: "anspire",
+  ANSPIRE: {
     label: "Anspire",
     apiEndpoint: "https://plugin.anspire.cn/api/ntsearch/search",
     options: {
@@ -63,7 +86,14 @@ const SEARCH_PROVIDER_PRESETS = [
       top_k: "10",
     },
   },
-] as const;
+  CUSTOM: {
+    label: "Custom",
+    apiEndpoint: "",
+    options: {
+      provider: "custom",
+    },
+  },
+};
 
 function parseOptions(value: unknown): Record<string, unknown> {
   if (typeof value === "string" && value.trim()) {
@@ -86,173 +116,201 @@ export const SearchEngineFields = ({
   register,
   control,
   errors,
-  proxies,
   watch,
   setValue,
 }: SearchEngineFieldsProps) => {
-  const searchEngineKind = watch("search.engine") as
-    | z.infer<typeof SearchEngineKindEnum>
-    | undefined;
+  const [platformOpen, setPlatformOpen] = useState(false);
   const rawOptions = watch("search.options");
-  const currentApiEndpoint = watch("search.apiEndpoint");
+  const currentPlatform =
+    (watch("search.platform") as SearchPlatform | undefined) ?? "PARALLEL";
+
   const searchErrors = errors as FieldErrors<
     z.infer<typeof SearchEngineSourceCreateSchema>
   >;
 
-  const applyPreset = (presetId: (typeof SEARCH_PROVIDER_PRESETS)[number]["id"]) => {
-    const preset = SEARCH_PROVIDER_PRESETS.find((item) => item.id === presetId);
+  const platformOptions = useMemo(
+    () => SearchPlatformEnum.options,
+    []
+  );
+
+  const applyPlatformPreset = (platform: SearchPlatform) => {
+    const preset = PLATFORM_PRESETS[platform];
     if (!preset) return;
+
     const currentOptions = parseOptions(rawOptions);
-    const mergedOptions = {
+    const nextOptions = {
       ...preset.options,
       ...(currentOptions.apiKey ? { apiKey: currentOptions.apiKey } : {}),
     };
+
+    setValue("search.platform", platform, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
     setValue("search.engine", "CUSTOM", {
       shouldDirty: true,
       shouldValidate: true,
     });
-    setValue("search.apiEndpoint", preset.apiEndpoint, {
-      shouldDirty: true,
-      shouldValidate: true,
-    });
-    setValue("search.options", JSON.stringify(mergedOptions, null, 2) as any, {
+    setValue(
+      "search.apiEndpoint",
+      platform === "CUSTOM" ? null : preset.apiEndpoint,
+      {
+        shouldDirty: true,
+        shouldValidate: true,
+      }
+    );
+    setValue("search.options", JSON.stringify(nextOptions, null, 2) as any, {
       shouldDirty: true,
       shouldValidate: true,
     });
   };
 
-  const currentPreset = SEARCH_PROVIDER_PRESETS.find(
-    (preset) =>
-      typeof currentApiEndpoint === "string" &&
-      currentApiEndpoint.includes(new URL(preset.apiEndpoint).host)
-  );
-
   return (
     <>
-      <div className="grid gap-3">
-        <Label>AI Search Presets</Label>
-        <div className="flex flex-wrap gap-2">
-          {SEARCH_PROVIDER_PRESETS.map((preset) => (
-            <Button
-              key={preset.id}
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => applyPreset(preset.id)}
-            >
-              {preset.label}
-            </Button>
-          ))}
-        </div>
-        <p className="text-xs text-muted-foreground">
-          {currentPreset
-            ? `Current preset: ${currentPreset.label}`
-            : "No preset selected"}
-          . API keys can come from `search.options.apiKey` or env vars
-          (`PARALLEL_API_KEY`, `TAVILY_API_KEY`, `ANSPIRE_API_KEY`).
-        </p>
-      </div>
-      <div className="grid gap-3">
-        <Label htmlFor="search.engine">Engine</Label>
-        <Controller
-          name="search.engine"
-          control={control}
-          render={({ field }) => (
-            <ControlledSelect
-              value={field.value as string}
-              onValueChange={field.onChange}
-              placeholder="Select an engine"
-            >
-              {Object.values(SearchEngineKindEnum.enum).map((engine) => (
-                <SelectItem key={engine} value={engine}>
-                  {engine}
-                </SelectItem>
-              ))}
-            </ControlledSelect>
+      <Card className="gap-4 bg-muted/30">
+        <CardHeader>
+          <CardTitle>Platform</CardTitle>
+          <CardDescription>
+            选择 AI Search 平台，配置会按平台模板初始化。
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-4">
+          <div className="grid gap-3">
+            <Controller
+              name="search.platform"
+              control={control}
+              render={({ field }) => (
+                <Popover open={platformOpen} onOpenChange={setPlatformOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={platformOpen}
+                      className="w-full justify-between"
+                    >
+                      <span>
+                        {PLATFORM_PRESETS[
+                          (field.value as SearchPlatform | undefined) ??
+                            "PARALLEL"
+                        ]?.label ?? "Select search platform"}
+                      </span>
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
+                    <Command>
+                      <CommandInput placeholder="Search platform..." />
+                      <CommandEmpty>No platform found.</CommandEmpty>
+                      <CommandList className="max-h-64 overflow-y-auto">
+                        <CommandGroup>
+                          {platformOptions.map((platform) => (
+                            <CommandItem
+                              key={platform}
+                              value={platform}
+                              onSelect={() => {
+                                field.onChange(platform);
+                                applyPlatformPreset(platform as SearchPlatform);
+                                setPlatformOpen(false);
+                              }}
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  field.value === platform
+                                    ? "opacity-100"
+                                    : "opacity-0"
+                                )}
+                              />
+                              <span>{PLATFORM_PRESETS[platform].label}</span>
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+              )}
+            />
+            <ErrorMessage>
+              {searchErrors.search?.platform?.message?.toString()}
+            </ErrorMessage>
+            <p className="text-xs text-muted-foreground">
+              API key 可通过 `search.options.apiKey` 或环境变量提供
+              (`PARALLEL_API_KEY` / `TAVILY_API_KEY` / `ANSPIRE_API_KEY`)。
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="gap-4 bg-muted/30">
+        <CardHeader>
+          <CardTitle>Config</CardTitle>
+          <CardDescription>
+            填写检索词和平台参数，Worker 会按 platform 路由请求。
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-4">
+          <div className="grid gap-3">
+            <Label htmlFor="search.query">Query</Label>
+            <Input id="search.query" placeholder="Query" {...register("search.query")} />
+            <ErrorMessage>{searchErrors.search?.query?.message?.toString()}</ErrorMessage>
+          </div>
+
+          <div className="grid gap-3">
+            <Label htmlFor="search.region">Region</Label>
+            <Input
+              id="search.region"
+              placeholder="Region (optional)"
+              {...register("search.region")}
+            />
+            <ErrorMessage>{searchErrors.search?.region?.message?.toString()}</ErrorMessage>
+          </div>
+
+          <div className="grid gap-3">
+            <Label htmlFor="search.lang">Lang</Label>
+            <Input id="search.lang" placeholder="auto" {...register("search.lang")} />
+            <ErrorMessage>{searchErrors.search?.lang?.message?.toString()}</ErrorMessage>
+          </div>
+
+          <div className="grid gap-3">
+            <Label htmlFor="search.apiEndpoint">API Endpoint</Label>
+            <Input
+              id="search.apiEndpoint"
+              placeholder="https://..."
+              {...register("search.apiEndpoint")}
+            />
+            <ErrorMessage>
+              {searchErrors.search?.apiEndpoint?.message?.toString()}
+            </ErrorMessage>
+          </div>
+
+          <div className="grid gap-3">
+            <Label htmlFor="search.options">Options (JSON)</Label>
+            <Textarea
+              id="search.options"
+              placeholder="{}"
+              rows={6}
+              {...register("search.options")}
+            />
+            <ErrorMessage>{searchErrors.search?.options?.message?.toString()}</ErrorMessage>
+          </div>
+
+          {currentPlatform === "CUSTOM" && (
+            <div className="grid gap-3">
+              <Label htmlFor="search.customConfig">Custom Config (JSON)</Label>
+              <Textarea
+                id="search.customConfig"
+                placeholder='{ "key": "value" }'
+                rows={5}
+                {...register("search.customConfig")}
+              />
+              <ErrorMessage>
+                {searchErrors.search?.customConfig?.message?.toString()}
+              </ErrorMessage>
+            </div>
           )}
-        />
-        <ErrorMessage>
-          {searchErrors.search?.engine?.message?.toString()}
-        </ErrorMessage>
-      </div>
-      {searchEngineKind === "CUSTOM" && (
-        <div className="grid gap-3">
-          <Label htmlFor="search.customConfig">
-            Custom Engine Config (JSON)
-          </Label>
-          <Textarea
-            id="search.customConfig"
-            placeholder={'{ "key": "value" }'}
-            rows={5}
-            {...register("search.customConfig")}
-          />
-          <ErrorMessage>
-            {searchErrors.search?.customConfig?.message?.toString()}
-          </ErrorMessage>
-        </div>
-      )}
-      <div className="grid gap-3">
-        <Label htmlFor="search.query">Query</Label>
-        <Input
-          id="search.query"
-          placeholder="Query"
-          {...register("search.query")}
-        />
-        <ErrorMessage>
-          {searchErrors.search?.query?.message?.toString()}
-        </ErrorMessage>
-      </div>
-      <div className="grid gap-3">
-        <Label htmlFor="search.region">Region</Label>
-        <Input
-          id="search.region"
-          placeholder="Region"
-          {...register("search.region")}
-        />
-        <ErrorMessage>
-          {searchErrors.search?.region?.message?.toString()}
-        </ErrorMessage>
-      </div>
-      <div className="grid gap-3">
-        <Label htmlFor="search.lang">Lang</Label>
-        <Input
-          id="search.lang"
-          placeholder="Lang"
-          {...register("search.lang")}
-        />
-        <ErrorMessage>
-          {searchErrors.search?.lang?.message?.toString()}
-        </ErrorMessage>
-      </div>
-      <div className="grid gap-3">
-        <Label htmlFor="search.apiEndpoint">API Endpoint</Label>
-        <Input
-          id="search.apiEndpoint"
-          placeholder="API Endpoint"
-          {...register("search.apiEndpoint")}
-        />
-        <ErrorMessage>
-          {searchErrors.search?.apiEndpoint?.message?.toString()}
-        </ErrorMessage>
-      </div>
-      <div className="grid gap-3">
-        <Label htmlFor="search.options">Options (JSON)</Label>
-        <Textarea
-          id="search.options"
-          placeholder="{}"
-          rows={5}
-          {...register("search.options")}
-        />
-        <ErrorMessage>
-          {searchErrors.search?.options?.message?.toString()}
-        </ErrorMessage>
-      </div>
-      <SelectProxy
-        control={control}
-        proxies={proxies}
-        name="search.proxyId"
-        error={searchErrors.proxyId?.message?.toString()}
-      />
+        </CardContent>
+      </Card>
     </>
   );
 };

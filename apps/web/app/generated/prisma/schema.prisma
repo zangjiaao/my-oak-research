@@ -90,6 +90,13 @@ enum SearchEngineKind {
   CUSTOM
 }
 
+enum SearchPlatform {
+  PARALLEL
+  TAVILY
+  ANSPIRE
+  CUSTOM
+}
+
 model Proxy {
   id        String    @id @default(cuid())
   name      String
@@ -252,6 +259,7 @@ model SearchEngineSourceConfig {
   sourceId String @id
   source   Source @relation(fields: [sourceId], references: [id])
 
+  platform    SearchPlatform   @default(CUSTOM)
   engine      SearchEngineKind
   // 标准字段
   query       String

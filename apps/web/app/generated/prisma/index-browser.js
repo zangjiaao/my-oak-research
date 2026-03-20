@@ -247,6 +247,7 @@ exports.Prisma.DarknetSourceConfigScalarFieldEnum = {
 
 exports.Prisma.SearchEngineSourceConfigScalarFieldEnum = {
   sourceId: 'sourceId',
+  platform: 'platform',
   engine: 'engine',
   query: 'query',
   region: 'region',
@@ -483,6 +484,13 @@ exports.CrawlerEngine = exports.$Enums.CrawlerEngine = {
   CHEERIO: 'CHEERIO',
   PLAYWRIGHT: 'PLAYWRIGHT',
   PUPPETEER: 'PUPPETEER',
+  CUSTOM: 'CUSTOM'
+};
+
+exports.SearchPlatform = exports.$Enums.SearchPlatform = {
+  PARALLEL: 'PARALLEL',
+  TAVILY: 'TAVILY',
+  ANSPIRE: 'ANSPIRE',
   CUSTOM: 'CUSTOM'
 };
 

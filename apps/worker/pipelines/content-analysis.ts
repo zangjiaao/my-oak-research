@@ -642,7 +642,11 @@ async function fetchSearchSource(
     return [];
   }
 
-  const provider = detectSearchProvider(source.search?.apiEndpoint, source.search?.options);
+  const provider = detectSearchProvider(
+    (source.search as unknown as { platform?: string | null })?.platform,
+    source.search?.apiEndpoint,
+    source.search?.options
+  );
   const request = buildSearchRequest(source, provider);
   if (!request.url) {
     return [
@@ -1544,9 +1548,17 @@ type SearchRequestConfig = {
 };
 
 function detectSearchProvider(
+  platform?: string | null,
   apiEndpoint?: string | null,
   rawOptions?: unknown
 ): SearchProvider {
+  const normalizedPlatform = String(platform ?? "")
+    .trim()
+    .toLowerCase();
+  if (normalizedPlatform === "parallel") return "parallel";
+  if (normalizedPlatform === "tavily") return "tavily";
+  if (normalizedPlatform === "anspire") return "anspire";
+
   const options = asObject(rawOptions);
   const explicitProvider = String(options.provider ?? options.platform ?? "")
     .trim()

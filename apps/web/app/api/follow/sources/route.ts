@@ -166,6 +166,7 @@ export async function POST(req: Request) {
           await tx.searchEngineSourceConfig.create({
             data: {
               sourceId: base.id,
+              platform: data.search.platform,
               engine: data.search.engine,
               query: data.search.query,
               region: data.search.region ?? null,

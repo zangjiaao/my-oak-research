@@ -209,6 +209,8 @@ export async function PATCH(
       if (exists.type === "SEARCH_ENGINE" && parsed.data.search) {
         const searchData = parsed.data.search;
         const updateData: ConfigUpdateData = {};
+        if (searchData.platform !== undefined)
+          updateData.platform = searchData.platform;
         if (searchData.engine !== undefined)
           updateData.engine = searchData.engine;
         if (searchData.query !== undefined) updateData.query = searchData.query;
