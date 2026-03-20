@@ -13,7 +13,9 @@ import {
 } from "@/lib/types";
 import { llmGateway, browserAgent } from "@oak/agents";
 import { publishTaskEvent, publishContentEvent } from "@/lib/queue";
+import { logger } from "@/lib/logger";
 import { redact, stripPromptLike } from "@/lib/security";
+import { writeWorkerApiIoLog } from "../lib/api-io-log";
 import { buildNormalizedRecordContent } from "./record-content-normalizer";
 
 const SummarySchema = z.object({
@@ -150,8 +152,44 @@ export async function runFocusCollector(runId: string, queryId: string) {
     }
   });
   const keywordFilterTerms = buildKeywordFilterTerms(query.keywords);
-  const rawItems = await fetchBySources(normalizedSources, runId, keywordFilterTerms);
+  const rawItems = await fetchBySources(
+    normalizedSources,
+    runId,
+    queryId,
+    keywordFilterTerms
+  );
   const cleaned = await cleanAndDedup(rawItems, runId);
+  const sourceStats = new Map<
+    string,
+    {
+      sourceName: string;
+      sourceType: SourceType;
+      fetched: number;
+      cleaned: number;
+      dedupSkipped: number;
+      inserted: number;
+    }
+  >();
+  for (const source of normalizedSources) {
+    sourceStats.set(source.id, {
+      sourceName: source.name,
+      sourceType: source.type,
+      fetched: 0,
+      cleaned: 0,
+      dedupSkipped: 0,
+      inserted: 0,
+    });
+  }
+  for (const item of rawItems) {
+    const stats = sourceStats.get(item.sourceId);
+    if (!stats) continue;
+    stats.fetched += 1;
+  }
+  for (const item of cleaned) {
+    const stats = sourceStats.get(item.sourceId);
+    if (!stats) continue;
+    stats.cleaned += 1;
+  }
 
   if (!cleaned.length) {
     await send({ type: "done", message: "未抓取到内容", progress: 100 });
@@ -175,6 +213,10 @@ export async function runFocusCollector(runId: string, queryId: string) {
     const item = cleaned[i];
     const existingContent = await findExistingContentBySourceRecord(item);
     if (existingContent) {
+      const stats = sourceStats.get(item.sourceId);
+      if (stats) {
+        stats.dedupSkipped += 1;
+      }
       const progress = Math.min(
         100,
         Math.floor(((i + 1) / cleaned.length) * 100)
@@ -289,6 +331,10 @@ export async function runFocusCollector(runId: string, queryId: string) {
       100,
       Math.floor(((i + 1) / cleaned.length) * 100)
     );
+    const stats = sourceStats.get(item.sourceId);
+    if (stats) {
+      stats.inserted += 1;
+    }
     await prisma.queryRun.update({
       where: { id: runId },
       data: { progress },
@@ -312,6 +358,30 @@ export async function runFocusCollector(runId: string, queryId: string) {
     progress: 100,
     summaryCount: cleaned.length,
   });
+  for (const [sourceId, stats] of sourceStats.entries()) {
+    logger.info("collector source summary", {
+      runId,
+      queryId,
+      sourceId,
+      sourceName: stats.sourceName,
+      sourceType: stats.sourceType,
+      fetched: stats.fetched,
+      cleaned: stats.cleaned,
+      dedupSkipped: stats.dedupSkipped,
+      inserted: stats.inserted,
+    });
+    if (stats.fetched > 0 && stats.inserted === 0) {
+      logger.warn("collector source inserted 0 items", {
+        runId,
+        queryId,
+        sourceId,
+        sourceName: stats.sourceName,
+        fetched: stats.fetched,
+        cleaned: stats.cleaned,
+        dedupSkipped: stats.dedupSkipped,
+      });
+    }
+  }
 }
 
 function mapContentType(sourceType: SourceType): ContentType {
@@ -363,6 +433,7 @@ async function cleanAndDedup(
 async function fetchBySources(
   sources: SourceWithRelations[],
   runId: string,
+  queryId: string,
   keywordFilterTerms: string[]
 ): Promise<CleanItem[]> {
   const sourceConcurrency = resolveSourceFetchConcurrency();
@@ -381,7 +452,13 @@ async function fetchBySources(
         driver,
       });
       try {
-        const fetched = await executeFetchDriver(source, driver, keywordFilterTerms);
+        const fetched = await executeFetchDriver(
+          source,
+          driver,
+          runId,
+          queryId,
+          keywordFilterTerms
+        );
         console.log(
           `[collector] fetched ${fetched.length} items from ${source.name}`
         );
@@ -471,6 +548,8 @@ function resolveFetchDriver(
 async function executeFetchDriver(
   source: SourceWithRelations,
   driver: "fetch" | "playwright" | "ai",
+  runId: string,
+  queryId: string,
   keywordFilterTerms: string[]
 ): Promise<CleanItem[]> {
   switch (driver) {
@@ -483,14 +562,16 @@ async function executeFetchDriver(
       }
       return [];
     case "ai":
-      return fetchAICrawlerSource(source, keywordFilterTerms);
+      return fetchAICrawlerSource(source, runId, queryId, keywordFilterTerms);
     default:
-      return fetchWithDefaultSource(source, keywordFilterTerms);
+      return fetchWithDefaultSource(source, runId, queryId, keywordFilterTerms);
   }
 }
 
 async function fetchWithDefaultSource(
   source: SourceWithRelations,
+  runId: string,
+  queryId: string,
   keywordFilterTerms: string[]
 ): Promise<CleanItem[]> {
   console.log(
@@ -502,7 +583,7 @@ async function fetchWithDefaultSource(
     case SourceType.DARKNET:
       return fetchHtmlSource(source as DarknetSource);
     case SourceType.SEARCH_ENGINE:
-      return fetchSearchSource(source as SearchEngineSource);
+      return fetchSearchSource(source as SearchEngineSource, { runId, queryId });
     case SourceType.SOCIAL_MEDIA:
       return fetchSocialSource(source as SocialMediaSource, keywordFilterTerms);
     default:
@@ -561,6 +642,8 @@ async function fetchBrowserSource(
 
 async function fetchAICrawlerSource(
   source: SourceWithRelations,
+  runId: string,
+  queryId: string,
   keywordFilterTerms: string[]
 ): Promise<CleanItem[]> {
   if (isWebSource(source) || isDarknetSource(source)) {
@@ -573,7 +656,7 @@ async function fetchAICrawlerSource(
     console.log(
       `[collector] fetchAICrawlerSource -> fetchSearchSource ${source.name}`
     );
-    return fetchSearchSource(source as SearchEngineSource);
+    return fetchSearchSource(source as SearchEngineSource, { runId, queryId });
   }
   console.log(
     `[collector] fetchAICrawlerSource -> fetchSocialSource ${source.name}`
@@ -636,7 +719,8 @@ async function fetchHtmlSource(
 }
 
 async function fetchSearchSource(
-  source: SearchEngineSource
+  source: SearchEngineSource,
+  context?: { runId?: string; queryId?: string }
 ): Promise<CleanItem[]> {
   console.log(`[collector] fetchSearchSource ${source.name}`);
   const objective = (
@@ -665,12 +749,37 @@ async function fetchSearchSource(
     ];
   }
 
-  const response = await fetchWithTimeout(request.url, {
+  const response = await fetchWithTimeoutDetailed(request.url, {
     method: request.method,
     headers: request.headers,
     body: request.body,
   });
-  const parsedResult = parseSearchResult(response);
+  const parsedResult = parseSearchResult(response.text);
+  writeWorkerApiIoLog({
+    event: "search-request-response",
+    runId: context?.runId,
+    queryId: context?.queryId,
+    sourceId: source.id,
+    sourceName: source.name,
+    platform:
+      (
+        (source.search as unknown as { platform?: string | null })?.platform ??
+        "unknown"
+      ).toString(),
+    provider,
+    url: request.url,
+    method: request.method,
+    statusCode: response.statusCode,
+    request: {
+      headers: request.headers,
+      body: request.body ?? null,
+    },
+    response: {
+      body: response.text,
+    },
+    parsedCount: parsedResult.items.length,
+    requestId: parsedResult.requestId,
+  });
   if (!parsedResult.items.length) {
     return [
       {
