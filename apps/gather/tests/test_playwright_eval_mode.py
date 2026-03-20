@@ -1,6 +1,5 @@
 import asyncio
 import sys
-from types import SimpleNamespace
 from pathlib import Path
 
 import pytest
@@ -169,7 +168,6 @@ def test_extract_playwright_eval_options_includes_pool_settings():
                 "targetUrl": "https://x.com",
                 "scriptBody": "(args) => ({ text: 'ok' })",
                 "userId": "user-1",
-                "sessionId": "session-1",
                 "poolEnabled": True,
                 "poolIdleTimeoutMs": 15000,
             }
@@ -178,23 +176,38 @@ def test_extract_playwright_eval_options_includes_pool_settings():
 
     assert options["pool_enabled"] is True
     assert options["pool_user_id"] == "user-1"
-    assert options["pool_session_id"] == "session-1"
     assert options["pool_idle_timeout_ms"] == 15000
 
 
-def test_playwright_pool_key_changes_when_session_changes():
+def test_extract_playwright_eval_options_disables_pool_without_user_id():
+    options = main._extract_playwright_eval_options(
+        {
+            "playwright": {
+                "mode": "eval-js",
+                "targetUrl": "https://x.com",
+                "scriptBody": "(args) => ({ text: 'ok' })",
+                "poolEnabled": True,
+            }
+        }
+    )
+
+    assert options["pool_enabled"] is False
+    assert options["pool_user_id"] == ""
+
+
+def test_playwright_pool_key_changes_when_auth_changes():
     request = main.FetchRequest(platform="x", source_id="source-x-001", config={})
     base_options = {
         "headless": True,
         "proxy": {"server": "socks5h://127.0.0.1:9050"},
         "pool_user_id": "u1",
-        "pool_session_id": "s1",
+        "pool_driver": "playwright",
     }
     key1 = main._build_playwright_pool_key(request, base_options, {"cookies": [{"name": "ct0", "value": "a"}]})
     key2 = main._build_playwright_pool_key(
         request,
-        {**base_options, "pool_session_id": "s2"},
-        {"cookies": [{"name": "ct0", "value": "a"}]},
+        base_options,
+        {"cookies": [{"name": "ct0", "value": "b"}]},
     )
 
     assert key1 != key2
@@ -215,39 +228,17 @@ def test_run_playwright_eval_script_pooled_success_does_not_reraise(monkeypatch)
         "pool_enabled": True,
         "pool_idle_timeout_ms": 120000,
         "pool_user_id": "user-1",
-        "pool_session_id": "session-1",
         "pool_driver": "playwright",
     }
-
-    class _DummyLock:
-        async def __aenter__(self):
-            return self
-
-        async def __aexit__(self, exc_type, exc, tb):
-            return False
-
-    class _DummyPage:
-        async def evaluate(self, script):
-            return {"text": "ok", "title": "ok"}
-
-    pooled_entry = SimpleNamespace(lock=_DummyLock(), browser=object())
-
-    async def fake_get_playwright_runtime():
-        return object()
-
-    async def fake_acquire_pooled_entry(*args, **kwargs):
-        return None, pooled_entry
-
-    async def fake_ensure_pooled_page(*args, **kwargs):
-        return _DummyPage()
 
     async def fake_apply_fallback(page, result, request):
         return result
 
+    async def fake_run_script(*args, **kwargs):
+        return {"text": "ok", "title": "ok"}
+
     monkeypatch.setattr(main, "_extract_playwright_eval_options", lambda config: options)
-    monkeypatch.setattr(main, "_get_playwright_runtime", fake_get_playwright_runtime)
-    monkeypatch.setattr(main, "_acquire_pooled_playwright_entry", fake_acquire_pooled_entry)
-    monkeypatch.setattr(main, "_ensure_pooled_playwright_page", fake_ensure_pooled_page)
+    monkeypatch.setattr(main, "_run_playwright_script", fake_run_script)
     monkeypatch.setattr(main, "_apply_xiaohongshu_user_me_fallback", fake_apply_fallback)
 
     expected_items = [
