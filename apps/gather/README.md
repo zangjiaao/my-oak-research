@@ -143,12 +143,15 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 {
   "platform": "x",
   "sourceId": "source_123",
+  "userId": "user_123",
   "keywords": ["openai"],
   "driver": {
     "name": "playwright",
     "option": {
-      "mode": "eval-js",
-      "scriptPath": "/path/to/script.js",
+      "args": {
+        "query": "openai",
+        "limit": 20
+      },
       "network": {
         "proxy": {
           "url": "socks5h://127.0.0.1:9050"
@@ -168,6 +171,7 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
 `driver.name` 必填，可选值为 `xhttp`、`playwright`、`agent-browser`。
 `driver.option` 透传给对应 driver；`driver.filter` 为关键词过滤参数（如 `minChars`）。
+`userId` 建议与 `sourceId` 同级传入（系统用户 ID，用于 Playwright 资源池复用隔离）。
 `output.field` 必填，控制 `recordContent` 输出字段（支持点路径）：
 
 - `["text"]`：只返回 `recordContent.text`
@@ -179,7 +183,7 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
 `output.keywordScope` 可选，限制关键词过滤只检查 `recordContent` 指定字段（例如 `["text"]`）。
 
-`/v2/fetch` 只接受新字段：`sourceId`、`platform`、`keywords`、`driver.name`、`driver.option`、`driver.filter`、`output.field`。不再兼容旧字段。
+`/v2/fetch` 只接受新字段：`sourceId`、`userId`、`platform`、`keywords`、`driver.name`、`driver.option`、`driver.filter`、`output.field`。不再兼容旧字段。
 
 ### 通用网络代理配置（支持 HTTP/SOCKS/Tor）
 
@@ -268,28 +272,30 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 {
   "platform": "telegram",
   "sourceId": "source_telegram_demo",
-  "driver": "agent-browser",
-  "driverOptions": {
-    "headed": true,
-    "profile": ".auth/telegram_profile",
-    "auth": {
-      "stateFile": ".auth/telegram_auth.json"
-    },
-    "script": [
-      { "command": "open https://web.telegram.org/a/" },
-      { "command": "wait --load networkidle" },
-      { "command": "snapshot -i", "captureAs": "entry_snapshot" },
-      { "command": "click @e25", "repeat": 3, "intervalMs": 2000 },
-      { "command": "get text @e40", "captureAs": "messages" }
-    ],
-    "filters": {
-      "capture": {
-        "keys": ["messages"],
-        "minChars": 20
+  "driver": {
+    "name": "agent-browser",
+    "option": {
+      "headed": true,
+      "profile": ".auth/telegram_profile",
+      "auth": {
+        "stateFile": ".auth/telegram_auth.json"
       },
-      "keyword": {
-        "keywords": ["openclaw"],
-        "minChars": 8
+      "script": [
+        { "command": "open https://web.telegram.org/a/" },
+        { "command": "wait --load networkidle" },
+        { "command": "snapshot -i", "captureAs": "entry_snapshot" },
+        { "command": "click @e25", "repeat": 3, "intervalMs": 2000 },
+        { "command": "get text @e40", "captureAs": "messages" }
+      ],
+      "filters": {
+        "capture": {
+          "keys": ["messages"],
+          "minChars": 20
+        },
+        "keyword": {
+          "keywords": ["openclaw"],
+          "minChars": 8
+        }
       }
     }
   }
@@ -328,35 +334,37 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 {
   "platform": "x",
   "sourceId": "loop_demo_001",
-  "driver": "agent-browser",
-  "driverOptions": {
-    "instanceId": "ab-1234567890",
-    "ownerId": "user-1001",
-    "script": [
-      { "command": "open https://x.com/some-post" },
-      {
-        "loop": {
-          "maxIterations": 20,
-          "intervalMs": 1000,
-          "steps": [
-            { "command": "scroll down 900" },
-            { "command": "snapshot", "captureAs": "page_snapshot" }
-          ],
-          "breakWhen": {
-            "captureKey": "page_snapshot",
-            "textIncludes": ["目标关键词", "备选关键词"]
+  "driver": {
+    "name": "agent-browser",
+    "option": {
+      "instanceId": "ab-1234567890",
+      "ownerId": "user-1001",
+      "script": [
+        { "command": "open https://x.com/some-post" },
+        {
+          "loop": {
+            "maxIterations": 20,
+            "intervalMs": 1000,
+            "steps": [
+              { "command": "scroll down 900" },
+              { "command": "snapshot", "captureAs": "page_snapshot" }
+            ],
+            "breakWhen": {
+              "captureKey": "page_snapshot",
+              "textIncludes": ["目标关键词", "备选关键词"]
+            }
           }
         }
-      }
-    ],
-    "filters": {
-      "capture": {
-        "keys": ["page_snapshot"],
-        "perLine": true,
-        "minChars": 20,
-        "dedupe": true,
-        "normalizeRefTags": true,
-        "startsWith": ["- article", "- text"]
+      ],
+      "filters": {
+        "capture": {
+          "keys": ["page_snapshot"],
+          "perLine": true,
+          "minChars": 20,
+          "dedupe": true,
+          "normalizeRefTags": true,
+          "startsWith": ["- article", "- text"]
+        }
       }
     }
   }
@@ -486,11 +494,13 @@ Worker 侧建议统一调用 `/v2/fetch`，并显式传 `driver`，避免默认�
 {
   "platform": "x",
   "sourceId": "source-x-001",
-  "driver": "xhttp",
-  "driverOptions": {
-    "url": "https://api.example.com/search",
-    "method": "POST",
-    "json": { "query": "openai" }
+  "driver": {
+    "name": "xhttp",
+    "option": {
+      "url": "https://api.example.com/search",
+      "method": "POST",
+      "json": { "query": "openai" }
+    }
   }
 }
 ```
@@ -522,10 +532,11 @@ response = requests.post(
     json={
         "platform": "x",
         "sourceId": "test",
+        "userId": "user-123",
         "keywords": ["ai", "openai"],
-        "driver": "playwright",
-        "driverOptions": {
-            "playwright": {"mode": "eval-js", "scriptPath": "/path/to/script.js"},
+        "driver": {
+            "name": "playwright",
+            "option": {"args": {"query": "openai", "limit": 20}},
             "filter": {"minChars": 8}
         },
         "output": {"field": ["text", "url"]}
@@ -561,7 +572,7 @@ apps/gather/
 ### 添加新平台
 
 1. 在 `apps/gather/auth_verify.py` 增加该平台的内置 verify probe
-2. 采集逻辑优先走 `driver.name=agent-browser` 或 `driver.option.playwright.mode=eval-js`
+2. 采集逻辑优先走 `driver.name=agent-browser` 或 Playwright 内置 `intercept-*` 能力
 3. 在 `main.py` 中添加平台映射与采集逻辑
 4. 在 `export_chrome_cookies.py` 中添加平台配置（如需）
 

@@ -11,6 +11,7 @@ import hashlib
 import subprocess
 import shutil
 import zipfile
+from contextlib import asynccontextmanager, suppress
 from pathlib import Path
 from urllib.parse import quote, urlparse, urlunparse
 from dataclasses import dataclass, field
@@ -68,7 +69,28 @@ _V3_DRIVER_STRATEGIES: dict[str, list[str]] = {
 # Load environment variables from .env file
 load_dotenv()
 
-app = FastAPI(title="Oak Gather Service")
+
+@asynccontextmanager
+async def _app_lifespan(_app: FastAPI):
+    global _PLAYWRIGHT_POOL_SWEEP_TASK, _PLAYWRIGHT_RUNTIME
+    if _PLAYWRIGHT_POOL_SWEEP_TASK is None or _PLAYWRIGHT_POOL_SWEEP_TASK.done():
+        _PLAYWRIGHT_POOL_SWEEP_TASK = asyncio.create_task(_playwright_pool_sweep_loop())
+    try:
+        yield
+    finally:
+        if _PLAYWRIGHT_POOL_SWEEP_TASK is not None:
+            _PLAYWRIGHT_POOL_SWEEP_TASK.cancel()
+            with suppress(asyncio.CancelledError):
+                await _PLAYWRIGHT_POOL_SWEEP_TASK
+            _PLAYWRIGHT_POOL_SWEEP_TASK = None
+        await _close_all_playwright_browsers()
+        async with _PLAYWRIGHT_RUNTIME_LOCK:
+            if _PLAYWRIGHT_RUNTIME is not None:
+                await _PLAYWRIGHT_RUNTIME.stop()
+                _PLAYWRIGHT_RUNTIME = None
+
+
+app = FastAPI(title="Oak Gather Service", lifespan=_app_lifespan)
 
 
 def _env_flag(name: str, default: bool = False) -> bool:
@@ -249,7 +271,8 @@ class _PlaywrightBrowserPoolEntry:
     last_used_at: float
     idle_timeout_ms: int
     context: Any | None = None
-    page: Any | None = None
+    keeper_page: Any | None = None
+    active_tabs: int = 0
     lock: asyncio.Lock = field(default_factory=asyncio.Lock)
 
 
@@ -257,6 +280,8 @@ _PLAYWRIGHT_BROWSER_POOL: dict[str, _PlaywrightBrowserPoolEntry] = {}
 _PLAYWRIGHT_POOL_LOCK = asyncio.Lock()
 _PLAYWRIGHT_RUNTIME = None
 _PLAYWRIGHT_RUNTIME_LOCK = asyncio.Lock()
+_PLAYWRIGHT_POOL_SWEEP_TASK: asyncio.Task[Any] | None = None
+_PLAYWRIGHT_POOL_SWEEP_INTERVAL_MS = max(1000, int(os.getenv("GATHER_PLAYWRIGHT_POOL_SWEEP_INTERVAL_MS", "5000")))
 _SCRIPT_SAMPLE_LINE_RE = re.compile(r"^\s*//\s*Sample\s+/v3/fetch key parts\s*$")
 _SCRIPT_SAMPLE_ENTRY_RE = re.compile(r"^\s*//\s*([^:]+):\s*(.+?)\s*$")
 
@@ -677,6 +702,9 @@ def _extract_playwright_eval_options(config: Dict[str, Any]) -> dict[str, Any]:
             raise HTTPException(status_code=400, detail="stateFile JSON must be an object")
         storage_state = raw_state
 
+    pool_user_id = str(raw.get("userId", raw.get("user_id")) or "").strip()
+    pool_enabled = bool(raw.get("poolEnabled", True)) and bool(pool_user_id)
+
     return {
         "target_url": target_url,
         "script_body": _strip_playwright_meta_block(script_body or ""),
@@ -688,10 +716,9 @@ def _extract_playwright_eval_options(config: Dict[str, Any]) -> dict[str, Any]:
         "headless": bool(raw.get("headless", True)),
         "storage_state": storage_state,
         "proxy": _extract_proxy_settings(config, raw),
-        "pool_enabled": bool(raw.get("poolEnabled", True)),
+        "pool_enabled": pool_enabled,
         "pool_idle_timeout_ms": pool_idle_timeout_ms,
-        "pool_user_id": raw.get("userId", raw.get("user_id")),
-        "pool_session_id": raw.get("sessionId", raw.get("session_id")),
+        "pool_user_id": pool_user_id,
         "pool_driver": raw.get("poolDriver", raw.get("pool_driver", "playwright")),
     }
 
@@ -704,9 +731,7 @@ def _stable_hash(value: Any) -> str:
 def _build_playwright_pool_key(request: FetchRequest, options: dict[str, Any], storage_state: Any) -> str:
     platform = request.platform.lower().strip()
     user_id = str(options.get("pool_user_id") or "")
-    session_id = str(options.get("pool_session_id") or "")
     driver = str(options.get("pool_driver") or "playwright")
-    target_fingerprint = _stable_hash(options.get("target_url") or "")
     proxy_fingerprint = _stable_hash(options.get("proxy") or {})
     auth_fingerprint = _stable_hash(storage_state or {})
     return "|".join(
@@ -714,8 +739,6 @@ def _build_playwright_pool_key(request: FetchRequest, options: dict[str, Any], s
             platform,
             driver,
             user_id,
-            session_id,
-            target_fingerprint,
             "1" if options["headless"] else "0",
             proxy_fingerprint,
             auth_fingerprint,
@@ -726,16 +749,17 @@ def _build_playwright_pool_key(request: FetchRequest, options: dict[str, Any], s
 async def _sweep_idle_playwright_browsers(now: float) -> None:
     to_close: list[_PlaywrightBrowserPoolEntry] = []
     for key, entry in list(_PLAYWRIGHT_BROWSER_POOL.items()):
+        is_connected = getattr(entry.browser, "is_connected", None)
+        if callable(is_connected) and not is_connected():
+            if entry.active_tabs == 0:
+                _PLAYWRIGHT_BROWSER_POOL.pop(key, None)
+                to_close.append(entry)
+            continue
         idle_for_ms = int((now - entry.last_used_at) * 1000)
-        if idle_for_ms >= entry.idle_timeout_ms:
+        if idle_for_ms >= entry.idle_timeout_ms and entry.active_tabs == 0:
             _PLAYWRIGHT_BROWSER_POOL.pop(key, None)
             to_close.append(entry)
     for entry in to_close:
-        try:
-            if entry.page is not None and not entry.page.is_closed():
-                await entry.page.close()
-        except Exception:
-            pass
         try:
             if entry.context is not None:
                 await entry.context.close()
@@ -748,9 +772,8 @@ async def _sweep_idle_playwright_browsers(now: float) -> None:
 
 
 async def _acquire_pooled_playwright_entry(
-    playwright: Any, options: dict[str, Any], request: FetchRequest
+    playwright: Any, options: dict[str, Any], request: FetchRequest, storage_state: Any
 ) -> tuple[str, _PlaywrightBrowserPoolEntry]:
-    storage_state = request.auth_data if request.auth_data else options["storage_state"]
     pool_key = _build_playwright_pool_key(request, options, storage_state)
     now = asyncio.get_running_loop().time()
     async with _PLAYWRIGHT_POOL_LOCK:
@@ -777,36 +800,190 @@ async def _acquire_pooled_playwright_entry(
         return pool_key, entry
 
 
-async def _ensure_pooled_playwright_page(
-    entry: _PlaywrightBrowserPoolEntry, options: dict[str, Any], request: FetchRequest
+async def _acquire_pooled_playwright_page(entry: _PlaywrightBrowserPoolEntry, storage_state: Any) -> Any:
+    async with entry.lock:
+        if entry.context is None:
+            context_options: dict[str, Any] = {}
+            if isinstance(storage_state, dict):
+                context_options["storage_state"] = storage_state
+            entry.context = await entry.browser.new_context(**context_options)
+        if entry.keeper_page is None or entry.keeper_page.is_closed():
+            entry.keeper_page = await entry.context.new_page()
+        page = await entry.context.new_page()
+        entry.active_tabs += 1
+        entry.last_used_at = asyncio.get_running_loop().time()
+        return page
+
+
+async def _release_pooled_playwright_page(entry: _PlaywrightBrowserPoolEntry, page: Any) -> None:
+    try:
+        if page is not None and not page.is_closed():
+            await page.close()
+    except Exception:
+        pass
+    async with entry.lock:
+        if entry.active_tabs > 0:
+            entry.active_tabs -= 1
+        entry.last_used_at = asyncio.get_running_loop().time()
+
+
+async def _run_playwright_script(
+    request: FetchRequest,
+    options: dict[str, Any],
+    *,
+    target_url: str | None,
+    script_to_run: str,
+    wait_until: str = "domcontentloaded",
+    wait_selector: str | None = None,
+    post_navigation_wait_ms: int = 0,
+    init_script: str | None = None,
+    allow_origin_fallback: bool = False,
+    post_evaluate_hook: Any | None = None,
 ) -> Any:
-    if entry.context is None:
+    playwright = await _get_playwright_runtime()
+    storage_state = request.auth_data if isinstance(request.auth_data, dict) else options.get("storage_state")
+    if options.get("pool_enabled"):
+        _, entry = await _acquire_pooled_playwright_entry(playwright, options, request, storage_state)
+        page = await _acquire_pooled_playwright_page(entry, storage_state)
+        try:
+            if init_script:
+                await page.add_init_script(init_script)
+            if target_url:
+                await page.goto(
+                    target_url,
+                    wait_until=wait_until,
+                    timeout=options["navigation_timeout_ms"],
+                )
+                if wait_selector:
+                    await page.wait_for_selector(wait_selector, timeout=options["navigation_timeout_ms"])
+                if post_navigation_wait_ms > 0:
+                    await page.wait_for_timeout(post_navigation_wait_ms)
+            try:
+                script_result = await page.evaluate(script_to_run)
+            except Exception as error:
+                fallback_target_url = _resolve_default_target_url(request.platform)
+                if (
+                    allow_origin_fallback
+                    and not target_url
+                    and fallback_target_url
+                    and _looks_like_origin_security_error(error)
+                ):
+                    await page.goto(
+                        fallback_target_url,
+                        wait_until=wait_until,
+                        timeout=options["navigation_timeout_ms"],
+                    )
+                    if post_navigation_wait_ms > 0:
+                        await page.wait_for_timeout(post_navigation_wait_ms)
+                    script_result = await page.evaluate(script_to_run)
+                else:
+                    raise
+            if callable(post_evaluate_hook):
+                return await post_evaluate_hook(page, script_result, request)
+            return script_result
+        finally:
+            await _release_pooled_playwright_page(entry, page)
+
+    launch_options: dict[str, Any] = {"headless": options["headless"]}
+    if options["proxy"] is not None:
+        launch_options["proxy"] = options["proxy"]
+    browser = await playwright.chromium.launch(**launch_options)
+    context = None
+    page = None
+    try:
         context_options: dict[str, Any] = {}
-        if request.auth_data:
-            context_options["storage_state"] = request.auth_data
-        elif options["storage_state"]:
-            context_options["storage_state"] = options["storage_state"]
-        entry.context = await entry.browser.new_context(**context_options)
-
-    if entry.page is None or entry.page.is_closed():
-        entry.page = await entry.context.new_page()
-
-    if options["target_url"]:
-        current_url = (entry.page.url or "").strip()
-        if not current_url or current_url == "about:blank":
-            await entry.page.goto(
-                options["target_url"],
-                wait_until=options["wait_until"],
+        if isinstance(storage_state, dict):
+            context_options["storage_state"] = storage_state
+        context = await browser.new_context(**context_options)
+        page = await context.new_page()
+        if init_script:
+            await page.add_init_script(init_script)
+        if target_url:
+            await page.goto(
+                target_url,
+                wait_until=wait_until,
                 timeout=options["navigation_timeout_ms"],
             )
-            if options["wait_selector"]:
-                await entry.page.wait_for_selector(
-                    options["wait_selector"], timeout=options["navigation_timeout_ms"]
+            if wait_selector:
+                await page.wait_for_selector(wait_selector, timeout=options["navigation_timeout_ms"])
+            if post_navigation_wait_ms > 0:
+                await page.wait_for_timeout(post_navigation_wait_ms)
+        try:
+            script_result = await page.evaluate(script_to_run)
+        except Exception as error:
+            fallback_target_url = _resolve_default_target_url(request.platform)
+            if (
+                allow_origin_fallback
+                and not target_url
+                and fallback_target_url
+                and _looks_like_origin_security_error(error)
+            ):
+                await page.goto(
+                    fallback_target_url,
+                    wait_until=wait_until,
+                    timeout=options["navigation_timeout_ms"],
                 )
-            if options["post_navigation_wait_ms"] > 0:
-                await entry.page.wait_for_timeout(options["post_navigation_wait_ms"])
+                if post_navigation_wait_ms > 0:
+                    await page.wait_for_timeout(post_navigation_wait_ms)
+                script_result = await page.evaluate(script_to_run)
+            else:
+                raise
+        if callable(post_evaluate_hook):
+            return await post_evaluate_hook(page, script_result, request)
+        return script_result
+    finally:
+        if context is not None:
+            await context.close()
+        await browser.close()
 
-    return entry.page
+
+def _extract_playwright_runtime_options(
+    request: FetchRequest,
+    config: dict[str, Any],
+    playwright_options: dict[str, Any],
+) -> dict[str, Any]:
+    navigation_timeout_ms = playwright_options.get("navigationTimeoutMs", 60000)
+    if not isinstance(navigation_timeout_ms, int) or navigation_timeout_ms < 1000:
+        raise HTTPException(status_code=400, detail="config.playwright.navigationTimeoutMs must be an integer >= 1000")
+    pool_idle_timeout_ms = playwright_options.get("poolIdleTimeoutMs", 120000)
+    if not isinstance(pool_idle_timeout_ms, int) or pool_idle_timeout_ms < 1000:
+        raise HTTPException(status_code=400, detail="config.playwright.poolIdleTimeoutMs must be an integer >= 1000")
+    pool_user_id = str(playwright_options.get("userId", playwright_options.get("user_id")) or "").strip()
+    pool_enabled = bool(playwright_options.get("poolEnabled", True)) and bool(pool_user_id)
+    return {
+        "headless": bool(playwright_options.get("headless", True)),
+        "navigation_timeout_ms": navigation_timeout_ms,
+        "storage_state": _load_playwright_storage_state_from_config(request, playwright_options),
+        "proxy": _extract_proxy_settings(config, playwright_options),
+        "pool_enabled": pool_enabled,
+        "pool_idle_timeout_ms": pool_idle_timeout_ms,
+        "pool_user_id": pool_user_id,
+        "pool_driver": playwright_options.get("poolDriver", playwright_options.get("pool_driver", "playwright")),
+    }
+
+
+async def _playwright_pool_sweep_loop() -> None:
+    while True:
+        await asyncio.sleep(_PLAYWRIGHT_POOL_SWEEP_INTERVAL_MS / 1000)
+        now = asyncio.get_running_loop().time()
+        async with _PLAYWRIGHT_POOL_LOCK:
+            await _sweep_idle_playwright_browsers(now)
+
+
+async def _close_all_playwright_browsers() -> None:
+    async with _PLAYWRIGHT_POOL_LOCK:
+        entries = list(_PLAYWRIGHT_BROWSER_POOL.values())
+        _PLAYWRIGHT_BROWSER_POOL.clear()
+    for entry in entries:
+        try:
+            if entry.context is not None:
+                await entry.context.close()
+        except Exception:
+            pass
+        try:
+            await entry.browser.close()
+        except Exception:
+            pass
 
 
 async def _get_playwright_runtime() -> Any:
@@ -1034,99 +1211,17 @@ async def _run_playwright_eval_script(request: FetchRequest) -> list[CleanItem]:
     script_to_run = f"({options['script_body']})({options['args_json']})"
 
     try:
-        playwright = await _get_playwright_runtime()
-        pooled_entry: _PlaywrightBrowserPoolEntry | None = None
-        pool_key: str | None = None
-        should_close_browser = True
-        if options["pool_enabled"]:
-            pool_key, pooled_entry = await _acquire_pooled_playwright_entry(
-                playwright, options, request
-            )
-            should_close_browser = False
-            browser = pooled_entry.browser
-        else:
-            launch_options: dict[str, Any] = {"headless": options["headless"]}
-            if options["proxy"] is not None:
-                launch_options["proxy"] = options["proxy"]
-            browser = await playwright.chromium.launch(**launch_options)
-
-        context = None
-        page = None
-        try:
-            if pooled_entry is not None:
-                async with pooled_entry.lock:
-                    page = await _ensure_pooled_playwright_page(pooled_entry, options, request)
-                    try:
-                        eval_result = await page.evaluate(script_to_run)
-                    except Exception as error:
-                        fallback_target_url = _resolve_default_target_url(request.platform)
-                        if (
-                            not options["target_url"]
-                            and fallback_target_url
-                            and _looks_like_origin_security_error(error)
-                        ):
-                            await page.goto(
-                                fallback_target_url,
-                                wait_until=options["wait_until"],
-                                timeout=options["navigation_timeout_ms"],
-                            )
-                            if options["post_navigation_wait_ms"] > 0:
-                                await page.wait_for_timeout(options["post_navigation_wait_ms"])
-                            eval_result = await page.evaluate(script_to_run)
-                        else:
-                            raise
-                    eval_result = await _apply_xiaohongshu_user_me_fallback(page, eval_result, request)
-            else:
-                context_options: dict[str, Any] = {}
-                if request.auth_data:
-                    context_options["storage_state"] = request.auth_data
-                elif options["storage_state"]:
-                    context_options["storage_state"] = options["storage_state"]
-                context = await browser.new_context(**context_options)
-                page = await context.new_page()
-                if options["target_url"]:
-                    await page.goto(
-                        options["target_url"],
-                        wait_until=options["wait_until"],
-                        timeout=options["navigation_timeout_ms"],
-                    )
-                    if options["wait_selector"]:
-                        await page.wait_for_selector(
-                            options["wait_selector"], timeout=options["navigation_timeout_ms"]
-                        )
-                    if options["post_navigation_wait_ms"] > 0:
-                        await page.wait_for_timeout(options["post_navigation_wait_ms"])
-                try:
-                    eval_result = await page.evaluate(script_to_run)
-                except Exception as error:
-                    fallback_target_url = _resolve_default_target_url(request.platform)
-                    if (
-                        not options["target_url"]
-                        and fallback_target_url
-                        and _looks_like_origin_security_error(error)
-                    ):
-                        await page.goto(
-                            fallback_target_url,
-                            wait_until=options["wait_until"],
-                            timeout=options["navigation_timeout_ms"],
-                        )
-                        if options["post_navigation_wait_ms"] > 0:
-                            await page.wait_for_timeout(options["post_navigation_wait_ms"])
-                        eval_result = await page.evaluate(script_to_run)
-                    else:
-                        raise
-                eval_result = await _apply_xiaohongshu_user_me_fallback(page, eval_result, request)
-        finally:
-            if context is not None:
-                await context.close()
-            if pooled_entry is not None and pool_key is not None:
-                async with _PLAYWRIGHT_POOL_LOCK:
-                    now = asyncio.get_running_loop().time()
-                    entry = _PLAYWRIGHT_BROWSER_POOL.get(pool_key)
-                    if entry is not None:
-                        entry.last_used_at = now
-            elif should_close_browser:
-                await browser.close()
+        eval_result = await _run_playwright_script(
+            request,
+            options,
+            target_url=options["target_url"],
+            script_to_run=script_to_run,
+            wait_until=options["wait_until"],
+            wait_selector=options["wait_selector"],
+            post_navigation_wait_ms=options["post_navigation_wait_ms"],
+            allow_origin_fallback=True,
+            post_evaluate_hook=_apply_xiaohongshu_user_me_fallback,
+        )
     except PlaywrightTimeoutError as error:
         raise HTTPException(status_code=504, detail=f"playwright eval timeout: {error}") from error
     except HTTPException:
@@ -1205,7 +1300,6 @@ def _build_x_intercept_bootstrap_script(capture_key: str) -> str:
 
 async def _run_playwright_intercept_x_intent(request: FetchRequest, intent_type: str) -> list[CleanItem]:
     from playwright.async_api import TimeoutError as PlaywrightTimeoutError
-    from playwright.async_api import async_playwright
 
     config = request.config if isinstance(request.config, dict) else {}
     playwright_options = config.get("playwright")
@@ -1243,11 +1337,7 @@ async def _run_playwright_intercept_x_intent(request: FetchRequest, intent_type:
     count = max(1, min(count, 100))
     raw_type = str(args_obj.get("type", "latest")).strip().lower()
     search_type = "top" if raw_type == "top" else "latest"
-    headless = bool(playwright_options.get("headless", True))
-    navigation_timeout_ms = playwright_options.get("navigationTimeoutMs", 60000)
-    if not isinstance(navigation_timeout_ms, int) or navigation_timeout_ms < 1000:
-        raise HTTPException(status_code=400, detail="config.playwright.navigationTimeoutMs must be an integer >= 1000")
-    storage_state = _load_playwright_storage_state_from_config(request, playwright_options)
+    runtime_options = _extract_playwright_runtime_options(request, config, playwright_options)
     if normalized_intent == "search":
         target_url = f"https://x.com/search?q={quote(query)}&src=typed_query&f={'live' if search_type == 'latest' else 'top'}"
     elif normalized_intent == "profile":
@@ -1289,28 +1379,25 @@ async def _run_playwright_intercept_x_intent(request: FetchRequest, intent_type:
         )
 
     try:
-        async with async_playwright() as playwright:
-            browser = await playwright.chromium.launch(headless=headless)
-            context_options: dict[str, Any] = {}
-            if storage_state:
-                context_options["storage_state"] = storage_state
-            context = await browser.new_context(**context_options)
-            page = await context.new_page()
-            try:
-                bootstrap_capture_key = {
-                    "search": "SearchTimeline",
-                    "notifications": "NotificationsTimeline",
-                    "followers": "Followers",
-                    "following": "Following",
-                }.get(normalized_intent)
-                if bootstrap_capture_key:
-                    await page.add_init_script(_build_x_intercept_bootstrap_script(bootstrap_capture_key))
-                await page.goto(target_url, wait_until="domcontentloaded", timeout=navigation_timeout_ms)
-                await page.wait_for_timeout(2000)
-                eval_result = await page.evaluate(script_to_run)
-            finally:
-                await context.close()
-                await browser.close()
+        bootstrap_capture_key = {
+            "search": "SearchTimeline",
+            "notifications": "NotificationsTimeline",
+            "followers": "Followers",
+            "following": "Following",
+        }.get(normalized_intent)
+        init_script = (
+            _build_x_intercept_bootstrap_script(bootstrap_capture_key)
+            if bootstrap_capture_key
+            else None
+        )
+        eval_result = await _run_playwright_script(
+            request,
+            runtime_options,
+            target_url=target_url,
+            script_to_run=script_to_run,
+            post_navigation_wait_ms=2000,
+            init_script=init_script,
+        )
     except PlaywrightTimeoutError as error:
         raise HTTPException(status_code=504, detail=f"playwright intercept search timeout: {error}") from error
     except HTTPException:
@@ -1341,7 +1428,6 @@ def _normalize_reddit_username(raw: Any) -> str:
 
 async def _run_playwright_intercept_reddit_intent(request: FetchRequest, intent_type: str) -> list[CleanItem]:
     from playwright.async_api import TimeoutError as PlaywrightTimeoutError
-    from playwright.async_api import async_playwright
 
     config = request.config if isinstance(request.config, dict) else {}
     playwright_options = config.get("playwright")
@@ -1381,11 +1467,7 @@ async def _run_playwright_intercept_reddit_intent(request: FetchRequest, intent_
     except (TypeError, ValueError):
         limit = 20
     limit = max(1, min(limit, 100))
-    headless = bool(playwright_options.get("headless", True))
-    navigation_timeout_ms = playwright_options.get("navigationTimeoutMs", 60000)
-    if not isinstance(navigation_timeout_ms, int) or navigation_timeout_ms < 1000:
-        raise HTTPException(status_code=400, detail="config.playwright.navigationTimeoutMs must be an integer >= 1000")
-    storage_state = _load_playwright_storage_state_from_config(request, playwright_options)
+    runtime_options = _extract_playwright_runtime_options(request, config, playwright_options)
 
     if normalized_intent == "search":
         target_url = f"https://www.reddit.com/search/?q={quote(query)}"
@@ -1422,20 +1504,13 @@ async def _run_playwright_intercept_reddit_intent(request: FetchRequest, intent_
     )
 
     try:
-        async with async_playwright() as playwright:
-            browser = await playwright.chromium.launch(headless=headless)
-            context_options: dict[str, Any] = {}
-            if storage_state:
-                context_options["storage_state"] = storage_state
-            context = await browser.new_context(**context_options)
-            page = await context.new_page()
-            try:
-                await page.goto(target_url, wait_until="domcontentloaded", timeout=navigation_timeout_ms)
-                await page.wait_for_timeout(1000)
-                eval_result = await page.evaluate(script_to_run)
-            finally:
-                await context.close()
-                await browser.close()
+        eval_result = await _run_playwright_script(
+            request,
+            runtime_options,
+            target_url=target_url,
+            script_to_run=script_to_run,
+            post_navigation_wait_ms=1000,
+        )
     except PlaywrightTimeoutError as error:
         raise HTTPException(status_code=504, detail=f"playwright intercept reddit timeout: {error}") from error
     except HTTPException:
@@ -1457,7 +1532,6 @@ def _normalize_xhs_user_id(raw: Any) -> str:
 
 async def _run_playwright_intercept_xhs_intent(request: FetchRequest, intent_type: str) -> list[CleanItem]:
     from playwright.async_api import TimeoutError as PlaywrightTimeoutError
-    from playwright.async_api import async_playwright
 
     config = request.config if isinstance(request.config, dict) else {}
     playwright_options = config.get("playwright")
@@ -1485,11 +1559,7 @@ async def _run_playwright_intercept_xhs_intent(request: FetchRequest, intent_typ
     if normalized_intent == "user" and not user_id:
         raise HTTPException(status_code=400, detail="config.playwright.args.id is required for intercept-xhs-user mode")
 
-    headless = bool(playwright_options.get("headless", True))
-    navigation_timeout_ms = playwright_options.get("navigationTimeoutMs", 60000)
-    if not isinstance(navigation_timeout_ms, int) or navigation_timeout_ms < 1000:
-        raise HTTPException(status_code=400, detail="config.playwright.navigationTimeoutMs must be an integer >= 1000")
-    storage_state = _load_playwright_storage_state_from_config(request, playwright_options)
+    runtime_options = _extract_playwright_runtime_options(request, config, playwright_options)
     if normalized_intent == "search":
         target_url = f"https://www.xiaohongshu.com/search_result?keyword={quote(query)}&source=web_search_result_notes"
     elif normalized_intent == "user":
@@ -1515,27 +1585,24 @@ async def _run_playwright_intercept_xhs_intent(request: FetchRequest, intent_typ
     )
 
     try:
-        async with async_playwright() as playwright:
-            browser = await playwright.chromium.launch(headless=headless)
-            context_options: dict[str, Any] = {}
-            if storage_state:
-                context_options["storage_state"] = storage_state
-            context = await browser.new_context(**context_options)
-            page = await context.new_page()
-            try:
-                bootstrap_capture_key = {
-                    "feed": "homefeed",
-                    "user": "v1/user/posted",
-                    "notifications": "/you/",
-                }.get(normalized_intent)
-                if bootstrap_capture_key:
-                    await page.add_init_script(_build_x_intercept_bootstrap_script(bootstrap_capture_key))
-                await page.goto(target_url, wait_until="domcontentloaded", timeout=navigation_timeout_ms)
-                await page.wait_for_timeout(1200)
-                eval_result = await page.evaluate(script_to_run)
-            finally:
-                await context.close()
-                await browser.close()
+        bootstrap_capture_key = {
+            "feed": "homefeed",
+            "user": "v1/user/posted",
+            "notifications": "/you/",
+        }.get(normalized_intent)
+        init_script = (
+            _build_x_intercept_bootstrap_script(bootstrap_capture_key)
+            if bootstrap_capture_key
+            else None
+        )
+        eval_result = await _run_playwright_script(
+            request,
+            runtime_options,
+            target_url=target_url,
+            script_to_run=script_to_run,
+            post_navigation_wait_ms=1200,
+            init_script=init_script,
+        )
     except PlaywrightTimeoutError as error:
         raise HTTPException(status_code=504, detail=f"playwright intercept xhs timeout: {error}") from error
     except HTTPException:
@@ -1551,7 +1618,6 @@ async def _run_playwright_intercept_xhs_intent(request: FetchRequest, intent_typ
 
 async def _run_playwright_intercept_bbc_intent(request: FetchRequest, intent_type: str) -> list[CleanItem]:
     from playwright.async_api import TimeoutError as PlaywrightTimeoutError
-    from playwright.async_api import async_playwright
 
     config = request.config if isinstance(request.config, dict) else {}
     playwright_options = config.get("playwright")
@@ -1571,11 +1637,7 @@ async def _run_playwright_intercept_bbc_intent(request: FetchRequest, intent_typ
         limit = 20
     limit = max(1, min(limit, 50))
 
-    headless = bool(playwright_options.get("headless", True))
-    navigation_timeout_ms = playwright_options.get("navigationTimeoutMs", 60000)
-    if not isinstance(navigation_timeout_ms, int) or navigation_timeout_ms < 1000:
-        raise HTTPException(status_code=400, detail="config.playwright.navigationTimeoutMs must be an integer >= 1000")
-    storage_state = _load_playwright_storage_state_from_config(request, playwright_options)
+    runtime_options = _extract_playwright_runtime_options(request, config, playwright_options)
     if normalized_intent == "news":
         target_url = "https://feeds.bbci.co.uk/news/rss.xml"
     else:
@@ -1592,20 +1654,13 @@ async def _run_playwright_intercept_bbc_intent(request: FetchRequest, intent_typ
     )
 
     try:
-        async with async_playwright() as playwright:
-            browser = await playwright.chromium.launch(headless=headless)
-            context_options: dict[str, Any] = {}
-            if storage_state:
-                context_options["storage_state"] = storage_state
-            context = await browser.new_context(**context_options)
-            page = await context.new_page()
-            try:
-                await page.goto(target_url, wait_until="domcontentloaded", timeout=navigation_timeout_ms)
-                await page.wait_for_timeout(800)
-                eval_result = await page.evaluate(script_to_run)
-            finally:
-                await context.close()
-                await browser.close()
+        eval_result = await _run_playwright_script(
+            request,
+            runtime_options,
+            target_url=target_url,
+            script_to_run=script_to_run,
+            post_navigation_wait_ms=800,
+        )
     except PlaywrightTimeoutError as error:
         raise HTTPException(status_code=504, detail=f"playwright intercept bbc timeout: {error}") from error
     except HTTPException:
@@ -1621,7 +1676,6 @@ async def _run_playwright_intercept_bbc_intent(request: FetchRequest, intent_typ
 
 async def _run_playwright_intercept_hackernews_intent(request: FetchRequest, intent_type: str) -> list[CleanItem]:
     from playwright.async_api import TimeoutError as PlaywrightTimeoutError
-    from playwright.async_api import async_playwright
 
     config = request.config if isinstance(request.config, dict) else {}
     playwright_options = config.get("playwright")
@@ -1641,11 +1695,7 @@ async def _run_playwright_intercept_hackernews_intent(request: FetchRequest, int
         limit = 20
     limit = max(1, min(limit, 100))
 
-    headless = bool(playwright_options.get("headless", True))
-    navigation_timeout_ms = playwright_options.get("navigationTimeoutMs", 60000)
-    if not isinstance(navigation_timeout_ms, int) or navigation_timeout_ms < 1000:
-        raise HTTPException(status_code=400, detail="config.playwright.navigationTimeoutMs must be an integer >= 1000")
-    storage_state = _load_playwright_storage_state_from_config(request, playwright_options)
+    runtime_options = _extract_playwright_runtime_options(request, config, playwright_options)
     target_url = "https://news.ycombinator.com"
 
     script_to_run = build_x_intent_script(
@@ -1659,20 +1709,13 @@ async def _run_playwright_intercept_hackernews_intent(request: FetchRequest, int
     )
 
     try:
-        async with async_playwright() as playwright:
-            browser = await playwright.chromium.launch(headless=headless)
-            context_options: dict[str, Any] = {}
-            if storage_state:
-                context_options["storage_state"] = storage_state
-            context = await browser.new_context(**context_options)
-            page = await context.new_page()
-            try:
-                await page.goto(target_url, wait_until="domcontentloaded", timeout=navigation_timeout_ms)
-                await page.wait_for_timeout(500)
-                eval_result = await page.evaluate(script_to_run)
-            finally:
-                await context.close()
-                await browser.close()
+        eval_result = await _run_playwright_script(
+            request,
+            runtime_options,
+            target_url=target_url,
+            script_to_run=script_to_run,
+            post_navigation_wait_ms=500,
+        )
     except PlaywrightTimeoutError as error:
         raise HTTPException(status_code=504, detail=f"playwright intercept hackernews timeout: {error}") from error
     except HTTPException:
@@ -1688,7 +1731,6 @@ async def _run_playwright_intercept_hackernews_intent(request: FetchRequest, int
 
 async def _run_playwright_intercept_linkedin_intent(request: FetchRequest, intent_type: str) -> list[CleanItem]:
     from playwright.async_api import TimeoutError as PlaywrightTimeoutError
-    from playwright.async_api import async_playwright
 
     config = request.config if isinstance(request.config, dict) else {}
     playwright_options = config.get("playwright")
@@ -1725,11 +1767,7 @@ async def _run_playwright_intercept_linkedin_intent(request: FetchRequest, inten
         limit = 20
     limit = max(1, min(limit, 100))
 
-    headless = bool(playwright_options.get("headless", True))
-    navigation_timeout_ms = playwright_options.get("navigationTimeoutMs", 60000)
-    if not isinstance(navigation_timeout_ms, int) or navigation_timeout_ms < 1000:
-        raise HTTPException(status_code=400, detail="config.playwright.navigationTimeoutMs must be an integer >= 1000")
-    storage_state = _load_playwright_storage_state_from_config(request, playwright_options)
+    runtime_options = _extract_playwright_runtime_options(request, config, playwright_options)
     params = [f"keywords={quote(query)}"]
     if location:
         params.append(f"location={quote(location)}")
@@ -1755,20 +1793,13 @@ async def _run_playwright_intercept_linkedin_intent(request: FetchRequest, inten
     )
 
     try:
-        async with async_playwright() as playwright:
-            browser = await playwright.chromium.launch(headless=headless)
-            context_options: dict[str, Any] = {}
-            if storage_state:
-                context_options["storage_state"] = storage_state
-            context = await browser.new_context(**context_options)
-            page = await context.new_page()
-            try:
-                await page.goto(target_url, wait_until="domcontentloaded", timeout=navigation_timeout_ms)
-                await page.wait_for_timeout(1500)
-                eval_result = await page.evaluate(script_to_run)
-            finally:
-                await context.close()
-                await browser.close()
+        eval_result = await _run_playwright_script(
+            request,
+            runtime_options,
+            target_url=target_url,
+            script_to_run=script_to_run,
+            post_navigation_wait_ms=1500,
+        )
     except PlaywrightTimeoutError as error:
         raise HTTPException(status_code=504, detail=f"playwright intercept linkedin timeout: {error}") from error
     except HTTPException:
@@ -1784,7 +1815,6 @@ async def _run_playwright_intercept_linkedin_intent(request: FetchRequest, inten
 
 async def _run_playwright_intercept_linux_do_intent(request: FetchRequest, intent_type: str) -> list[CleanItem]:
     from playwright.async_api import TimeoutError as PlaywrightTimeoutError
-    from playwright.async_api import async_playwright
 
     config = request.config if isinstance(request.config, dict) else {}
     playwright_options = config.get("playwright")
@@ -1830,11 +1860,7 @@ async def _run_playwright_intercept_linux_do_intent(request: FetchRequest, inten
         limit = 20
     limit = max(1, min(limit, 100))
 
-    headless = bool(playwright_options.get("headless", True))
-    navigation_timeout_ms = playwright_options.get("navigationTimeoutMs", 60000)
-    if not isinstance(navigation_timeout_ms, int) or navigation_timeout_ms < 1000:
-        raise HTTPException(status_code=400, detail="config.playwright.navigationTimeoutMs must be an integer >= 1000")
-    storage_state = _load_playwright_storage_state_from_config(request, playwright_options)
+    runtime_options = _extract_playwright_runtime_options(request, config, playwright_options)
     target_url = "https://linux.do"
 
     script_to_run = build_x_intent_script(
@@ -1853,20 +1879,13 @@ async def _run_playwright_intercept_linux_do_intent(request: FetchRequest, inten
     )
 
     try:
-        async with async_playwright() as playwright:
-            browser = await playwright.chromium.launch(headless=headless)
-            context_options: dict[str, Any] = {}
-            if storage_state:
-                context_options["storage_state"] = storage_state
-            context = await browser.new_context(**context_options)
-            page = await context.new_page()
-            try:
-                await page.goto(target_url, wait_until="domcontentloaded", timeout=navigation_timeout_ms)
-                await page.wait_for_timeout(1000)
-                eval_result = await page.evaluate(script_to_run)
-            finally:
-                await context.close()
-                await browser.close()
+        eval_result = await _run_playwright_script(
+            request,
+            runtime_options,
+            target_url=target_url,
+            script_to_run=script_to_run,
+            post_navigation_wait_ms=1000,
+        )
     except PlaywrightTimeoutError as error:
         raise HTTPException(status_code=504, detail=f"playwright intercept linux-do timeout: {error}") from error
     except HTTPException:
@@ -1882,7 +1901,6 @@ async def _run_playwright_intercept_linux_do_intent(request: FetchRequest, inten
 
 async def _run_playwright_intercept_youtube_intent(request: FetchRequest, intent_type: str) -> list[CleanItem]:
     from playwright.async_api import TimeoutError as PlaywrightTimeoutError
-    from playwright.async_api import async_playwright
 
     config = request.config if isinstance(request.config, dict) else {}
     playwright_options = config.get("playwright")
@@ -1912,11 +1930,7 @@ async def _run_playwright_intercept_youtube_intent(request: FetchRequest, intent
         limit = 20
     limit = max(1, min(limit, 100))
 
-    headless = bool(playwright_options.get("headless", True))
-    navigation_timeout_ms = playwright_options.get("navigationTimeoutMs", 60000)
-    if not isinstance(navigation_timeout_ms, int) or navigation_timeout_ms < 1000:
-        raise HTTPException(status_code=400, detail="config.playwright.navigationTimeoutMs must be an integer >= 1000")
-    storage_state = _load_playwright_storage_state_from_config(request, playwright_options)
+    runtime_options = _extract_playwright_runtime_options(request, config, playwright_options)
 
     if normalized_intent == "search":
         target_url = "https://www.youtube.com"
@@ -1951,20 +1965,13 @@ async def _run_playwright_intercept_youtube_intent(request: FetchRequest, intent
     )
 
     try:
-        async with async_playwright() as playwright:
-            browser = await playwright.chromium.launch(headless=headless)
-            context_options: dict[str, Any] = {}
-            if storage_state:
-                context_options["storage_state"] = storage_state
-            context = await browser.new_context(**context_options)
-            page = await context.new_page()
-            try:
-                await page.goto(target_url, wait_until="domcontentloaded", timeout=navigation_timeout_ms)
-                await page.wait_for_timeout(1200)
-                eval_result = await page.evaluate(script_to_run)
-            finally:
-                await context.close()
-                await browser.close()
+        eval_result = await _run_playwright_script(
+            request,
+            runtime_options,
+            target_url=target_url,
+            script_to_run=script_to_run,
+            post_navigation_wait_ms=1200,
+        )
     except PlaywrightTimeoutError as error:
         raise HTTPException(status_code=504, detail=f"playwright intercept youtube timeout: {error}") from error
     except HTTPException:
@@ -1980,7 +1987,6 @@ async def _run_playwright_intercept_youtube_intent(request: FetchRequest, intent
 
 async def _run_playwright_intercept_weibo_intent(request: FetchRequest, intent_type: str) -> list[CleanItem]:
     from playwright.async_api import TimeoutError as PlaywrightTimeoutError
-    from playwright.async_api import async_playwright
 
     config = request.config if isinstance(request.config, dict) else {}
     playwright_options = config.get("playwright")
@@ -2019,11 +2025,7 @@ async def _run_playwright_intercept_weibo_intent(request: FetchRequest, intent_t
         limit = 20
     limit = max(1, min(limit, 100))
 
-    headless = bool(playwright_options.get("headless", True))
-    navigation_timeout_ms = playwright_options.get("navigationTimeoutMs", 60000)
-    if not isinstance(navigation_timeout_ms, int) or navigation_timeout_ms < 1000:
-        raise HTTPException(status_code=400, detail="config.playwright.navigationTimeoutMs must be an integer >= 1000")
-    storage_state = _load_playwright_storage_state_from_config(request, playwright_options)
+    runtime_options = _extract_playwright_runtime_options(request, config, playwright_options)
     target_url = "https://weibo.com"
 
     script_to_run = build_x_intent_script(
@@ -2042,20 +2044,13 @@ async def _run_playwright_intercept_weibo_intent(request: FetchRequest, intent_t
     )
 
     try:
-        async with async_playwright() as playwright:
-            browser = await playwright.chromium.launch(headless=headless)
-            context_options: dict[str, Any] = {}
-            if storage_state:
-                context_options["storage_state"] = storage_state
-            context = await browser.new_context(**context_options)
-            page_instance = await context.new_page()
-            try:
-                await page_instance.goto(target_url, wait_until="domcontentloaded", timeout=navigation_timeout_ms)
-                await page_instance.wait_for_timeout(1200)
-                eval_result = await page_instance.evaluate(script_to_run)
-            finally:
-                await context.close()
-                await browser.close()
+        eval_result = await _run_playwright_script(
+            request,
+            runtime_options,
+            target_url=target_url,
+            script_to_run=script_to_run,
+            post_navigation_wait_ms=1200,
+        )
     except PlaywrightTimeoutError as error:
         raise HTTPException(status_code=504, detail=f"playwright intercept weibo timeout: {error}") from error
     except HTTPException:
@@ -2071,7 +2066,6 @@ async def _run_playwright_intercept_weibo_intent(request: FetchRequest, intent_t
 
 async def _run_playwright_intercept_zhihu_intent(request: FetchRequest, intent_type: str) -> list[CleanItem]:
     from playwright.async_api import TimeoutError as PlaywrightTimeoutError
-    from playwright.async_api import async_playwright
 
     config = request.config if isinstance(request.config, dict) else {}
     playwright_options = config.get("playwright")
@@ -2098,11 +2092,7 @@ async def _run_playwright_intercept_zhihu_intent(request: FetchRequest, intent_t
     if normalized_intent == "search" and not query:
         raise HTTPException(status_code=400, detail="config.playwright.args.keyword or config.playwright.args.query is required for intercept-zhihu-search mode")
 
-    headless = bool(playwright_options.get("headless", True))
-    navigation_timeout_ms = playwright_options.get("navigationTimeoutMs", 60000)
-    if not isinstance(navigation_timeout_ms, int) or navigation_timeout_ms < 1000:
-        raise HTTPException(status_code=400, detail="config.playwright.navigationTimeoutMs must be an integer >= 1000")
-    storage_state = _load_playwright_storage_state_from_config(request, playwright_options)
+    runtime_options = _extract_playwright_runtime_options(request, config, playwright_options)
     if normalized_intent == "search" and query:
         target_url = f"https://www.zhihu.com/search?type=content&q={quote(query)}"
     elif normalized_intent == "hot":
@@ -2125,20 +2115,13 @@ async def _run_playwright_intercept_zhihu_intent(request: FetchRequest, intent_t
     )
 
     try:
-        async with async_playwright() as playwright:
-            browser = await playwright.chromium.launch(headless=headless)
-            context_options: dict[str, Any] = {}
-            if storage_state:
-                context_options["storage_state"] = storage_state
-            context = await browser.new_context(**context_options)
-            page = await context.new_page()
-            try:
-                await page.goto(target_url, wait_until="domcontentloaded", timeout=navigation_timeout_ms)
-                await page.wait_for_timeout(1200)
-                eval_result = await page.evaluate(script_to_run)
-            finally:
-                await context.close()
-                await browser.close()
+        eval_result = await _run_playwright_script(
+            request,
+            runtime_options,
+            target_url=target_url,
+            script_to_run=script_to_run,
+            post_navigation_wait_ms=1200,
+        )
     except PlaywrightTimeoutError as error:
         raise HTTPException(status_code=504, detail=f"playwright intercept zhihu timeout: {error}") from error
     except HTTPException:
@@ -2154,7 +2137,6 @@ async def _run_playwright_intercept_zhihu_intent(request: FetchRequest, intent_t
 
 async def _run_playwright_intercept_bilibili_intent(request: FetchRequest, intent_type: str) -> list[CleanItem]:
     from playwright.async_api import TimeoutError as PlaywrightTimeoutError
-    from playwright.async_api import async_playwright
 
     config = request.config if isinstance(request.config, dict) else {}
     playwright_options = config.get("playwright")
@@ -2208,11 +2190,7 @@ async def _run_playwright_intercept_bilibili_intent(request: FetchRequest, inten
     if normalized_intent in {"video", "comments"} and not bvid:
         raise HTTPException(status_code=400, detail=f"config.playwright.args.bvid is required for intercept-bilibili-{normalized_intent} mode")
 
-    headless = bool(playwright_options.get("headless", True))
-    navigation_timeout_ms = playwright_options.get("navigationTimeoutMs", 60000)
-    if not isinstance(navigation_timeout_ms, int) or navigation_timeout_ms < 1000:
-        raise HTTPException(status_code=400, detail="config.playwright.navigationTimeoutMs must be an integer >= 1000")
-    storage_state = _load_playwright_storage_state_from_config(request, playwright_options)
+    runtime_options = _extract_playwright_runtime_options(request, config, playwright_options)
 
     if normalized_intent == "search" and keyword:
         target_url = f"https://search.bilibili.com/all?keyword={quote(keyword)}"
@@ -2239,20 +2217,13 @@ async def _run_playwright_intercept_bilibili_intent(request: FetchRequest, inten
     )
 
     try:
-        async with async_playwright() as playwright:
-            browser = await playwright.chromium.launch(headless=headless)
-            context_options: dict[str, Any] = {}
-            if storage_state:
-                context_options["storage_state"] = storage_state
-            context = await browser.new_context(**context_options)
-            page_instance = await context.new_page()
-            try:
-                await page_instance.goto(target_url, wait_until="domcontentloaded", timeout=navigation_timeout_ms)
-                await page_instance.wait_for_timeout(1200)
-                eval_result = await page_instance.evaluate(script_to_run)
-            finally:
-                await context.close()
-                await browser.close()
+        eval_result = await _run_playwright_script(
+            request,
+            runtime_options,
+            target_url=target_url,
+            script_to_run=script_to_run,
+            post_navigation_wait_ms=1200,
+        )
     except PlaywrightTimeoutError as error:
         raise HTTPException(status_code=504, detail=f"playwright intercept bilibili timeout: {error}") from error
     except HTTPException:
@@ -2272,7 +2243,6 @@ async def _run_playwright_intercept_generic_intent(
     platform: str,
 ) -> list[CleanItem]:
     from playwright.async_api import TimeoutError as PlaywrightTimeoutError
-    from playwright.async_api import async_playwright
 
     normalized_platform = (platform or "").strip().lower()
     supported_intents = _GENERIC_INTERCEPT_INTENTS.get(normalized_platform, set())
@@ -2309,11 +2279,7 @@ async def _run_playwright_intercept_generic_intent(
         page = 1
     page = max(1, min(page, 1000))
 
-    headless = bool(playwright_options.get("headless", True))
-    navigation_timeout_ms = playwright_options.get("navigationTimeoutMs", 60000)
-    if not isinstance(navigation_timeout_ms, int) or navigation_timeout_ms < 1000:
-        raise HTTPException(status_code=400, detail="config.playwright.navigationTimeoutMs must be an integer >= 1000")
-    storage_state = _load_playwright_storage_state_from_config(request, playwright_options)
+    runtime_options = _extract_playwright_runtime_options(request, config, playwright_options)
     target_url = _GENERIC_INTERCEPT_TARGET_URL.get(normalized_platform, "https://example.com")
     if normalized_platform == "arxiv" and normalized_intent == "search" and query:
         target_url = f"https://arxiv.org/search/?query={quote(query)}&searchtype=all&source=header"
@@ -2346,20 +2312,13 @@ async def _run_playwright_intercept_generic_intent(
     )
 
     try:
-        async with async_playwright() as playwright:
-            browser = await playwright.chromium.launch(headless=headless)
-            context_options: dict[str, Any] = {}
-            if storage_state:
-                context_options["storage_state"] = storage_state
-            context = await browser.new_context(**context_options)
-            page_instance = await context.new_page()
-            try:
-                await page_instance.goto(target_url, wait_until="domcontentloaded", timeout=navigation_timeout_ms)
-                await page_instance.wait_for_timeout(1200)
-                eval_result = await page_instance.evaluate(script_to_run)
-            finally:
-                await context.close()
-                await browser.close()
+        eval_result = await _run_playwright_script(
+            request,
+            runtime_options,
+            target_url=target_url,
+            script_to_run=script_to_run,
+            post_navigation_wait_ms=1200,
+        )
     except PlaywrightTimeoutError as error:
         raise HTTPException(status_code=504, detail=f"playwright intercept {normalized_platform} timeout: {error}") from error
     except HTTPException:
@@ -2728,6 +2687,7 @@ def _normalize_v2_fetch_request(request: FetchV2Request) -> FetchRequest:
     normalized_driver = request.driver.name.strip().lower()
     raw_option = dict(request.driver.option)
     config = raw_option
+    normalized_user_id = request.user_id.strip() if isinstance(request.user_id, str) else ""
 
     if normalized_driver == "playwright":
         if "playwright" in raw_option:
@@ -2737,6 +2697,8 @@ def _normalize_v2_fetch_request(request: FetchV2Request) -> FetchRequest:
             )
         network = raw_option.get("network")
         playwright_option = {k: v for k, v in raw_option.items() if k != "network"}
+        if normalized_user_id and not str(playwright_option.get("userId", "")).strip():
+            playwright_option["userId"] = normalized_user_id
         config = {"playwright": playwright_option}
         if network is not None:
             config["network"] = network
@@ -2797,6 +2759,7 @@ def _normalize_v2_fetch_request(request: FetchV2Request) -> FetchRequest:
         platform=request.platform,
         config=config,
         source_id=request.source_id,
+        user_id=normalized_user_id or None,
         keywords=request.keywords,
         output_fields=output_fields or None,
         output_field_map=output_field_map or None,
@@ -2836,6 +2799,7 @@ def _normalize_v3_fetch_request(request: FetchV3Request) -> tuple[FetchRequest, 
     v2_request = FetchV2Request(
         platform=request.platform,
         sourceId=request.source_id,
+        userId=request.user_id,
         keywords=request.keywords,
         driver={
             "name": driver_name,

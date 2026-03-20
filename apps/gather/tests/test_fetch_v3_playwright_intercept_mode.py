@@ -37,7 +37,7 @@ def test_fetch_v3_uses_intercept_x_search_mode(monkeypatch):
             "sourceId": "source_123",
             "intent": {"type": "search", "args": {"query": "openai", "limit": 20}},
             "keywords": [],
-            "driver": {"name": "playwright", "option": {}},
+            "driver": {"name": "playwright"},
             "output": {"field": ["query", "tweets"], "type": "x-text"},
         },
     )
@@ -69,7 +69,7 @@ def test_fetch_v3_opencli_bridge_mode(monkeypatch):
             "sourceId": "source_123",
             "intent": {"type": "search", "args": {"query": "openai", "limit": 20}},
             "keywords": [],
-            "driver": {"name": "playwright", "option": {"mode": "opencli-bridge"}},
+            "driver": {"name": "playwright", "mode": "opencli-bridge"},
             "output": {
                 "field": {
                     "id": "tweets.id",
@@ -117,7 +117,7 @@ def test_fetch_v3_uses_intercept_reddit_search_mode(monkeypatch):
             "sourceId": "source_123",
             "intent": {"type": "search", "args": {"query": "openai", "limit": 20}},
             "keywords": [],
-            "driver": {"name": "playwright", "option": {}},
+            "driver": {"name": "playwright"},
             "output": {"field": ["query", "intent_type", "mode"], "type": "reddit-post"},
         },
     )
@@ -156,7 +156,7 @@ def test_fetch_v3_uses_intercept_xhs_search_mode(monkeypatch):
             "sourceId": "source_123",
             "intent": {"type": "search", "args": {"query": "openai", "limit": 20}},
             "keywords": [],
-            "driver": {"name": "playwright", "option": {}},
+            "driver": {"name": "playwright"},
             "output": {"field": ["query", "intent_type", "mode"], "type": "xhs-note"},
         },
     )
@@ -195,7 +195,7 @@ def test_fetch_v3_uses_intercept_bbc_news_mode(monkeypatch):
             "sourceId": "source_123",
             "intent": {"type": "news", "args": {"limit": 10}},
             "keywords": [],
-            "driver": {"name": "playwright", "option": {}},
+            "driver": {"name": "playwright"},
             "output": {"field": ["count", "intent_type", "mode"], "type": "bbc-news"},
         },
     )
@@ -234,7 +234,7 @@ def test_fetch_v3_uses_intercept_hackernews_top_mode(monkeypatch):
             "sourceId": "source_123",
             "intent": {"type": "top", "args": {"limit": 10}},
             "keywords": [],
-            "driver": {"name": "playwright", "option": {}},
+            "driver": {"name": "playwright"},
             "output": {"field": ["count", "intent_type", "mode"], "type": "hn-top"},
         },
     )
@@ -273,7 +273,7 @@ def test_fetch_v3_uses_intercept_linkedin_search_mode(monkeypatch):
             "sourceId": "source_123",
             "intent": {"type": "search", "args": {"query": "software engineer", "limit": 10}},
             "keywords": [],
-            "driver": {"name": "playwright", "option": {}},
+            "driver": {"name": "playwright"},
             "output": {"field": ["query", "intent_type", "mode"], "type": "linkedin-job"},
         },
     )
@@ -312,7 +312,7 @@ def test_fetch_v3_uses_intercept_linux_do_search_mode(monkeypatch):
             "sourceId": "source_123",
             "intent": {"type": "search", "args": {"keyword": "playwright", "limit": 10}},
             "keywords": [],
-            "driver": {"name": "playwright", "option": {}},
+            "driver": {"name": "playwright"},
             "output": {"field": ["keyword", "intent_type", "mode"], "type": "linux-do-topic"},
         },
     )
@@ -351,7 +351,7 @@ def test_fetch_v3_uses_intercept_youtube_search_mode(monkeypatch):
             "sourceId": "source_123",
             "intent": {"type": "search", "args": {"query": "openai", "limit": 10}},
             "keywords": [],
-            "driver": {"name": "playwright", "option": {}},
+            "driver": {"name": "playwright"},
             "output": {"field": ["query", "intent_type", "mode"], "type": "youtube-video"},
         },
     )
@@ -390,7 +390,7 @@ def test_fetch_v3_uses_intercept_youtube_channel_mode(monkeypatch):
             "sourceId": "source_123",
             "intent": {"type": "channel", "args": {"id": "@openai", "limit": 10}},
             "keywords": [],
-            "driver": {"name": "playwright", "option": {}},
+            "driver": {"name": "playwright"},
             "output": {"field": ["channel_id", "intent_type", "mode"], "type": "youtube-channel"},
         },
     )
@@ -429,7 +429,7 @@ def test_fetch_v3_uses_intercept_weibo_user_posts_mode(monkeypatch):
             "sourceId": "source_123",
             "intent": {"type": "user_posts", "args": {"uid": "1654184992", "limit": 10}},
             "keywords": [],
-            "driver": {"name": "playwright", "option": {}},
+            "driver": {"name": "playwright"},
             "output": {"field": ["uid", "intent_type", "mode"], "type": "weibo-post"},
         },
     )
@@ -468,7 +468,7 @@ def test_fetch_v3_uses_intercept_zhihu_search_mode(monkeypatch):
             "sourceId": "source_123",
             "intent": {"type": "search", "args": {"query": "openai", "limit": 10}},
             "keywords": [],
-            "driver": {"name": "playwright", "option": {}},
+            "driver": {"name": "playwright"},
             "output": {"field": ["keyword", "intent_type", "mode"], "type": "zhihu-search"},
         },
     )
@@ -507,7 +507,7 @@ def test_fetch_v3_uses_intercept_bilibili_search_mode(monkeypatch):
             "sourceId": "source_123",
             "intent": {"type": "search", "args": {"query": "openai", "limit": 10}},
             "keywords": [],
-            "driver": {"name": "playwright", "option": {}},
+            "driver": {"name": "playwright"},
             "output": {"field": ["keyword", "intent_type", "mode"], "type": "bilibili-video"},
         },
     )
@@ -564,7 +564,7 @@ def test_fetch_v3_uses_intercept_new_web_sources_mode(monkeypatch, platform, int
             "sourceId": "source_123",
             "intent": {"type": intent_type, "args": intent_args},
             "keywords": [],
-            "driver": {"name": "playwright", "option": {}},
+            "driver": {"name": "playwright"},
             "output": {"field": ["mode", "intent_type"], "type": f"{platform}-{intent_type}"},
         },
     )
