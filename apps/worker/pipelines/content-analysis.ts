@@ -1549,6 +1549,16 @@ type SearchRequestConfig = {
   body?: string;
 };
 
+const SEARCH_PROVIDER_ENDPOINTS = {
+  parallel:
+    process.env.PARALLEL_API_ENDPOINT || "https://api.parallel.ai/v1beta/search",
+  tavily:
+    process.env.TAVILY_API_ENDPOINT || "https://api.tavily.com/search",
+  anspire:
+    process.env.ANSPIRE_API_ENDPOINT ||
+    "https://plugin.anspire.cn/api/ntsearch/search",
+} as const;
+
 function detectSearchProvider(
   platform?: string | null,
   apiEndpoint?: string | null,
@@ -1603,7 +1613,7 @@ function buildSearchRequest(
       fetch_policy: asObjectOrUndefined(options.fetch_policy, options.fetchPolicy),
     };
     return {
-      url: search?.apiEndpoint || "https://api.parallel.ai/v1beta/search",
+      url: SEARCH_PROVIDER_ENDPOINTS.parallel,
       method: "POST",
       headers,
       body: JSON.stringify(stripUndefined(payload)),
@@ -1630,7 +1640,7 @@ function buildSearchRequest(
       days: toNumberOption(options.days),
     };
     return {
-      url: search?.apiEndpoint || "https://api.tavily.com/search",
+      url: SEARCH_PROVIDER_ENDPOINTS.tavily,
       method: "POST",
       headers,
       body: JSON.stringify(stripUndefined(payload)),
@@ -1659,7 +1669,7 @@ function buildSearchRequest(
     });
     return {
       url:
-        `${search?.apiEndpoint || "https://plugin.anspire.cn/api/ntsearch/search"}?${queryParams.toString()}`,
+        `${SEARCH_PROVIDER_ENDPOINTS.anspire}?${queryParams.toString()}`,
       method: "GET",
       headers,
     };
