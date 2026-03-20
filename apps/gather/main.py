@@ -271,6 +271,7 @@ class _PlaywrightBrowserPoolEntry:
     last_used_at: float
     idle_timeout_ms: int
     context: Any | None = None
+    keeper_page: Any | None = None
     active_tabs: int = 0
     lock: asyncio.Lock = field(default_factory=asyncio.Lock)
 
@@ -806,6 +807,8 @@ async def _acquire_pooled_playwright_page(entry: _PlaywrightBrowserPoolEntry, st
             if isinstance(storage_state, dict):
                 context_options["storage_state"] = storage_state
             entry.context = await entry.browser.new_context(**context_options)
+        if entry.keeper_page is None or entry.keeper_page.is_closed():
+            entry.keeper_page = await entry.context.new_page()
         page = await entry.context.new_page()
         entry.active_tabs += 1
         entry.last_used_at = asyncio.get_running_loop().time()
