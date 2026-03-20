@@ -678,6 +678,7 @@ async function fetchSocialSource(
   const keywordFilterOptions = { ...existingKeywordFilter };
   delete keywordFilterOptions.keywords;
   const driverOption = normalizeGatherDriverOption(baseConfig, gatherDriver);
+  const gatherUserId = resolveGatherPoolUserId(source, sourceConfigObj, driverOption);
   const driver: GatherDriverPayload =
     Object.keys(keywordFilterOptions).length > 0
       ? {
@@ -698,6 +699,7 @@ async function fetchSocialSource(
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         platform: gatherPlatform,
+        userId: gatherUserId,
         keywords: keywordFilterTerms,
         driver,
         sourceId: source.id,
@@ -1116,6 +1118,28 @@ function resolveAgentBrowserOwnerId(
   for (const value of candidates) {
     if (typeof value === "string" && value.trim()) {
       return value.trim();
+    }
+  }
+  return `source:${source.id}`;
+}
+
+function resolveGatherPoolUserId(
+  source: SocialMediaSource,
+  config: Record<string, unknown>,
+  driverOptions: Record<string, unknown>
+): string {
+  const playwrightConfig = asObject(config.playwright);
+  const candidates = [
+    driverOptions.userId,
+    driverOptions.user_id,
+    config.userId,
+    config.user_id,
+    playwrightConfig.userId,
+    playwrightConfig.user_id,
+  ];
+  for (const candidate of candidates) {
+    if (typeof candidate === "string" && candidate.trim()) {
+      return candidate.trim();
     }
   }
   return `source:${source.id}`;
