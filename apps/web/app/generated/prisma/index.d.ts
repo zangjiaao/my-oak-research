@@ -99,6 +99,11 @@ export type Content = $Result.DefaultSelection<Prisma.$ContentPayload>
  */
 export type ContentKeyword = $Result.DefaultSelection<Prisma.$ContentKeywordPayload>
 /**
+ * Model ContentSubjectMatch
+ * 
+ */
+export type ContentSubjectMatch = $Result.DefaultSelection<Prisma.$ContentSubjectMatchPayload>
+/**
  * Model ContentEntity
  * 
  */
@@ -223,6 +228,26 @@ export const SearchPlatform: {
 export type SearchPlatform = (typeof SearchPlatform)[keyof typeof SearchPlatform]
 
 
+export const KeywordStrategy: {
+  AUTO: 'AUTO',
+  RECALL_ONLY: 'RECALL_ONLY',
+  PRECISION_ONLY: 'PRECISION_ONLY',
+  HYBRID: 'HYBRID'
+};
+
+export type KeywordStrategy = (typeof KeywordStrategy)[keyof typeof KeywordStrategy]
+
+
+export const ContentSubjectMatchSource: {
+  QUERY: 'QUERY',
+  GATHER: 'GATHER',
+  AI: 'AI',
+  FUSED: 'FUSED'
+};
+
+export type ContentSubjectMatchSource = (typeof ContentSubjectMatchSource)[keyof typeof ContentSubjectMatchSource]
+
+
 export const QueryFrequency: {
   MANUAL: 'MANUAL',
   HOURLY: 'HOURLY',
@@ -300,6 +325,14 @@ export const SearchEngineKind: typeof $Enums.SearchEngineKind
 export type SearchPlatform = $Enums.SearchPlatform
 
 export const SearchPlatform: typeof $Enums.SearchPlatform
+
+export type KeywordStrategy = $Enums.KeywordStrategy
+
+export const KeywordStrategy: typeof $Enums.KeywordStrategy
+
+export type ContentSubjectMatchSource = $Enums.ContentSubjectMatchSource
+
+export const ContentSubjectMatchSource: typeof $Enums.ContentSubjectMatchSource
 
 export type QueryFrequency = $Enums.QueryFrequency
 
@@ -607,6 +640,16 @@ export class PrismaClient<
     * ```
     */
   get contentKeyword(): Prisma.ContentKeywordDelegate<ExtArgs, ClientOptions>;
+
+  /**
+   * `prisma.contentSubjectMatch`: Exposes CRUD operations for the **ContentSubjectMatch** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more ContentSubjectMatches
+    * const contentSubjectMatches = await prisma.contentSubjectMatch.findMany()
+    * ```
+    */
+  get contentSubjectMatch(): Prisma.ContentSubjectMatchDelegate<ExtArgs, ClientOptions>;
 
   /**
    * `prisma.contentEntity`: Exposes CRUD operations for the **ContentEntity** model.
@@ -1158,6 +1201,7 @@ export namespace Prisma {
     TaskEvent: 'TaskEvent',
     Content: 'Content',
     ContentKeyword: 'ContentKeyword',
+    ContentSubjectMatch: 'ContentSubjectMatch',
     ContentEntity: 'ContentEntity',
     Favorite: 'Favorite',
     ReportTemplate: 'ReportTemplate',
@@ -1183,7 +1227,7 @@ export namespace Prisma {
       omit: GlobalOmitOptions
     }
     meta: {
-      modelProps: "category" | "keyword" | "proxy" | "credential" | "source" | "bbPreset" | "sourcePresetBinding" | "bbPresetSyncLog" | "webSourceConfig" | "darknetSourceConfig" | "searchEngineSourceConfig" | "socialMediaSourceConfig" | "query" | "queryRun" | "taskEvent" | "content" | "contentKeyword" | "contentEntity" | "favorite" | "reportTemplate" | "report" | "chatSession" | "chatMessage" | "reportMaterial" | "knowledge" | "knowledgeFile" | "knowledgeChunk"
+      modelProps: "category" | "keyword" | "proxy" | "credential" | "source" | "bbPreset" | "sourcePresetBinding" | "bbPresetSyncLog" | "webSourceConfig" | "darknetSourceConfig" | "searchEngineSourceConfig" | "socialMediaSourceConfig" | "query" | "queryRun" | "taskEvent" | "content" | "contentKeyword" | "contentSubjectMatch" | "contentEntity" | "favorite" | "reportTemplate" | "report" | "chatSession" | "chatMessage" | "reportMaterial" | "knowledge" | "knowledgeFile" | "knowledgeChunk"
       txIsolationLevel: Prisma.TransactionIsolationLevel
     }
     model: {
@@ -2445,6 +2489,80 @@ export namespace Prisma {
           }
         }
       }
+      ContentSubjectMatch: {
+        payload: Prisma.$ContentSubjectMatchPayload<ExtArgs>
+        fields: Prisma.ContentSubjectMatchFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.ContentSubjectMatchFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ContentSubjectMatchPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.ContentSubjectMatchFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ContentSubjectMatchPayload>
+          }
+          findFirst: {
+            args: Prisma.ContentSubjectMatchFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ContentSubjectMatchPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.ContentSubjectMatchFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ContentSubjectMatchPayload>
+          }
+          findMany: {
+            args: Prisma.ContentSubjectMatchFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ContentSubjectMatchPayload>[]
+          }
+          create: {
+            args: Prisma.ContentSubjectMatchCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ContentSubjectMatchPayload>
+          }
+          createMany: {
+            args: Prisma.ContentSubjectMatchCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.ContentSubjectMatchCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ContentSubjectMatchPayload>[]
+          }
+          delete: {
+            args: Prisma.ContentSubjectMatchDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ContentSubjectMatchPayload>
+          }
+          update: {
+            args: Prisma.ContentSubjectMatchUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ContentSubjectMatchPayload>
+          }
+          deleteMany: {
+            args: Prisma.ContentSubjectMatchDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.ContentSubjectMatchUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateManyAndReturn: {
+            args: Prisma.ContentSubjectMatchUpdateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ContentSubjectMatchPayload>[]
+          }
+          upsert: {
+            args: Prisma.ContentSubjectMatchUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ContentSubjectMatchPayload>
+          }
+          aggregate: {
+            args: Prisma.ContentSubjectMatchAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateContentSubjectMatch>
+          }
+          groupBy: {
+            args: Prisma.ContentSubjectMatchGroupByArgs<ExtArgs>
+            result: $Utils.Optional<ContentSubjectMatchGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.ContentSubjectMatchCountArgs<ExtArgs>
+            result: $Utils.Optional<ContentSubjectMatchCountAggregateOutputType> | number
+          }
+        }
+      }
       ContentEntity: {
         payload: Prisma.$ContentEntityPayload<ExtArgs>
         fields: Prisma.ContentEntityFieldRefs
@@ -3294,6 +3412,7 @@ export namespace Prisma {
     taskEvent?: TaskEventOmit
     content?: ContentOmit
     contentKeyword?: ContentKeywordOmit
+    contentSubjectMatch?: ContentSubjectMatchOmit
     contentEntity?: ContentEntityOmit
     favorite?: FavoriteOmit
     reportTemplate?: ReportTemplateOmit
@@ -3417,11 +3536,13 @@ export namespace Prisma {
   export type KeywordCountOutputType = {
     queries: number
     contentKeywords: number
+    contentSubjectMatches: number
   }
 
   export type KeywordCountOutputTypeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     queries?: boolean | KeywordCountOutputTypeCountQueriesArgs
     contentKeywords?: boolean | KeywordCountOutputTypeCountContentKeywordsArgs
+    contentSubjectMatches?: boolean | KeywordCountOutputTypeCountContentSubjectMatchesArgs
   }
 
   // Custom InputTypes
@@ -3447,6 +3568,13 @@ export namespace Prisma {
    */
   export type KeywordCountOutputTypeCountContentKeywordsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     where?: ContentKeywordWhereInput
+  }
+
+  /**
+   * KeywordCountOutputType without action
+   */
+  export type KeywordCountOutputTypeCountContentSubjectMatchesArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: ContentSubjectMatchWhereInput
   }
 
 
@@ -3714,11 +3842,13 @@ export namespace Prisma {
 
   export type ContentCountOutputType = {
     keywords: number
+    subjectMatches: number
     favorites: number
   }
 
   export type ContentCountOutputTypeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     keywords?: boolean | ContentCountOutputTypeCountKeywordsArgs
+    subjectMatches?: boolean | ContentCountOutputTypeCountSubjectMatchesArgs
     favorites?: boolean | ContentCountOutputTypeCountFavoritesArgs
   }
 
@@ -3738,6 +3868,13 @@ export namespace Prisma {
    */
   export type ContentCountOutputTypeCountKeywordsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     where?: ContentKeywordWhereInput
+  }
+
+  /**
+   * ContentCountOutputType without action
+   */
+  export type ContentCountOutputTypeCountSubjectMatchesArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: ContentSubjectMatchWhereInput
   }
 
   /**
@@ -5197,6 +5334,7 @@ export namespace Prisma {
     category?: boolean | Keyword$categoryArgs<ExtArgs>
     queries?: boolean | Keyword$queriesArgs<ExtArgs>
     contentKeywords?: boolean | Keyword$contentKeywordsArgs<ExtArgs>
+    contentSubjectMatches?: boolean | Keyword$contentSubjectMatchesArgs<ExtArgs>
     _count?: boolean | KeywordCountOutputTypeDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["keyword"]>
 
@@ -5252,6 +5390,7 @@ export namespace Prisma {
     category?: boolean | Keyword$categoryArgs<ExtArgs>
     queries?: boolean | Keyword$queriesArgs<ExtArgs>
     contentKeywords?: boolean | Keyword$contentKeywordsArgs<ExtArgs>
+    contentSubjectMatches?: boolean | Keyword$contentSubjectMatchesArgs<ExtArgs>
     _count?: boolean | KeywordCountOutputTypeDefaultArgs<ExtArgs>
   }
   export type KeywordIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
@@ -5267,6 +5406,7 @@ export namespace Prisma {
       category: Prisma.$CategoryPayload<ExtArgs> | null
       queries: Prisma.$QueryPayload<ExtArgs>[]
       contentKeywords: Prisma.$ContentKeywordPayload<ExtArgs>[]
+      contentSubjectMatches: Prisma.$ContentSubjectMatchPayload<ExtArgs>[]
     }
     scalars: $Extensions.GetPayloadResult<{
       id: string
@@ -5678,6 +5818,7 @@ export namespace Prisma {
     category<T extends Keyword$categoryArgs<ExtArgs> = {}>(args?: Subset<T, Keyword$categoryArgs<ExtArgs>>): Prisma__CategoryClient<$Result.GetResult<Prisma.$CategoryPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
     queries<T extends Keyword$queriesArgs<ExtArgs> = {}>(args?: Subset<T, Keyword$queriesArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$QueryPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     contentKeywords<T extends Keyword$contentKeywordsArgs<ExtArgs> = {}>(args?: Subset<T, Keyword$contentKeywordsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ContentKeywordPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    contentSubjectMatches<T extends Keyword$contentSubjectMatchesArgs<ExtArgs> = {}>(args?: Subset<T, Keyword$contentSubjectMatchesArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ContentSubjectMatchPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
      * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -6179,6 +6320,30 @@ export namespace Prisma {
     take?: number
     skip?: number
     distinct?: ContentKeywordScalarFieldEnum | ContentKeywordScalarFieldEnum[]
+  }
+
+  /**
+   * Keyword.contentSubjectMatches
+   */
+  export type Keyword$contentSubjectMatchesArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ContentSubjectMatch
+     */
+    select?: ContentSubjectMatchSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the ContentSubjectMatch
+     */
+    omit?: ContentSubjectMatchOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ContentSubjectMatchInclude<ExtArgs> | null
+    where?: ContentSubjectMatchWhereInput
+    orderBy?: ContentSubjectMatchOrderByWithRelationInput | ContentSubjectMatchOrderByWithRelationInput[]
+    cursor?: ContentSubjectMatchWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: ContentSubjectMatchScalarFieldEnum | ContentSubjectMatchScalarFieldEnum[]
   }
 
   /**
@@ -15566,6 +15731,7 @@ export namespace Prisma {
     engine: $Enums.SearchEngineKind | null
     objective: string | null
     apiEndpoint: string | null
+    keywordStrategy: $Enums.KeywordStrategy | null
     credentialId: string | null
     createdAt: Date | null
     updatedAt: Date | null
@@ -15577,6 +15743,7 @@ export namespace Prisma {
     engine: $Enums.SearchEngineKind | null
     objective: string | null
     apiEndpoint: string | null
+    keywordStrategy: $Enums.KeywordStrategy | null
     credentialId: string | null
     createdAt: Date | null
     updatedAt: Date | null
@@ -15589,6 +15756,7 @@ export namespace Prisma {
     objective: number
     apiEndpoint: number
     options: number
+    keywordStrategy: number
     credentialId: number
     createdAt: number
     updatedAt: number
@@ -15602,6 +15770,7 @@ export namespace Prisma {
     engine?: true
     objective?: true
     apiEndpoint?: true
+    keywordStrategy?: true
     credentialId?: true
     createdAt?: true
     updatedAt?: true
@@ -15613,6 +15782,7 @@ export namespace Prisma {
     engine?: true
     objective?: true
     apiEndpoint?: true
+    keywordStrategy?: true
     credentialId?: true
     createdAt?: true
     updatedAt?: true
@@ -15625,6 +15795,7 @@ export namespace Prisma {
     objective?: true
     apiEndpoint?: true
     options?: true
+    keywordStrategy?: true
     credentialId?: true
     createdAt?: true
     updatedAt?: true
@@ -15710,6 +15881,7 @@ export namespace Prisma {
     objective: string
     apiEndpoint: string | null
     options: JsonValue | null
+    keywordStrategy: $Enums.KeywordStrategy
     credentialId: string | null
     createdAt: Date
     updatedAt: Date
@@ -15739,6 +15911,7 @@ export namespace Prisma {
     objective?: boolean
     apiEndpoint?: boolean
     options?: boolean
+    keywordStrategy?: boolean
     credentialId?: boolean
     createdAt?: boolean
     updatedAt?: boolean
@@ -15753,6 +15926,7 @@ export namespace Prisma {
     objective?: boolean
     apiEndpoint?: boolean
     options?: boolean
+    keywordStrategy?: boolean
     credentialId?: boolean
     createdAt?: boolean
     updatedAt?: boolean
@@ -15767,6 +15941,7 @@ export namespace Prisma {
     objective?: boolean
     apiEndpoint?: boolean
     options?: boolean
+    keywordStrategy?: boolean
     credentialId?: boolean
     createdAt?: boolean
     updatedAt?: boolean
@@ -15781,12 +15956,13 @@ export namespace Prisma {
     objective?: boolean
     apiEndpoint?: boolean
     options?: boolean
+    keywordStrategy?: boolean
     credentialId?: boolean
     createdAt?: boolean
     updatedAt?: boolean
   }
 
-  export type SearchEngineSourceConfigOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"sourceId" | "platform" | "engine" | "objective" | "apiEndpoint" | "options" | "credentialId" | "createdAt" | "updatedAt", ExtArgs["result"]["searchEngineSourceConfig"]>
+  export type SearchEngineSourceConfigOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"sourceId" | "platform" | "engine" | "objective" | "apiEndpoint" | "options" | "keywordStrategy" | "credentialId" | "createdAt" | "updatedAt", ExtArgs["result"]["searchEngineSourceConfig"]>
   export type SearchEngineSourceConfigInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     source?: boolean | SourceDefaultArgs<ExtArgs>
     credential?: boolean | SearchEngineSourceConfig$credentialArgs<ExtArgs>
@@ -15813,6 +15989,7 @@ export namespace Prisma {
       objective: string
       apiEndpoint: string | null
       options: Prisma.JsonValue | null
+      keywordStrategy: $Enums.KeywordStrategy
       credentialId: string | null
       createdAt: Date
       updatedAt: Date
@@ -16247,6 +16424,7 @@ export namespace Prisma {
     readonly objective: FieldRef<"SearchEngineSourceConfig", 'String'>
     readonly apiEndpoint: FieldRef<"SearchEngineSourceConfig", 'String'>
     readonly options: FieldRef<"SearchEngineSourceConfig", 'Json'>
+    readonly keywordStrategy: FieldRef<"SearchEngineSourceConfig", 'KeywordStrategy'>
     readonly credentialId: FieldRef<"SearchEngineSourceConfig", 'String'>
     readonly createdAt: FieldRef<"SearchEngineSourceConfig", 'DateTime'>
     readonly updatedAt: FieldRef<"SearchEngineSourceConfig", 'DateTime'>
@@ -16698,6 +16876,7 @@ export namespace Prisma {
     platform: string | null
     credentialId: string | null
     proxyId: string | null
+    keywordStrategy: $Enums.KeywordStrategy | null
     createdAt: Date | null
     updatedAt: Date | null
   }
@@ -16707,6 +16886,7 @@ export namespace Prisma {
     platform: string | null
     credentialId: string | null
     proxyId: string | null
+    keywordStrategy: $Enums.KeywordStrategy | null
     createdAt: Date | null
     updatedAt: Date | null
   }
@@ -16717,6 +16897,7 @@ export namespace Prisma {
     config: number
     credentialId: number
     proxyId: number
+    keywordStrategy: number
     createdAt: number
     updatedAt: number
     _all: number
@@ -16728,6 +16909,7 @@ export namespace Prisma {
     platform?: true
     credentialId?: true
     proxyId?: true
+    keywordStrategy?: true
     createdAt?: true
     updatedAt?: true
   }
@@ -16737,6 +16919,7 @@ export namespace Prisma {
     platform?: true
     credentialId?: true
     proxyId?: true
+    keywordStrategy?: true
     createdAt?: true
     updatedAt?: true
   }
@@ -16747,6 +16930,7 @@ export namespace Prisma {
     config?: true
     credentialId?: true
     proxyId?: true
+    keywordStrategy?: true
     createdAt?: true
     updatedAt?: true
     _all?: true
@@ -16830,6 +17014,7 @@ export namespace Prisma {
     config: JsonValue
     credentialId: string | null
     proxyId: string | null
+    keywordStrategy: $Enums.KeywordStrategy
     createdAt: Date
     updatedAt: Date
     _count: SocialMediaSourceConfigCountAggregateOutputType | null
@@ -16857,6 +17042,7 @@ export namespace Prisma {
     config?: boolean
     credentialId?: boolean
     proxyId?: boolean
+    keywordStrategy?: boolean
     createdAt?: boolean
     updatedAt?: boolean
     source?: boolean | SourceDefaultArgs<ExtArgs>
@@ -16870,6 +17056,7 @@ export namespace Prisma {
     config?: boolean
     credentialId?: boolean
     proxyId?: boolean
+    keywordStrategy?: boolean
     createdAt?: boolean
     updatedAt?: boolean
     source?: boolean | SourceDefaultArgs<ExtArgs>
@@ -16883,6 +17070,7 @@ export namespace Prisma {
     config?: boolean
     credentialId?: boolean
     proxyId?: boolean
+    keywordStrategy?: boolean
     createdAt?: boolean
     updatedAt?: boolean
     source?: boolean | SourceDefaultArgs<ExtArgs>
@@ -16896,11 +17084,12 @@ export namespace Prisma {
     config?: boolean
     credentialId?: boolean
     proxyId?: boolean
+    keywordStrategy?: boolean
     createdAt?: boolean
     updatedAt?: boolean
   }
 
-  export type SocialMediaSourceConfigOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"sourceId" | "platform" | "config" | "credentialId" | "proxyId" | "createdAt" | "updatedAt", ExtArgs["result"]["socialMediaSourceConfig"]>
+  export type SocialMediaSourceConfigOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"sourceId" | "platform" | "config" | "credentialId" | "proxyId" | "keywordStrategy" | "createdAt" | "updatedAt", ExtArgs["result"]["socialMediaSourceConfig"]>
   export type SocialMediaSourceConfigInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     source?: boolean | SourceDefaultArgs<ExtArgs>
     credential?: boolean | SocialMediaSourceConfig$credentialArgs<ExtArgs>
@@ -16930,6 +17119,7 @@ export namespace Prisma {
       config: Prisma.JsonValue
       credentialId: string | null
       proxyId: string | null
+      keywordStrategy: $Enums.KeywordStrategy
       createdAt: Date
       updatedAt: Date
     }, ExtArgs["result"]["socialMediaSourceConfig"]>
@@ -17363,6 +17553,7 @@ export namespace Prisma {
     readonly config: FieldRef<"SocialMediaSourceConfig", 'Json'>
     readonly credentialId: FieldRef<"SocialMediaSourceConfig", 'String'>
     readonly proxyId: FieldRef<"SocialMediaSourceConfig", 'String'>
+    readonly keywordStrategy: FieldRef<"SocialMediaSourceConfig", 'KeywordStrategy'>
     readonly createdAt: FieldRef<"SocialMediaSourceConfig", 'DateTime'>
     readonly updatedAt: FieldRef<"SocialMediaSourceConfig", 'DateTime'>
   }
@@ -21458,6 +21649,7 @@ export namespace Prisma {
     createdAt?: boolean
     updatedAt?: boolean
     keywords?: boolean | Content$keywordsArgs<ExtArgs>
+    subjectMatches?: boolean | Content$subjectMatchesArgs<ExtArgs>
     entities?: boolean | Content$entitiesArgs<ExtArgs>
     favorites?: boolean | Content$favoritesArgs<ExtArgs>
     _count?: boolean | ContentCountOutputTypeDefaultArgs<ExtArgs>
@@ -21511,6 +21703,7 @@ export namespace Prisma {
   export type ContentOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "title" | "summary" | "markdown" | "platform" | "type" | "time" | "url" | "image" | "meta" | "createdAt" | "updatedAt", ExtArgs["result"]["content"]>
   export type ContentInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     keywords?: boolean | Content$keywordsArgs<ExtArgs>
+    subjectMatches?: boolean | Content$subjectMatchesArgs<ExtArgs>
     entities?: boolean | Content$entitiesArgs<ExtArgs>
     favorites?: boolean | Content$favoritesArgs<ExtArgs>
     _count?: boolean | ContentCountOutputTypeDefaultArgs<ExtArgs>
@@ -21522,6 +21715,7 @@ export namespace Prisma {
     name: "Content"
     objects: {
       keywords: Prisma.$ContentKeywordPayload<ExtArgs>[]
+      subjectMatches: Prisma.$ContentSubjectMatchPayload<ExtArgs>[]
       entities: Prisma.$ContentEntityPayload<ExtArgs> | null
       favorites: Prisma.$FavoritePayload<ExtArgs>[]
     }
@@ -21933,6 +22127,7 @@ export namespace Prisma {
   export interface Prisma__ContentClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
     readonly [Symbol.toStringTag]: "PrismaPromise"
     keywords<T extends Content$keywordsArgs<ExtArgs> = {}>(args?: Subset<T, Content$keywordsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ContentKeywordPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    subjectMatches<T extends Content$subjectMatchesArgs<ExtArgs> = {}>(args?: Subset<T, Content$subjectMatchesArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ContentSubjectMatchPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     entities<T extends Content$entitiesArgs<ExtArgs> = {}>(args?: Subset<T, Content$entitiesArgs<ExtArgs>>): Prisma__ContentEntityClient<$Result.GetResult<Prisma.$ContentEntityPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
     favorites<T extends Content$favoritesArgs<ExtArgs> = {}>(args?: Subset<T, Content$favoritesArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$FavoritePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     /**
@@ -22385,6 +22580,30 @@ export namespace Prisma {
     take?: number
     skip?: number
     distinct?: ContentKeywordScalarFieldEnum | ContentKeywordScalarFieldEnum[]
+  }
+
+  /**
+   * Content.subjectMatches
+   */
+  export type Content$subjectMatchesArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ContentSubjectMatch
+     */
+    select?: ContentSubjectMatchSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the ContentSubjectMatch
+     */
+    omit?: ContentSubjectMatchOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ContentSubjectMatchInclude<ExtArgs> | null
+    where?: ContentSubjectMatchWhereInput
+    orderBy?: ContentSubjectMatchOrderByWithRelationInput | ContentSubjectMatchOrderByWithRelationInput[]
+    cursor?: ContentSubjectMatchWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: ContentSubjectMatchScalarFieldEnum | ContentSubjectMatchScalarFieldEnum[]
   }
 
   /**
@@ -23486,6 +23705,1197 @@ export namespace Prisma {
      * Choose, which related nodes to fetch as well
      */
     include?: ContentKeywordInclude<ExtArgs> | null
+  }
+
+
+  /**
+   * Model ContentSubjectMatch
+   */
+
+  export type AggregateContentSubjectMatch = {
+    _count: ContentSubjectMatchCountAggregateOutputType | null
+    _avg: ContentSubjectMatchAvgAggregateOutputType | null
+    _sum: ContentSubjectMatchSumAggregateOutputType | null
+    _min: ContentSubjectMatchMinAggregateOutputType | null
+    _max: ContentSubjectMatchMaxAggregateOutputType | null
+  }
+
+  export type ContentSubjectMatchAvgAggregateOutputType = {
+    ruleScore: number | null
+    aiScore: number | null
+    matchScore: number | null
+  }
+
+  export type ContentSubjectMatchSumAggregateOutputType = {
+    ruleScore: number | null
+    aiScore: number | null
+    matchScore: number | null
+  }
+
+  export type ContentSubjectMatchMinAggregateOutputType = {
+    id: string | null
+    contentId: string | null
+    keywordId: string | null
+    ruleScore: number | null
+    aiScore: number | null
+    matchScore: number | null
+    matchSource: $Enums.ContentSubjectMatchSource | null
+    reason: string | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type ContentSubjectMatchMaxAggregateOutputType = {
+    id: string | null
+    contentId: string | null
+    keywordId: string | null
+    ruleScore: number | null
+    aiScore: number | null
+    matchScore: number | null
+    matchSource: $Enums.ContentSubjectMatchSource | null
+    reason: string | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type ContentSubjectMatchCountAggregateOutputType = {
+    id: number
+    contentId: number
+    keywordId: number
+    ruleScore: number
+    aiScore: number
+    matchScore: number
+    matchedIncludes: number
+    matchedExcludes: number
+    matchSource: number
+    reason: number
+    createdAt: number
+    updatedAt: number
+    _all: number
+  }
+
+
+  export type ContentSubjectMatchAvgAggregateInputType = {
+    ruleScore?: true
+    aiScore?: true
+    matchScore?: true
+  }
+
+  export type ContentSubjectMatchSumAggregateInputType = {
+    ruleScore?: true
+    aiScore?: true
+    matchScore?: true
+  }
+
+  export type ContentSubjectMatchMinAggregateInputType = {
+    id?: true
+    contentId?: true
+    keywordId?: true
+    ruleScore?: true
+    aiScore?: true
+    matchScore?: true
+    matchSource?: true
+    reason?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type ContentSubjectMatchMaxAggregateInputType = {
+    id?: true
+    contentId?: true
+    keywordId?: true
+    ruleScore?: true
+    aiScore?: true
+    matchScore?: true
+    matchSource?: true
+    reason?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type ContentSubjectMatchCountAggregateInputType = {
+    id?: true
+    contentId?: true
+    keywordId?: true
+    ruleScore?: true
+    aiScore?: true
+    matchScore?: true
+    matchedIncludes?: true
+    matchedExcludes?: true
+    matchSource?: true
+    reason?: true
+    createdAt?: true
+    updatedAt?: true
+    _all?: true
+  }
+
+  export type ContentSubjectMatchAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which ContentSubjectMatch to aggregate.
+     */
+    where?: ContentSubjectMatchWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of ContentSubjectMatches to fetch.
+     */
+    orderBy?: ContentSubjectMatchOrderByWithRelationInput | ContentSubjectMatchOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: ContentSubjectMatchWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` ContentSubjectMatches from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` ContentSubjectMatches.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned ContentSubjectMatches
+    **/
+    _count?: true | ContentSubjectMatchCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to average
+    **/
+    _avg?: ContentSubjectMatchAvgAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to sum
+    **/
+    _sum?: ContentSubjectMatchSumAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: ContentSubjectMatchMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: ContentSubjectMatchMaxAggregateInputType
+  }
+
+  export type GetContentSubjectMatchAggregateType<T extends ContentSubjectMatchAggregateArgs> = {
+        [P in keyof T & keyof AggregateContentSubjectMatch]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateContentSubjectMatch[P]>
+      : GetScalarType<T[P], AggregateContentSubjectMatch[P]>
+  }
+
+
+
+
+  export type ContentSubjectMatchGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: ContentSubjectMatchWhereInput
+    orderBy?: ContentSubjectMatchOrderByWithAggregationInput | ContentSubjectMatchOrderByWithAggregationInput[]
+    by: ContentSubjectMatchScalarFieldEnum[] | ContentSubjectMatchScalarFieldEnum
+    having?: ContentSubjectMatchScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: ContentSubjectMatchCountAggregateInputType | true
+    _avg?: ContentSubjectMatchAvgAggregateInputType
+    _sum?: ContentSubjectMatchSumAggregateInputType
+    _min?: ContentSubjectMatchMinAggregateInputType
+    _max?: ContentSubjectMatchMaxAggregateInputType
+  }
+
+  export type ContentSubjectMatchGroupByOutputType = {
+    id: string
+    contentId: string
+    keywordId: string
+    ruleScore: number | null
+    aiScore: number | null
+    matchScore: number | null
+    matchedIncludes: string[]
+    matchedExcludes: string[]
+    matchSource: $Enums.ContentSubjectMatchSource
+    reason: string | null
+    createdAt: Date
+    updatedAt: Date
+    _count: ContentSubjectMatchCountAggregateOutputType | null
+    _avg: ContentSubjectMatchAvgAggregateOutputType | null
+    _sum: ContentSubjectMatchSumAggregateOutputType | null
+    _min: ContentSubjectMatchMinAggregateOutputType | null
+    _max: ContentSubjectMatchMaxAggregateOutputType | null
+  }
+
+  type GetContentSubjectMatchGroupByPayload<T extends ContentSubjectMatchGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<ContentSubjectMatchGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof ContentSubjectMatchGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], ContentSubjectMatchGroupByOutputType[P]>
+            : GetScalarType<T[P], ContentSubjectMatchGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type ContentSubjectMatchSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    contentId?: boolean
+    keywordId?: boolean
+    ruleScore?: boolean
+    aiScore?: boolean
+    matchScore?: boolean
+    matchedIncludes?: boolean
+    matchedExcludes?: boolean
+    matchSource?: boolean
+    reason?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    content?: boolean | ContentDefaultArgs<ExtArgs>
+    keyword?: boolean | KeywordDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["contentSubjectMatch"]>
+
+  export type ContentSubjectMatchSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    contentId?: boolean
+    keywordId?: boolean
+    ruleScore?: boolean
+    aiScore?: boolean
+    matchScore?: boolean
+    matchedIncludes?: boolean
+    matchedExcludes?: boolean
+    matchSource?: boolean
+    reason?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    content?: boolean | ContentDefaultArgs<ExtArgs>
+    keyword?: boolean | KeywordDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["contentSubjectMatch"]>
+
+  export type ContentSubjectMatchSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    contentId?: boolean
+    keywordId?: boolean
+    ruleScore?: boolean
+    aiScore?: boolean
+    matchScore?: boolean
+    matchedIncludes?: boolean
+    matchedExcludes?: boolean
+    matchSource?: boolean
+    reason?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    content?: boolean | ContentDefaultArgs<ExtArgs>
+    keyword?: boolean | KeywordDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["contentSubjectMatch"]>
+
+  export type ContentSubjectMatchSelectScalar = {
+    id?: boolean
+    contentId?: boolean
+    keywordId?: boolean
+    ruleScore?: boolean
+    aiScore?: boolean
+    matchScore?: boolean
+    matchedIncludes?: boolean
+    matchedExcludes?: boolean
+    matchSource?: boolean
+    reason?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }
+
+  export type ContentSubjectMatchOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "contentId" | "keywordId" | "ruleScore" | "aiScore" | "matchScore" | "matchedIncludes" | "matchedExcludes" | "matchSource" | "reason" | "createdAt" | "updatedAt", ExtArgs["result"]["contentSubjectMatch"]>
+  export type ContentSubjectMatchInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    content?: boolean | ContentDefaultArgs<ExtArgs>
+    keyword?: boolean | KeywordDefaultArgs<ExtArgs>
+  }
+  export type ContentSubjectMatchIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    content?: boolean | ContentDefaultArgs<ExtArgs>
+    keyword?: boolean | KeywordDefaultArgs<ExtArgs>
+  }
+  export type ContentSubjectMatchIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    content?: boolean | ContentDefaultArgs<ExtArgs>
+    keyword?: boolean | KeywordDefaultArgs<ExtArgs>
+  }
+
+  export type $ContentSubjectMatchPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "ContentSubjectMatch"
+    objects: {
+      content: Prisma.$ContentPayload<ExtArgs>
+      keyword: Prisma.$KeywordPayload<ExtArgs>
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      contentId: string
+      keywordId: string
+      ruleScore: number | null
+      aiScore: number | null
+      matchScore: number | null
+      matchedIncludes: string[]
+      matchedExcludes: string[]
+      matchSource: $Enums.ContentSubjectMatchSource
+      reason: string | null
+      createdAt: Date
+      updatedAt: Date
+    }, ExtArgs["result"]["contentSubjectMatch"]>
+    composites: {}
+  }
+
+  type ContentSubjectMatchGetPayload<S extends boolean | null | undefined | ContentSubjectMatchDefaultArgs> = $Result.GetResult<Prisma.$ContentSubjectMatchPayload, S>
+
+  type ContentSubjectMatchCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
+    Omit<ContentSubjectMatchFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+      select?: ContentSubjectMatchCountAggregateInputType | true
+    }
+
+  export interface ContentSubjectMatchDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['ContentSubjectMatch'], meta: { name: 'ContentSubjectMatch' } }
+    /**
+     * Find zero or one ContentSubjectMatch that matches the filter.
+     * @param {ContentSubjectMatchFindUniqueArgs} args - Arguments to find a ContentSubjectMatch
+     * @example
+     * // Get one ContentSubjectMatch
+     * const contentSubjectMatch = await prisma.contentSubjectMatch.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends ContentSubjectMatchFindUniqueArgs>(args: SelectSubset<T, ContentSubjectMatchFindUniqueArgs<ExtArgs>>): Prisma__ContentSubjectMatchClient<$Result.GetResult<Prisma.$ContentSubjectMatchPayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find one ContentSubjectMatch that matches the filter or throw an error with `error.code='P2025'`
+     * if no matches were found.
+     * @param {ContentSubjectMatchFindUniqueOrThrowArgs} args - Arguments to find a ContentSubjectMatch
+     * @example
+     * // Get one ContentSubjectMatch
+     * const contentSubjectMatch = await prisma.contentSubjectMatch.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends ContentSubjectMatchFindUniqueOrThrowArgs>(args: SelectSubset<T, ContentSubjectMatchFindUniqueOrThrowArgs<ExtArgs>>): Prisma__ContentSubjectMatchClient<$Result.GetResult<Prisma.$ContentSubjectMatchPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first ContentSubjectMatch that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ContentSubjectMatchFindFirstArgs} args - Arguments to find a ContentSubjectMatch
+     * @example
+     * // Get one ContentSubjectMatch
+     * const contentSubjectMatch = await prisma.contentSubjectMatch.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends ContentSubjectMatchFindFirstArgs>(args?: SelectSubset<T, ContentSubjectMatchFindFirstArgs<ExtArgs>>): Prisma__ContentSubjectMatchClient<$Result.GetResult<Prisma.$ContentSubjectMatchPayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first ContentSubjectMatch that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ContentSubjectMatchFindFirstOrThrowArgs} args - Arguments to find a ContentSubjectMatch
+     * @example
+     * // Get one ContentSubjectMatch
+     * const contentSubjectMatch = await prisma.contentSubjectMatch.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends ContentSubjectMatchFindFirstOrThrowArgs>(args?: SelectSubset<T, ContentSubjectMatchFindFirstOrThrowArgs<ExtArgs>>): Prisma__ContentSubjectMatchClient<$Result.GetResult<Prisma.$ContentSubjectMatchPayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find zero or more ContentSubjectMatches that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ContentSubjectMatchFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all ContentSubjectMatches
+     * const contentSubjectMatches = await prisma.contentSubjectMatch.findMany()
+     * 
+     * // Get first 10 ContentSubjectMatches
+     * const contentSubjectMatches = await prisma.contentSubjectMatch.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const contentSubjectMatchWithIdOnly = await prisma.contentSubjectMatch.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends ContentSubjectMatchFindManyArgs>(args?: SelectSubset<T, ContentSubjectMatchFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ContentSubjectMatchPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+
+    /**
+     * Create a ContentSubjectMatch.
+     * @param {ContentSubjectMatchCreateArgs} args - Arguments to create a ContentSubjectMatch.
+     * @example
+     * // Create one ContentSubjectMatch
+     * const ContentSubjectMatch = await prisma.contentSubjectMatch.create({
+     *   data: {
+     *     // ... data to create a ContentSubjectMatch
+     *   }
+     * })
+     * 
+     */
+    create<T extends ContentSubjectMatchCreateArgs>(args: SelectSubset<T, ContentSubjectMatchCreateArgs<ExtArgs>>): Prisma__ContentSubjectMatchClient<$Result.GetResult<Prisma.$ContentSubjectMatchPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Create many ContentSubjectMatches.
+     * @param {ContentSubjectMatchCreateManyArgs} args - Arguments to create many ContentSubjectMatches.
+     * @example
+     * // Create many ContentSubjectMatches
+     * const contentSubjectMatch = await prisma.contentSubjectMatch.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends ContentSubjectMatchCreateManyArgs>(args?: SelectSubset<T, ContentSubjectMatchCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many ContentSubjectMatches and returns the data saved in the database.
+     * @param {ContentSubjectMatchCreateManyAndReturnArgs} args - Arguments to create many ContentSubjectMatches.
+     * @example
+     * // Create many ContentSubjectMatches
+     * const contentSubjectMatch = await prisma.contentSubjectMatch.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many ContentSubjectMatches and only return the `id`
+     * const contentSubjectMatchWithIdOnly = await prisma.contentSubjectMatch.createManyAndReturn({
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends ContentSubjectMatchCreateManyAndReturnArgs>(args?: SelectSubset<T, ContentSubjectMatchCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ContentSubjectMatchPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Delete a ContentSubjectMatch.
+     * @param {ContentSubjectMatchDeleteArgs} args - Arguments to delete one ContentSubjectMatch.
+     * @example
+     * // Delete one ContentSubjectMatch
+     * const ContentSubjectMatch = await prisma.contentSubjectMatch.delete({
+     *   where: {
+     *     // ... filter to delete one ContentSubjectMatch
+     *   }
+     * })
+     * 
+     */
+    delete<T extends ContentSubjectMatchDeleteArgs>(args: SelectSubset<T, ContentSubjectMatchDeleteArgs<ExtArgs>>): Prisma__ContentSubjectMatchClient<$Result.GetResult<Prisma.$ContentSubjectMatchPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Update one ContentSubjectMatch.
+     * @param {ContentSubjectMatchUpdateArgs} args - Arguments to update one ContentSubjectMatch.
+     * @example
+     * // Update one ContentSubjectMatch
+     * const contentSubjectMatch = await prisma.contentSubjectMatch.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends ContentSubjectMatchUpdateArgs>(args: SelectSubset<T, ContentSubjectMatchUpdateArgs<ExtArgs>>): Prisma__ContentSubjectMatchClient<$Result.GetResult<Prisma.$ContentSubjectMatchPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Delete zero or more ContentSubjectMatches.
+     * @param {ContentSubjectMatchDeleteManyArgs} args - Arguments to filter ContentSubjectMatches to delete.
+     * @example
+     * // Delete a few ContentSubjectMatches
+     * const { count } = await prisma.contentSubjectMatch.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends ContentSubjectMatchDeleteManyArgs>(args?: SelectSubset<T, ContentSubjectMatchDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more ContentSubjectMatches.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ContentSubjectMatchUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many ContentSubjectMatches
+     * const contentSubjectMatch = await prisma.contentSubjectMatch.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends ContentSubjectMatchUpdateManyArgs>(args: SelectSubset<T, ContentSubjectMatchUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more ContentSubjectMatches and returns the data updated in the database.
+     * @param {ContentSubjectMatchUpdateManyAndReturnArgs} args - Arguments to update many ContentSubjectMatches.
+     * @example
+     * // Update many ContentSubjectMatches
+     * const contentSubjectMatch = await prisma.contentSubjectMatch.updateManyAndReturn({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Update zero or more ContentSubjectMatches and only return the `id`
+     * const contentSubjectMatchWithIdOnly = await prisma.contentSubjectMatch.updateManyAndReturn({
+     *   select: { id: true },
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    updateManyAndReturn<T extends ContentSubjectMatchUpdateManyAndReturnArgs>(args: SelectSubset<T, ContentSubjectMatchUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ContentSubjectMatchPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Create or update one ContentSubjectMatch.
+     * @param {ContentSubjectMatchUpsertArgs} args - Arguments to update or create a ContentSubjectMatch.
+     * @example
+     * // Update or create a ContentSubjectMatch
+     * const contentSubjectMatch = await prisma.contentSubjectMatch.upsert({
+     *   create: {
+     *     // ... data to create a ContentSubjectMatch
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the ContentSubjectMatch we want to update
+     *   }
+     * })
+     */
+    upsert<T extends ContentSubjectMatchUpsertArgs>(args: SelectSubset<T, ContentSubjectMatchUpsertArgs<ExtArgs>>): Prisma__ContentSubjectMatchClient<$Result.GetResult<Prisma.$ContentSubjectMatchPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+
+    /**
+     * Count the number of ContentSubjectMatches.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ContentSubjectMatchCountArgs} args - Arguments to filter ContentSubjectMatches to count.
+     * @example
+     * // Count the number of ContentSubjectMatches
+     * const count = await prisma.contentSubjectMatch.count({
+     *   where: {
+     *     // ... the filter for the ContentSubjectMatches we want to count
+     *   }
+     * })
+    **/
+    count<T extends ContentSubjectMatchCountArgs>(
+      args?: Subset<T, ContentSubjectMatchCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], ContentSubjectMatchCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a ContentSubjectMatch.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ContentSubjectMatchAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends ContentSubjectMatchAggregateArgs>(args: Subset<T, ContentSubjectMatchAggregateArgs>): Prisma.PrismaPromise<GetContentSubjectMatchAggregateType<T>>
+
+    /**
+     * Group by ContentSubjectMatch.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ContentSubjectMatchGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends ContentSubjectMatchGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: ContentSubjectMatchGroupByArgs['orderBy'] }
+        : { orderBy?: ContentSubjectMatchGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, ContentSubjectMatchGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetContentSubjectMatchGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the ContentSubjectMatch model
+   */
+  readonly fields: ContentSubjectMatchFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for ContentSubjectMatch.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__ContentSubjectMatchClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    content<T extends ContentDefaultArgs<ExtArgs> = {}>(args?: Subset<T, ContentDefaultArgs<ExtArgs>>): Prisma__ContentClient<$Result.GetResult<Prisma.$ContentPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    keyword<T extends KeywordDefaultArgs<ExtArgs> = {}>(args?: Subset<T, KeywordDefaultArgs<ExtArgs>>): Prisma__KeywordClient<$Result.GetResult<Prisma.$KeywordPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the ContentSubjectMatch model
+   */
+  interface ContentSubjectMatchFieldRefs {
+    readonly id: FieldRef<"ContentSubjectMatch", 'String'>
+    readonly contentId: FieldRef<"ContentSubjectMatch", 'String'>
+    readonly keywordId: FieldRef<"ContentSubjectMatch", 'String'>
+    readonly ruleScore: FieldRef<"ContentSubjectMatch", 'Float'>
+    readonly aiScore: FieldRef<"ContentSubjectMatch", 'Float'>
+    readonly matchScore: FieldRef<"ContentSubjectMatch", 'Float'>
+    readonly matchedIncludes: FieldRef<"ContentSubjectMatch", 'String[]'>
+    readonly matchedExcludes: FieldRef<"ContentSubjectMatch", 'String[]'>
+    readonly matchSource: FieldRef<"ContentSubjectMatch", 'ContentSubjectMatchSource'>
+    readonly reason: FieldRef<"ContentSubjectMatch", 'String'>
+    readonly createdAt: FieldRef<"ContentSubjectMatch", 'DateTime'>
+    readonly updatedAt: FieldRef<"ContentSubjectMatch", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * ContentSubjectMatch findUnique
+   */
+  export type ContentSubjectMatchFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ContentSubjectMatch
+     */
+    select?: ContentSubjectMatchSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the ContentSubjectMatch
+     */
+    omit?: ContentSubjectMatchOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ContentSubjectMatchInclude<ExtArgs> | null
+    /**
+     * Filter, which ContentSubjectMatch to fetch.
+     */
+    where: ContentSubjectMatchWhereUniqueInput
+  }
+
+  /**
+   * ContentSubjectMatch findUniqueOrThrow
+   */
+  export type ContentSubjectMatchFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ContentSubjectMatch
+     */
+    select?: ContentSubjectMatchSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the ContentSubjectMatch
+     */
+    omit?: ContentSubjectMatchOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ContentSubjectMatchInclude<ExtArgs> | null
+    /**
+     * Filter, which ContentSubjectMatch to fetch.
+     */
+    where: ContentSubjectMatchWhereUniqueInput
+  }
+
+  /**
+   * ContentSubjectMatch findFirst
+   */
+  export type ContentSubjectMatchFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ContentSubjectMatch
+     */
+    select?: ContentSubjectMatchSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the ContentSubjectMatch
+     */
+    omit?: ContentSubjectMatchOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ContentSubjectMatchInclude<ExtArgs> | null
+    /**
+     * Filter, which ContentSubjectMatch to fetch.
+     */
+    where?: ContentSubjectMatchWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of ContentSubjectMatches to fetch.
+     */
+    orderBy?: ContentSubjectMatchOrderByWithRelationInput | ContentSubjectMatchOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for ContentSubjectMatches.
+     */
+    cursor?: ContentSubjectMatchWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` ContentSubjectMatches from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` ContentSubjectMatches.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of ContentSubjectMatches.
+     */
+    distinct?: ContentSubjectMatchScalarFieldEnum | ContentSubjectMatchScalarFieldEnum[]
+  }
+
+  /**
+   * ContentSubjectMatch findFirstOrThrow
+   */
+  export type ContentSubjectMatchFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ContentSubjectMatch
+     */
+    select?: ContentSubjectMatchSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the ContentSubjectMatch
+     */
+    omit?: ContentSubjectMatchOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ContentSubjectMatchInclude<ExtArgs> | null
+    /**
+     * Filter, which ContentSubjectMatch to fetch.
+     */
+    where?: ContentSubjectMatchWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of ContentSubjectMatches to fetch.
+     */
+    orderBy?: ContentSubjectMatchOrderByWithRelationInput | ContentSubjectMatchOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for ContentSubjectMatches.
+     */
+    cursor?: ContentSubjectMatchWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` ContentSubjectMatches from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` ContentSubjectMatches.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of ContentSubjectMatches.
+     */
+    distinct?: ContentSubjectMatchScalarFieldEnum | ContentSubjectMatchScalarFieldEnum[]
+  }
+
+  /**
+   * ContentSubjectMatch findMany
+   */
+  export type ContentSubjectMatchFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ContentSubjectMatch
+     */
+    select?: ContentSubjectMatchSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the ContentSubjectMatch
+     */
+    omit?: ContentSubjectMatchOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ContentSubjectMatchInclude<ExtArgs> | null
+    /**
+     * Filter, which ContentSubjectMatches to fetch.
+     */
+    where?: ContentSubjectMatchWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of ContentSubjectMatches to fetch.
+     */
+    orderBy?: ContentSubjectMatchOrderByWithRelationInput | ContentSubjectMatchOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing ContentSubjectMatches.
+     */
+    cursor?: ContentSubjectMatchWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` ContentSubjectMatches from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` ContentSubjectMatches.
+     */
+    skip?: number
+    distinct?: ContentSubjectMatchScalarFieldEnum | ContentSubjectMatchScalarFieldEnum[]
+  }
+
+  /**
+   * ContentSubjectMatch create
+   */
+  export type ContentSubjectMatchCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ContentSubjectMatch
+     */
+    select?: ContentSubjectMatchSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the ContentSubjectMatch
+     */
+    omit?: ContentSubjectMatchOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ContentSubjectMatchInclude<ExtArgs> | null
+    /**
+     * The data needed to create a ContentSubjectMatch.
+     */
+    data: XOR<ContentSubjectMatchCreateInput, ContentSubjectMatchUncheckedCreateInput>
+  }
+
+  /**
+   * ContentSubjectMatch createMany
+   */
+  export type ContentSubjectMatchCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many ContentSubjectMatches.
+     */
+    data: ContentSubjectMatchCreateManyInput | ContentSubjectMatchCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * ContentSubjectMatch createManyAndReturn
+   */
+  export type ContentSubjectMatchCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ContentSubjectMatch
+     */
+    select?: ContentSubjectMatchSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the ContentSubjectMatch
+     */
+    omit?: ContentSubjectMatchOmit<ExtArgs> | null
+    /**
+     * The data used to create many ContentSubjectMatches.
+     */
+    data: ContentSubjectMatchCreateManyInput | ContentSubjectMatchCreateManyInput[]
+    skipDuplicates?: boolean
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ContentSubjectMatchIncludeCreateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * ContentSubjectMatch update
+   */
+  export type ContentSubjectMatchUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ContentSubjectMatch
+     */
+    select?: ContentSubjectMatchSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the ContentSubjectMatch
+     */
+    omit?: ContentSubjectMatchOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ContentSubjectMatchInclude<ExtArgs> | null
+    /**
+     * The data needed to update a ContentSubjectMatch.
+     */
+    data: XOR<ContentSubjectMatchUpdateInput, ContentSubjectMatchUncheckedUpdateInput>
+    /**
+     * Choose, which ContentSubjectMatch to update.
+     */
+    where: ContentSubjectMatchWhereUniqueInput
+  }
+
+  /**
+   * ContentSubjectMatch updateMany
+   */
+  export type ContentSubjectMatchUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update ContentSubjectMatches.
+     */
+    data: XOR<ContentSubjectMatchUpdateManyMutationInput, ContentSubjectMatchUncheckedUpdateManyInput>
+    /**
+     * Filter which ContentSubjectMatches to update
+     */
+    where?: ContentSubjectMatchWhereInput
+    /**
+     * Limit how many ContentSubjectMatches to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * ContentSubjectMatch updateManyAndReturn
+   */
+  export type ContentSubjectMatchUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ContentSubjectMatch
+     */
+    select?: ContentSubjectMatchSelectUpdateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the ContentSubjectMatch
+     */
+    omit?: ContentSubjectMatchOmit<ExtArgs> | null
+    /**
+     * The data used to update ContentSubjectMatches.
+     */
+    data: XOR<ContentSubjectMatchUpdateManyMutationInput, ContentSubjectMatchUncheckedUpdateManyInput>
+    /**
+     * Filter which ContentSubjectMatches to update
+     */
+    where?: ContentSubjectMatchWhereInput
+    /**
+     * Limit how many ContentSubjectMatches to update.
+     */
+    limit?: number
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ContentSubjectMatchIncludeUpdateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * ContentSubjectMatch upsert
+   */
+  export type ContentSubjectMatchUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ContentSubjectMatch
+     */
+    select?: ContentSubjectMatchSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the ContentSubjectMatch
+     */
+    omit?: ContentSubjectMatchOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ContentSubjectMatchInclude<ExtArgs> | null
+    /**
+     * The filter to search for the ContentSubjectMatch to update in case it exists.
+     */
+    where: ContentSubjectMatchWhereUniqueInput
+    /**
+     * In case the ContentSubjectMatch found by the `where` argument doesn't exist, create a new ContentSubjectMatch with this data.
+     */
+    create: XOR<ContentSubjectMatchCreateInput, ContentSubjectMatchUncheckedCreateInput>
+    /**
+     * In case the ContentSubjectMatch was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<ContentSubjectMatchUpdateInput, ContentSubjectMatchUncheckedUpdateInput>
+  }
+
+  /**
+   * ContentSubjectMatch delete
+   */
+  export type ContentSubjectMatchDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ContentSubjectMatch
+     */
+    select?: ContentSubjectMatchSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the ContentSubjectMatch
+     */
+    omit?: ContentSubjectMatchOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ContentSubjectMatchInclude<ExtArgs> | null
+    /**
+     * Filter which ContentSubjectMatch to delete.
+     */
+    where: ContentSubjectMatchWhereUniqueInput
+  }
+
+  /**
+   * ContentSubjectMatch deleteMany
+   */
+  export type ContentSubjectMatchDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which ContentSubjectMatches to delete
+     */
+    where?: ContentSubjectMatchWhereInput
+    /**
+     * Limit how many ContentSubjectMatches to delete.
+     */
+    limit?: number
+  }
+
+  /**
+   * ContentSubjectMatch without action
+   */
+  export type ContentSubjectMatchDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ContentSubjectMatch
+     */
+    select?: ContentSubjectMatchSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the ContentSubjectMatch
+     */
+    omit?: ContentSubjectMatchOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ContentSubjectMatchInclude<ExtArgs> | null
   }
 
 
@@ -34801,6 +36211,7 @@ export namespace Prisma {
     objective: 'objective',
     apiEndpoint: 'apiEndpoint',
     options: 'options',
+    keywordStrategy: 'keywordStrategy',
     credentialId: 'credentialId',
     createdAt: 'createdAt',
     updatedAt: 'updatedAt'
@@ -34815,6 +36226,7 @@ export namespace Prisma {
     config: 'config',
     credentialId: 'credentialId',
     proxyId: 'proxyId',
+    keywordStrategy: 'keywordStrategy',
     createdAt: 'createdAt',
     updatedAt: 'updatedAt'
   };
@@ -34890,6 +36302,24 @@ export namespace Prisma {
   };
 
   export type ContentKeywordScalarFieldEnum = (typeof ContentKeywordScalarFieldEnum)[keyof typeof ContentKeywordScalarFieldEnum]
+
+
+  export const ContentSubjectMatchScalarFieldEnum: {
+    id: 'id',
+    contentId: 'contentId',
+    keywordId: 'keywordId',
+    ruleScore: 'ruleScore',
+    aiScore: 'aiScore',
+    matchScore: 'matchScore',
+    matchedIncludes: 'matchedIncludes',
+    matchedExcludes: 'matchedExcludes',
+    matchSource: 'matchSource',
+    reason: 'reason',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt'
+  };
+
+  export type ContentSubjectMatchScalarFieldEnum = (typeof ContentSubjectMatchScalarFieldEnum)[keyof typeof ContentSubjectMatchScalarFieldEnum]
 
 
   export const ContentEntityScalarFieldEnum: {
@@ -35237,6 +36667,20 @@ export namespace Prisma {
 
 
   /**
+   * Reference to a field of type 'KeywordStrategy'
+   */
+  export type EnumKeywordStrategyFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'KeywordStrategy'>
+    
+
+
+  /**
+   * Reference to a field of type 'KeywordStrategy[]'
+   */
+  export type ListEnumKeywordStrategyFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'KeywordStrategy[]'>
+    
+
+
+  /**
    * Reference to a field of type 'QueryFrequency'
    */
   export type EnumQueryFrequencyFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'QueryFrequency'>
@@ -35279,6 +36723,34 @@ export namespace Prisma {
 
 
   /**
+   * Reference to a field of type 'Float'
+   */
+  export type FloatFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Float'>
+    
+
+
+  /**
+   * Reference to a field of type 'Float[]'
+   */
+  export type ListFloatFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Float[]'>
+    
+
+
+  /**
+   * Reference to a field of type 'ContentSubjectMatchSource'
+   */
+  export type EnumContentSubjectMatchSourceFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ContentSubjectMatchSource'>
+    
+
+
+  /**
+   * Reference to a field of type 'ContentSubjectMatchSource[]'
+   */
+  export type ListEnumContentSubjectMatchSourceFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ContentSubjectMatchSource[]'>
+    
+
+
+  /**
    * Reference to a field of type 'ReportStatus'
    */
   export type EnumReportStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ReportStatus'>
@@ -35303,20 +36775,6 @@ export namespace Prisma {
    * Reference to a field of type 'MaterialSource[]'
    */
   export type ListEnumMaterialSourceFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'MaterialSource[]'>
-    
-
-
-  /**
-   * Reference to a field of type 'Float'
-   */
-  export type FloatFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Float'>
-    
-
-
-  /**
-   * Reference to a field of type 'Float[]'
-   */
-  export type ListFloatFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Float[]'>
     
   /**
    * Deep Input Types
@@ -35397,6 +36855,7 @@ export namespace Prisma {
     category?: XOR<CategoryNullableScalarRelationFilter, CategoryWhereInput> | null
     queries?: QueryListRelationFilter
     contentKeywords?: ContentKeywordListRelationFilter
+    contentSubjectMatches?: ContentSubjectMatchListRelationFilter
   }
 
   export type KeywordOrderByWithRelationInput = {
@@ -35415,6 +36874,7 @@ export namespace Prisma {
     category?: CategoryOrderByWithRelationInput
     queries?: QueryOrderByRelationAggregateInput
     contentKeywords?: ContentKeywordOrderByRelationAggregateInput
+    contentSubjectMatches?: ContentSubjectMatchOrderByRelationAggregateInput
   }
 
   export type KeywordWhereUniqueInput = Prisma.AtLeast<{
@@ -35436,6 +36896,7 @@ export namespace Prisma {
     category?: XOR<CategoryNullableScalarRelationFilter, CategoryWhereInput> | null
     queries?: QueryListRelationFilter
     contentKeywords?: ContentKeywordListRelationFilter
+    contentSubjectMatches?: ContentSubjectMatchListRelationFilter
   }, "id" | "name">
 
   export type KeywordOrderByWithAggregationInput = {
@@ -36162,6 +37623,7 @@ export namespace Prisma {
     objective?: StringFilter<"SearchEngineSourceConfig"> | string
     apiEndpoint?: StringNullableFilter<"SearchEngineSourceConfig"> | string | null
     options?: JsonNullableFilter<"SearchEngineSourceConfig">
+    keywordStrategy?: EnumKeywordStrategyFilter<"SearchEngineSourceConfig"> | $Enums.KeywordStrategy
     credentialId?: StringNullableFilter<"SearchEngineSourceConfig"> | string | null
     createdAt?: DateTimeFilter<"SearchEngineSourceConfig"> | Date | string
     updatedAt?: DateTimeFilter<"SearchEngineSourceConfig"> | Date | string
@@ -36176,6 +37638,7 @@ export namespace Prisma {
     objective?: SortOrder
     apiEndpoint?: SortOrderInput | SortOrder
     options?: SortOrderInput | SortOrder
+    keywordStrategy?: SortOrder
     credentialId?: SortOrderInput | SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
@@ -36193,6 +37656,7 @@ export namespace Prisma {
     objective?: StringFilter<"SearchEngineSourceConfig"> | string
     apiEndpoint?: StringNullableFilter<"SearchEngineSourceConfig"> | string | null
     options?: JsonNullableFilter<"SearchEngineSourceConfig">
+    keywordStrategy?: EnumKeywordStrategyFilter<"SearchEngineSourceConfig"> | $Enums.KeywordStrategy
     credentialId?: StringNullableFilter<"SearchEngineSourceConfig"> | string | null
     createdAt?: DateTimeFilter<"SearchEngineSourceConfig"> | Date | string
     updatedAt?: DateTimeFilter<"SearchEngineSourceConfig"> | Date | string
@@ -36207,6 +37671,7 @@ export namespace Prisma {
     objective?: SortOrder
     apiEndpoint?: SortOrderInput | SortOrder
     options?: SortOrderInput | SortOrder
+    keywordStrategy?: SortOrder
     credentialId?: SortOrderInput | SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
@@ -36225,6 +37690,7 @@ export namespace Prisma {
     objective?: StringWithAggregatesFilter<"SearchEngineSourceConfig"> | string
     apiEndpoint?: StringNullableWithAggregatesFilter<"SearchEngineSourceConfig"> | string | null
     options?: JsonNullableWithAggregatesFilter<"SearchEngineSourceConfig">
+    keywordStrategy?: EnumKeywordStrategyWithAggregatesFilter<"SearchEngineSourceConfig"> | $Enums.KeywordStrategy
     credentialId?: StringNullableWithAggregatesFilter<"SearchEngineSourceConfig"> | string | null
     createdAt?: DateTimeWithAggregatesFilter<"SearchEngineSourceConfig"> | Date | string
     updatedAt?: DateTimeWithAggregatesFilter<"SearchEngineSourceConfig"> | Date | string
@@ -36239,6 +37705,7 @@ export namespace Prisma {
     config?: JsonFilter<"SocialMediaSourceConfig">
     credentialId?: StringNullableFilter<"SocialMediaSourceConfig"> | string | null
     proxyId?: StringNullableFilter<"SocialMediaSourceConfig"> | string | null
+    keywordStrategy?: EnumKeywordStrategyFilter<"SocialMediaSourceConfig"> | $Enums.KeywordStrategy
     createdAt?: DateTimeFilter<"SocialMediaSourceConfig"> | Date | string
     updatedAt?: DateTimeFilter<"SocialMediaSourceConfig"> | Date | string
     source?: XOR<SourceScalarRelationFilter, SourceWhereInput>
@@ -36252,6 +37719,7 @@ export namespace Prisma {
     config?: SortOrder
     credentialId?: SortOrderInput | SortOrder
     proxyId?: SortOrderInput | SortOrder
+    keywordStrategy?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
     source?: SourceOrderByWithRelationInput
@@ -36268,6 +37736,7 @@ export namespace Prisma {
     config?: JsonFilter<"SocialMediaSourceConfig">
     credentialId?: StringNullableFilter<"SocialMediaSourceConfig"> | string | null
     proxyId?: StringNullableFilter<"SocialMediaSourceConfig"> | string | null
+    keywordStrategy?: EnumKeywordStrategyFilter<"SocialMediaSourceConfig"> | $Enums.KeywordStrategy
     createdAt?: DateTimeFilter<"SocialMediaSourceConfig"> | Date | string
     updatedAt?: DateTimeFilter<"SocialMediaSourceConfig"> | Date | string
     source?: XOR<SourceScalarRelationFilter, SourceWhereInput>
@@ -36281,6 +37750,7 @@ export namespace Prisma {
     config?: SortOrder
     credentialId?: SortOrderInput | SortOrder
     proxyId?: SortOrderInput | SortOrder
+    keywordStrategy?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
     _count?: SocialMediaSourceConfigCountOrderByAggregateInput
@@ -36297,6 +37767,7 @@ export namespace Prisma {
     config?: JsonWithAggregatesFilter<"SocialMediaSourceConfig">
     credentialId?: StringNullableWithAggregatesFilter<"SocialMediaSourceConfig"> | string | null
     proxyId?: StringNullableWithAggregatesFilter<"SocialMediaSourceConfig"> | string | null
+    keywordStrategy?: EnumKeywordStrategyWithAggregatesFilter<"SocialMediaSourceConfig"> | $Enums.KeywordStrategy
     createdAt?: DateTimeWithAggregatesFilter<"SocialMediaSourceConfig"> | Date | string
     updatedAt?: DateTimeWithAggregatesFilter<"SocialMediaSourceConfig"> | Date | string
   }
@@ -36544,6 +38015,7 @@ export namespace Prisma {
     createdAt?: DateTimeFilter<"Content"> | Date | string
     updatedAt?: DateTimeFilter<"Content"> | Date | string
     keywords?: ContentKeywordListRelationFilter
+    subjectMatches?: ContentSubjectMatchListRelationFilter
     entities?: XOR<ContentEntityNullableScalarRelationFilter, ContentEntityWhereInput> | null
     favorites?: FavoriteListRelationFilter
   }
@@ -36562,6 +38034,7 @@ export namespace Prisma {
     createdAt?: SortOrder
     updatedAt?: SortOrder
     keywords?: ContentKeywordOrderByRelationAggregateInput
+    subjectMatches?: ContentSubjectMatchOrderByRelationAggregateInput
     entities?: ContentEntityOrderByWithRelationInput
     favorites?: FavoriteOrderByRelationAggregateInput
   }
@@ -36583,6 +38056,7 @@ export namespace Prisma {
     createdAt?: DateTimeFilter<"Content"> | Date | string
     updatedAt?: DateTimeFilter<"Content"> | Date | string
     keywords?: ContentKeywordListRelationFilter
+    subjectMatches?: ContentSubjectMatchListRelationFilter
     entities?: XOR<ContentEntityNullableScalarRelationFilter, ContentEntityWhereInput> | null
     favorites?: FavoriteListRelationFilter
   }, "id">
@@ -36670,6 +38144,102 @@ export namespace Prisma {
     id?: StringWithAggregatesFilter<"ContentKeyword"> | string
     contentId?: StringWithAggregatesFilter<"ContentKeyword"> | string
     keywordId?: StringWithAggregatesFilter<"ContentKeyword"> | string
+  }
+
+  export type ContentSubjectMatchWhereInput = {
+    AND?: ContentSubjectMatchWhereInput | ContentSubjectMatchWhereInput[]
+    OR?: ContentSubjectMatchWhereInput[]
+    NOT?: ContentSubjectMatchWhereInput | ContentSubjectMatchWhereInput[]
+    id?: StringFilter<"ContentSubjectMatch"> | string
+    contentId?: StringFilter<"ContentSubjectMatch"> | string
+    keywordId?: StringFilter<"ContentSubjectMatch"> | string
+    ruleScore?: FloatNullableFilter<"ContentSubjectMatch"> | number | null
+    aiScore?: FloatNullableFilter<"ContentSubjectMatch"> | number | null
+    matchScore?: FloatNullableFilter<"ContentSubjectMatch"> | number | null
+    matchedIncludes?: StringNullableListFilter<"ContentSubjectMatch">
+    matchedExcludes?: StringNullableListFilter<"ContentSubjectMatch">
+    matchSource?: EnumContentSubjectMatchSourceFilter<"ContentSubjectMatch"> | $Enums.ContentSubjectMatchSource
+    reason?: StringNullableFilter<"ContentSubjectMatch"> | string | null
+    createdAt?: DateTimeFilter<"ContentSubjectMatch"> | Date | string
+    updatedAt?: DateTimeFilter<"ContentSubjectMatch"> | Date | string
+    content?: XOR<ContentScalarRelationFilter, ContentWhereInput>
+    keyword?: XOR<KeywordScalarRelationFilter, KeywordWhereInput>
+  }
+
+  export type ContentSubjectMatchOrderByWithRelationInput = {
+    id?: SortOrder
+    contentId?: SortOrder
+    keywordId?: SortOrder
+    ruleScore?: SortOrderInput | SortOrder
+    aiScore?: SortOrderInput | SortOrder
+    matchScore?: SortOrderInput | SortOrder
+    matchedIncludes?: SortOrder
+    matchedExcludes?: SortOrder
+    matchSource?: SortOrder
+    reason?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    content?: ContentOrderByWithRelationInput
+    keyword?: KeywordOrderByWithRelationInput
+  }
+
+  export type ContentSubjectMatchWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    contentId_keywordId?: ContentSubjectMatchContentIdKeywordIdCompoundUniqueInput
+    AND?: ContentSubjectMatchWhereInput | ContentSubjectMatchWhereInput[]
+    OR?: ContentSubjectMatchWhereInput[]
+    NOT?: ContentSubjectMatchWhereInput | ContentSubjectMatchWhereInput[]
+    contentId?: StringFilter<"ContentSubjectMatch"> | string
+    keywordId?: StringFilter<"ContentSubjectMatch"> | string
+    ruleScore?: FloatNullableFilter<"ContentSubjectMatch"> | number | null
+    aiScore?: FloatNullableFilter<"ContentSubjectMatch"> | number | null
+    matchScore?: FloatNullableFilter<"ContentSubjectMatch"> | number | null
+    matchedIncludes?: StringNullableListFilter<"ContentSubjectMatch">
+    matchedExcludes?: StringNullableListFilter<"ContentSubjectMatch">
+    matchSource?: EnumContentSubjectMatchSourceFilter<"ContentSubjectMatch"> | $Enums.ContentSubjectMatchSource
+    reason?: StringNullableFilter<"ContentSubjectMatch"> | string | null
+    createdAt?: DateTimeFilter<"ContentSubjectMatch"> | Date | string
+    updatedAt?: DateTimeFilter<"ContentSubjectMatch"> | Date | string
+    content?: XOR<ContentScalarRelationFilter, ContentWhereInput>
+    keyword?: XOR<KeywordScalarRelationFilter, KeywordWhereInput>
+  }, "id" | "contentId_keywordId">
+
+  export type ContentSubjectMatchOrderByWithAggregationInput = {
+    id?: SortOrder
+    contentId?: SortOrder
+    keywordId?: SortOrder
+    ruleScore?: SortOrderInput | SortOrder
+    aiScore?: SortOrderInput | SortOrder
+    matchScore?: SortOrderInput | SortOrder
+    matchedIncludes?: SortOrder
+    matchedExcludes?: SortOrder
+    matchSource?: SortOrder
+    reason?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    _count?: ContentSubjectMatchCountOrderByAggregateInput
+    _avg?: ContentSubjectMatchAvgOrderByAggregateInput
+    _max?: ContentSubjectMatchMaxOrderByAggregateInput
+    _min?: ContentSubjectMatchMinOrderByAggregateInput
+    _sum?: ContentSubjectMatchSumOrderByAggregateInput
+  }
+
+  export type ContentSubjectMatchScalarWhereWithAggregatesInput = {
+    AND?: ContentSubjectMatchScalarWhereWithAggregatesInput | ContentSubjectMatchScalarWhereWithAggregatesInput[]
+    OR?: ContentSubjectMatchScalarWhereWithAggregatesInput[]
+    NOT?: ContentSubjectMatchScalarWhereWithAggregatesInput | ContentSubjectMatchScalarWhereWithAggregatesInput[]
+    id?: StringWithAggregatesFilter<"ContentSubjectMatch"> | string
+    contentId?: StringWithAggregatesFilter<"ContentSubjectMatch"> | string
+    keywordId?: StringWithAggregatesFilter<"ContentSubjectMatch"> | string
+    ruleScore?: FloatNullableWithAggregatesFilter<"ContentSubjectMatch"> | number | null
+    aiScore?: FloatNullableWithAggregatesFilter<"ContentSubjectMatch"> | number | null
+    matchScore?: FloatNullableWithAggregatesFilter<"ContentSubjectMatch"> | number | null
+    matchedIncludes?: StringNullableListFilter<"ContentSubjectMatch">
+    matchedExcludes?: StringNullableListFilter<"ContentSubjectMatch">
+    matchSource?: EnumContentSubjectMatchSourceWithAggregatesFilter<"ContentSubjectMatch"> | $Enums.ContentSubjectMatchSource
+    reason?: StringNullableWithAggregatesFilter<"ContentSubjectMatch"> | string | null
+    createdAt?: DateTimeWithAggregatesFilter<"ContentSubjectMatch"> | Date | string
+    updatedAt?: DateTimeWithAggregatesFilter<"ContentSubjectMatch"> | Date | string
   }
 
   export type ContentEntityWhereInput = {
@@ -37422,6 +38992,7 @@ export namespace Prisma {
     category?: CategoryCreateNestedOneWithoutKeywordsInput
     queries?: QueryCreateNestedManyWithoutKeywordsInput
     contentKeywords?: ContentKeywordCreateNestedManyWithoutKeywordInput
+    contentSubjectMatches?: ContentSubjectMatchCreateNestedManyWithoutKeywordInput
   }
 
   export type KeywordUncheckedCreateInput = {
@@ -37439,6 +39010,7 @@ export namespace Prisma {
     updatedAt?: Date | string
     queries?: QueryUncheckedCreateNestedManyWithoutKeywordsInput
     contentKeywords?: ContentKeywordUncheckedCreateNestedManyWithoutKeywordInput
+    contentSubjectMatches?: ContentSubjectMatchUncheckedCreateNestedManyWithoutKeywordInput
   }
 
   export type KeywordUpdateInput = {
@@ -37456,6 +39028,7 @@ export namespace Prisma {
     category?: CategoryUpdateOneWithoutKeywordsNestedInput
     queries?: QueryUpdateManyWithoutKeywordsNestedInput
     contentKeywords?: ContentKeywordUpdateManyWithoutKeywordNestedInput
+    contentSubjectMatches?: ContentSubjectMatchUpdateManyWithoutKeywordNestedInput
   }
 
   export type KeywordUncheckedUpdateInput = {
@@ -37473,6 +39046,7 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     queries?: QueryUncheckedUpdateManyWithoutKeywordsNestedInput
     contentKeywords?: ContentKeywordUncheckedUpdateManyWithoutKeywordNestedInput
+    contentSubjectMatches?: ContentSubjectMatchUncheckedUpdateManyWithoutKeywordNestedInput
   }
 
   export type KeywordCreateManyInput = {
@@ -38287,6 +39861,7 @@ export namespace Prisma {
     objective: string
     apiEndpoint?: string | null
     options?: NullableJsonNullValueInput | InputJsonValue
+    keywordStrategy?: $Enums.KeywordStrategy
     createdAt?: Date | string
     updatedAt?: Date | string
     source: SourceCreateNestedOneWithoutSearchInput
@@ -38300,6 +39875,7 @@ export namespace Prisma {
     objective: string
     apiEndpoint?: string | null
     options?: NullableJsonNullValueInput | InputJsonValue
+    keywordStrategy?: $Enums.KeywordStrategy
     credentialId?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
@@ -38311,6 +39887,7 @@ export namespace Prisma {
     objective?: StringFieldUpdateOperationsInput | string
     apiEndpoint?: NullableStringFieldUpdateOperationsInput | string | null
     options?: NullableJsonNullValueInput | InputJsonValue
+    keywordStrategy?: EnumKeywordStrategyFieldUpdateOperationsInput | $Enums.KeywordStrategy
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     source?: SourceUpdateOneRequiredWithoutSearchNestedInput
@@ -38324,6 +39901,7 @@ export namespace Prisma {
     objective?: StringFieldUpdateOperationsInput | string
     apiEndpoint?: NullableStringFieldUpdateOperationsInput | string | null
     options?: NullableJsonNullValueInput | InputJsonValue
+    keywordStrategy?: EnumKeywordStrategyFieldUpdateOperationsInput | $Enums.KeywordStrategy
     credentialId?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -38336,6 +39914,7 @@ export namespace Prisma {
     objective: string
     apiEndpoint?: string | null
     options?: NullableJsonNullValueInput | InputJsonValue
+    keywordStrategy?: $Enums.KeywordStrategy
     credentialId?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
@@ -38347,6 +39926,7 @@ export namespace Prisma {
     objective?: StringFieldUpdateOperationsInput | string
     apiEndpoint?: NullableStringFieldUpdateOperationsInput | string | null
     options?: NullableJsonNullValueInput | InputJsonValue
+    keywordStrategy?: EnumKeywordStrategyFieldUpdateOperationsInput | $Enums.KeywordStrategy
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -38358,6 +39938,7 @@ export namespace Prisma {
     objective?: StringFieldUpdateOperationsInput | string
     apiEndpoint?: NullableStringFieldUpdateOperationsInput | string | null
     options?: NullableJsonNullValueInput | InputJsonValue
+    keywordStrategy?: EnumKeywordStrategyFieldUpdateOperationsInput | $Enums.KeywordStrategy
     credentialId?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -38366,6 +39947,7 @@ export namespace Prisma {
   export type SocialMediaSourceConfigCreateInput = {
     platform: string
     config: JsonNullValueInput | InputJsonValue
+    keywordStrategy?: $Enums.KeywordStrategy
     createdAt?: Date | string
     updatedAt?: Date | string
     source: SourceCreateNestedOneWithoutSocialInput
@@ -38379,6 +39961,7 @@ export namespace Prisma {
     config: JsonNullValueInput | InputJsonValue
     credentialId?: string | null
     proxyId?: string | null
+    keywordStrategy?: $Enums.KeywordStrategy
     createdAt?: Date | string
     updatedAt?: Date | string
   }
@@ -38386,6 +39969,7 @@ export namespace Prisma {
   export type SocialMediaSourceConfigUpdateInput = {
     platform?: StringFieldUpdateOperationsInput | string
     config?: JsonNullValueInput | InputJsonValue
+    keywordStrategy?: EnumKeywordStrategyFieldUpdateOperationsInput | $Enums.KeywordStrategy
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     source?: SourceUpdateOneRequiredWithoutSocialNestedInput
@@ -38399,6 +39983,7 @@ export namespace Prisma {
     config?: JsonNullValueInput | InputJsonValue
     credentialId?: NullableStringFieldUpdateOperationsInput | string | null
     proxyId?: NullableStringFieldUpdateOperationsInput | string | null
+    keywordStrategy?: EnumKeywordStrategyFieldUpdateOperationsInput | $Enums.KeywordStrategy
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -38409,6 +39994,7 @@ export namespace Prisma {
     config: JsonNullValueInput | InputJsonValue
     credentialId?: string | null
     proxyId?: string | null
+    keywordStrategy?: $Enums.KeywordStrategy
     createdAt?: Date | string
     updatedAt?: Date | string
   }
@@ -38416,6 +40002,7 @@ export namespace Prisma {
   export type SocialMediaSourceConfigUpdateManyMutationInput = {
     platform?: StringFieldUpdateOperationsInput | string
     config?: JsonNullValueInput | InputJsonValue
+    keywordStrategy?: EnumKeywordStrategyFieldUpdateOperationsInput | $Enums.KeywordStrategy
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -38426,6 +40013,7 @@ export namespace Prisma {
     config?: JsonNullValueInput | InputJsonValue
     credentialId?: NullableStringFieldUpdateOperationsInput | string | null
     proxyId?: NullableStringFieldUpdateOperationsInput | string | null
+    keywordStrategy?: EnumKeywordStrategyFieldUpdateOperationsInput | $Enums.KeywordStrategy
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -38696,6 +40284,7 @@ export namespace Prisma {
     createdAt?: Date | string
     updatedAt?: Date | string
     keywords?: ContentKeywordCreateNestedManyWithoutContentInput
+    subjectMatches?: ContentSubjectMatchCreateNestedManyWithoutContentInput
     entities?: ContentEntityCreateNestedOneWithoutContentInput
     favorites?: FavoriteCreateNestedManyWithoutContentInput
   }
@@ -38714,6 +40303,7 @@ export namespace Prisma {
     createdAt?: Date | string
     updatedAt?: Date | string
     keywords?: ContentKeywordUncheckedCreateNestedManyWithoutContentInput
+    subjectMatches?: ContentSubjectMatchUncheckedCreateNestedManyWithoutContentInput
     entities?: ContentEntityUncheckedCreateNestedOneWithoutContentInput
     favorites?: FavoriteUncheckedCreateNestedManyWithoutContentInput
   }
@@ -38732,6 +40322,7 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     keywords?: ContentKeywordUpdateManyWithoutContentNestedInput
+    subjectMatches?: ContentSubjectMatchUpdateManyWithoutContentNestedInput
     entities?: ContentEntityUpdateOneWithoutContentNestedInput
     favorites?: FavoriteUpdateManyWithoutContentNestedInput
   }
@@ -38750,6 +40341,7 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     keywords?: ContentKeywordUncheckedUpdateManyWithoutContentNestedInput
+    subjectMatches?: ContentSubjectMatchUncheckedUpdateManyWithoutContentNestedInput
     entities?: ContentEntityUncheckedUpdateOneWithoutContentNestedInput
     favorites?: FavoriteUncheckedUpdateManyWithoutContentNestedInput
   }
@@ -38837,6 +40429,109 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     contentId?: StringFieldUpdateOperationsInput | string
     keywordId?: StringFieldUpdateOperationsInput | string
+  }
+
+  export type ContentSubjectMatchCreateInput = {
+    id?: string
+    ruleScore?: number | null
+    aiScore?: number | null
+    matchScore?: number | null
+    matchedIncludes?: ContentSubjectMatchCreatematchedIncludesInput | string[]
+    matchedExcludes?: ContentSubjectMatchCreatematchedExcludesInput | string[]
+    matchSource?: $Enums.ContentSubjectMatchSource
+    reason?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    content: ContentCreateNestedOneWithoutSubjectMatchesInput
+    keyword: KeywordCreateNestedOneWithoutContentSubjectMatchesInput
+  }
+
+  export type ContentSubjectMatchUncheckedCreateInput = {
+    id?: string
+    contentId: string
+    keywordId: string
+    ruleScore?: number | null
+    aiScore?: number | null
+    matchScore?: number | null
+    matchedIncludes?: ContentSubjectMatchCreatematchedIncludesInput | string[]
+    matchedExcludes?: ContentSubjectMatchCreatematchedExcludesInput | string[]
+    matchSource?: $Enums.ContentSubjectMatchSource
+    reason?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type ContentSubjectMatchUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    ruleScore?: NullableFloatFieldUpdateOperationsInput | number | null
+    aiScore?: NullableFloatFieldUpdateOperationsInput | number | null
+    matchScore?: NullableFloatFieldUpdateOperationsInput | number | null
+    matchedIncludes?: ContentSubjectMatchUpdatematchedIncludesInput | string[]
+    matchedExcludes?: ContentSubjectMatchUpdatematchedExcludesInput | string[]
+    matchSource?: EnumContentSubjectMatchSourceFieldUpdateOperationsInput | $Enums.ContentSubjectMatchSource
+    reason?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    content?: ContentUpdateOneRequiredWithoutSubjectMatchesNestedInput
+    keyword?: KeywordUpdateOneRequiredWithoutContentSubjectMatchesNestedInput
+  }
+
+  export type ContentSubjectMatchUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    contentId?: StringFieldUpdateOperationsInput | string
+    keywordId?: StringFieldUpdateOperationsInput | string
+    ruleScore?: NullableFloatFieldUpdateOperationsInput | number | null
+    aiScore?: NullableFloatFieldUpdateOperationsInput | number | null
+    matchScore?: NullableFloatFieldUpdateOperationsInput | number | null
+    matchedIncludes?: ContentSubjectMatchUpdatematchedIncludesInput | string[]
+    matchedExcludes?: ContentSubjectMatchUpdatematchedExcludesInput | string[]
+    matchSource?: EnumContentSubjectMatchSourceFieldUpdateOperationsInput | $Enums.ContentSubjectMatchSource
+    reason?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type ContentSubjectMatchCreateManyInput = {
+    id?: string
+    contentId: string
+    keywordId: string
+    ruleScore?: number | null
+    aiScore?: number | null
+    matchScore?: number | null
+    matchedIncludes?: ContentSubjectMatchCreatematchedIncludesInput | string[]
+    matchedExcludes?: ContentSubjectMatchCreatematchedExcludesInput | string[]
+    matchSource?: $Enums.ContentSubjectMatchSource
+    reason?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type ContentSubjectMatchUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    ruleScore?: NullableFloatFieldUpdateOperationsInput | number | null
+    aiScore?: NullableFloatFieldUpdateOperationsInput | number | null
+    matchScore?: NullableFloatFieldUpdateOperationsInput | number | null
+    matchedIncludes?: ContentSubjectMatchUpdatematchedIncludesInput | string[]
+    matchedExcludes?: ContentSubjectMatchUpdatematchedExcludesInput | string[]
+    matchSource?: EnumContentSubjectMatchSourceFieldUpdateOperationsInput | $Enums.ContentSubjectMatchSource
+    reason?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type ContentSubjectMatchUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    contentId?: StringFieldUpdateOperationsInput | string
+    keywordId?: StringFieldUpdateOperationsInput | string
+    ruleScore?: NullableFloatFieldUpdateOperationsInput | number | null
+    aiScore?: NullableFloatFieldUpdateOperationsInput | number | null
+    matchScore?: NullableFloatFieldUpdateOperationsInput | number | null
+    matchedIncludes?: ContentSubjectMatchUpdatematchedIncludesInput | string[]
+    matchedExcludes?: ContentSubjectMatchUpdatematchedExcludesInput | string[]
+    matchSource?: EnumContentSubjectMatchSourceFieldUpdateOperationsInput | $Enums.ContentSubjectMatchSource
+    reason?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
   export type ContentEntityCreateInput = {
@@ -39718,11 +41413,21 @@ export namespace Prisma {
     none?: ContentKeywordWhereInput
   }
 
+  export type ContentSubjectMatchListRelationFilter = {
+    every?: ContentSubjectMatchWhereInput
+    some?: ContentSubjectMatchWhereInput
+    none?: ContentSubjectMatchWhereInput
+  }
+
   export type QueryOrderByRelationAggregateInput = {
     _count?: SortOrder
   }
 
   export type ContentKeywordOrderByRelationAggregateInput = {
+    _count?: SortOrder
+  }
+
+  export type ContentSubjectMatchOrderByRelationAggregateInput = {
     _count?: SortOrder
   }
 
@@ -40472,6 +42177,13 @@ export namespace Prisma {
     not?: NestedEnumSearchEngineKindFilter<$PrismaModel> | $Enums.SearchEngineKind
   }
 
+  export type EnumKeywordStrategyFilter<$PrismaModel = never> = {
+    equals?: $Enums.KeywordStrategy | EnumKeywordStrategyFieldRefInput<$PrismaModel>
+    in?: $Enums.KeywordStrategy[] | ListEnumKeywordStrategyFieldRefInput<$PrismaModel>
+    notIn?: $Enums.KeywordStrategy[] | ListEnumKeywordStrategyFieldRefInput<$PrismaModel>
+    not?: NestedEnumKeywordStrategyFilter<$PrismaModel> | $Enums.KeywordStrategy
+  }
+
   export type SearchEngineSourceConfigCountOrderByAggregateInput = {
     sourceId?: SortOrder
     platform?: SortOrder
@@ -40479,6 +42191,7 @@ export namespace Prisma {
     objective?: SortOrder
     apiEndpoint?: SortOrder
     options?: SortOrder
+    keywordStrategy?: SortOrder
     credentialId?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
@@ -40490,6 +42203,7 @@ export namespace Prisma {
     engine?: SortOrder
     objective?: SortOrder
     apiEndpoint?: SortOrder
+    keywordStrategy?: SortOrder
     credentialId?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
@@ -40501,6 +42215,7 @@ export namespace Prisma {
     engine?: SortOrder
     objective?: SortOrder
     apiEndpoint?: SortOrder
+    keywordStrategy?: SortOrder
     credentialId?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
@@ -40526,12 +42241,23 @@ export namespace Prisma {
     _max?: NestedEnumSearchEngineKindFilter<$PrismaModel>
   }
 
+  export type EnumKeywordStrategyWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: $Enums.KeywordStrategy | EnumKeywordStrategyFieldRefInput<$PrismaModel>
+    in?: $Enums.KeywordStrategy[] | ListEnumKeywordStrategyFieldRefInput<$PrismaModel>
+    notIn?: $Enums.KeywordStrategy[] | ListEnumKeywordStrategyFieldRefInput<$PrismaModel>
+    not?: NestedEnumKeywordStrategyWithAggregatesFilter<$PrismaModel> | $Enums.KeywordStrategy
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedEnumKeywordStrategyFilter<$PrismaModel>
+    _max?: NestedEnumKeywordStrategyFilter<$PrismaModel>
+  }
+
   export type SocialMediaSourceConfigCountOrderByAggregateInput = {
     sourceId?: SortOrder
     platform?: SortOrder
     config?: SortOrder
     credentialId?: SortOrder
     proxyId?: SortOrder
+    keywordStrategy?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
   }
@@ -40541,6 +42267,7 @@ export namespace Prisma {
     platform?: SortOrder
     credentialId?: SortOrder
     proxyId?: SortOrder
+    keywordStrategy?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
   }
@@ -40550,6 +42277,7 @@ export namespace Prisma {
     platform?: SortOrder
     credentialId?: SortOrder
     proxyId?: SortOrder
+    keywordStrategy?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
   }
@@ -40828,6 +42556,108 @@ export namespace Prisma {
     id?: SortOrder
     contentId?: SortOrder
     keywordId?: SortOrder
+  }
+
+  export type FloatNullableFilter<$PrismaModel = never> = {
+    equals?: number | FloatFieldRefInput<$PrismaModel> | null
+    in?: number[] | ListFloatFieldRefInput<$PrismaModel> | null
+    notIn?: number[] | ListFloatFieldRefInput<$PrismaModel> | null
+    lt?: number | FloatFieldRefInput<$PrismaModel>
+    lte?: number | FloatFieldRefInput<$PrismaModel>
+    gt?: number | FloatFieldRefInput<$PrismaModel>
+    gte?: number | FloatFieldRefInput<$PrismaModel>
+    not?: NestedFloatNullableFilter<$PrismaModel> | number | null
+  }
+
+  export type EnumContentSubjectMatchSourceFilter<$PrismaModel = never> = {
+    equals?: $Enums.ContentSubjectMatchSource | EnumContentSubjectMatchSourceFieldRefInput<$PrismaModel>
+    in?: $Enums.ContentSubjectMatchSource[] | ListEnumContentSubjectMatchSourceFieldRefInput<$PrismaModel>
+    notIn?: $Enums.ContentSubjectMatchSource[] | ListEnumContentSubjectMatchSourceFieldRefInput<$PrismaModel>
+    not?: NestedEnumContentSubjectMatchSourceFilter<$PrismaModel> | $Enums.ContentSubjectMatchSource
+  }
+
+  export type ContentSubjectMatchContentIdKeywordIdCompoundUniqueInput = {
+    contentId: string
+    keywordId: string
+  }
+
+  export type ContentSubjectMatchCountOrderByAggregateInput = {
+    id?: SortOrder
+    contentId?: SortOrder
+    keywordId?: SortOrder
+    ruleScore?: SortOrder
+    aiScore?: SortOrder
+    matchScore?: SortOrder
+    matchedIncludes?: SortOrder
+    matchedExcludes?: SortOrder
+    matchSource?: SortOrder
+    reason?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type ContentSubjectMatchAvgOrderByAggregateInput = {
+    ruleScore?: SortOrder
+    aiScore?: SortOrder
+    matchScore?: SortOrder
+  }
+
+  export type ContentSubjectMatchMaxOrderByAggregateInput = {
+    id?: SortOrder
+    contentId?: SortOrder
+    keywordId?: SortOrder
+    ruleScore?: SortOrder
+    aiScore?: SortOrder
+    matchScore?: SortOrder
+    matchSource?: SortOrder
+    reason?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type ContentSubjectMatchMinOrderByAggregateInput = {
+    id?: SortOrder
+    contentId?: SortOrder
+    keywordId?: SortOrder
+    ruleScore?: SortOrder
+    aiScore?: SortOrder
+    matchScore?: SortOrder
+    matchSource?: SortOrder
+    reason?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type ContentSubjectMatchSumOrderByAggregateInput = {
+    ruleScore?: SortOrder
+    aiScore?: SortOrder
+    matchScore?: SortOrder
+  }
+
+  export type FloatNullableWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: number | FloatFieldRefInput<$PrismaModel> | null
+    in?: number[] | ListFloatFieldRefInput<$PrismaModel> | null
+    notIn?: number[] | ListFloatFieldRefInput<$PrismaModel> | null
+    lt?: number | FloatFieldRefInput<$PrismaModel>
+    lte?: number | FloatFieldRefInput<$PrismaModel>
+    gt?: number | FloatFieldRefInput<$PrismaModel>
+    gte?: number | FloatFieldRefInput<$PrismaModel>
+    not?: NestedFloatNullableWithAggregatesFilter<$PrismaModel> | number | null
+    _count?: NestedIntNullableFilter<$PrismaModel>
+    _avg?: NestedFloatNullableFilter<$PrismaModel>
+    _sum?: NestedFloatNullableFilter<$PrismaModel>
+    _min?: NestedFloatNullableFilter<$PrismaModel>
+    _max?: NestedFloatNullableFilter<$PrismaModel>
+  }
+
+  export type EnumContentSubjectMatchSourceWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: $Enums.ContentSubjectMatchSource | EnumContentSubjectMatchSourceFieldRefInput<$PrismaModel>
+    in?: $Enums.ContentSubjectMatchSource[] | ListEnumContentSubjectMatchSourceFieldRefInput<$PrismaModel>
+    notIn?: $Enums.ContentSubjectMatchSource[] | ListEnumContentSubjectMatchSourceFieldRefInput<$PrismaModel>
+    not?: NestedEnumContentSubjectMatchSourceWithAggregatesFilter<$PrismaModel> | $Enums.ContentSubjectMatchSource
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedEnumContentSubjectMatchSourceFilter<$PrismaModel>
+    _max?: NestedEnumContentSubjectMatchSourceFilter<$PrismaModel>
   }
 
   export type ContentEntityCountOrderByAggregateInput = {
@@ -41345,6 +43175,13 @@ export namespace Prisma {
     connect?: ContentKeywordWhereUniqueInput | ContentKeywordWhereUniqueInput[]
   }
 
+  export type ContentSubjectMatchCreateNestedManyWithoutKeywordInput = {
+    create?: XOR<ContentSubjectMatchCreateWithoutKeywordInput, ContentSubjectMatchUncheckedCreateWithoutKeywordInput> | ContentSubjectMatchCreateWithoutKeywordInput[] | ContentSubjectMatchUncheckedCreateWithoutKeywordInput[]
+    connectOrCreate?: ContentSubjectMatchCreateOrConnectWithoutKeywordInput | ContentSubjectMatchCreateOrConnectWithoutKeywordInput[]
+    createMany?: ContentSubjectMatchCreateManyKeywordInputEnvelope
+    connect?: ContentSubjectMatchWhereUniqueInput | ContentSubjectMatchWhereUniqueInput[]
+  }
+
   export type QueryUncheckedCreateNestedManyWithoutKeywordsInput = {
     create?: XOR<QueryCreateWithoutKeywordsInput, QueryUncheckedCreateWithoutKeywordsInput> | QueryCreateWithoutKeywordsInput[] | QueryUncheckedCreateWithoutKeywordsInput[]
     connectOrCreate?: QueryCreateOrConnectWithoutKeywordsInput | QueryCreateOrConnectWithoutKeywordsInput[]
@@ -41356,6 +43193,13 @@ export namespace Prisma {
     connectOrCreate?: ContentKeywordCreateOrConnectWithoutKeywordInput | ContentKeywordCreateOrConnectWithoutKeywordInput[]
     createMany?: ContentKeywordCreateManyKeywordInputEnvelope
     connect?: ContentKeywordWhereUniqueInput | ContentKeywordWhereUniqueInput[]
+  }
+
+  export type ContentSubjectMatchUncheckedCreateNestedManyWithoutKeywordInput = {
+    create?: XOR<ContentSubjectMatchCreateWithoutKeywordInput, ContentSubjectMatchUncheckedCreateWithoutKeywordInput> | ContentSubjectMatchCreateWithoutKeywordInput[] | ContentSubjectMatchUncheckedCreateWithoutKeywordInput[]
+    connectOrCreate?: ContentSubjectMatchCreateOrConnectWithoutKeywordInput | ContentSubjectMatchCreateOrConnectWithoutKeywordInput[]
+    createMany?: ContentSubjectMatchCreateManyKeywordInputEnvelope
+    connect?: ContentSubjectMatchWhereUniqueInput | ContentSubjectMatchWhereUniqueInput[]
   }
 
   export type KeywordUpdateincludesInput = {
@@ -41414,6 +43258,20 @@ export namespace Prisma {
     deleteMany?: ContentKeywordScalarWhereInput | ContentKeywordScalarWhereInput[]
   }
 
+  export type ContentSubjectMatchUpdateManyWithoutKeywordNestedInput = {
+    create?: XOR<ContentSubjectMatchCreateWithoutKeywordInput, ContentSubjectMatchUncheckedCreateWithoutKeywordInput> | ContentSubjectMatchCreateWithoutKeywordInput[] | ContentSubjectMatchUncheckedCreateWithoutKeywordInput[]
+    connectOrCreate?: ContentSubjectMatchCreateOrConnectWithoutKeywordInput | ContentSubjectMatchCreateOrConnectWithoutKeywordInput[]
+    upsert?: ContentSubjectMatchUpsertWithWhereUniqueWithoutKeywordInput | ContentSubjectMatchUpsertWithWhereUniqueWithoutKeywordInput[]
+    createMany?: ContentSubjectMatchCreateManyKeywordInputEnvelope
+    set?: ContentSubjectMatchWhereUniqueInput | ContentSubjectMatchWhereUniqueInput[]
+    disconnect?: ContentSubjectMatchWhereUniqueInput | ContentSubjectMatchWhereUniqueInput[]
+    delete?: ContentSubjectMatchWhereUniqueInput | ContentSubjectMatchWhereUniqueInput[]
+    connect?: ContentSubjectMatchWhereUniqueInput | ContentSubjectMatchWhereUniqueInput[]
+    update?: ContentSubjectMatchUpdateWithWhereUniqueWithoutKeywordInput | ContentSubjectMatchUpdateWithWhereUniqueWithoutKeywordInput[]
+    updateMany?: ContentSubjectMatchUpdateManyWithWhereWithoutKeywordInput | ContentSubjectMatchUpdateManyWithWhereWithoutKeywordInput[]
+    deleteMany?: ContentSubjectMatchScalarWhereInput | ContentSubjectMatchScalarWhereInput[]
+  }
+
   export type QueryUncheckedUpdateManyWithoutKeywordsNestedInput = {
     create?: XOR<QueryCreateWithoutKeywordsInput, QueryUncheckedCreateWithoutKeywordsInput> | QueryCreateWithoutKeywordsInput[] | QueryUncheckedCreateWithoutKeywordsInput[]
     connectOrCreate?: QueryCreateOrConnectWithoutKeywordsInput | QueryCreateOrConnectWithoutKeywordsInput[]
@@ -41439,6 +43297,20 @@ export namespace Prisma {
     update?: ContentKeywordUpdateWithWhereUniqueWithoutKeywordInput | ContentKeywordUpdateWithWhereUniqueWithoutKeywordInput[]
     updateMany?: ContentKeywordUpdateManyWithWhereWithoutKeywordInput | ContentKeywordUpdateManyWithWhereWithoutKeywordInput[]
     deleteMany?: ContentKeywordScalarWhereInput | ContentKeywordScalarWhereInput[]
+  }
+
+  export type ContentSubjectMatchUncheckedUpdateManyWithoutKeywordNestedInput = {
+    create?: XOR<ContentSubjectMatchCreateWithoutKeywordInput, ContentSubjectMatchUncheckedCreateWithoutKeywordInput> | ContentSubjectMatchCreateWithoutKeywordInput[] | ContentSubjectMatchUncheckedCreateWithoutKeywordInput[]
+    connectOrCreate?: ContentSubjectMatchCreateOrConnectWithoutKeywordInput | ContentSubjectMatchCreateOrConnectWithoutKeywordInput[]
+    upsert?: ContentSubjectMatchUpsertWithWhereUniqueWithoutKeywordInput | ContentSubjectMatchUpsertWithWhereUniqueWithoutKeywordInput[]
+    createMany?: ContentSubjectMatchCreateManyKeywordInputEnvelope
+    set?: ContentSubjectMatchWhereUniqueInput | ContentSubjectMatchWhereUniqueInput[]
+    disconnect?: ContentSubjectMatchWhereUniqueInput | ContentSubjectMatchWhereUniqueInput[]
+    delete?: ContentSubjectMatchWhereUniqueInput | ContentSubjectMatchWhereUniqueInput[]
+    connect?: ContentSubjectMatchWhereUniqueInput | ContentSubjectMatchWhereUniqueInput[]
+    update?: ContentSubjectMatchUpdateWithWhereUniqueWithoutKeywordInput | ContentSubjectMatchUpdateWithWhereUniqueWithoutKeywordInput[]
+    updateMany?: ContentSubjectMatchUpdateManyWithWhereWithoutKeywordInput | ContentSubjectMatchUpdateManyWithWhereWithoutKeywordInput[]
+    deleteMany?: ContentSubjectMatchScalarWhereInput | ContentSubjectMatchScalarWhereInput[]
   }
 
   export type SourceCreateNestedManyWithoutProxyInput = {
@@ -42181,6 +44053,10 @@ export namespace Prisma {
     set?: $Enums.SearchEngineKind
   }
 
+  export type EnumKeywordStrategyFieldUpdateOperationsInput = {
+    set?: $Enums.KeywordStrategy
+  }
+
   export type SourceUpdateOneRequiredWithoutSearchNestedInput = {
     create?: XOR<SourceCreateWithoutSearchInput, SourceUncheckedCreateWithoutSearchInput>
     connectOrCreate?: SourceCreateOrConnectWithoutSearchInput
@@ -42448,6 +44324,13 @@ export namespace Prisma {
     connect?: ContentKeywordWhereUniqueInput | ContentKeywordWhereUniqueInput[]
   }
 
+  export type ContentSubjectMatchCreateNestedManyWithoutContentInput = {
+    create?: XOR<ContentSubjectMatchCreateWithoutContentInput, ContentSubjectMatchUncheckedCreateWithoutContentInput> | ContentSubjectMatchCreateWithoutContentInput[] | ContentSubjectMatchUncheckedCreateWithoutContentInput[]
+    connectOrCreate?: ContentSubjectMatchCreateOrConnectWithoutContentInput | ContentSubjectMatchCreateOrConnectWithoutContentInput[]
+    createMany?: ContentSubjectMatchCreateManyContentInputEnvelope
+    connect?: ContentSubjectMatchWhereUniqueInput | ContentSubjectMatchWhereUniqueInput[]
+  }
+
   export type ContentEntityCreateNestedOneWithoutContentInput = {
     create?: XOR<ContentEntityCreateWithoutContentInput, ContentEntityUncheckedCreateWithoutContentInput>
     connectOrCreate?: ContentEntityCreateOrConnectWithoutContentInput
@@ -42466,6 +44349,13 @@ export namespace Prisma {
     connectOrCreate?: ContentKeywordCreateOrConnectWithoutContentInput | ContentKeywordCreateOrConnectWithoutContentInput[]
     createMany?: ContentKeywordCreateManyContentInputEnvelope
     connect?: ContentKeywordWhereUniqueInput | ContentKeywordWhereUniqueInput[]
+  }
+
+  export type ContentSubjectMatchUncheckedCreateNestedManyWithoutContentInput = {
+    create?: XOR<ContentSubjectMatchCreateWithoutContentInput, ContentSubjectMatchUncheckedCreateWithoutContentInput> | ContentSubjectMatchCreateWithoutContentInput[] | ContentSubjectMatchUncheckedCreateWithoutContentInput[]
+    connectOrCreate?: ContentSubjectMatchCreateOrConnectWithoutContentInput | ContentSubjectMatchCreateOrConnectWithoutContentInput[]
+    createMany?: ContentSubjectMatchCreateManyContentInputEnvelope
+    connect?: ContentSubjectMatchWhereUniqueInput | ContentSubjectMatchWhereUniqueInput[]
   }
 
   export type ContentEntityUncheckedCreateNestedOneWithoutContentInput = {
@@ -42497,6 +44387,20 @@ export namespace Prisma {
     update?: ContentKeywordUpdateWithWhereUniqueWithoutContentInput | ContentKeywordUpdateWithWhereUniqueWithoutContentInput[]
     updateMany?: ContentKeywordUpdateManyWithWhereWithoutContentInput | ContentKeywordUpdateManyWithWhereWithoutContentInput[]
     deleteMany?: ContentKeywordScalarWhereInput | ContentKeywordScalarWhereInput[]
+  }
+
+  export type ContentSubjectMatchUpdateManyWithoutContentNestedInput = {
+    create?: XOR<ContentSubjectMatchCreateWithoutContentInput, ContentSubjectMatchUncheckedCreateWithoutContentInput> | ContentSubjectMatchCreateWithoutContentInput[] | ContentSubjectMatchUncheckedCreateWithoutContentInput[]
+    connectOrCreate?: ContentSubjectMatchCreateOrConnectWithoutContentInput | ContentSubjectMatchCreateOrConnectWithoutContentInput[]
+    upsert?: ContentSubjectMatchUpsertWithWhereUniqueWithoutContentInput | ContentSubjectMatchUpsertWithWhereUniqueWithoutContentInput[]
+    createMany?: ContentSubjectMatchCreateManyContentInputEnvelope
+    set?: ContentSubjectMatchWhereUniqueInput | ContentSubjectMatchWhereUniqueInput[]
+    disconnect?: ContentSubjectMatchWhereUniqueInput | ContentSubjectMatchWhereUniqueInput[]
+    delete?: ContentSubjectMatchWhereUniqueInput | ContentSubjectMatchWhereUniqueInput[]
+    connect?: ContentSubjectMatchWhereUniqueInput | ContentSubjectMatchWhereUniqueInput[]
+    update?: ContentSubjectMatchUpdateWithWhereUniqueWithoutContentInput | ContentSubjectMatchUpdateWithWhereUniqueWithoutContentInput[]
+    updateMany?: ContentSubjectMatchUpdateManyWithWhereWithoutContentInput | ContentSubjectMatchUpdateManyWithWhereWithoutContentInput[]
+    deleteMany?: ContentSubjectMatchScalarWhereInput | ContentSubjectMatchScalarWhereInput[]
   }
 
   export type ContentEntityUpdateOneWithoutContentNestedInput = {
@@ -42535,6 +44439,20 @@ export namespace Prisma {
     update?: ContentKeywordUpdateWithWhereUniqueWithoutContentInput | ContentKeywordUpdateWithWhereUniqueWithoutContentInput[]
     updateMany?: ContentKeywordUpdateManyWithWhereWithoutContentInput | ContentKeywordUpdateManyWithWhereWithoutContentInput[]
     deleteMany?: ContentKeywordScalarWhereInput | ContentKeywordScalarWhereInput[]
+  }
+
+  export type ContentSubjectMatchUncheckedUpdateManyWithoutContentNestedInput = {
+    create?: XOR<ContentSubjectMatchCreateWithoutContentInput, ContentSubjectMatchUncheckedCreateWithoutContentInput> | ContentSubjectMatchCreateWithoutContentInput[] | ContentSubjectMatchUncheckedCreateWithoutContentInput[]
+    connectOrCreate?: ContentSubjectMatchCreateOrConnectWithoutContentInput | ContentSubjectMatchCreateOrConnectWithoutContentInput[]
+    upsert?: ContentSubjectMatchUpsertWithWhereUniqueWithoutContentInput | ContentSubjectMatchUpsertWithWhereUniqueWithoutContentInput[]
+    createMany?: ContentSubjectMatchCreateManyContentInputEnvelope
+    set?: ContentSubjectMatchWhereUniqueInput | ContentSubjectMatchWhereUniqueInput[]
+    disconnect?: ContentSubjectMatchWhereUniqueInput | ContentSubjectMatchWhereUniqueInput[]
+    delete?: ContentSubjectMatchWhereUniqueInput | ContentSubjectMatchWhereUniqueInput[]
+    connect?: ContentSubjectMatchWhereUniqueInput | ContentSubjectMatchWhereUniqueInput[]
+    update?: ContentSubjectMatchUpdateWithWhereUniqueWithoutContentInput | ContentSubjectMatchUpdateWithWhereUniqueWithoutContentInput[]
+    updateMany?: ContentSubjectMatchUpdateManyWithWhereWithoutContentInput | ContentSubjectMatchUpdateManyWithWhereWithoutContentInput[]
+    deleteMany?: ContentSubjectMatchScalarWhereInput | ContentSubjectMatchScalarWhereInput[]
   }
 
   export type ContentEntityUncheckedUpdateOneWithoutContentNestedInput = {
@@ -42587,6 +44505,64 @@ export namespace Prisma {
     upsert?: KeywordUpsertWithoutContentKeywordsInput
     connect?: KeywordWhereUniqueInput
     update?: XOR<XOR<KeywordUpdateToOneWithWhereWithoutContentKeywordsInput, KeywordUpdateWithoutContentKeywordsInput>, KeywordUncheckedUpdateWithoutContentKeywordsInput>
+  }
+
+  export type ContentSubjectMatchCreatematchedIncludesInput = {
+    set: string[]
+  }
+
+  export type ContentSubjectMatchCreatematchedExcludesInput = {
+    set: string[]
+  }
+
+  export type ContentCreateNestedOneWithoutSubjectMatchesInput = {
+    create?: XOR<ContentCreateWithoutSubjectMatchesInput, ContentUncheckedCreateWithoutSubjectMatchesInput>
+    connectOrCreate?: ContentCreateOrConnectWithoutSubjectMatchesInput
+    connect?: ContentWhereUniqueInput
+  }
+
+  export type KeywordCreateNestedOneWithoutContentSubjectMatchesInput = {
+    create?: XOR<KeywordCreateWithoutContentSubjectMatchesInput, KeywordUncheckedCreateWithoutContentSubjectMatchesInput>
+    connectOrCreate?: KeywordCreateOrConnectWithoutContentSubjectMatchesInput
+    connect?: KeywordWhereUniqueInput
+  }
+
+  export type NullableFloatFieldUpdateOperationsInput = {
+    set?: number | null
+    increment?: number
+    decrement?: number
+    multiply?: number
+    divide?: number
+  }
+
+  export type ContentSubjectMatchUpdatematchedIncludesInput = {
+    set?: string[]
+    push?: string | string[]
+  }
+
+  export type ContentSubjectMatchUpdatematchedExcludesInput = {
+    set?: string[]
+    push?: string | string[]
+  }
+
+  export type EnumContentSubjectMatchSourceFieldUpdateOperationsInput = {
+    set?: $Enums.ContentSubjectMatchSource
+  }
+
+  export type ContentUpdateOneRequiredWithoutSubjectMatchesNestedInput = {
+    create?: XOR<ContentCreateWithoutSubjectMatchesInput, ContentUncheckedCreateWithoutSubjectMatchesInput>
+    connectOrCreate?: ContentCreateOrConnectWithoutSubjectMatchesInput
+    upsert?: ContentUpsertWithoutSubjectMatchesInput
+    connect?: ContentWhereUniqueInput
+    update?: XOR<XOR<ContentUpdateToOneWithWhereWithoutSubjectMatchesInput, ContentUpdateWithoutSubjectMatchesInput>, ContentUncheckedUpdateWithoutSubjectMatchesInput>
+  }
+
+  export type KeywordUpdateOneRequiredWithoutContentSubjectMatchesNestedInput = {
+    create?: XOR<KeywordCreateWithoutContentSubjectMatchesInput, KeywordUncheckedCreateWithoutContentSubjectMatchesInput>
+    connectOrCreate?: KeywordCreateOrConnectWithoutContentSubjectMatchesInput
+    upsert?: KeywordUpsertWithoutContentSubjectMatchesInput
+    connect?: KeywordWhereUniqueInput
+    update?: XOR<XOR<KeywordUpdateToOneWithWhereWithoutContentSubjectMatchesInput, KeywordUpdateWithoutContentSubjectMatchesInput>, KeywordUncheckedUpdateWithoutContentSubjectMatchesInput>
   }
 
   export type ContentEntityCreatepersonsInput = {
@@ -43386,6 +45362,13 @@ export namespace Prisma {
     not?: NestedEnumSearchEngineKindFilter<$PrismaModel> | $Enums.SearchEngineKind
   }
 
+  export type NestedEnumKeywordStrategyFilter<$PrismaModel = never> = {
+    equals?: $Enums.KeywordStrategy | EnumKeywordStrategyFieldRefInput<$PrismaModel>
+    in?: $Enums.KeywordStrategy[] | ListEnumKeywordStrategyFieldRefInput<$PrismaModel>
+    notIn?: $Enums.KeywordStrategy[] | ListEnumKeywordStrategyFieldRefInput<$PrismaModel>
+    not?: NestedEnumKeywordStrategyFilter<$PrismaModel> | $Enums.KeywordStrategy
+  }
+
   export type NestedEnumSearchPlatformWithAggregatesFilter<$PrismaModel = never> = {
     equals?: $Enums.SearchPlatform | EnumSearchPlatformFieldRefInput<$PrismaModel>
     in?: $Enums.SearchPlatform[] | ListEnumSearchPlatformFieldRefInput<$PrismaModel>
@@ -43404,6 +45387,16 @@ export namespace Prisma {
     _count?: NestedIntFilter<$PrismaModel>
     _min?: NestedEnumSearchEngineKindFilter<$PrismaModel>
     _max?: NestedEnumSearchEngineKindFilter<$PrismaModel>
+  }
+
+  export type NestedEnumKeywordStrategyWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: $Enums.KeywordStrategy | EnumKeywordStrategyFieldRefInput<$PrismaModel>
+    in?: $Enums.KeywordStrategy[] | ListEnumKeywordStrategyFieldRefInput<$PrismaModel>
+    notIn?: $Enums.KeywordStrategy[] | ListEnumKeywordStrategyFieldRefInput<$PrismaModel>
+    not?: NestedEnumKeywordStrategyWithAggregatesFilter<$PrismaModel> | $Enums.KeywordStrategy
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedEnumKeywordStrategyFilter<$PrismaModel>
+    _max?: NestedEnumKeywordStrategyFilter<$PrismaModel>
   }
 
   export type NestedEnumQueryFrequencyFilter<$PrismaModel = never> = {
@@ -43457,6 +45450,39 @@ export namespace Prisma {
     _max?: NestedEnumContentTypeFilter<$PrismaModel>
   }
 
+  export type NestedEnumContentSubjectMatchSourceFilter<$PrismaModel = never> = {
+    equals?: $Enums.ContentSubjectMatchSource | EnumContentSubjectMatchSourceFieldRefInput<$PrismaModel>
+    in?: $Enums.ContentSubjectMatchSource[] | ListEnumContentSubjectMatchSourceFieldRefInput<$PrismaModel>
+    notIn?: $Enums.ContentSubjectMatchSource[] | ListEnumContentSubjectMatchSourceFieldRefInput<$PrismaModel>
+    not?: NestedEnumContentSubjectMatchSourceFilter<$PrismaModel> | $Enums.ContentSubjectMatchSource
+  }
+
+  export type NestedFloatNullableWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: number | FloatFieldRefInput<$PrismaModel> | null
+    in?: number[] | ListFloatFieldRefInput<$PrismaModel> | null
+    notIn?: number[] | ListFloatFieldRefInput<$PrismaModel> | null
+    lt?: number | FloatFieldRefInput<$PrismaModel>
+    lte?: number | FloatFieldRefInput<$PrismaModel>
+    gt?: number | FloatFieldRefInput<$PrismaModel>
+    gte?: number | FloatFieldRefInput<$PrismaModel>
+    not?: NestedFloatNullableWithAggregatesFilter<$PrismaModel> | number | null
+    _count?: NestedIntNullableFilter<$PrismaModel>
+    _avg?: NestedFloatNullableFilter<$PrismaModel>
+    _sum?: NestedFloatNullableFilter<$PrismaModel>
+    _min?: NestedFloatNullableFilter<$PrismaModel>
+    _max?: NestedFloatNullableFilter<$PrismaModel>
+  }
+
+  export type NestedEnumContentSubjectMatchSourceWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: $Enums.ContentSubjectMatchSource | EnumContentSubjectMatchSourceFieldRefInput<$PrismaModel>
+    in?: $Enums.ContentSubjectMatchSource[] | ListEnumContentSubjectMatchSourceFieldRefInput<$PrismaModel>
+    notIn?: $Enums.ContentSubjectMatchSource[] | ListEnumContentSubjectMatchSourceFieldRefInput<$PrismaModel>
+    not?: NestedEnumContentSubjectMatchSourceWithAggregatesFilter<$PrismaModel> | $Enums.ContentSubjectMatchSource
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedEnumContentSubjectMatchSourceFilter<$PrismaModel>
+    _max?: NestedEnumContentSubjectMatchSourceFilter<$PrismaModel>
+  }
+
   export type NestedEnumReportStatusFilter<$PrismaModel = never> = {
     equals?: $Enums.ReportStatus | EnumReportStatusFieldRefInput<$PrismaModel>
     in?: $Enums.ReportStatus[] | ListEnumReportStatusFieldRefInput<$PrismaModel>
@@ -43505,6 +45531,7 @@ export namespace Prisma {
     updatedAt?: Date | string
     queries?: QueryCreateNestedManyWithoutKeywordsInput
     contentKeywords?: ContentKeywordCreateNestedManyWithoutKeywordInput
+    contentSubjectMatches?: ContentSubjectMatchCreateNestedManyWithoutKeywordInput
   }
 
   export type KeywordUncheckedCreateWithoutCategoryInput = {
@@ -43521,6 +45548,7 @@ export namespace Prisma {
     updatedAt?: Date | string
     queries?: QueryUncheckedCreateNestedManyWithoutKeywordsInput
     contentKeywords?: ContentKeywordUncheckedCreateNestedManyWithoutKeywordInput
+    contentSubjectMatches?: ContentSubjectMatchUncheckedCreateNestedManyWithoutKeywordInput
   }
 
   export type KeywordCreateOrConnectWithoutCategoryInput = {
@@ -43641,6 +45669,44 @@ export namespace Prisma {
     skipDuplicates?: boolean
   }
 
+  export type ContentSubjectMatchCreateWithoutKeywordInput = {
+    id?: string
+    ruleScore?: number | null
+    aiScore?: number | null
+    matchScore?: number | null
+    matchedIncludes?: ContentSubjectMatchCreatematchedIncludesInput | string[]
+    matchedExcludes?: ContentSubjectMatchCreatematchedExcludesInput | string[]
+    matchSource?: $Enums.ContentSubjectMatchSource
+    reason?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    content: ContentCreateNestedOneWithoutSubjectMatchesInput
+  }
+
+  export type ContentSubjectMatchUncheckedCreateWithoutKeywordInput = {
+    id?: string
+    contentId: string
+    ruleScore?: number | null
+    aiScore?: number | null
+    matchScore?: number | null
+    matchedIncludes?: ContentSubjectMatchCreatematchedIncludesInput | string[]
+    matchedExcludes?: ContentSubjectMatchCreatematchedExcludesInput | string[]
+    matchSource?: $Enums.ContentSubjectMatchSource
+    reason?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type ContentSubjectMatchCreateOrConnectWithoutKeywordInput = {
+    where: ContentSubjectMatchWhereUniqueInput
+    create: XOR<ContentSubjectMatchCreateWithoutKeywordInput, ContentSubjectMatchUncheckedCreateWithoutKeywordInput>
+  }
+
+  export type ContentSubjectMatchCreateManyKeywordInputEnvelope = {
+    data: ContentSubjectMatchCreateManyKeywordInput | ContentSubjectMatchCreateManyKeywordInput[]
+    skipDuplicates?: boolean
+  }
+
   export type CategoryUpsertWithoutKeywordsInput = {
     update: XOR<CategoryUpdateWithoutKeywordsInput, CategoryUncheckedUpdateWithoutKeywordsInput>
     create: XOR<CategoryCreateWithoutKeywordsInput, CategoryUncheckedCreateWithoutKeywordsInput>
@@ -43722,6 +45788,40 @@ export namespace Prisma {
     id?: StringFilter<"ContentKeyword"> | string
     contentId?: StringFilter<"ContentKeyword"> | string
     keywordId?: StringFilter<"ContentKeyword"> | string
+  }
+
+  export type ContentSubjectMatchUpsertWithWhereUniqueWithoutKeywordInput = {
+    where: ContentSubjectMatchWhereUniqueInput
+    update: XOR<ContentSubjectMatchUpdateWithoutKeywordInput, ContentSubjectMatchUncheckedUpdateWithoutKeywordInput>
+    create: XOR<ContentSubjectMatchCreateWithoutKeywordInput, ContentSubjectMatchUncheckedCreateWithoutKeywordInput>
+  }
+
+  export type ContentSubjectMatchUpdateWithWhereUniqueWithoutKeywordInput = {
+    where: ContentSubjectMatchWhereUniqueInput
+    data: XOR<ContentSubjectMatchUpdateWithoutKeywordInput, ContentSubjectMatchUncheckedUpdateWithoutKeywordInput>
+  }
+
+  export type ContentSubjectMatchUpdateManyWithWhereWithoutKeywordInput = {
+    where: ContentSubjectMatchScalarWhereInput
+    data: XOR<ContentSubjectMatchUpdateManyMutationInput, ContentSubjectMatchUncheckedUpdateManyWithoutKeywordInput>
+  }
+
+  export type ContentSubjectMatchScalarWhereInput = {
+    AND?: ContentSubjectMatchScalarWhereInput | ContentSubjectMatchScalarWhereInput[]
+    OR?: ContentSubjectMatchScalarWhereInput[]
+    NOT?: ContentSubjectMatchScalarWhereInput | ContentSubjectMatchScalarWhereInput[]
+    id?: StringFilter<"ContentSubjectMatch"> | string
+    contentId?: StringFilter<"ContentSubjectMatch"> | string
+    keywordId?: StringFilter<"ContentSubjectMatch"> | string
+    ruleScore?: FloatNullableFilter<"ContentSubjectMatch"> | number | null
+    aiScore?: FloatNullableFilter<"ContentSubjectMatch"> | number | null
+    matchScore?: FloatNullableFilter<"ContentSubjectMatch"> | number | null
+    matchedIncludes?: StringNullableListFilter<"ContentSubjectMatch">
+    matchedExcludes?: StringNullableListFilter<"ContentSubjectMatch">
+    matchSource?: EnumContentSubjectMatchSourceFilter<"ContentSubjectMatch"> | $Enums.ContentSubjectMatchSource
+    reason?: StringNullableFilter<"ContentSubjectMatch"> | string | null
+    createdAt?: DateTimeFilter<"ContentSubjectMatch"> | Date | string
+    updatedAt?: DateTimeFilter<"ContentSubjectMatch"> | Date | string
   }
 
   export type SourceCreateWithoutProxyInput = {
@@ -43843,6 +45943,7 @@ export namespace Prisma {
   export type SocialMediaSourceConfigCreateWithoutProxyInput = {
     platform: string
     config: JsonNullValueInput | InputJsonValue
+    keywordStrategy?: $Enums.KeywordStrategy
     createdAt?: Date | string
     updatedAt?: Date | string
     source: SourceCreateNestedOneWithoutSocialInput
@@ -43854,6 +45955,7 @@ export namespace Prisma {
     platform: string
     config: JsonNullValueInput | InputJsonValue
     credentialId?: string | null
+    keywordStrategy?: $Enums.KeywordStrategy
     createdAt?: Date | string
     updatedAt?: Date | string
   }
@@ -43990,6 +46092,7 @@ export namespace Prisma {
     config?: JsonFilter<"SocialMediaSourceConfig">
     credentialId?: StringNullableFilter<"SocialMediaSourceConfig"> | string | null
     proxyId?: StringNullableFilter<"SocialMediaSourceConfig"> | string | null
+    keywordStrategy?: EnumKeywordStrategyFilter<"SocialMediaSourceConfig"> | $Enums.KeywordStrategy
     createdAt?: DateTimeFilter<"SocialMediaSourceConfig"> | Date | string
     updatedAt?: DateTimeFilter<"SocialMediaSourceConfig"> | Date | string
   }
@@ -44047,6 +46150,7 @@ export namespace Prisma {
   export type SocialMediaSourceConfigCreateWithoutCredentialInput = {
     platform: string
     config: JsonNullValueInput | InputJsonValue
+    keywordStrategy?: $Enums.KeywordStrategy
     createdAt?: Date | string
     updatedAt?: Date | string
     source: SourceCreateNestedOneWithoutSocialInput
@@ -44058,6 +46162,7 @@ export namespace Prisma {
     platform: string
     config: JsonNullValueInput | InputJsonValue
     proxyId?: string | null
+    keywordStrategy?: $Enums.KeywordStrategy
     createdAt?: Date | string
     updatedAt?: Date | string
   }
@@ -44078,6 +46183,7 @@ export namespace Prisma {
     objective: string
     apiEndpoint?: string | null
     options?: NullableJsonNullValueInput | InputJsonValue
+    keywordStrategy?: $Enums.KeywordStrategy
     createdAt?: Date | string
     updatedAt?: Date | string
     source: SourceCreateNestedOneWithoutSearchInput
@@ -44090,6 +46196,7 @@ export namespace Prisma {
     objective: string
     apiEndpoint?: string | null
     options?: NullableJsonNullValueInput | InputJsonValue
+    keywordStrategy?: $Enums.KeywordStrategy
     createdAt?: Date | string
     updatedAt?: Date | string
   }
@@ -44162,6 +46269,7 @@ export namespace Prisma {
     objective?: StringFilter<"SearchEngineSourceConfig"> | string
     apiEndpoint?: StringNullableFilter<"SearchEngineSourceConfig"> | string | null
     options?: JsonNullableFilter<"SearchEngineSourceConfig">
+    keywordStrategy?: EnumKeywordStrategyFilter<"SearchEngineSourceConfig"> | $Enums.KeywordStrategy
     credentialId?: StringNullableFilter<"SearchEngineSourceConfig"> | string | null
     createdAt?: DateTimeFilter<"SearchEngineSourceConfig"> | Date | string
     updatedAt?: DateTimeFilter<"SearchEngineSourceConfig"> | Date | string
@@ -44287,6 +46395,7 @@ export namespace Prisma {
     objective: string
     apiEndpoint?: string | null
     options?: NullableJsonNullValueInput | InputJsonValue
+    keywordStrategy?: $Enums.KeywordStrategy
     createdAt?: Date | string
     updatedAt?: Date | string
     credential?: CredentialCreateNestedOneWithoutSearchOverridesInput
@@ -44298,6 +46407,7 @@ export namespace Prisma {
     objective: string
     apiEndpoint?: string | null
     options?: NullableJsonNullValueInput | InputJsonValue
+    keywordStrategy?: $Enums.KeywordStrategy
     credentialId?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
@@ -44311,6 +46421,7 @@ export namespace Prisma {
   export type SocialMediaSourceConfigCreateWithoutSourceInput = {
     platform: string
     config: JsonNullValueInput | InputJsonValue
+    keywordStrategy?: $Enums.KeywordStrategy
     createdAt?: Date | string
     updatedAt?: Date | string
     credential?: CredentialCreateNestedOneWithoutSocialOverridesInput
@@ -44322,6 +46433,7 @@ export namespace Prisma {
     config: JsonNullValueInput | InputJsonValue
     credentialId?: string | null
     proxyId?: string | null
+    keywordStrategy?: $Enums.KeywordStrategy
     createdAt?: Date | string
     updatedAt?: Date | string
   }
@@ -44547,6 +46659,7 @@ export namespace Prisma {
     objective?: StringFieldUpdateOperationsInput | string
     apiEndpoint?: NullableStringFieldUpdateOperationsInput | string | null
     options?: NullableJsonNullValueInput | InputJsonValue
+    keywordStrategy?: EnumKeywordStrategyFieldUpdateOperationsInput | $Enums.KeywordStrategy
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     credential?: CredentialUpdateOneWithoutSearchOverridesNestedInput
@@ -44558,6 +46671,7 @@ export namespace Prisma {
     objective?: StringFieldUpdateOperationsInput | string
     apiEndpoint?: NullableStringFieldUpdateOperationsInput | string | null
     options?: NullableJsonNullValueInput | InputJsonValue
+    keywordStrategy?: EnumKeywordStrategyFieldUpdateOperationsInput | $Enums.KeywordStrategy
     credentialId?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -44577,6 +46691,7 @@ export namespace Prisma {
   export type SocialMediaSourceConfigUpdateWithoutSourceInput = {
     platform?: StringFieldUpdateOperationsInput | string
     config?: JsonNullValueInput | InputJsonValue
+    keywordStrategy?: EnumKeywordStrategyFieldUpdateOperationsInput | $Enums.KeywordStrategy
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     credential?: CredentialUpdateOneWithoutSocialOverridesNestedInput
@@ -44588,6 +46703,7 @@ export namespace Prisma {
     config?: JsonNullValueInput | InputJsonValue
     credentialId?: NullableStringFieldUpdateOperationsInput | string | null
     proxyId?: NullableStringFieldUpdateOperationsInput | string | null
+    keywordStrategy?: EnumKeywordStrategyFieldUpdateOperationsInput | $Enums.KeywordStrategy
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -45587,6 +47703,7 @@ export namespace Prisma {
     updatedAt?: Date | string
     category?: CategoryCreateNestedOneWithoutKeywordsInput
     contentKeywords?: ContentKeywordCreateNestedManyWithoutKeywordInput
+    contentSubjectMatches?: ContentSubjectMatchCreateNestedManyWithoutKeywordInput
   }
 
   export type KeywordUncheckedCreateWithoutQueriesInput = {
@@ -45603,6 +47720,7 @@ export namespace Prisma {
     createdAt?: Date | string
     updatedAt?: Date | string
     contentKeywords?: ContentKeywordUncheckedCreateNestedManyWithoutKeywordInput
+    contentSubjectMatches?: ContentSubjectMatchUncheckedCreateNestedManyWithoutKeywordInput
   }
 
   export type KeywordCreateOrConnectWithoutQueriesInput = {
@@ -45969,6 +48087,44 @@ export namespace Prisma {
     skipDuplicates?: boolean
   }
 
+  export type ContentSubjectMatchCreateWithoutContentInput = {
+    id?: string
+    ruleScore?: number | null
+    aiScore?: number | null
+    matchScore?: number | null
+    matchedIncludes?: ContentSubjectMatchCreatematchedIncludesInput | string[]
+    matchedExcludes?: ContentSubjectMatchCreatematchedExcludesInput | string[]
+    matchSource?: $Enums.ContentSubjectMatchSource
+    reason?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    keyword: KeywordCreateNestedOneWithoutContentSubjectMatchesInput
+  }
+
+  export type ContentSubjectMatchUncheckedCreateWithoutContentInput = {
+    id?: string
+    keywordId: string
+    ruleScore?: number | null
+    aiScore?: number | null
+    matchScore?: number | null
+    matchedIncludes?: ContentSubjectMatchCreatematchedIncludesInput | string[]
+    matchedExcludes?: ContentSubjectMatchCreatematchedExcludesInput | string[]
+    matchSource?: $Enums.ContentSubjectMatchSource
+    reason?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type ContentSubjectMatchCreateOrConnectWithoutContentInput = {
+    where: ContentSubjectMatchWhereUniqueInput
+    create: XOR<ContentSubjectMatchCreateWithoutContentInput, ContentSubjectMatchUncheckedCreateWithoutContentInput>
+  }
+
+  export type ContentSubjectMatchCreateManyContentInputEnvelope = {
+    data: ContentSubjectMatchCreateManyContentInput | ContentSubjectMatchCreateManyContentInput[]
+    skipDuplicates?: boolean
+  }
+
   export type ContentEntityCreateWithoutContentInput = {
     id?: string
     persons?: ContentEntityCreatepersonsInput | string[]
@@ -46024,6 +48180,22 @@ export namespace Prisma {
   export type ContentKeywordUpdateManyWithWhereWithoutContentInput = {
     where: ContentKeywordScalarWhereInput
     data: XOR<ContentKeywordUpdateManyMutationInput, ContentKeywordUncheckedUpdateManyWithoutContentInput>
+  }
+
+  export type ContentSubjectMatchUpsertWithWhereUniqueWithoutContentInput = {
+    where: ContentSubjectMatchWhereUniqueInput
+    update: XOR<ContentSubjectMatchUpdateWithoutContentInput, ContentSubjectMatchUncheckedUpdateWithoutContentInput>
+    create: XOR<ContentSubjectMatchCreateWithoutContentInput, ContentSubjectMatchUncheckedCreateWithoutContentInput>
+  }
+
+  export type ContentSubjectMatchUpdateWithWhereUniqueWithoutContentInput = {
+    where: ContentSubjectMatchWhereUniqueInput
+    data: XOR<ContentSubjectMatchUpdateWithoutContentInput, ContentSubjectMatchUncheckedUpdateWithoutContentInput>
+  }
+
+  export type ContentSubjectMatchUpdateManyWithWhereWithoutContentInput = {
+    where: ContentSubjectMatchScalarWhereInput
+    data: XOR<ContentSubjectMatchUpdateManyMutationInput, ContentSubjectMatchUncheckedUpdateManyWithoutContentInput>
   }
 
   export type ContentEntityUpsertWithoutContentInput = {
@@ -46090,6 +48262,7 @@ export namespace Prisma {
     meta?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: Date | string
     updatedAt?: Date | string
+    subjectMatches?: ContentSubjectMatchCreateNestedManyWithoutContentInput
     entities?: ContentEntityCreateNestedOneWithoutContentInput
     favorites?: FavoriteCreateNestedManyWithoutContentInput
   }
@@ -46107,6 +48280,7 @@ export namespace Prisma {
     meta?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: Date | string
     updatedAt?: Date | string
+    subjectMatches?: ContentSubjectMatchUncheckedCreateNestedManyWithoutContentInput
     entities?: ContentEntityUncheckedCreateNestedOneWithoutContentInput
     favorites?: FavoriteUncheckedCreateNestedManyWithoutContentInput
   }
@@ -46130,6 +48304,7 @@ export namespace Prisma {
     updatedAt?: Date | string
     category?: CategoryCreateNestedOneWithoutKeywordsInput
     queries?: QueryCreateNestedManyWithoutKeywordsInput
+    contentSubjectMatches?: ContentSubjectMatchCreateNestedManyWithoutKeywordInput
   }
 
   export type KeywordUncheckedCreateWithoutContentKeywordsInput = {
@@ -46146,6 +48321,7 @@ export namespace Prisma {
     createdAt?: Date | string
     updatedAt?: Date | string
     queries?: QueryUncheckedCreateNestedManyWithoutKeywordsInput
+    contentSubjectMatches?: ContentSubjectMatchUncheckedCreateNestedManyWithoutKeywordInput
   }
 
   export type KeywordCreateOrConnectWithoutContentKeywordsInput = {
@@ -46177,6 +48353,7 @@ export namespace Prisma {
     meta?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    subjectMatches?: ContentSubjectMatchUpdateManyWithoutContentNestedInput
     entities?: ContentEntityUpdateOneWithoutContentNestedInput
     favorites?: FavoriteUpdateManyWithoutContentNestedInput
   }
@@ -46194,6 +48371,7 @@ export namespace Prisma {
     meta?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    subjectMatches?: ContentSubjectMatchUncheckedUpdateManyWithoutContentNestedInput
     entities?: ContentEntityUncheckedUpdateOneWithoutContentNestedInput
     favorites?: FavoriteUncheckedUpdateManyWithoutContentNestedInput
   }
@@ -46223,6 +48401,7 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     category?: CategoryUpdateOneWithoutKeywordsNestedInput
     queries?: QueryUpdateManyWithoutKeywordsNestedInput
+    contentSubjectMatches?: ContentSubjectMatchUpdateManyWithoutKeywordNestedInput
   }
 
   export type KeywordUncheckedUpdateWithoutContentKeywordsInput = {
@@ -46239,6 +48418,179 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     queries?: QueryUncheckedUpdateManyWithoutKeywordsNestedInput
+    contentSubjectMatches?: ContentSubjectMatchUncheckedUpdateManyWithoutKeywordNestedInput
+  }
+
+  export type ContentCreateWithoutSubjectMatchesInput = {
+    id?: string
+    title: string
+    summary: string
+    markdown: string
+    platform: string
+    type: $Enums.ContentType
+    time: Date | string
+    url?: string | null
+    image?: string | null
+    meta?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    keywords?: ContentKeywordCreateNestedManyWithoutContentInput
+    entities?: ContentEntityCreateNestedOneWithoutContentInput
+    favorites?: FavoriteCreateNestedManyWithoutContentInput
+  }
+
+  export type ContentUncheckedCreateWithoutSubjectMatchesInput = {
+    id?: string
+    title: string
+    summary: string
+    markdown: string
+    platform: string
+    type: $Enums.ContentType
+    time: Date | string
+    url?: string | null
+    image?: string | null
+    meta?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    keywords?: ContentKeywordUncheckedCreateNestedManyWithoutContentInput
+    entities?: ContentEntityUncheckedCreateNestedOneWithoutContentInput
+    favorites?: FavoriteUncheckedCreateNestedManyWithoutContentInput
+  }
+
+  export type ContentCreateOrConnectWithoutSubjectMatchesInput = {
+    where: ContentWhereUniqueInput
+    create: XOR<ContentCreateWithoutSubjectMatchesInput, ContentUncheckedCreateWithoutSubjectMatchesInput>
+  }
+
+  export type KeywordCreateWithoutContentSubjectMatchesInput = {
+    id?: string
+    name: string
+    description?: string | null
+    lang?: string | null
+    includes?: KeywordCreateincludesInput | string[]
+    excludes?: KeywordCreateexcludesInput | string[]
+    enableAiExpand?: boolean
+    synonyms?: KeywordCreatesynonymsInput | string[]
+    active?: boolean
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    category?: CategoryCreateNestedOneWithoutKeywordsInput
+    queries?: QueryCreateNestedManyWithoutKeywordsInput
+    contentKeywords?: ContentKeywordCreateNestedManyWithoutKeywordInput
+  }
+
+  export type KeywordUncheckedCreateWithoutContentSubjectMatchesInput = {
+    id?: string
+    name: string
+    description?: string | null
+    lang?: string | null
+    categoryId?: string | null
+    includes?: KeywordCreateincludesInput | string[]
+    excludes?: KeywordCreateexcludesInput | string[]
+    enableAiExpand?: boolean
+    synonyms?: KeywordCreatesynonymsInput | string[]
+    active?: boolean
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    queries?: QueryUncheckedCreateNestedManyWithoutKeywordsInput
+    contentKeywords?: ContentKeywordUncheckedCreateNestedManyWithoutKeywordInput
+  }
+
+  export type KeywordCreateOrConnectWithoutContentSubjectMatchesInput = {
+    where: KeywordWhereUniqueInput
+    create: XOR<KeywordCreateWithoutContentSubjectMatchesInput, KeywordUncheckedCreateWithoutContentSubjectMatchesInput>
+  }
+
+  export type ContentUpsertWithoutSubjectMatchesInput = {
+    update: XOR<ContentUpdateWithoutSubjectMatchesInput, ContentUncheckedUpdateWithoutSubjectMatchesInput>
+    create: XOR<ContentCreateWithoutSubjectMatchesInput, ContentUncheckedCreateWithoutSubjectMatchesInput>
+    where?: ContentWhereInput
+  }
+
+  export type ContentUpdateToOneWithWhereWithoutSubjectMatchesInput = {
+    where?: ContentWhereInput
+    data: XOR<ContentUpdateWithoutSubjectMatchesInput, ContentUncheckedUpdateWithoutSubjectMatchesInput>
+  }
+
+  export type ContentUpdateWithoutSubjectMatchesInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    title?: StringFieldUpdateOperationsInput | string
+    summary?: StringFieldUpdateOperationsInput | string
+    markdown?: StringFieldUpdateOperationsInput | string
+    platform?: StringFieldUpdateOperationsInput | string
+    type?: EnumContentTypeFieldUpdateOperationsInput | $Enums.ContentType
+    time?: DateTimeFieldUpdateOperationsInput | Date | string
+    url?: NullableStringFieldUpdateOperationsInput | string | null
+    image?: NullableStringFieldUpdateOperationsInput | string | null
+    meta?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    keywords?: ContentKeywordUpdateManyWithoutContentNestedInput
+    entities?: ContentEntityUpdateOneWithoutContentNestedInput
+    favorites?: FavoriteUpdateManyWithoutContentNestedInput
+  }
+
+  export type ContentUncheckedUpdateWithoutSubjectMatchesInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    title?: StringFieldUpdateOperationsInput | string
+    summary?: StringFieldUpdateOperationsInput | string
+    markdown?: StringFieldUpdateOperationsInput | string
+    platform?: StringFieldUpdateOperationsInput | string
+    type?: EnumContentTypeFieldUpdateOperationsInput | $Enums.ContentType
+    time?: DateTimeFieldUpdateOperationsInput | Date | string
+    url?: NullableStringFieldUpdateOperationsInput | string | null
+    image?: NullableStringFieldUpdateOperationsInput | string | null
+    meta?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    keywords?: ContentKeywordUncheckedUpdateManyWithoutContentNestedInput
+    entities?: ContentEntityUncheckedUpdateOneWithoutContentNestedInput
+    favorites?: FavoriteUncheckedUpdateManyWithoutContentNestedInput
+  }
+
+  export type KeywordUpsertWithoutContentSubjectMatchesInput = {
+    update: XOR<KeywordUpdateWithoutContentSubjectMatchesInput, KeywordUncheckedUpdateWithoutContentSubjectMatchesInput>
+    create: XOR<KeywordCreateWithoutContentSubjectMatchesInput, KeywordUncheckedCreateWithoutContentSubjectMatchesInput>
+    where?: KeywordWhereInput
+  }
+
+  export type KeywordUpdateToOneWithWhereWithoutContentSubjectMatchesInput = {
+    where?: KeywordWhereInput
+    data: XOR<KeywordUpdateWithoutContentSubjectMatchesInput, KeywordUncheckedUpdateWithoutContentSubjectMatchesInput>
+  }
+
+  export type KeywordUpdateWithoutContentSubjectMatchesInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    lang?: NullableStringFieldUpdateOperationsInput | string | null
+    includes?: KeywordUpdateincludesInput | string[]
+    excludes?: KeywordUpdateexcludesInput | string[]
+    enableAiExpand?: BoolFieldUpdateOperationsInput | boolean
+    synonyms?: KeywordUpdatesynonymsInput | string[]
+    active?: BoolFieldUpdateOperationsInput | boolean
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    category?: CategoryUpdateOneWithoutKeywordsNestedInput
+    queries?: QueryUpdateManyWithoutKeywordsNestedInput
+    contentKeywords?: ContentKeywordUpdateManyWithoutKeywordNestedInput
+  }
+
+  export type KeywordUncheckedUpdateWithoutContentSubjectMatchesInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    lang?: NullableStringFieldUpdateOperationsInput | string | null
+    categoryId?: NullableStringFieldUpdateOperationsInput | string | null
+    includes?: KeywordUpdateincludesInput | string[]
+    excludes?: KeywordUpdateexcludesInput | string[]
+    enableAiExpand?: BoolFieldUpdateOperationsInput | boolean
+    synonyms?: KeywordUpdatesynonymsInput | string[]
+    active?: BoolFieldUpdateOperationsInput | boolean
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    queries?: QueryUncheckedUpdateManyWithoutKeywordsNestedInput
+    contentKeywords?: ContentKeywordUncheckedUpdateManyWithoutKeywordNestedInput
   }
 
   export type ContentCreateWithoutEntitiesInput = {
@@ -46255,6 +48607,7 @@ export namespace Prisma {
     createdAt?: Date | string
     updatedAt?: Date | string
     keywords?: ContentKeywordCreateNestedManyWithoutContentInput
+    subjectMatches?: ContentSubjectMatchCreateNestedManyWithoutContentInput
     favorites?: FavoriteCreateNestedManyWithoutContentInput
   }
 
@@ -46272,6 +48625,7 @@ export namespace Prisma {
     createdAt?: Date | string
     updatedAt?: Date | string
     keywords?: ContentKeywordUncheckedCreateNestedManyWithoutContentInput
+    subjectMatches?: ContentSubjectMatchUncheckedCreateNestedManyWithoutContentInput
     favorites?: FavoriteUncheckedCreateNestedManyWithoutContentInput
   }
 
@@ -46305,6 +48659,7 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     keywords?: ContentKeywordUpdateManyWithoutContentNestedInput
+    subjectMatches?: ContentSubjectMatchUpdateManyWithoutContentNestedInput
     favorites?: FavoriteUpdateManyWithoutContentNestedInput
   }
 
@@ -46322,6 +48677,7 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     keywords?: ContentKeywordUncheckedUpdateManyWithoutContentNestedInput
+    subjectMatches?: ContentSubjectMatchUncheckedUpdateManyWithoutContentNestedInput
     favorites?: FavoriteUncheckedUpdateManyWithoutContentNestedInput
   }
 
@@ -46339,6 +48695,7 @@ export namespace Prisma {
     createdAt?: Date | string
     updatedAt?: Date | string
     keywords?: ContentKeywordCreateNestedManyWithoutContentInput
+    subjectMatches?: ContentSubjectMatchCreateNestedManyWithoutContentInput
     entities?: ContentEntityCreateNestedOneWithoutContentInput
   }
 
@@ -46356,6 +48713,7 @@ export namespace Prisma {
     createdAt?: Date | string
     updatedAt?: Date | string
     keywords?: ContentKeywordUncheckedCreateNestedManyWithoutContentInput
+    subjectMatches?: ContentSubjectMatchUncheckedCreateNestedManyWithoutContentInput
     entities?: ContentEntityUncheckedCreateNestedOneWithoutContentInput
   }
 
@@ -46389,6 +48747,7 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     keywords?: ContentKeywordUpdateManyWithoutContentNestedInput
+    subjectMatches?: ContentSubjectMatchUpdateManyWithoutContentNestedInput
     entities?: ContentEntityUpdateOneWithoutContentNestedInput
   }
 
@@ -46406,6 +48765,7 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     keywords?: ContentKeywordUncheckedUpdateManyWithoutContentNestedInput
+    subjectMatches?: ContentSubjectMatchUncheckedUpdateManyWithoutContentNestedInput
     entities?: ContentEntityUncheckedUpdateOneWithoutContentNestedInput
   }
 
@@ -47283,6 +49643,7 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     queries?: QueryUpdateManyWithoutKeywordsNestedInput
     contentKeywords?: ContentKeywordUpdateManyWithoutKeywordNestedInput
+    contentSubjectMatches?: ContentSubjectMatchUpdateManyWithoutKeywordNestedInput
   }
 
   export type KeywordUncheckedUpdateWithoutCategoryInput = {
@@ -47299,6 +49660,7 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     queries?: QueryUncheckedUpdateManyWithoutKeywordsNestedInput
     contentKeywords?: ContentKeywordUncheckedUpdateManyWithoutKeywordNestedInput
+    contentSubjectMatches?: ContentSubjectMatchUncheckedUpdateManyWithoutKeywordNestedInput
   }
 
   export type KeywordUncheckedUpdateManyWithoutCategoryInput = {
@@ -47318,6 +49680,20 @@ export namespace Prisma {
   export type ContentKeywordCreateManyKeywordInput = {
     id?: string
     contentId: string
+  }
+
+  export type ContentSubjectMatchCreateManyKeywordInput = {
+    id?: string
+    contentId: string
+    ruleScore?: number | null
+    aiScore?: number | null
+    matchScore?: number | null
+    matchedIncludes?: ContentSubjectMatchCreatematchedIncludesInput | string[]
+    matchedExcludes?: ContentSubjectMatchCreatematchedExcludesInput | string[]
+    matchSource?: $Enums.ContentSubjectMatchSource
+    reason?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
   }
 
   export type QueryUpdateWithoutKeywordsInput = {
@@ -47375,6 +49751,48 @@ export namespace Prisma {
     contentId?: StringFieldUpdateOperationsInput | string
   }
 
+  export type ContentSubjectMatchUpdateWithoutKeywordInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    ruleScore?: NullableFloatFieldUpdateOperationsInput | number | null
+    aiScore?: NullableFloatFieldUpdateOperationsInput | number | null
+    matchScore?: NullableFloatFieldUpdateOperationsInput | number | null
+    matchedIncludes?: ContentSubjectMatchUpdatematchedIncludesInput | string[]
+    matchedExcludes?: ContentSubjectMatchUpdatematchedExcludesInput | string[]
+    matchSource?: EnumContentSubjectMatchSourceFieldUpdateOperationsInput | $Enums.ContentSubjectMatchSource
+    reason?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    content?: ContentUpdateOneRequiredWithoutSubjectMatchesNestedInput
+  }
+
+  export type ContentSubjectMatchUncheckedUpdateWithoutKeywordInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    contentId?: StringFieldUpdateOperationsInput | string
+    ruleScore?: NullableFloatFieldUpdateOperationsInput | number | null
+    aiScore?: NullableFloatFieldUpdateOperationsInput | number | null
+    matchScore?: NullableFloatFieldUpdateOperationsInput | number | null
+    matchedIncludes?: ContentSubjectMatchUpdatematchedIncludesInput | string[]
+    matchedExcludes?: ContentSubjectMatchUpdatematchedExcludesInput | string[]
+    matchSource?: EnumContentSubjectMatchSourceFieldUpdateOperationsInput | $Enums.ContentSubjectMatchSource
+    reason?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type ContentSubjectMatchUncheckedUpdateManyWithoutKeywordInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    contentId?: StringFieldUpdateOperationsInput | string
+    ruleScore?: NullableFloatFieldUpdateOperationsInput | number | null
+    aiScore?: NullableFloatFieldUpdateOperationsInput | number | null
+    matchScore?: NullableFloatFieldUpdateOperationsInput | number | null
+    matchedIncludes?: ContentSubjectMatchUpdatematchedIncludesInput | string[]
+    matchedExcludes?: ContentSubjectMatchUpdatematchedExcludesInput | string[]
+    matchSource?: EnumContentSubjectMatchSourceFieldUpdateOperationsInput | $Enums.ContentSubjectMatchSource
+    reason?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
   export type SourceCreateManyProxyInput = {
     id?: string
     name: string
@@ -47417,6 +49835,7 @@ export namespace Prisma {
     platform: string
     config: JsonNullValueInput | InputJsonValue
     credentialId?: string | null
+    keywordStrategy?: $Enums.KeywordStrategy
     createdAt?: Date | string
     updatedAt?: Date | string
   }
@@ -47547,6 +49966,7 @@ export namespace Prisma {
   export type SocialMediaSourceConfigUpdateWithoutProxyInput = {
     platform?: StringFieldUpdateOperationsInput | string
     config?: JsonNullValueInput | InputJsonValue
+    keywordStrategy?: EnumKeywordStrategyFieldUpdateOperationsInput | $Enums.KeywordStrategy
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     source?: SourceUpdateOneRequiredWithoutSocialNestedInput
@@ -47558,6 +49978,7 @@ export namespace Prisma {
     platform?: StringFieldUpdateOperationsInput | string
     config?: JsonNullValueInput | InputJsonValue
     credentialId?: NullableStringFieldUpdateOperationsInput | string | null
+    keywordStrategy?: EnumKeywordStrategyFieldUpdateOperationsInput | $Enums.KeywordStrategy
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -47567,6 +49988,7 @@ export namespace Prisma {
     platform?: StringFieldUpdateOperationsInput | string
     config?: JsonNullValueInput | InputJsonValue
     credentialId?: NullableStringFieldUpdateOperationsInput | string | null
+    keywordStrategy?: EnumKeywordStrategyFieldUpdateOperationsInput | $Enums.KeywordStrategy
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -47590,6 +50012,7 @@ export namespace Prisma {
     platform: string
     config: JsonNullValueInput | InputJsonValue
     proxyId?: string | null
+    keywordStrategy?: $Enums.KeywordStrategy
     createdAt?: Date | string
     updatedAt?: Date | string
   }
@@ -47601,6 +50024,7 @@ export namespace Prisma {
     objective: string
     apiEndpoint?: string | null
     options?: NullableJsonNullValueInput | InputJsonValue
+    keywordStrategy?: $Enums.KeywordStrategy
     createdAt?: Date | string
     updatedAt?: Date | string
   }
@@ -47662,6 +50086,7 @@ export namespace Prisma {
   export type SocialMediaSourceConfigUpdateWithoutCredentialInput = {
     platform?: StringFieldUpdateOperationsInput | string
     config?: JsonNullValueInput | InputJsonValue
+    keywordStrategy?: EnumKeywordStrategyFieldUpdateOperationsInput | $Enums.KeywordStrategy
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     source?: SourceUpdateOneRequiredWithoutSocialNestedInput
@@ -47673,6 +50098,7 @@ export namespace Prisma {
     platform?: StringFieldUpdateOperationsInput | string
     config?: JsonNullValueInput | InputJsonValue
     proxyId?: NullableStringFieldUpdateOperationsInput | string | null
+    keywordStrategy?: EnumKeywordStrategyFieldUpdateOperationsInput | $Enums.KeywordStrategy
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -47682,6 +50108,7 @@ export namespace Prisma {
     platform?: StringFieldUpdateOperationsInput | string
     config?: JsonNullValueInput | InputJsonValue
     proxyId?: NullableStringFieldUpdateOperationsInput | string | null
+    keywordStrategy?: EnumKeywordStrategyFieldUpdateOperationsInput | $Enums.KeywordStrategy
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -47692,6 +50119,7 @@ export namespace Prisma {
     objective?: StringFieldUpdateOperationsInput | string
     apiEndpoint?: NullableStringFieldUpdateOperationsInput | string | null
     options?: NullableJsonNullValueInput | InputJsonValue
+    keywordStrategy?: EnumKeywordStrategyFieldUpdateOperationsInput | $Enums.KeywordStrategy
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     source?: SourceUpdateOneRequiredWithoutSearchNestedInput
@@ -47704,6 +50132,7 @@ export namespace Prisma {
     objective?: StringFieldUpdateOperationsInput | string
     apiEndpoint?: NullableStringFieldUpdateOperationsInput | string | null
     options?: NullableJsonNullValueInput | InputJsonValue
+    keywordStrategy?: EnumKeywordStrategyFieldUpdateOperationsInput | $Enums.KeywordStrategy
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -47715,6 +50144,7 @@ export namespace Prisma {
     objective?: StringFieldUpdateOperationsInput | string
     apiEndpoint?: NullableStringFieldUpdateOperationsInput | string | null
     options?: NullableJsonNullValueInput | InputJsonValue
+    keywordStrategy?: EnumKeywordStrategyFieldUpdateOperationsInput | $Enums.KeywordStrategy
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -47857,6 +50287,7 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     category?: CategoryUpdateOneWithoutKeywordsNestedInput
     contentKeywords?: ContentKeywordUpdateManyWithoutKeywordNestedInput
+    contentSubjectMatches?: ContentSubjectMatchUpdateManyWithoutKeywordNestedInput
   }
 
   export type KeywordUncheckedUpdateWithoutQueriesInput = {
@@ -47873,6 +50304,7 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     contentKeywords?: ContentKeywordUncheckedUpdateManyWithoutKeywordNestedInput
+    contentSubjectMatches?: ContentSubjectMatchUncheckedUpdateManyWithoutKeywordNestedInput
   }
 
   export type KeywordUncheckedUpdateManyWithoutQueriesInput = {
@@ -48020,6 +50452,20 @@ export namespace Prisma {
     keywordId: string
   }
 
+  export type ContentSubjectMatchCreateManyContentInput = {
+    id?: string
+    keywordId: string
+    ruleScore?: number | null
+    aiScore?: number | null
+    matchScore?: number | null
+    matchedIncludes?: ContentSubjectMatchCreatematchedIncludesInput | string[]
+    matchedExcludes?: ContentSubjectMatchCreatematchedExcludesInput | string[]
+    matchSource?: $Enums.ContentSubjectMatchSource
+    reason?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
   export type FavoriteCreateManyContentInput = {
     id?: string
     userId: string
@@ -48039,6 +50485,48 @@ export namespace Prisma {
   export type ContentKeywordUncheckedUpdateManyWithoutContentInput = {
     id?: StringFieldUpdateOperationsInput | string
     keywordId?: StringFieldUpdateOperationsInput | string
+  }
+
+  export type ContentSubjectMatchUpdateWithoutContentInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    ruleScore?: NullableFloatFieldUpdateOperationsInput | number | null
+    aiScore?: NullableFloatFieldUpdateOperationsInput | number | null
+    matchScore?: NullableFloatFieldUpdateOperationsInput | number | null
+    matchedIncludes?: ContentSubjectMatchUpdatematchedIncludesInput | string[]
+    matchedExcludes?: ContentSubjectMatchUpdatematchedExcludesInput | string[]
+    matchSource?: EnumContentSubjectMatchSourceFieldUpdateOperationsInput | $Enums.ContentSubjectMatchSource
+    reason?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    keyword?: KeywordUpdateOneRequiredWithoutContentSubjectMatchesNestedInput
+  }
+
+  export type ContentSubjectMatchUncheckedUpdateWithoutContentInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    keywordId?: StringFieldUpdateOperationsInput | string
+    ruleScore?: NullableFloatFieldUpdateOperationsInput | number | null
+    aiScore?: NullableFloatFieldUpdateOperationsInput | number | null
+    matchScore?: NullableFloatFieldUpdateOperationsInput | number | null
+    matchedIncludes?: ContentSubjectMatchUpdatematchedIncludesInput | string[]
+    matchedExcludes?: ContentSubjectMatchUpdatematchedExcludesInput | string[]
+    matchSource?: EnumContentSubjectMatchSourceFieldUpdateOperationsInput | $Enums.ContentSubjectMatchSource
+    reason?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type ContentSubjectMatchUncheckedUpdateManyWithoutContentInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    keywordId?: StringFieldUpdateOperationsInput | string
+    ruleScore?: NullableFloatFieldUpdateOperationsInput | number | null
+    aiScore?: NullableFloatFieldUpdateOperationsInput | number | null
+    matchScore?: NullableFloatFieldUpdateOperationsInput | number | null
+    matchedIncludes?: ContentSubjectMatchUpdatematchedIncludesInput | string[]
+    matchedExcludes?: ContentSubjectMatchUpdatematchedExcludesInput | string[]
+    matchSource?: EnumContentSubjectMatchSourceFieldUpdateOperationsInput | $Enums.ContentSubjectMatchSource
+    reason?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
   export type FavoriteUpdateWithoutContentInput = {

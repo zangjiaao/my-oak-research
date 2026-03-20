@@ -46,14 +46,15 @@ export async function POST(req: NextRequest) {
   const userId = req.headers.get("x-user-id") ?? null;
   const data = parse.data;
 
-  const materials =
+  const materials = await attachSubjectMatchSnapshot(
     data.materials?.map((material) => ({
       sourceType: material.sourceType,
       sourceId: material.sourceId,
       title: material.title,
       snippet: material.snippet,
       metadata: material.metadata,
-    })) ?? [];
+    })) ?? []
+  );
 
   const report = await prisma.report.create({
     data: {
@@ -75,4 +76,58 @@ export async function POST(req: NextRequest) {
   });
 
   return respond(report, { message: "Report created" });
+}
+
+async function attachSubjectMatchSnapshot<
+  T extends {
+    sourceType: string;
+    sourceId: string;
+    metadata?: unknown;
+  },
+>(materials: T[]): Promise<T[]> {
+  const contentIds = Array.from(
+    new Set(
+      materials
+        .filter((material) => material.sourceType === "FAVORITE")
+        .map((material) => material.sourceId)
+    )
+  );
+  if (contentIds.length === 0) return materials;
+
+  const matches = await prisma.contentSubjectMatch.findMany({
+    where: { contentId: { in: contentIds } },
+    select: {
+      contentId: true,
+      keywordId: true,
+      ruleScore: true,
+      aiScore: true,
+      matchScore: true,
+      matchedIncludes: true,
+      matchedExcludes: true,
+      matchSource: true,
+      reason: true,
+    },
+    orderBy: { matchScore: "desc" },
+  });
+
+  const grouped = new Map<string, typeof matches>();
+  for (const match of matches) {
+    const list = grouped.get(match.contentId) ?? [];
+    list.push(match);
+    grouped.set(match.contentId, list);
+  }
+
+  return materials.map((material) => {
+    if (material.sourceType !== "FAVORITE") return material;
+    const snapshot = grouped.get(material.sourceId) ?? [];
+    return {
+      ...material,
+      metadata: {
+        ...(material.metadata && typeof material.metadata === "object"
+          ? (material.metadata as Record<string, unknown>)
+          : {}),
+        subjectMatchesSnapshot: snapshot,
+      },
+    };
+  });
 }

@@ -252,6 +252,7 @@ exports.Prisma.SearchEngineSourceConfigScalarFieldEnum = {
   objective: 'objective',
   apiEndpoint: 'apiEndpoint',
   options: 'options',
+  keywordStrategy: 'keywordStrategy',
   credentialId: 'credentialId',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
@@ -263,6 +264,7 @@ exports.Prisma.SocialMediaSourceConfigScalarFieldEnum = {
   config: 'config',
   credentialId: 'credentialId',
   proxyId: 'proxyId',
+  keywordStrategy: 'keywordStrategy',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 };
@@ -320,6 +322,21 @@ exports.Prisma.ContentKeywordScalarFieldEnum = {
   id: 'id',
   contentId: 'contentId',
   keywordId: 'keywordId'
+};
+
+exports.Prisma.ContentSubjectMatchScalarFieldEnum = {
+  id: 'id',
+  contentId: 'contentId',
+  keywordId: 'keywordId',
+  ruleScore: 'ruleScore',
+  aiScore: 'aiScore',
+  matchScore: 'matchScore',
+  matchedIncludes: 'matchedIncludes',
+  matchedExcludes: 'matchedExcludes',
+  matchSource: 'matchSource',
+  reason: 'reason',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
 };
 
 exports.Prisma.ContentEntityScalarFieldEnum = {
@@ -500,6 +517,13 @@ exports.SearchEngineKind = exports.$Enums.SearchEngineKind = {
   CUSTOM: 'CUSTOM'
 };
 
+exports.KeywordStrategy = exports.$Enums.KeywordStrategy = {
+  AUTO: 'AUTO',
+  RECALL_ONLY: 'RECALL_ONLY',
+  PRECISION_ONLY: 'PRECISION_ONLY',
+  HYBRID: 'HYBRID'
+};
+
 exports.QueryFrequency = exports.$Enums.QueryFrequency = {
   MANUAL: 'MANUAL',
   HOURLY: 'HOURLY',
@@ -521,6 +545,13 @@ exports.ContentType = exports.$Enums.ContentType = {
   Web: 'Web',
   Client: 'Client',
   Darknet: 'Darknet'
+};
+
+exports.ContentSubjectMatchSource = exports.$Enums.ContentSubjectMatchSource = {
+  QUERY: 'QUERY',
+  GATHER: 'GATHER',
+  AI: 'AI',
+  FUSED: 'FUSED'
 };
 
 exports.ReportStatus = exports.$Enums.ReportStatus = {
@@ -552,6 +583,7 @@ exports.Prisma.ModelName = {
   TaskEvent: 'TaskEvent',
   Content: 'Content',
   ContentKeyword: 'ContentKeyword',
+  ContentSubjectMatch: 'ContentSubjectMatch',
   ContentEntity: 'ContentEntity',
   Favorite: 'Favorite',
   ReportTemplate: 'ReportTemplate',

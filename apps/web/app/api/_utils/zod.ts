@@ -133,6 +133,12 @@ export const SearchPlatformEnum = z.enum([
   "ANSPIRE",
   "CUSTOM",
 ]);
+export const KeywordStrategyEnum = z.enum([
+  "AUTO",
+  "RECALL_ONLY",
+  "PRECISION_ONLY",
+  "HYBRID",
+]);
 export const SocialPlatformEnum = z.enum(["X", "TELEGRAM", "REDDIT", "XIAOHONGSHU", "DOUYIN", "TIKTOK", "WEIBO", "WHATSAPP", "INSTAGRAM", "FACEBOOK"]);
 export const SocialDriverEnum = z.enum(["xhttp", "playwright", "agent-browser"]);
 const GatherResponseFormatEnum = z.enum(["text", "markdown"]);
@@ -233,6 +239,7 @@ export const SearchEngineConfigInput = z.object({
   options: z.preprocess((val) => parseJson(val), z.record(z.string(), z.any()).optional().nullable()),
   customConfig: z.preprocess((val) => parseJson(val), z.any().optional().nullable()),
   credentialId: cuidOpt,
+  keywordStrategy: KeywordStrategyEnum.optional().default("AUTO"),
 });
 
 export const SearchEngineConfigUpdateInput = z.object({
@@ -243,6 +250,7 @@ export const SearchEngineConfigUpdateInput = z.object({
   options: z.preprocess((val) => parseJson(val), z.record(z.string(), z.any()).optional().nullable()),
   customConfig: z.preprocess((val) => parseJson(val), z.any().optional().nullable()),
   credentialId: cuidOpt,
+  keywordStrategy: KeywordStrategyEnum.optional(),
 });
 
 const PlaywrightConfigInput = z.object({
@@ -307,6 +315,7 @@ export const SocialConfigByPlatform = z
     config: SocialConfigInput,
     credentialId: cuidOpt,
     proxyId: cuidOpt,
+    keywordStrategy: KeywordStrategyEnum.optional().default("AUTO"),
   })
   .transform((payload) => ({
     ...payload,
@@ -409,6 +418,7 @@ export const SocialConfigUpdateInput = z.object({
   config: z.any().optional(),
   credentialId: cuidOpt,
   proxyId: cuidOpt,
+  keywordStrategy: KeywordStrategyEnum.optional(),
 });
 
 export const SourceUpdateSchema = z.object({

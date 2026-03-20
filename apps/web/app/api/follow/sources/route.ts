@@ -172,6 +172,7 @@ export async function POST(req: Request) {
               apiEndpoint: data.search.apiEndpoint ?? null,
               options: jsonOrNull(data.search.options),
               credentialId: data.search.credentialId ?? null,
+              keywordStrategy: data.search.keywordStrategy ?? "AUTO",
             },
           });
           break;
@@ -183,6 +184,7 @@ export async function POST(req: Request) {
               config: toPrismaJsonObject(data.social.config),
               credentialId: data.social.credentialId ?? null,
               proxyId: data.social.proxyId ?? null,
+              keywordStrategy: data.social.keywordStrategy ?? "AUTO",
             },
           });
           await syncSocialPresetBinding(tx, {

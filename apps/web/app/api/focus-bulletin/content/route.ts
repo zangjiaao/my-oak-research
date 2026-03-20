@@ -1,21 +1,38 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import prisma from "@/lib/prisma";
-import type { Prisma, Content } from "@/app/generated/prisma";
+import type {
+  Prisma,
+  Content,
+  ContentSubjectMatch,
+  ContentSubjectMatchSource,
+} from "@/app/generated/prisma";
 import { buildRecordContentViews } from "@/lib/follow-content/record-content-view";
 
 const contentTypeSchema = z.enum(["Web", "Client", "Darknet"]);
+const matchSourceSchema = z.enum(["QUERY", "GATHER", "AI", "FUSED"]);
+const sortSchema = z.enum(["time", "matchScore"]);
 const ContentQuerySchema = z.object({
   platform: z.string().trim().min(1).optional(),
   type: contentTypeSchema.optional(),
   search: z.string().trim().min(1).optional(),
   from: z.string().datetime().optional(),
   to: z.string().datetime().optional(),
+  subjectId: z.string().min(1).optional(),
+  minMatchScore: z.coerce.number().min(0).max(1).optional(),
+  matchSource: matchSourceSchema.optional(),
+  sort: sortSchema.optional().default("time"),
+  includeSubjectMatches: z
+    .enum(["true", "false"])
+    .optional()
+    .transform((value) => value === "true"),
   cursor: z.string().optional(),
   limit: z.coerce.number().int().min(1).max(50).default(20),
 });
 
-const mapContent = (item: Content & { image?: string | null }) => {
+const mapContent = (
+  item: Content & { image?: string | null; subjectMatches?: ContentSubjectMatch[] }
+) => {
   const views = buildRecordContentViews(item);
   return {
     id: item.id,
@@ -32,6 +49,16 @@ const mapContent = (item: Content & { image?: string | null }) => {
     relation: views.relation,
     rawRecordContent: views.rawRecordContent,
     media: views.media ?? [],
+    subjectMatches: (item.subjectMatches ?? []).map((match) => ({
+      subjectId: match.keywordId,
+      ruleScore: match.ruleScore,
+      aiScore: match.aiScore,
+      score: match.matchScore,
+      matchedIncludes: match.matchedIncludes,
+      matchedExcludes: match.matchedExcludes,
+      matchSource: match.matchSource,
+      reason: match.reason,
+    })),
   };
 };
 
@@ -62,6 +89,11 @@ export async function GET(request: Request) {
     search,
     from,
     to,
+    subjectId,
+    minMatchScore,
+    matchSource,
+    sort,
+    includeSubjectMatches,
     cursor,
     limit,
   } = parsed.data;
@@ -93,21 +125,65 @@ export async function GET(request: Request) {
     }
   }
 
+  let resolvedMinMatchScore = minMatchScore;
+  if (subjectId && resolvedMinMatchScore == null) {
+    resolvedMinMatchScore = await resolveDefaultMinMatchScore(subjectId);
+  }
+
+  if (subjectId) {
+    where.subjectMatches = {
+      some: {
+        keywordId: subjectId,
+        ...(resolvedMinMatchScore != null
+          ? { matchScore: { gte: resolvedMinMatchScore } }
+          : {}),
+        ...(matchSource
+          ? { matchSource: matchSource as ContentSubjectMatchSource }
+          : {}),
+      },
+    };
+  }
+
+  const includeSubjectMatchRelation =
+    includeSubjectMatches || subjectId
+      ? {
+          subjectMatches: {
+            where: {
+              ...(subjectId ? { keywordId: subjectId } : {}),
+              ...(matchSource
+                ? { matchSource: matchSource as ContentSubjectMatchSource }
+                : {}),
+            },
+            orderBy: { matchScore: "desc" as const },
+          },
+        }
+      : {
+          subjectMatches: {
+            take: 0,
+          },
+        };
+
   const contents = await prisma.content.findMany({
     where,
-    orderBy: {
-      time: "desc",
-    },
+    orderBy: { time: "desc" },
     take: limit + 1,
     cursor: cursor ? { id: cursor } : undefined,
     skip: cursor ? 1 : 0,
+    include: includeSubjectMatchRelation,
   });
 
   const hasMore = contents.length > limit;
   const nextCursor = hasMore ? contents[limit].id : null;
-  const items = (hasMore ? contents.slice(0, limit) : contents).map((item) =>
-    mapContent(item)
-  );
+  const pageItems = hasMore ? contents.slice(0, limit) : contents;
+  const sortedItems =
+    sort === "matchScore" && subjectId
+      ? [...pageItems].sort((left, right) => {
+          const leftScore = left.subjectMatches?.[0]?.matchScore ?? -1;
+          const rightScore = right.subjectMatches?.[0]?.matchScore ?? -1;
+          return rightScore - leftScore;
+        })
+      : pageItems;
+  const items = sortedItems.map((item) => mapContent(item));
 
   const response: ContentResponse = {
     items,
@@ -115,4 +191,31 @@ export async function GET(request: Request) {
   };
 
   return NextResponse.json(response);
+}
+
+async function resolveDefaultMinMatchScore(subjectId: string): Promise<number> {
+  const windowStart = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
+  const samples = await prisma.contentSubjectMatch.findMany({
+    where: {
+      keywordId: subjectId,
+      createdAt: { gte: windowStart },
+      matchScore: { not: null },
+    },
+    select: { matchScore: true },
+    orderBy: { matchScore: "asc" },
+    take: 1000,
+  });
+
+  if (samples.length < 50) {
+    return 0.35;
+  }
+  const scores = samples
+    .map((sample) => sample.matchScore)
+    .filter((score): score is number => typeof score === "number");
+  if (scores.length === 0) return 0.35;
+  const percentileIndex = Math.min(
+    scores.length - 1,
+    Math.max(0, Math.floor(scores.length * 0.65))
+  );
+  return scores[percentileIndex] ?? 0.35;
 }
