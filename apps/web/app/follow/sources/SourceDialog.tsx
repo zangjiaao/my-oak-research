@@ -218,6 +218,8 @@ const getDefaultValues = (
           playwright: {
             mode: "eval-js",
             headless: false,
+            poolEnabled: true,
+            poolIdleTimeoutMs: 120000,
             targetUrl: "",
           },
         } as any,

@@ -233,6 +233,8 @@ export const SearchEngineConfigInput = z.object({
 const PlaywrightConfigInput = z.object({
   mode: z.string().trim().min(1).default("eval-js"),
   headless: z.boolean().default(false),
+  poolEnabled: z.boolean().default(true),
+  poolIdleTimeoutMs: z.coerce.number().int().min(1000).default(120000),
   targetUrl: z.preprocess(
     (val) => (typeof val === "string" && !val.trim() ? undefined : val),
     z.string().url().optional()

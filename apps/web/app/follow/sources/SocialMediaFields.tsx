@@ -316,6 +316,12 @@ export const SocialMediaFields = ({
   const currentPlaywrightTargetUrl = watch(
     "social.config.playwright.targetUrl"
   ) as string | undefined;
+  const currentPlaywrightPoolEnabled = watch(
+    "social.config.playwright.poolEnabled"
+  ) as boolean | undefined;
+  const currentPlaywrightPoolIdleTimeoutMs = watch(
+    "social.config.playwright.poolIdleTimeoutMs"
+  ) as number | undefined;
   const supportedDrivers = socialPlatform
     ? getSupportedDrivers(socialPlatform)
     : [];
@@ -594,6 +600,20 @@ export const SocialMediaFields = ({
   useEffect(() => {
     if (!setValue) return;
     if (!socialPlatform || resolvedDriver !== "playwright") return;
+    if (typeof currentPlaywrightPoolEnabled !== "boolean") {
+      setValue("social.config.playwright.poolEnabled", true, {
+        shouldDirty: false,
+      });
+    }
+    if (
+      typeof currentPlaywrightPoolIdleTimeoutMs !== "number" ||
+      !Number.isFinite(currentPlaywrightPoolIdleTimeoutMs) ||
+      currentPlaywrightPoolIdleTimeoutMs < 1000
+    ) {
+      setValue("social.config.playwright.poolIdleTimeoutMs", 120000, {
+        shouldDirty: false,
+      });
+    }
     if (currentPlaywrightMode !== "eval-js") {
       setValue("social.config.playwright.mode", "eval-js", {
         shouldDirty: false,
@@ -613,6 +633,8 @@ export const SocialMediaFields = ({
     resolvedDriver,
     currentPlaywrightMode,
     currentPlaywrightTargetUrl,
+    currentPlaywrightPoolEnabled,
+    currentPlaywrightPoolIdleTimeoutMs,
   ]);
 
   const syncArgsToForm = useCallback(
@@ -1799,6 +1821,52 @@ export const SocialMediaFields = ({
                       </label>
                     )}
                   />
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <Controller
+                    name="social.config.playwright.poolEnabled"
+                    control={control}
+                    render={({ field }) => (
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <Switch
+                          checked={Boolean(field.value ?? true)}
+                          onCheckedChange={field.onChange}
+                        />
+                        <span className="text-sm">Enable Driver Pool</span>
+                      </label>
+                    )}
+                  />
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="social.config.playwright.poolIdleTimeoutMs">
+                    Pool Idle Timeout (ms)
+                  </Label>
+                  <Controller
+                    name="social.config.playwright.poolIdleTimeoutMs"
+                    control={control}
+                    render={({ field }) => (
+                      <Input
+                        id="social.config.playwright.poolIdleTimeoutMs"
+                        type="number"
+                        min={1000}
+                        step={1000}
+                        value={typeof field.value === "number" ? field.value : 120000}
+                        onChange={(event) => {
+                          if (event.target.value.trim() === "") {
+                            field.onChange(120000);
+                            return;
+                          }
+                          const nextValue = Number(event.target.value);
+                          field.onChange(Number.isFinite(nextValue) ? nextValue : 120000);
+                        }}
+                      />
+                    )}
+                  />
+                  <ErrorMessage>
+                    {getConfigErrorMessage("playwright.poolIdleTimeoutMs")}
+                  </ErrorMessage>
                 </div>
 
                 <div className="grid gap-3 md:col-span-2">
