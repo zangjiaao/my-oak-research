@@ -1658,19 +1658,37 @@ function buildSearchRequest(
     const payload: Record<string, unknown> = {
       api_key: apiKey,
       query: objective,
-      topic: pickString(options.topic),
-      search_depth: pickString(options.search_depth, options.searchDepth),
-      max_results: toNumberOption(options.max_results, options.maxResults),
-      include_answer: toBooleanOption(options.include_answer, options.includeAnswer),
-      include_raw_content: toBooleanOption(
-        options.include_raw_content,
-        options.includeRawContent
-      ),
-      include_images: toBooleanOption(options.include_images, options.includeImages),
-      include_domains: toStringArrayOption(options.include_domains, options.includeDomains),
-      exclude_domains: toStringArrayOption(options.exclude_domains, options.excludeDomains),
+      topic: pickString(options.topic) ?? "general",
+      search_depth: pickString(options.search_depth, options.searchDepth) ?? "basic",
+      max_results: toNumberOption(options.max_results, options.maxResults) ?? 10,
+      include_answer:
+        toBooleanOption(options.include_answer, options.includeAnswer) ?? false,
+      include_raw_content:
+        toBooleanOrStringOption(
+          options.include_raw_content,
+          options.includeRawContent
+        ) ?? false,
+      include_images:
+        toBooleanOption(options.include_images, options.includeImages) ?? false,
+      include_image_descriptions:
+        toBooleanOption(
+          options.include_image_descriptions,
+          options.includeImageDescriptions
+        ) ?? false,
+      include_favicon:
+        toBooleanOption(options.include_favicon, options.includeFavicon) ?? false,
+      include_usage:
+        toBooleanOption(options.include_usage, options.includeUsage) ?? false,
+      chunks_per_source:
+        toNumberOption(options.chunks_per_source, options.chunksPerSource) ?? 4,
+      include_domains:
+        toStringArrayOption(options.include_domains, options.includeDomains) ?? [],
+      exclude_domains:
+        toStringArrayOption(options.exclude_domains, options.excludeDomains) ?? [],
       time_range: pickString(options.time_range, options.timeRange),
       days: toNumberOption(options.days),
+      start_date: pickString(options.start_date, options.startDate),
+      end_date: pickString(options.end_date, options.endDate),
     };
     return {
       url: SEARCH_PROVIDER_ENDPOINTS.tavily,
@@ -1816,6 +1834,23 @@ function toBooleanOption(...values: unknown[]): boolean | undefined {
       const normalized = value.trim().toLowerCase();
       if (normalized === "true") return true;
       if (normalized === "false") return false;
+    }
+  }
+  return undefined;
+}
+
+function toBooleanOrStringOption(
+  ...values: unknown[]
+): boolean | string | undefined {
+  for (const value of values) {
+    if (typeof value === "boolean") {
+      return value;
+    }
+    if (typeof value === "string") {
+      const normalized = value.trim().toLowerCase();
+      if (normalized === "true") return true;
+      if (normalized === "false") return false;
+      if (value.trim()) return value.trim();
     }
   }
   return undefined;

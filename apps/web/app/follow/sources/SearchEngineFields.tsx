@@ -87,10 +87,17 @@ const PLATFORM_PRESETS: Record<SearchPlatform, PlatformPreset> = {
     apiEndpoint: "https://api.tavily.com/search",
     options: {
       provider: "tavily",
+      topic: "general",
       search_depth: "basic",
       max_results: 10,
       include_answer: false,
       include_raw_content: false,
+      include_images: false,
+      include_image_descriptions: false,
+      include_favicon: false,
+      include_usage: false,
+      include_domains: [],
+      exclude_domains: [],
     },
   },
   ANSPIRE: {
@@ -230,6 +237,57 @@ export const SearchEngineFields = ({
   const parallelTimeoutSeconds = String(
     toNumberOr(fetchPolicy.timeout_seconds, 120, 1)
   );
+  const tavilyTopic = String(optionsObject.topic ?? "general");
+  const tavilySearchDepth = String(
+    optionsObject.search_depth ?? optionsObject.searchDepth ?? "basic"
+  );
+  const tavilyMaxResults = String(
+    toNumberOr(optionsObject.max_results ?? optionsObject.maxResults, 10, 1)
+  );
+  const tavilyTimeRange = String(
+    optionsObject.time_range ?? optionsObject.timeRange ?? ""
+  );
+  const tavilyStartDate = String(
+    optionsObject.start_date ?? optionsObject.startDate ?? ""
+  );
+  const tavilyEndDate = String(
+    optionsObject.end_date ?? optionsObject.endDate ?? ""
+  );
+  const tavilyIncludeImages = toBoolOr(
+    optionsObject.include_images ?? optionsObject.includeImages,
+    false
+  );
+  const tavilyIncludeImageDescriptions = toBoolOr(
+    optionsObject.include_image_descriptions ??
+      optionsObject.includeImageDescriptions,
+    false
+  );
+  const tavilyIncludeFavicon = toBoolOr(
+    optionsObject.include_favicon ?? optionsObject.includeFavicon,
+    false
+  );
+  const tavilyIncludeUsage = toBoolOr(
+    optionsObject.include_usage ?? optionsObject.includeUsage,
+    false
+  );
+  const tavilyIncludeRawContent = String(
+    optionsObject.include_raw_content ?? optionsObject.includeRawContent ?? "false"
+  );
+  const tavilyChunksPerSource = String(
+    toNumberOr(
+      optionsObject.chunks_per_source ?? optionsObject.chunksPerSource,
+      4,
+      1
+    )
+  );
+  const tavilyIncludeDomains = (() => {
+    const raw = optionsObject.include_domains ?? optionsObject.includeDomains;
+    return typeof raw === "string" ? raw : toStringArray(raw).join("\n");
+  })();
+  const tavilyExcludeDomains = (() => {
+    const raw = optionsObject.exclude_domains ?? optionsObject.excludeDomains;
+    return typeof raw === "string" ? raw : toStringArray(raw).join("\n");
+  })();
 
   const searchErrors = errors as FieldErrors<
     z.infer<typeof SearchEngineSourceCreateSchema>
@@ -319,6 +377,50 @@ export const SearchEngineFields = ({
     parallelSearchQueries,
     parallelTimeoutSeconds,
     objectiveValue,
+  ]);
+  const tavilyRequestPreview = useMemo(() => {
+    if (currentPlatform !== "TAVILY") return null;
+    const includeRawContent = tavilyIncludeRawContent.trim().toLowerCase();
+    const normalizedIncludeRawContent =
+      includeRawContent === "true"
+        ? true
+        : includeRawContent === "false" || !includeRawContent
+          ? false
+          : tavilyIncludeRawContent.trim();
+    return {
+      query: objectiveValue || "",
+      topic: tavilyTopic || "general",
+      search_depth: tavilySearchDepth || "basic",
+      max_results: toNumberOr(tavilyMaxResults, 10, 1),
+      ...(tavilyTimeRange ? { time_range: tavilyTimeRange } : {}),
+      ...(tavilyStartDate ? { start_date: tavilyStartDate } : {}),
+      ...(tavilyEndDate ? { end_date: tavilyEndDate } : {}),
+      include_images: tavilyIncludeImages,
+      include_image_descriptions: tavilyIncludeImageDescriptions,
+      include_favicon: tavilyIncludeFavicon,
+      include_usage: tavilyIncludeUsage,
+      include_raw_content: normalizedIncludeRawContent,
+      chunks_per_source: toNumberOr(tavilyChunksPerSource, 4, 1),
+      include_domains: toStringArray(tavilyIncludeDomains),
+      exclude_domains: toStringArray(tavilyExcludeDomains),
+    };
+  }, [
+    currentPlatform,
+    objectiveValue,
+    tavilyChunksPerSource,
+    tavilyEndDate,
+    tavilyExcludeDomains,
+    tavilyIncludeDomains,
+    tavilyIncludeFavicon,
+    tavilyIncludeImageDescriptions,
+    tavilyIncludeImages,
+    tavilyIncludeRawContent,
+    tavilyIncludeUsage,
+    tavilyMaxResults,
+    tavilySearchDepth,
+    tavilyStartDate,
+    tavilyTimeRange,
+    tavilyTopic,
   ]);
 
   return (
@@ -669,7 +771,259 @@ export const SearchEngineFields = ({
             </div>
           )}
 
-          {currentPlatform !== "PARALLEL" && (
+          {currentPlatform === "TAVILY" && (
+            <div className="grid gap-4">
+              <div className="grid gap-3">
+                <Label htmlFor="search.objective">Query</Label>
+                <Textarea
+                  id="search.objective"
+                  placeholder="openclaw"
+                  rows={3}
+                  {...register("search.objective")}
+                />
+                <ErrorMessage>
+                  {searchErrors.search?.objective?.message?.toString()}
+                </ErrorMessage>
+              </div>
+
+              <div className="grid gap-3">
+                <Label htmlFor="search.tavily.topic">Topic</Label>
+                <Input
+                  id="search.tavily.topic"
+                  placeholder="general"
+                  value={tavilyTopic}
+                  onChange={(event) => {
+                    const topic = event.target.value.trim() || "general";
+                    updateOptions((prev) => ({ ...prev, topic }));
+                  }}
+                />
+              </div>
+
+              <div className="grid gap-3">
+                <Label htmlFor="search.tavily.searchDepth">Search Depth</Label>
+                <Input
+                  id="search.tavily.searchDepth"
+                  placeholder="basic | advanced"
+                  value={tavilySearchDepth}
+                  onChange={(event) => {
+                    const searchDepth = event.target.value.trim() || "basic";
+                    updateOptions((prev) => ({
+                      ...prev,
+                      search_depth: searchDepth,
+                    }));
+                  }}
+                />
+              </div>
+
+              <div className="grid gap-3">
+                <Label htmlFor="search.tavily.maxResults">Max Results</Label>
+                <Input
+                  id="search.tavily.maxResults"
+                  type="number"
+                  min={1}
+                  value={tavilyMaxResults}
+                  onChange={(event) => {
+                    const next = Number(event.target.value);
+                    updateOptions((prev) => ({
+                      ...prev,
+                      max_results: Number.isFinite(next) && next > 0 ? next : 10,
+                    }));
+                  }}
+                />
+              </div>
+
+              <div className="grid gap-3">
+                <Label htmlFor="search.tavily.timeRange">Time Range</Label>
+                <Input
+                  id="search.tavily.timeRange"
+                  placeholder="day | week | month | year"
+                  value={tavilyTimeRange}
+                  onChange={(event) => {
+                    updateOptions((prev) => ({
+                      ...prev,
+                      time_range: event.target.value.trim(),
+                    }));
+                  }}
+                />
+              </div>
+
+              <div className="grid gap-3">
+                <Label htmlFor="search.tavily.startDate">Start Date</Label>
+                <Input
+                  id="search.tavily.startDate"
+                  type="date"
+                  value={tavilyStartDate}
+                  onChange={(event) => {
+                    updateOptions((prev) => ({
+                      ...prev,
+                      start_date: event.target.value.trim(),
+                    }));
+                  }}
+                />
+              </div>
+
+              <div className="grid gap-3">
+                <Label htmlFor="search.tavily.endDate">End Date</Label>
+                <Input
+                  id="search.tavily.endDate"
+                  type="date"
+                  value={tavilyEndDate}
+                  onChange={(event) => {
+                    updateOptions((prev) => ({
+                      ...prev,
+                      end_date: event.target.value.trim(),
+                    }));
+                  }}
+                />
+              </div>
+
+              <div className="grid gap-3 rounded-md border p-3">
+                <p className="text-sm font-medium">Include Options</p>
+                <div className="grid gap-3">
+                  <Label htmlFor="search.tavily.includeImages">
+                    Include Images
+                  </Label>
+                  <Switch
+                    id="search.tavily.includeImages"
+                    checked={tavilyIncludeImages}
+                    onCheckedChange={(checked) => {
+                      updateOptions((prev) => ({
+                        ...prev,
+                        include_images: checked,
+                      }));
+                    }}
+                  />
+                </div>
+                <div className="grid gap-3">
+                  <Label htmlFor="search.tavily.includeImageDescriptions">
+                    Include Image Descriptions
+                  </Label>
+                  <Switch
+                    id="search.tavily.includeImageDescriptions"
+                    checked={tavilyIncludeImageDescriptions}
+                    onCheckedChange={(checked) => {
+                      updateOptions((prev) => ({
+                        ...prev,
+                        include_image_descriptions: checked,
+                      }));
+                    }}
+                  />
+                </div>
+                <div className="grid gap-3">
+                  <Label htmlFor="search.tavily.includeFavicon">
+                    Include Favicon
+                  </Label>
+                  <Switch
+                    id="search.tavily.includeFavicon"
+                    checked={tavilyIncludeFavicon}
+                    onCheckedChange={(checked) => {
+                      updateOptions((prev) => ({
+                        ...prev,
+                        include_favicon: checked,
+                      }));
+                    }}
+                  />
+                </div>
+                <div className="grid gap-3">
+                  <Label htmlFor="search.tavily.includeUsage">
+                    Include Usage
+                  </Label>
+                  <Switch
+                    id="search.tavily.includeUsage"
+                    checked={tavilyIncludeUsage}
+                    onCheckedChange={(checked) => {
+                      updateOptions((prev) => ({
+                        ...prev,
+                        include_usage: checked,
+                      }));
+                    }}
+                  />
+                </div>
+                <div className="grid gap-3">
+                  <Label htmlFor="search.tavily.includeRawContent">
+                    Include Raw Content
+                  </Label>
+                  <Input
+                    id="search.tavily.includeRawContent"
+                    placeholder='false | true | "text"'
+                    value={tavilyIncludeRawContent}
+                    onChange={(event) => {
+                      updateOptions((prev) => ({
+                        ...prev,
+                        include_raw_content: event.target.value.trim(),
+                      }));
+                    }}
+                  />
+                </div>
+                <div className="grid gap-3">
+                  <Label htmlFor="search.tavily.chunksPerSource">
+                    Chunks Per Source
+                  </Label>
+                  <Input
+                    id="search.tavily.chunksPerSource"
+                    type="number"
+                    min={1}
+                    value={tavilyChunksPerSource}
+                    onChange={(event) => {
+                      const next = Number(event.target.value);
+                      updateOptions((prev) => ({
+                        ...prev,
+                        chunks_per_source:
+                          Number.isFinite(next) && next > 0 ? next : 4,
+                      }));
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div className="grid gap-3">
+                <Label htmlFor="search.tavily.includeDomains">
+                  Include Domains
+                </Label>
+                <Textarea
+                  id="search.tavily.includeDomains"
+                  rows={3}
+                  placeholder={"baidu.com"}
+                  value={tavilyIncludeDomains}
+                  onChange={(event) => {
+                    updateOptions((prev) => ({
+                      ...prev,
+                      include_domains: event.target.value,
+                    }));
+                  }}
+                />
+              </div>
+
+              <div className="grid gap-3">
+                <Label htmlFor="search.tavily.excludeDomains">
+                  Exclude Domains
+                </Label>
+                <Textarea
+                  id="search.tavily.excludeDomains"
+                  rows={3}
+                  placeholder={"google.com"}
+                  value={tavilyExcludeDomains}
+                  onChange={(event) => {
+                    updateOptions((prev) => ({
+                      ...prev,
+                      exclude_domains: event.target.value,
+                    }));
+                  }}
+                />
+              </div>
+
+              {tavilyRequestPreview && (
+                <div className="grid gap-3 rounded-lg border border-dashed bg-muted/20 p-4">
+                  <p className="text-sm font-medium">Request Preview</p>
+                  <pre className="max-h-72 overflow-auto rounded-md bg-background p-3 text-xs">
+                    {JSON.stringify(tavilyRequestPreview, null, 2)}
+                  </pre>
+                </div>
+              )}
+            </div>
+          )}
+
+          {currentPlatform !== "PARALLEL" && currentPlatform !== "TAVILY" && (
             <>
               <div className="grid gap-3">
                 <Label htmlFor="search.objective">Objective</Label>
