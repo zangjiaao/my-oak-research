@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import { ErrorMessage } from "@/components/business";
 import {
   Card,
@@ -63,10 +64,21 @@ const PLATFORM_PRESETS: Record<SearchPlatform, PlatformPreset> = {
     apiEndpoint: "https://api.parallel.ai/v1beta/search",
     options: {
       provider: "parallel",
-      mode: "fast",
-      max_results: 10,
+      mode: "one-shot",
+      max_results: 20,
+      search_queries: [],
       excerpts: {
-        max_chars_per_result: 10000,
+        max_chars_per_result: 20000,
+        max_chars_total: 200000,
+      },
+      source_policy: {
+        include_domains: [],
+        exclude_domains: [],
+      },
+      fetch_policy: {
+        disable_cache_fallback: true,
+        max_age_seconds: 172800,
+        timeout_seconds: 120,
       },
     },
   },
@@ -130,6 +142,39 @@ function toStringArray(raw: unknown): string[] {
   return [];
 }
 
+function asObject(value: unknown): Record<string, unknown> {
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    return value as Record<string, unknown>;
+  }
+  return {};
+}
+
+function toNumberOr(
+  value: unknown,
+  fallback: number,
+  min?: number
+): number {
+  const num =
+    typeof value === "number"
+      ? value
+      : typeof value === "string"
+        ? Number(value)
+        : NaN;
+  if (!Number.isFinite(num)) return fallback;
+  if (typeof min === "number" && num < min) return fallback;
+  return num;
+}
+
+function toBoolOr(value: unknown, fallback: boolean): boolean {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    if (normalized === "true") return true;
+    if (normalized === "false") return false;
+  }
+  return fallback;
+}
+
 export const SearchEngineFields = ({
   register,
   control,
@@ -149,10 +194,36 @@ export const SearchEngineFields = ({
       ).join("\n"),
     [optionsObject]
   );
-  const parallelMode = String(optionsObject.mode ?? "fast");
-  const excerpts = (optionsObject.excerpts ??
-    {}) as Record<string, unknown>;
-  const parallelMaxChars = String(excerpts.max_chars_per_result ?? 10000);
+  const parallelMode = String(optionsObject.mode ?? "one-shot");
+  const parallelMaxResults = String(
+    toNumberOr(optionsObject.max_results, 20, 1)
+  );
+  const excerpts = asObject(optionsObject.excerpts);
+  const parallelMaxCharsPerResult = String(
+    toNumberOr(excerpts.max_chars_per_result, 20000, 1)
+  );
+  const parallelMaxCharsTotal = String(
+    toNumberOr(excerpts.max_chars_total, 200000, 1)
+  );
+  const sourcePolicy = asObject(optionsObject.source_policy);
+  const parallelAfterDate = String(sourcePolicy.after_date ?? "");
+  const parallelIncludeDomains = toStringArray(sourcePolicy.include_domains).join(
+    "\n"
+  );
+  const parallelExcludeDomains = toStringArray(sourcePolicy.exclude_domains).join(
+    "\n"
+  );
+  const fetchPolicy = asObject(optionsObject.fetch_policy);
+  const parallelDisableCacheFallback = toBoolOr(
+    fetchPolicy.disable_cache_fallback,
+    true
+  );
+  const parallelMaxAgeSeconds = String(
+    toNumberOr(fetchPolicy.max_age_seconds, 172800, 1)
+  );
+  const parallelTimeoutSeconds = String(
+    toNumberOr(fetchPolicy.timeout_seconds, 120, 1)
+  );
 
   const searchErrors = errors as FieldErrors<
     z.infer<typeof SearchEngineSourceCreateSchema>
@@ -355,30 +426,47 @@ export const SearchEngineFields = ({
                 <Label htmlFor="search.parallel.mode">Mode</Label>
                 <Input
                   id="search.parallel.mode"
-                  placeholder="fast"
+                  placeholder="one-shot"
                   value={parallelMode}
                   onChange={(event) => {
-                    const mode = event.target.value.trim() || "fast";
+                    const mode = event.target.value.trim() || "one-shot";
                     updateOptions((prev) => ({ ...prev, mode }));
                   }}
                 />
               </div>
 
               <div className="grid gap-3">
-                <Label htmlFor="search.parallel.maxChars">
+                <Label htmlFor="search.parallel.maxResults">Max Results</Label>
+                <Input
+                  id="search.parallel.maxResults"
+                  type="number"
+                  min={1}
+                  value={parallelMaxResults}
+                  onChange={(event) => {
+                    const next = Number(event.target.value);
+                    updateOptions((prev) => ({
+                      ...prev,
+                      max_results: Number.isFinite(next) && next > 0 ? next : 20,
+                    }));
+                  }}
+                />
+              </div>
+
+              <div className="grid gap-3">
+                <Label htmlFor="search.parallel.maxCharsPerResult">
                   Max Chars Per Result
                 </Label>
                 <Input
-                  id="search.parallel.maxChars"
+                  id="search.parallel.maxCharsPerResult"
                   type="number"
-                  min={200}
-                  value={parallelMaxChars}
+                  min={1}
+                  value={parallelMaxCharsPerResult}
                   onChange={(event) => {
                     const next = Number(event.target.value);
                     updateOptions((prev) => ({
                       ...prev,
                       excerpts: {
-                        ...((prev.excerpts as Record<string, unknown>) ?? {}),
+                        ...asObject(prev.excerpts),
                         max_chars_per_result:
                           Number.isFinite(next) && next > 0 ? next : 10000,
                       },
@@ -388,6 +476,168 @@ export const SearchEngineFields = ({
                 <p className="text-xs text-muted-foreground">
                   Maps to `excerpts.max_chars_per_result`.
                 </p>
+              </div>
+
+              <div className="grid gap-3">
+                <Label htmlFor="search.parallel.maxCharsTotal">
+                  Max Chars Total
+                </Label>
+                <Input
+                  id="search.parallel.maxCharsTotal"
+                  type="number"
+                  min={1}
+                  value={parallelMaxCharsTotal}
+                  onChange={(event) => {
+                    const next = Number(event.target.value);
+                    updateOptions((prev) => ({
+                      ...prev,
+                      excerpts: {
+                        ...asObject(prev.excerpts),
+                        max_chars_total:
+                          Number.isFinite(next) && next > 0 ? next : 200000,
+                      },
+                    }));
+                  }}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Maps to `excerpts.max_chars_total`.
+                </p>
+              </div>
+
+              <div className="grid gap-3 rounded-md border p-3">
+                <p className="text-sm font-medium">Source Policy</p>
+                <div className="grid gap-3">
+                  <Label htmlFor="search.parallel.afterDate">Published After</Label>
+                  <Input
+                    id="search.parallel.afterDate"
+                    type="date"
+                    value={parallelAfterDate}
+                    onChange={(event) => {
+                      const afterDate = event.target.value.trim();
+                      updateOptions((prev) => ({
+                        ...prev,
+                        source_policy: afterDate
+                          ? {
+                              ...asObject(prev.source_policy),
+                              after_date: afterDate,
+                            }
+                          : Object.fromEntries(
+                              Object.entries(asObject(prev.source_policy)).filter(
+                                ([key]) => key !== "after_date"
+                              )
+                            ),
+                      }));
+                    }}
+                  />
+                </div>
+                <div className="grid gap-3">
+                  <Label htmlFor="search.parallel.includeDomains">
+                    Include Domains
+                  </Label>
+                  <Textarea
+                    id="search.parallel.includeDomains"
+                    rows={3}
+                    placeholder={"google.com\nexample.com"}
+                    value={parallelIncludeDomains}
+                    onChange={(event) => {
+                      const includeDomains = toStringArray(event.target.value);
+                      updateOptions((prev) => ({
+                        ...prev,
+                        source_policy: {
+                          ...asObject(prev.source_policy),
+                          include_domains: includeDomains,
+                        },
+                      }));
+                    }}
+                  />
+                </div>
+                <div className="grid gap-3">
+                  <Label htmlFor="search.parallel.excludeDomains">
+                    Exclude Domains
+                  </Label>
+                  <Textarea
+                    id="search.parallel.excludeDomains"
+                    rows={3}
+                    placeholder={"baidu.com"}
+                    value={parallelExcludeDomains}
+                    onChange={(event) => {
+                      const excludeDomains = toStringArray(event.target.value);
+                      updateOptions((prev) => ({
+                        ...prev,
+                        source_policy: {
+                          ...asObject(prev.source_policy),
+                          exclude_domains: excludeDomains,
+                        },
+                      }));
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div className="grid gap-3 rounded-md border p-3">
+                <p className="text-sm font-medium">Fetch Policy</p>
+                <div className="grid gap-3">
+                  <Label htmlFor="search.parallel.disableCacheFallback">
+                    Disable Cache Fallback
+                  </Label>
+                  <Switch
+                    id="search.parallel.disableCacheFallback"
+                    checked={parallelDisableCacheFallback}
+                    onCheckedChange={(checked) => {
+                      updateOptions((prev) => ({
+                        ...prev,
+                        fetch_policy: {
+                          ...asObject(prev.fetch_policy),
+                          disable_cache_fallback: checked,
+                        },
+                      }));
+                    }}
+                  />
+                </div>
+                <div className="grid gap-3">
+                  <Label htmlFor="search.parallel.maxAgeSeconds">
+                    Max Age Seconds
+                  </Label>
+                  <Input
+                    id="search.parallel.maxAgeSeconds"
+                    type="number"
+                    min={1}
+                    value={parallelMaxAgeSeconds}
+                    onChange={(event) => {
+                      const next = Number(event.target.value);
+                      updateOptions((prev) => ({
+                        ...prev,
+                        fetch_policy: {
+                          ...asObject(prev.fetch_policy),
+                          max_age_seconds:
+                            Number.isFinite(next) && next > 0 ? next : 172800,
+                        },
+                      }));
+                    }}
+                  />
+                </div>
+                <div className="grid gap-3">
+                  <Label htmlFor="search.parallel.timeoutSeconds">
+                    Timeout Seconds
+                  </Label>
+                  <Input
+                    id="search.parallel.timeoutSeconds"
+                    type="number"
+                    min={1}
+                    value={parallelTimeoutSeconds}
+                    onChange={(event) => {
+                      const next = Number(event.target.value);
+                      updateOptions((prev) => ({
+                        ...prev,
+                        fetch_policy: {
+                          ...asObject(prev.fetch_policy),
+                          timeout_seconds:
+                            Number.isFinite(next) && next > 0 ? next : 120,
+                        },
+                      }));
+                    }}
+                  />
+                </div>
               </div>
             </div>
           )}

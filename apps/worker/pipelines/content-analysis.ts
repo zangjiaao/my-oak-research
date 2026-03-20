@@ -1600,7 +1600,7 @@ function buildSearchRequest(
       max_results: toNumberOption(options.max_results, options.maxResults),
       excerpts: asObjectOrUndefined(options.excerpts),
       source_policy: asObjectOrUndefined(options.source_policy, options.sourcePolicy),
-      fetch_policy: pickString(options.fetch_policy, options.fetchPolicy),
+      fetch_policy: asObjectOrUndefined(options.fetch_policy, options.fetchPolicy),
     };
     return {
       url: search?.apiEndpoint || "https://api.parallel.ai/v1beta/search",
