@@ -15,7 +15,7 @@ import { llmGateway, browserAgent } from "@oak/agents";
 import { publishTaskEvent, publishContentEvent } from "@/lib/queue";
 import { logger } from "@/lib/logger";
 import { redact, stripPromptLike } from "@/lib/security";
-import { writeWorkerApiIoLog } from "../lib/api-io-log";
+import { writeWorkerApiIoLog } from "./api-io-log";
 import { buildNormalizedRecordContent } from "./record-content-normalizer";
 
 const SummarySchema = z.object({
@@ -1611,7 +1611,17 @@ async function fetchWithTimeout(
   url: string,
   options: RequestInit = {}
 ): Promise<string> {
-  console.log(`[collector] fetchWithTimeout ${url}`, options);
+  const detailed = await fetchWithTimeoutDetailed(url, options);
+  return detailed.text;
+}
+
+async function fetchWithTimeoutDetailed(
+  url: string,
+  options: RequestInit = {}
+): Promise<{ text: string; statusCode: number }> {
+  console.log(`[collector] fetchWithTimeout ${url}`, {
+    method: options.method ?? "GET",
+  });
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 12_000);
   const response = await fetch(url, { ...options, signal: controller.signal });
@@ -1619,7 +1629,11 @@ async function fetchWithTimeout(
   if (!response.ok) {
     throw new Error(`请求 ${url} 失败 (${response.status})`);
   }
-  return response.text();
+  const text = await response.text();
+  return {
+    text,
+    statusCode: response.status,
+  };
 }
 
 function toMarkdown(html: string) {
