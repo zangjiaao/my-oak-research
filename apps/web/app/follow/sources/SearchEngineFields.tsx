@@ -188,10 +188,13 @@ export const SearchEngineFields = ({
     (watch("search.platform") as SearchPlatform | undefined) ?? "PARALLEL";
   const optionsObject = useMemo(() => parseOptions(rawOptions), [rawOptions]);
   const parallelSearchQueries = useMemo(
-    () =>
-      toStringArray(
-        optionsObject.search_queries ?? optionsObject.searchQueries
-      ).join("\n"),
+    () => {
+      const raw = optionsObject.search_queries ?? optionsObject.searchQueries;
+      if (typeof raw === "string") {
+        return raw;
+      }
+      return toStringArray(raw).join("\n");
+    },
     [optionsObject]
   );
   const parallelMode = String(optionsObject.mode ?? "one-shot");
@@ -207,12 +210,14 @@ export const SearchEngineFields = ({
   );
   const sourcePolicy = asObject(optionsObject.source_policy);
   const parallelAfterDate = String(sourcePolicy.after_date ?? "");
-  const parallelIncludeDomains = toStringArray(sourcePolicy.include_domains).join(
-    "\n"
-  );
-  const parallelExcludeDomains = toStringArray(sourcePolicy.exclude_domains).join(
-    "\n"
-  );
+  const parallelIncludeDomains = (() => {
+    const raw = sourcePolicy.include_domains;
+    return typeof raw === "string" ? raw : toStringArray(raw).join("\n");
+  })();
+  const parallelExcludeDomains = (() => {
+    const raw = sourcePolicy.exclude_domains;
+    return typeof raw === "string" ? raw : toStringArray(raw).join("\n");
+  })();
   const fetchPolicy = asObject(optionsObject.fetch_policy);
   const parallelDisableCacheFallback = toBoolOr(
     fetchPolicy.disable_cache_fallback,
@@ -410,10 +415,9 @@ export const SearchEngineFields = ({
                   placeholder={"Parallel Web Systems products\nParallel Web Systems announcements"}
                   value={parallelSearchQueries}
                   onChange={(event) => {
-                    const queries = toStringArray(event.target.value);
                     updateOptions((prev) => ({
                       ...prev,
-                      search_queries: queries,
+                      search_queries: event.target.value,
                     }));
                   }}
                 />
@@ -540,12 +544,11 @@ export const SearchEngineFields = ({
                     placeholder={"google.com\nexample.com"}
                     value={parallelIncludeDomains}
                     onChange={(event) => {
-                      const includeDomains = toStringArray(event.target.value);
                       updateOptions((prev) => ({
                         ...prev,
                         source_policy: {
                           ...asObject(prev.source_policy),
-                          include_domains: includeDomains,
+                          include_domains: event.target.value,
                         },
                       }));
                     }}
@@ -561,12 +564,11 @@ export const SearchEngineFields = ({
                     placeholder={"baidu.com"}
                     value={parallelExcludeDomains}
                     onChange={(event) => {
-                      const excludeDomains = toStringArray(event.target.value);
                       updateOptions((prev) => ({
                         ...prev,
                         source_policy: {
                           ...asObject(prev.source_policy),
-                          exclude_domains: excludeDomains,
+                          exclude_domains: event.target.value,
                         },
                       }));
                     }}
