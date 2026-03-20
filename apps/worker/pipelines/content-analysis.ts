@@ -44,6 +44,7 @@ type CleanItem = {
   schemaVersion?: string;
   recordIndex?: number;
   intent?: string;
+  sourceRequestId?: string;
 };
 
 type GatherSocialDriver = "playwright" | "xhttp" | "agent-browser";
@@ -246,6 +247,7 @@ export async function runFocusCollector(runId: string, queryId: string) {
         meta: {
           queryId,
           runId,
+          sourceRequestId: item.sourceRequestId ?? null,
           sourceFingerprint: item.fingerprint,
           driver: item.driver,
           matchedKeywords: item.matchedKeywords ?? [],
@@ -668,8 +670,8 @@ async function fetchSearchSource(
     headers: request.headers,
     body: request.body,
   });
-  const data = parseSearchResult(response);
-  if (!data.length) {
+  const parsedResult = parseSearchResult(response);
+  if (!parsedResult.items.length) {
     return [
       {
         text: `搜索引擎 ${source.name} 返回空数据`,
@@ -681,7 +683,7 @@ async function fetchSearchSource(
       },
     ];
   }
-  return data.map((item) => ({
+  return parsedResult.items.map((item) => ({
     title: item.title,
     text: item.text,
     markdown: item.markdown,
@@ -690,6 +692,7 @@ async function fetchSearchSource(
     time: item.time ? new Date(item.time) : new Date(),
     sourceId: source.id,
     sourceType: source.type,
+    sourceRequestId: parsedResult.requestId,
   }));
 }
 
@@ -1556,7 +1559,7 @@ const SEARCH_PROVIDER_ENDPOINTS = {
     process.env.TAVILY_API_ENDPOINT || "https://api.tavily.com/search",
   anspire:
     process.env.ANSPIRE_API_ENDPOINT ||
-    "https://plugin.anspire.cn/api/ntsearch/search",
+    "https://plugin.anspire.cn/api/ntsearch/prosearch",
 } as const;
 
 function detectSearchProvider(
@@ -1737,10 +1740,20 @@ function buildSearchRequest(
   };
 }
 
-function parseSearchResult(payload: string) {
+function parseSearchResult(payload: string): {
+  items: Array<{
+    title?: string;
+    text: string;
+    markdown: string;
+    url?: string;
+    time?: string;
+  }>;
+  requestId?: string;
+} {
   try {
     const json = JSON.parse(payload);
     const root = asObject(json);
+    const requestId = pickString(root.Uuid, root.uuid, root.requestId);
     const candidates = [
       root.items,
       root.results,
@@ -1749,14 +1762,15 @@ function parseSearchResult(payload: string) {
     ];
     const rows = candidates.find((candidate) => Array.isArray(candidate));
     if (Array.isArray(rows)) {
-      return (rows as SearchResultItem[])
+      const items = (rows as SearchResultItem[])
         .map((item) => normalizeSearchResultItem(item))
         .filter((item) => Boolean(item.text));
+      return { items, requestId };
     }
   } catch {
     // ignore
   }
-  return [];
+  return { items: [] };
 }
 
 function normalizeSearchResultItem(item: SearchResultItem) {

@@ -102,10 +102,13 @@ const PLATFORM_PRESETS: Record<SearchPlatform, PlatformPreset> = {
   },
   ANSPIRE: {
     label: "Anspire",
-    apiEndpoint: "https://plugin.anspire.cn/api/ntsearch/search",
+    apiEndpoint: "https://plugin.anspire.cn/api/ntsearch/prosearch",
     options: {
       provider: "anspire",
       top_k: "10",
+      Insite: "",
+      FromTime: "",
+      ToTime: "",
     },
   },
   CUSTOM: {
@@ -288,6 +291,14 @@ export const SearchEngineFields = ({
     const raw = optionsObject.exclude_domains ?? optionsObject.excludeDomains;
     return typeof raw === "string" ? raw : toStringArray(raw).join("\n");
   })();
+  const anspireTopK = String(optionsObject.top_k ?? optionsObject.topK ?? "10");
+  const anspireInsite = String(optionsObject.Insite ?? optionsObject.insite ?? "");
+  const anspireFromTime = String(
+    optionsObject.FromTime ?? optionsObject.from_time ?? ""
+  );
+  const anspireToTime = String(
+    optionsObject.ToTime ?? optionsObject.to_time ?? ""
+  );
 
   const searchErrors = errors as FieldErrors<
     z.infer<typeof SearchEngineSourceCreateSchema>
@@ -421,6 +432,23 @@ export const SearchEngineFields = ({
     tavilyStartDate,
     tavilyTimeRange,
     tavilyTopic,
+  ]);
+  const anspireRequestPreview = useMemo(() => {
+    if (currentPlatform !== "ANSPIRE") return null;
+    return {
+      query: objectiveValue || "",
+      top_k: anspireTopK || "10",
+      ...(anspireInsite ? { Insite: anspireInsite } : {}),
+      ...(anspireFromTime ? { FromTime: anspireFromTime } : {}),
+      ...(anspireToTime ? { ToTime: anspireToTime } : {}),
+    };
+  }, [
+    anspireFromTime,
+    anspireInsite,
+    anspireToTime,
+    anspireTopK,
+    currentPlatform,
+    objectiveValue,
   ]);
 
   return (
@@ -1023,7 +1051,103 @@ export const SearchEngineFields = ({
             </div>
           )}
 
-          {currentPlatform !== "PARALLEL" && currentPlatform !== "TAVILY" && (
+          {currentPlatform === "ANSPIRE" && (
+            <div className="grid gap-4">
+              <div className="grid gap-3">
+                <Label htmlFor="search.objective">Query</Label>
+                <Textarea
+                  id="search.objective"
+                  placeholder="你好"
+                  rows={3}
+                  {...register("search.objective")}
+                />
+                <ErrorMessage>
+                  {searchErrors.search?.objective?.message?.toString()}
+                </ErrorMessage>
+              </div>
+
+              <div className="grid gap-3">
+                <Label htmlFor="search.anspire.topK">Top K</Label>
+                <Input
+                  id="search.anspire.topK"
+                  placeholder="10"
+                  value={anspireTopK}
+                  onChange={(event) => {
+                    const topK = event.target.value.trim() || "10";
+                    updateOptions((prev) => ({
+                      ...prev,
+                      top_k: topK,
+                    }));
+                  }}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Eg: 10 / 20 / 30 / 40 / 50.
+                </p>
+              </div>
+
+              <div className="grid gap-3">
+                <Label htmlFor="search.anspire.insite">Insite</Label>
+                <Textarea
+                  id="search.anspire.insite"
+                  rows={3}
+                  placeholder="example.com,news.example.com"
+                  value={anspireInsite}
+                  onChange={(event) => {
+                    updateOptions((prev) => ({
+                      ...prev,
+                      Insite: event.target.value.trim(),
+                    }));
+                  }}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Comma-separated domains, up to 20 sites.
+                </p>
+              </div>
+
+              <div className="grid gap-3">
+                <Label htmlFor="search.anspire.fromTime">From Time</Label>
+                <Input
+                  id="search.anspire.fromTime"
+                  placeholder="2025-01-01 00:00:00"
+                  value={anspireFromTime}
+                  onChange={(event) => {
+                    updateOptions((prev) => ({
+                      ...prev,
+                      FromTime: event.target.value.trim(),
+                    }));
+                  }}
+                />
+              </div>
+
+              <div className="grid gap-3">
+                <Label htmlFor="search.anspire.toTime">To Time</Label>
+                <Input
+                  id="search.anspire.toTime"
+                  placeholder="2025-01-31 23:59:59"
+                  value={anspireToTime}
+                  onChange={(event) => {
+                    updateOptions((prev) => ({
+                      ...prev,
+                      ToTime: event.target.value.trim(),
+                    }));
+                  }}
+                />
+              </div>
+
+              {anspireRequestPreview && (
+                <div className="grid gap-3 rounded-lg border border-dashed bg-muted/20 p-4">
+                  <p className="text-sm font-medium">Request Preview</p>
+                  <pre className="max-h-72 overflow-auto rounded-md bg-background p-3 text-xs">
+                    {JSON.stringify(anspireRequestPreview, null, 2)}
+                  </pre>
+                </div>
+              )}
+            </div>
+          )}
+
+          {currentPlatform !== "PARALLEL" &&
+            currentPlatform !== "TAVILY" &&
+            currentPlatform !== "ANSPIRE" && (
             <>
               <div className="grid gap-3">
                 <Label htmlFor="search.objective">Objective</Label>
