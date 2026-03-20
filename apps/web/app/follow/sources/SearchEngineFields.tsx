@@ -184,6 +184,7 @@ export const SearchEngineFields = ({
 }: SearchEngineFieldsProps) => {
   const [platformOpen, setPlatformOpen] = useState(false);
   const rawOptions = watch("search.options");
+  const objectiveValue = watch("search.objective");
   const currentPlatform =
     (watch("search.platform") as SearchPlatform | undefined) ?? "PARALLEL";
   const optionsObject = useMemo(() => parseOptions(rawOptions), [rawOptions]);
@@ -281,6 +282,45 @@ export const SearchEngineFields = ({
     });
   };
 
+  const parallelRequestPreview = useMemo(() => {
+    if (currentPlatform !== "PARALLEL") return null;
+    const payload: Record<string, unknown> = {
+      mode: parallelMode || "one-shot",
+      objective: objectiveValue || "",
+      search_queries: toStringArray(parallelSearchQueries),
+      max_results: toNumberOr(parallelMaxResults, 20, 1),
+      excerpts: {
+        max_chars_per_result: toNumberOr(parallelMaxCharsPerResult, 20000, 1),
+        max_chars_total: toNumberOr(parallelMaxCharsTotal, 200000, 1),
+      },
+      source_policy: {
+        ...(parallelAfterDate ? { after_date: parallelAfterDate } : {}),
+        include_domains: toStringArray(parallelIncludeDomains),
+        exclude_domains: toStringArray(parallelExcludeDomains),
+      },
+      fetch_policy: {
+        disable_cache_fallback: parallelDisableCacheFallback,
+        max_age_seconds: toNumberOr(parallelMaxAgeSeconds, 172800, 1),
+        timeout_seconds: toNumberOr(parallelTimeoutSeconds, 120, 1),
+      },
+    };
+    return payload;
+  }, [
+    currentPlatform,
+    parallelAfterDate,
+    parallelDisableCacheFallback,
+    parallelExcludeDomains,
+    parallelIncludeDomains,
+    parallelMaxAgeSeconds,
+    parallelMaxCharsPerResult,
+    parallelMaxCharsTotal,
+    parallelMaxResults,
+    parallelMode,
+    parallelSearchQueries,
+    parallelTimeoutSeconds,
+    objectiveValue,
+  ]);
+
   return (
     <>
       <Card className="gap-4 bg-muted/30">
@@ -362,49 +402,25 @@ export const SearchEngineFields = ({
         <CardHeader>
           <CardTitle>Config</CardTitle>
           <CardDescription>
-            填写检索词和平台参数，Worker 会按 platform 路由请求。
+            填写平台配置，Worker 会按 platform 路由请求。
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4">
-          <div className="grid gap-3">
-            <Label htmlFor="search.objective">Objective</Label>
-            <Textarea
-              id="search.objective"
-              placeholder="Find latest information about ..."
-              rows={3}
-              {...register("search.objective")}
-            />
-            <ErrorMessage>
-              {searchErrors.search?.objective?.message?.toString()}
-            </ErrorMessage>
-          </div>
-
-          <div className="grid gap-3">
-            <Label htmlFor="search.apiEndpoint">API Endpoint</Label>
-            <Input
-              id="search.apiEndpoint"
-              placeholder="https://..."
-              {...register("search.apiEndpoint")}
-            />
-            <ErrorMessage>
-              {searchErrors.search?.apiEndpoint?.message?.toString()}
-            </ErrorMessage>
-          </div>
-
-          <div className="grid gap-3">
-            <Label htmlFor="search.options">Options (JSON)</Label>
-            <Textarea
-              id="search.options"
-              placeholder="{}"
-              rows={6}
-              {...register("search.options")}
-            />
-            <ErrorMessage>{searchErrors.search?.options?.message?.toString()}</ErrorMessage>
-          </div>
-
           {currentPlatform === "PARALLEL" && (
-            <div className="grid gap-4 rounded-lg border bg-background p-4">
-              <p className="text-sm font-medium">Parallel Request Mapping</p>
+            <div className="grid gap-4">
+              <div className="grid gap-3">
+                <Label htmlFor="search.objective">Objective</Label>
+                <Textarea
+                  id="search.objective"
+                  placeholder="Find latest information about ..."
+                  rows={3}
+                  {...register("search.objective")}
+                />
+                <ErrorMessage>
+                  {searchErrors.search?.objective?.message?.toString()}
+                </ErrorMessage>
+              </div>
+
               <div className="grid gap-3">
                 <Label htmlFor="search.parallel.searchQueries">
                   Search Queries
@@ -641,7 +657,36 @@ export const SearchEngineFields = ({
                   />
                 </div>
               </div>
+
+              {parallelRequestPreview && (
+                <div className="grid gap-3 rounded-lg border border-dashed bg-muted/20 p-4">
+                  <p className="text-sm font-medium">Request Preview</p>
+                  <pre className="max-h-72 overflow-auto rounded-md bg-background p-3 text-xs">
+                    {JSON.stringify(parallelRequestPreview, null, 2)}
+                  </pre>
+                </div>
+              )}
             </div>
+          )}
+
+          {currentPlatform !== "PARALLEL" && (
+            <>
+              <div className="grid gap-3">
+                <Label htmlFor="search.objective">Objective</Label>
+                <Textarea
+                  id="search.objective"
+                  placeholder="Find latest information about ..."
+                  rows={3}
+                  {...register("search.objective")}
+                />
+                <ErrorMessage>
+                  {searchErrors.search?.objective?.message?.toString()}
+                </ErrorMessage>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Endpoint 与高级 options 使用平台默认配置（或服务端环境变量）。
+              </p>
+            </>
           )}
 
           {currentPlatform === "CUSTOM" && (
