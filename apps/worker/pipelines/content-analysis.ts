@@ -1603,14 +1603,47 @@ function buildSearchRequest(
     if (apiKey) {
       headers["x-api-key"] = apiKey;
     }
+
+    const excerpts = asObject(options.excerpts);
+    const sourcePolicy = asObjectOrUndefined(
+      options.source_policy,
+      options.sourcePolicy
+    );
+    const sourcePolicyObject = asObject(sourcePolicy);
+    const fetchPolicy = asObjectOrUndefined(
+      options.fetch_policy,
+      options.fetchPolicy
+    );
+    const fetchPolicyObject = asObject(fetchPolicy);
+
     const payload: Record<string, unknown> = {
       mode: pickString(options.mode) ?? "one-shot",
       objective,
-      search_queries: toStringArrayOption(options.search_queries, options.searchQueries),
-      max_results: toNumberOption(options.max_results, options.maxResults),
-      excerpts: asObjectOrUndefined(options.excerpts),
-      source_policy: asObjectOrUndefined(options.source_policy, options.sourcePolicy),
-      fetch_policy: asObjectOrUndefined(options.fetch_policy, options.fetchPolicy),
+      search_queries:
+        toStringArrayOption(options.search_queries, options.searchQueries) ?? [],
+      max_results: toNumberOption(options.max_results, options.maxResults) ?? 20,
+      excerpts: {
+        max_chars_per_result:
+          toNumberOption(excerpts.max_chars_per_result) ?? 20000,
+        max_chars_total: toNumberOption(excerpts.max_chars_total) ?? 200000,
+      },
+      source_policy: {
+        include_domains:
+          toStringArrayOption(sourcePolicyObject.include_domains) ?? [],
+        exclude_domains:
+          toStringArrayOption(sourcePolicyObject.exclude_domains) ?? [],
+        ...(pickString(sourcePolicyObject.after_date)
+          ? { after_date: pickString(sourcePolicyObject.after_date) }
+          : {}),
+      },
+      fetch_policy: {
+        disable_cache_fallback:
+          toBooleanOption(fetchPolicyObject.disable_cache_fallback) ?? true,
+        max_age_seconds:
+          toNumberOption(fetchPolicyObject.max_age_seconds) ?? 172800,
+        timeout_seconds:
+          toNumberOption(fetchPolicyObject.timeout_seconds) ?? 120,
+      },
     };
     return {
       url: SEARCH_PROVIDER_ENDPOINTS.parallel,
