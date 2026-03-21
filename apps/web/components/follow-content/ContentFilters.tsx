@@ -55,7 +55,18 @@ export const ContentFilters = () => {
   ).sort((a, b) => Number(b) - Number(a));
 
   return (
-    <div className="flex gap-2 m-1 flex-wrap lg:flex-nowrap">
+    <div className="m-1 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6">
+      <div className="sm:col-span-2 lg:col-span-2 xl:col-span-2">
+        <Input
+          placeholder="Search content"
+          className="rounded-full"
+          icon={<Search size={16} />}
+          iconPosition="right"
+          value={filters.search}
+          onChange={(event) => setSearch(event.target.value)}
+        />
+      </div>
+
       <Select
         value={filters.platform || "__all__"}
         onValueChange={(value) => setPlatform(value === "__all__" ? "" : value)}
@@ -68,6 +79,23 @@ export const ContentFilters = () => {
           {platformOptions.map((option) => (
             <SelectItem key={option} value={option}>
               {option}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+
+      <Select
+        value={filters.subjectId || "__all__"}
+        onValueChange={(value) => setSubjectId(value === "__all__" ? "" : value)}
+      >
+        <SelectTrigger>
+          <SelectValue placeholder="Subject" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="__all__">All Subjects</SelectItem>
+          {subjectOptions.map((subject) => (
+            <SelectItem key={subject.id} value={subject.id}>
+              {subject.name}
             </SelectItem>
           ))}
         </SelectContent>
@@ -140,32 +168,6 @@ export const ContentFilters = () => {
       </Select>
 
       <Input
-        placeholder="Search content"
-        className="rounded-full"
-        icon={<Search size={16} />}
-        iconPosition="right"
-        value={filters.search}
-        onChange={(event) => setSearch(event.target.value)}
-      />
-
-      <Select
-        value={filters.subjectId || "__all__"}
-        onValueChange={(value) => setSubjectId(value === "__all__" ? "" : value)}
-      >
-        <SelectTrigger>
-          <SelectValue placeholder="Subject" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="__all__">All Subjects</SelectItem>
-          {subjectOptions.map((subject) => (
-            <SelectItem key={subject.id} value={subject.id}>
-              {subject.name}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-
-      <Input
         type="number"
         min={0}
         max={1}
@@ -191,7 +193,10 @@ export const ContentFilters = () => {
         </SelectContent>
       </Select>
 
-      <Select value={filters.sort} onValueChange={(value) => setSort(value as "time" | "matchScore")}>
+      <Select
+        value={filters.sort}
+        onValueChange={(value) => setSort(value as "time" | "matchScore")}
+      >
         <SelectTrigger>
           <SelectValue placeholder="Sort" />
         </SelectTrigger>
