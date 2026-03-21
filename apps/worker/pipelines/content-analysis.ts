@@ -67,6 +67,7 @@ type QueryKeyword = {
   description?: string | null;
   includes: string[];
   excludes: string[];
+  synonyms: string[];
 };
 
 type GatherSocialDriver = "playwright" | "xhttp" | "agent-browser";
@@ -1693,20 +1694,32 @@ async function upsertContentSubjectMatches(input: {
 }): Promise<void> {
   const { contentId, contentText, item, keywords } = input;
   for (const keyword of keywords) {
-    const includes = normalizeStringArray(
+    const recallTerms = normalizeStringArray(
       keyword.includes.length > 0 ? keyword.includes : [keyword.name]
     );
+    const scoringTerms = normalizeStringArray(
+      keyword.synonyms.length > 0
+        ? keyword.synonyms
+        : keyword.includes.length > 0
+          ? keyword.includes
+          : [keyword.name]
+    );
     const excludes = normalizeStringArray(keyword.excludes);
-    const matchedIncludes = includes.filter((term) =>
+    const matchedRecallTerms = recallTerms.filter((term) =>
+      contentText.toLowerCase().includes(term.toLowerCase())
+    );
+    const matchedScoringTerms = scoringTerms.filter((term) =>
       contentText.toLowerCase().includes(term.toLowerCase())
     );
     const matchedExcludes = excludes.filter((term) =>
       contentText.toLowerCase().includes(term.toLowerCase())
     );
     const ruleScore = calculateRuleScore({
-      includes,
+      recallTerms,
+      scoringTerms,
       excludes,
-      matchedIncludes,
+      matchedRecallTerms,
+      matchedScoringTerms,
       matchedExcludes,
       gatherScore: item.keywordMatchScore,
       gatherMatchedKeywords: item.matchedKeywords ?? [],
@@ -1727,7 +1740,7 @@ async function upsertContentSubjectMatches(input: {
     const finalScore =
       aiScore == null
         ? ruleScore
-        : roundScore(0.7 * ruleScore + 0.3 * aiScore);
+        : roundScore(0.25 * ruleScore + 0.75 * aiScore);
     const matchSource =
       aiScore == null
         ? item.keywordMatchScore == null
@@ -1748,7 +1761,7 @@ async function upsertContentSubjectMatches(input: {
         ruleScore,
         aiScore,
         matchScore: finalScore,
-        matchedIncludes,
+        matchedIncludes: matchedScoringTerms,
         matchedExcludes,
         matchSource,
         reason: aiResult?.reason ?? null,
@@ -1757,7 +1770,7 @@ async function upsertContentSubjectMatches(input: {
         ruleScore,
         aiScore,
         matchScore: finalScore,
-        matchedIncludes,
+        matchedIncludes: matchedScoringTerms,
         matchedExcludes,
         matchSource,
         reason: aiResult?.reason ?? null,
@@ -1767,44 +1780,56 @@ async function upsertContentSubjectMatches(input: {
 }
 
 function calculateRuleScore(input: {
-  includes: string[];
+  recallTerms: string[];
+  scoringTerms: string[];
   excludes: string[];
-  matchedIncludes: string[];
+  matchedRecallTerms: string[];
+  matchedScoringTerms: string[];
   matchedExcludes: string[];
   gatherScore?: number;
   gatherMatchedKeywords: string[];
   contentText: string;
 }): number {
   const {
-    includes,
+    recallTerms,
+    scoringTerms,
     excludes,
-    matchedIncludes,
+    matchedRecallTerms,
+    matchedScoringTerms,
     matchedExcludes,
     gatherScore,
     gatherMatchedKeywords,
     contentText,
   } = input;
 
-  const includeRatio =
-    includes.length > 0 ? matchedIncludes.length / includes.length : 0;
+  const recallRatio =
+    recallTerms.length > 0 ? matchedRecallTerms.length / recallTerms.length : 0;
+  const scoringRatio =
+    scoringTerms.length > 0
+      ? matchedScoringTerms.length / scoringTerms.length
+      : 0;
   const excludeRatio =
     excludes.length > 0 ? matchedExcludes.length / excludes.length : 0;
   const gatherBoost =
     typeof gatherScore === "number" ? Math.min(1, Math.max(0, gatherScore)) : 0;
   const gatherMatched = gatherMatchedKeywords.length > 0 ? 1 : 0;
   const titleText = contentText.split("\n")[0]?.toLowerCase() ?? "";
-  const titleMatch =
-    includes.length > 0 &&
-    includes.some((term) => titleText.includes(term.toLowerCase()))
+  const titleAnchorMatch =
+    recallTerms.length > 0 &&
+    recallTerms.some((term) => titleText.includes(term.toLowerCase()))
       ? 1
       : 0;
+  const evidenceMatch = matchedScoringTerms.length > 0 ? 1 : 0;
 
   const score =
-    includeRatio * 0.55 +
-    gatherBoost * 0.2 +
-    gatherMatched * 0.05 +
-    titleMatch * 0.15 -
-    excludeRatio * 0.25;
+    0.05 +
+    scoringRatio * 0.45 +
+    recallRatio * 0.1 +
+    evidenceMatch * 0.1 +
+    titleAnchorMatch * 0.05 +
+    gatherBoost * 0.15 +
+    gatherMatched * 0.05 -
+    excludeRatio * 0.35;
   return roundScore(Math.min(1, Math.max(0.05, score)));
 }
 
@@ -1817,7 +1842,19 @@ async function scoreSubjectWithAI(input: {
     return null;
   }
   const prompt = stripPromptLike(
-    `你是主题相关度打分器。请判断内容与主题的相关度，输出 JSON: {"score":0-1,"reason":"简短原因"}。\n主题名称: ${input.keyword.name}\n主题描述: ${input.keyword.description ?? ""}\n包含词: ${(input.keyword.includes ?? []).join(", ")}\n排除词: ${(input.keyword.excludes ?? []).join(", ")}\n内容:\n${input.contentText.slice(0, 8000)}`
+    `你是主题相关度打分器。请判断内容与主题是否相关，并输出 JSON: {"score":0-1,"reason":"简短原因"}。
+评分原则：
+1) 主题名称和主题描述是核心判断依据；
+2) 召回词仅用于检索，不应主导最终评分；
+3) 评分词是辅助证据，命中可加分，但不能替代主题语义；
+4) 若只出现个别词但语义无关，应给低分。
+主题名称: ${input.keyword.name}
+主题描述: ${input.keyword.description ?? ""}
+召回词: ${(input.keyword.includes ?? []).join(", ")}
+评分词: ${(input.keyword.synonyms ?? []).join(", ")}
+排除词: ${(input.keyword.excludes ?? []).join(", ")}
+内容:
+${input.contentText.slice(0, 8000)}`
   );
   const result = await llmGateway.json<{ score: number; reason: string }>(
     "subject-score",
