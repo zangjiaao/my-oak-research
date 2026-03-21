@@ -33,6 +33,10 @@ type DeriveMeta = {
   filteredByLanguageCount?: number;
   usedTopicTerms?: string[];
   topicHintMissing?: boolean;
+  recallSoftLimit?: number;
+  recallTermCount?: number;
+  recallOverSoftLimit?: boolean;
+  recallWarning?: string | null;
 };
 
 const TERM_SPLIT_RE = /[,\n\r，、;；\t]+/;
@@ -201,6 +205,12 @@ const EditKeywordDialog = ({
       if (!enableAiExpand) {
         setValue("enableAiExpand", true);
       }
+      if (data.meta?.recallOverSoftLimit) {
+        toast.warning(
+          data.meta?.recallWarning ??
+            `Recall terms are high (${data.meta?.recallTermCount ?? "?"}/${data.meta?.recallSoftLimit ?? "?"}).`
+        );
+      }
       toast.success(
         `Derived +${data.includes?.length ?? 0} recall, +${data.synonyms?.length ?? 0} scoring, +${data.excludes?.length ?? 0} exclusion terms`
       );
@@ -308,6 +318,12 @@ const EditKeywordDialog = ({
         <p className="text-xs text-muted-foreground">
           用于尽量多找内容（召回）。不会直接决定最终相关度高低。
         </p>
+        {deriveMeta?.recallOverSoftLimit ? (
+          <p className="text-xs text-amber-600">
+            {deriveMeta.recallWarning ??
+              `召回词较多（${deriveMeta.recallTermCount ?? "?"}/${deriveMeta.recallSoftLimit ?? "?"}），后续检索成本可能上升。`}
+          </p>
+        ) : null}
         <ErrorMessage>{errors.includes?.message}</ErrorMessage>
         <div className="flex justify-between items-center group">
           <div className="grid gap-2">

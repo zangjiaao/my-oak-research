@@ -615,10 +615,10 @@ function resolveSourceFetchConcurrency(): number {
 
 function resolveRecallQueryLimit(): number {
   const raw = process.env.COLLECT_RECALL_QUERY_LIMIT;
-  if (!raw) return 12;
+  if (!raw) return 64;
   const parsed = Number(raw);
   if (!Number.isFinite(parsed) || parsed < 1) {
-    return 12;
+    return 64;
   }
   return Math.floor(parsed);
 }

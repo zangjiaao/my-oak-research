@@ -9,7 +9,7 @@ import { z } from "zod";
 import { randomUUID } from "node:crypto";
 
 const DEFAULT_DERIVE_LANGUAGES = ["zh", "en"] as const;
-const DEFAULT_RECALL_BUDGET = 8;
+const DEFAULT_RECALL_SOFT_LIMIT = 64;
 const DEFAULT_SEARCH_ENGINE = "auto";
 
 type SearchProvider = "anspire" | "tavily" | "parallel";
@@ -57,7 +57,7 @@ const DeriveSchema = z.object({
   synonyms: z.array(z.string()).optional(),
   languages: z.array(z.string()).optional(),
   persistedLanguages: z.array(z.string()).optional(),
-  recallBudget: z.number().int().min(6).max(12).optional(),
+  recallBudget: z.number().int().positive().optional(),
   calibration: z.boolean().optional().default(true),
   lang: z.string().optional().default("auto"),
 });
@@ -157,6 +157,17 @@ function resolveSearchProviderOrder(rawPreference: string | undefined): SearchPr
   if (normalized === "tavily") return ["tavily"];
   if (normalized === "parallel") return ["parallel"];
   return ["anspire", "tavily", "parallel"];
+}
+
+function resolveRecallSoftLimit(rawBudget?: number): number {
+  const envRaw = process.env.WEB_DERIVE_RECALL_SOFT_LIMIT;
+  const envParsed = envRaw ? Number(envRaw) : NaN;
+  const envLimit = Number.isFinite(envParsed) && envParsed > 0 ? Math.floor(envParsed) : 0;
+  if (typeof rawBudget === "number" && Number.isFinite(rawBudget) && rawBudget > 0) {
+    return Math.floor(rawBudget);
+  }
+  if (envLimit > 0) return envLimit;
+  return DEFAULT_RECALL_SOFT_LIMIT;
 }
 
 function isProviderConfigured(provider: SearchProvider): boolean {
@@ -366,8 +377,7 @@ function buildRecallTerms(
   discoveredAtomicTerms: string[],
   secondaryNouns: string[],
   topicTerms: string[],
-  existingIncludes: string[],
-  recallBudget: number
+  existingIncludes: string[]
 ): string[] {
   const generatedFromEntities = normalizeTerms(
     discoveredAtomicTerms.map((term) => `${primaryNoun} ${term}`)
@@ -380,7 +390,7 @@ function buildRecallTerms(
     ...existingIncludes,
     ...generatedFromEntities,
     ...fallbackGenerated,
-  ]).slice(0, recallBudget);
+  ]);
 }
 
 function buildScoringTerms(
@@ -1054,9 +1064,10 @@ export async function POST(req: Request) {
       excludes = [],
       languages,
       persistedLanguages,
-      recallBudget = DEFAULT_RECALL_BUDGET,
+      recallBudget,
       calibration,
     } = parsed.data;
+    const recallSoftLimit = resolveRecallSoftLimit(recallBudget);
     const targetLanguages = mergeLanguagePreferences({
       languages,
       persistedLanguages,
@@ -1149,7 +1160,6 @@ export async function POST(req: Request) {
     ]);
     const explicitExcludeIntent = hasExplicitExcludeIntent(description);
     const topicHintMissing = inputTopicTerms.length === 0;
-    const recallBudgetNormalized = Math.min(12, Math.max(6, recallBudget));
     const finalExcludesRaw =
       explicitExcludeIntent || excludes.length > 0 ? normalizeTerms(excludes) : [];
     const exclusionSet = new Set(finalExcludesRaw);
@@ -1158,8 +1168,7 @@ export async function POST(req: Request) {
       discoveredAtomicTerms,
       nounPlan.secondaryNouns,
       inputTopicTerms,
-      normalizeTerms(includes),
-      recallBudgetNormalized
+      normalizeTerms(includes)
     );
     const includesWithoutExclusion = recallTermsRaw.filter(
       (item) => !exclusionSet.has(item)
@@ -1191,7 +1200,7 @@ export async function POST(req: Request) {
       terms: includesFiltered.filtered,
       languages: targetLanguages,
       atomicOnly: false,
-      maxTerms: recallBudgetNormalized,
+      maxTerms: Math.max(256, includesFiltered.filtered.length + 64),
     });
     const synonymsBackfill = await backfillTermsByLanguage({
       requestId,
@@ -1235,6 +1244,10 @@ export async function POST(req: Request) {
     ];
     const topicHitCountInSearch =
       calibrationResult.topicHitCount + hop2Result.topicHitCount;
+    const recallOverSoftLimit = includesBackfill.terms.length > recallSoftLimit;
+    const recallWarning = recallOverSoftLimit
+      ? `Recall terms exceed soft limit (${includesBackfill.terms.length}/${recallSoftLimit}); downstream collection cost may increase.`
+      : null;
     const specificityPool = new Set(normalizeTerms(nounPlan.secondaryNouns));
     const specificTermCount = discoveredAtomicTerms.filter(
       (term) => !specificityPool.has(term)
@@ -1263,6 +1276,8 @@ export async function POST(req: Request) {
       topicTerms: usedTopicTerms.length,
       filteredByLanguageCount,
       topicHintMissing,
+      recallSoftLimit,
+      recallOverSoftLimit,
     });
 
     const responsePayload = {
@@ -1281,7 +1296,10 @@ export async function POST(req: Request) {
         queryDiagnostics,
         freshnessMode: "latest-first",
         calibrationDocCount: mergedDocs.length,
-        recallBudget: recallBudgetNormalized,
+        recallSoftLimit,
+        recallTermCount: includesBackfill.terms.length,
+        recallOverSoftLimit,
+        recallWarning,
         extractionMode:
           mergedDocs.length > 0 ? "web_calibrated" : "fallback",
         topicEnforced,
