@@ -1,4 +1,4 @@
-import { appendFileSync, mkdirSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
 import { dirname, isAbsolute, resolve } from "node:path";
 
 type JsonValue =
@@ -30,7 +30,7 @@ type WorkerApiIoEntry = {
 
 const API_IO_LOG_ENABLED = process.env.WORKER_API_IO_LOG_ENABLED === "true";
 const API_IO_LOG_DIR = resolveLogDir(
-  process.env.WORKER_API_IO_LOG_DIR || "logs"
+  process.env.WORKER_API_IO_LOG_DIR || "apps/worker/logs"
 );
 const API_IO_LOG_MAX_CHARS = resolveMaxChars(
   process.env.WORKER_API_IO_LOG_MAX_CHARS
@@ -38,10 +38,38 @@ const API_IO_LOG_MAX_CHARS = resolveMaxChars(
 
 function resolveLogDir(rawDir: string): string {
   if (!rawDir.trim()) {
-    return resolve(process.cwd(), "logs");
+    return resolve(process.cwd(), "apps/worker/logs");
   }
   if (isAbsolute(rawDir)) return rawDir;
+  if (rawDir.startsWith("apps/")) {
+    const repoRoot = findRepoRoot(process.cwd());
+    if (repoRoot) {
+      return resolve(repoRoot, rawDir);
+    }
+  }
   return resolve(process.cwd(), rawDir);
+}
+
+function findRepoRoot(start: string): string | null {
+  let current = resolve(start);
+  while (true) {
+    const packageJsonPath = resolve(current, "package.json");
+    if (existsSync(packageJsonPath)) {
+      try {
+        const payload = JSON.parse(readFileSync(packageJsonPath, "utf8")) as {
+          workspaces?: unknown;
+        };
+        if (payload.workspaces) {
+          return current;
+        }
+      } catch {
+        // ignore parse errors and continue upward
+      }
+    }
+    const parent = resolve(current, "..");
+    if (parent === current) return null;
+    current = parent;
+  }
 }
 
 function resolveMaxChars(raw: string | undefined): number {
