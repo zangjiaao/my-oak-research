@@ -168,7 +168,7 @@ export async function POST(req: Request) {
               sourceId: base.id,
               platform: data.search.platform,
               engine: data.search.engine,
-              objective: data.search.objective,
+              objective: data.search.objective ?? "",
               apiEndpoint: data.search.apiEndpoint ?? null,
               options: jsonOrNull(data.search.options),
               credentialId: data.search.credentialId ?? null,
