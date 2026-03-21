@@ -23,6 +23,13 @@ const isSearchEngineSource = (
   "search" in source &&
   Boolean(source.search);
 
+const SEARCH_PLATFORM_LABELS: Record<string, string> = {
+  PARALLEL: "Parallel.ai",
+  TAVILY: "Tavily",
+  ANSPIRE: "Anspire",
+  CUSTOM: "Custom",
+};
+
 const SearchEngineSettingCard = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [isDialogOpen, setDialogOpen] = useState(false);
@@ -72,21 +79,26 @@ const SearchEngineSettingCard = () => {
       render: (source) => source.name,
     },
     {
+      key: "objective",
+      label: "Platform",
+      className: "max-w-xs",
+      render: (source) => {
+        const platform = (
+          source.search as unknown as { platform?: string }
+        )?.platform;
+        return (
+          <span className="text-sm break-all whitespace-normal">
+            {platform ? SEARCH_PLATFORM_LABELS[platform] ?? platform : "-"}
+          </span>
+        );
+      },
+    },
+    {
       key: "description",
       label: "Description",
       className: "max-w-xs",
       render: (source) => (
         <div className="whitespace-normal">{source.description}</div>
-      ),
-    },
-    {
-      key: "objective",
-      label: "Platform",
-      className: "max-w-xs",
-      render: (source) => (
-        <span className="text-sm break-all whitespace-normal">
-          {(source.search as unknown as { platform?: string })?.platform ?? "-"}
-        </span>
       ),
     },
     {
