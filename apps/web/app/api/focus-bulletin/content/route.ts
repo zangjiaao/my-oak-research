@@ -130,10 +130,10 @@ export async function GET(request: Request) {
     resolvedMinMatchScore = await resolveDefaultMinMatchScore(subjectId);
   }
 
-  if (subjectId) {
+  if (subjectId || resolvedMinMatchScore != null || matchSource) {
     where.subjectMatches = {
       some: {
-        keywordId: subjectId,
+        ...(subjectId ? { keywordId: subjectId } : {}),
         ...(resolvedMinMatchScore != null
           ? { matchScore: { gte: resolvedMinMatchScore } }
           : {}),
@@ -145,11 +145,14 @@ export async function GET(request: Request) {
   }
 
   const includeSubjectMatchRelation =
-    includeSubjectMatches || subjectId
+    includeSubjectMatches || subjectId || resolvedMinMatchScore != null || matchSource
       ? {
           subjectMatches: {
             where: {
               ...(subjectId ? { keywordId: subjectId } : {}),
+              ...(resolvedMinMatchScore != null
+                ? { matchScore: { gte: resolvedMinMatchScore } }
+                : {}),
               ...(matchSource
                 ? { matchSource: matchSource as ContentSubjectMatchSource }
                 : {}),
