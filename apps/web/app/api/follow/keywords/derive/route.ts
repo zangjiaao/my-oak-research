@@ -34,11 +34,6 @@ type SearchCallResult = {
   responseBody: unknown;
   statusCode: number;
 };
-type ExtractedObject = {
-  name: string;
-  aliases: string[];
-  category: "product" | "module" | "organization" | "location" | "country" | "person" | "concept" | "other";
-};
 
 const SEARCH_PROVIDER_ENDPOINTS: Record<SearchProvider, string> = {
   parallel:
@@ -62,64 +57,14 @@ const DeriveSchema = z.object({
   lang: z.string().optional().default("auto"),
 });
 
-const DeriveResultSchema = z.object({
-  includes: z.array(z.string()).default([]),
-  synonyms: z.array(z.string()).default([]),
-  excludes: z.array(z.string()).default([]),
-  topicTerms: z.array(z.string()).optional().default([]),
+const TopicNounPlanSchema = z.object({
+  primaryNoun: z.string().min(1),
+  secondaryNouns: z.array(z.string()).min(1).max(2),
+  searchQueries: z.array(z.string()).optional().default([]),
 });
-const SeedNounResultSchema = z.object({
-  seedNouns: z.array(z.string()).default([]),
+const AtomicTermResultSchema = z.object({
+  terms: z.array(z.string()).default([]),
 });
-const ObjectExtractionResultSchema = z.object({
-  objects: z
-    .array(
-      z.object({
-        name: z.string().min(1),
-        aliases: z.array(z.string()).optional().default([]),
-        category: z
-          .enum([
-            "product",
-            "module",
-            "organization",
-            "location",
-            "country",
-            "person",
-            "concept",
-            "other",
-          ])
-          .optional()
-          .default("other"),
-      })
-    )
-    .default([]),
-});
-const GENERIC_ENTITY_TERMS = new Set(
-  [
-    "记忆",
-    "memory",
-    "system",
-    "systems",
-    "架构",
-    "architecture",
-    "模块",
-    "module",
-    "插件",
-    "plugin",
-    "优化",
-    "optimization",
-    "检索",
-    "retrieval",
-    "向量",
-    "vector",
-    "全文",
-    "search",
-    "comparison",
-    "tutorial",
-    "source code",
-    "pros cons",
-  ].map((item) => item.toLowerCase())
-);
 
 function normalizeTerms(values: string[]): string[] {
   const seen = new Set<string>();
@@ -217,46 +162,56 @@ function fallbackSeedNouns(
   name: string,
   description?: string | null,
   topicTerms: string[] = []
-): string[] {
+): { primaryNoun: string; secondaryNouns: string[] } {
   const candidates = normalizeTerms([
     ...topicTerms,
     ...splitSearchTokens(name),
     ...splitSearchTokens(description ?? ""),
   ]);
-  return candidates
-    .filter((item) => !GENERIC_ENTITY_TERMS.has(item))
-    .slice(0, 3);
+  const primaryNoun = candidates[0] ?? "topic";
+  const secondaryNouns = candidates.slice(1, 3);
+  return {
+    primaryNoun,
+    secondaryNouns: secondaryNouns.length > 0 ? secondaryNouns : [primaryNoun],
+  };
 }
 
-async function extractSeedNouns(input: {
+async function extractTopicNounPlan(input: {
   name: string;
   description?: string | null;
   topicTerms: string[];
   requestId: string;
-}): Promise<string[]> {
+}): Promise<{
+  primaryNoun: string;
+  secondaryNouns: string[];
+  searchQueries: string[];
+}> {
   const prompt = `
-Extract 2-3 core search nouns from a topic.
+Extract a search noun plan from a topic.
 Topic name: ${input.name}
 Description: ${input.description ?? "N/A"}
 User topic tags: ${input.topicTerms.join(", ") || "none"}
 
 Rules:
-- Return concise nouns for first-round web search.
-- Prefer proper nouns and concrete subject nouns.
-- Avoid generic words like memory/system/architecture.
-- Keep nouns atomic and searchable.
+- Return exactly 1 primary noun and 1-2 secondary nouns.
+- Nouns must be atomic and searchable.
+- Build search queries by joining nouns with spaces.
+- Search queries should favor latest topic investigation.
+- Do not output phrase-like interpretation terms.
 
 Return ONLY JSON:
 {
-  "seedNouns": ["...", "...", "..."]
+  "primaryNoun": "...",
+  "secondaryNouns": ["...", "..."],
+  "searchQueries": ["primary secondary1", "primary secondary2"]
 }
 `;
   try {
     const response = await llmGateway.json<
-      z.infer<typeof SeedNounResultSchema>
-    >("keyword-seed-noun-extraction", {
+      z.infer<typeof TopicNounPlanSchema>
+    >("keyword-topic-noun-plan", {
       prompt,
-      schema: SeedNounResultSchema,
+      schema: TopicNounPlanSchema,
       temperature: 0.2,
       metadata: { requestId: input.requestId },
     });
@@ -264,20 +219,24 @@ Return ONLY JSON:
       event: "derive-llm-request-response",
       requestId: input.requestId,
       request: {
-        task: "keyword-seed-noun-extraction",
+        task: "keyword-topic-noun-plan",
         prompt,
         temperature: 0.2,
       },
       response,
     });
-    const normalized = normalizeTerms(response.seedNouns ?? []).filter(
-      (item) => !GENERIC_ENTITY_TERMS.has(item)
-    );
-    if (normalized.length > 0) {
-      return normalized.slice(0, 3);
+    const primaryNoun = normalizeTerms([response.primaryNoun])[0];
+    const secondaryNouns = normalizeTerms(response.secondaryNouns ?? []).slice(0, 2);
+    const searchQueries = normalizeTerms(response.searchQueries ?? []).slice(0, 4);
+    if (primaryNoun) {
+      return {
+        primaryNoun,
+        secondaryNouns: secondaryNouns.length > 0 ? secondaryNouns : [primaryNoun],
+        searchQueries,
+      };
     }
   } catch (error) {
-    logger.warn("keyword seed noun extraction failed", {
+    logger.warn("keyword topic noun plan failed", {
       requestId: input.requestId,
       error: logger.normalizeError(error),
     });
@@ -285,18 +244,35 @@ Return ONLY JSON:
       event: "derive-llm-request-response",
       requestId: input.requestId,
       request: {
-        task: "keyword-seed-noun-extraction",
+        task: "keyword-topic-noun-plan",
         prompt,
         temperature: 0.2,
       },
       error: error instanceof Error ? error.message : "unknown error",
     });
   }
-  return fallbackSeedNouns(input.name, input.description, input.topicTerms);
+  const fallback = fallbackSeedNouns(input.name, input.description, input.topicTerms);
+  return {
+    ...fallback,
+    searchQueries: [],
+  };
 }
 
-function buildSeedQueries(seedNouns: string[], topicTerms: string[]): string[] {
-  const base = normalizeTerms([...topicTerms, ...seedNouns]).slice(0, 3);
+function buildSeedQueries(input: {
+  primaryNoun: string;
+  secondaryNouns: string[];
+  searchQueries?: string[];
+  topicTerms: string[];
+}): string[] {
+  const fromModel = normalizeTerms(input.searchQueries ?? []);
+  if (fromModel.length > 0) {
+    return fromModel.slice(0, 5);
+  }
+  const base = normalizeTerms([
+    ...input.topicTerms,
+    input.primaryNoun,
+    ...input.secondaryNouns,
+  ]).slice(0, 3);
   if (base.length === 0) return [];
   const combined: string[] = [];
   if (base.length >= 2) {
@@ -323,107 +299,53 @@ function hasExplicitExcludeIntent(description?: string | null): boolean {
   );
 }
 
-function normalizeObjectList(rawObjects: z.infer<typeof ObjectExtractionResultSchema>["objects"]): ExtractedObject[] {
-  const seen = new Set<string>();
-  const normalized: ExtractedObject[] = [];
-  for (const rawObject of rawObjects) {
-    const name = rawObject.name.trim().toLowerCase();
-    if (!name || seen.has(name) || GENERIC_ENTITY_TERMS.has(name)) continue;
-    seen.add(name);
-    const aliases = normalizeTerms(rawObject.aliases ?? []).filter(
-      (alias) => alias !== name && !GENERIC_ENTITY_TERMS.has(alias)
-    );
-    normalized.push({
-      name,
-      aliases,
-      category: rawObject.category ?? "other",
-    });
-  }
-  return normalized;
-}
-
-function buildObjectTermHints(
-  seedNouns: string[],
-  objects: ExtractedObject[]
-): { recallHints: string[]; scoringHints: string[] } {
-  const objectTerms = normalizeTerms(
-    objects.flatMap((item) => [item.name, ...item.aliases])
-  );
-  const primarySubject = seedNouns[0];
-  const secondarySubject = seedNouns[1];
-  const subjectCombinations = normalizeTerms(
-    [primarySubject, secondarySubject].filter(Boolean) as string[]
-  );
-  const recallHints = normalizeTerms(
-    objectTerms.flatMap((term) => {
-      const candidates: string[] = [];
-      if (primarySubject && primarySubject !== term) {
-        candidates.push(`${primarySubject} ${term}`);
-      }
-      if (secondarySubject && secondarySubject !== term) {
-        candidates.push(`${secondarySubject} ${term}`);
-      }
-      return candidates;
-    })
-  );
-  return {
-    recallHints: normalizeTerms([
-      ...subjectCombinations,
-      ...recallHints,
-    ]),
-    scoringHints: objectTerms,
-  };
-}
-
-function filterStandaloneScoringTerms(
-  terms: string[],
-  topicAnchors: string[]
-): { filtered: string[]; droppedNonAtomic: string[]; droppedGeneric: string[] } {
-  const anchors = normalizeTerms(topicAnchors);
-  const droppedNonAtomic: string[] = [];
-  const droppedGeneric: string[] = [];
-  const filtered = terms.filter((term) => {
-    const normalized = term.trim().toLowerCase();
-    if (!normalized) return false;
-    if (GENERIC_ENTITY_TERMS.has(normalized)) {
-      droppedGeneric.push(normalized);
-      return false;
-    }
-    if (/\s/u.test(normalized)) {
-      droppedNonAtomic.push(normalized);
-      return false;
-    }
-    if (/[的]/u.test(normalized) || /\b(of|for|with|without|and|vs)\b/u.test(normalized)) {
-      droppedNonAtomic.push(normalized);
-      return false;
-    }
-    if (
-      /\b(architecture|optimization|comparison|tutorial|source|pros|cons|system)\b/u.test(
-        normalized
-      )
-    ) {
-      droppedGeneric.push(normalized);
-      return false;
-    }
-    if (anchors.some((anchor) => normalized.includes(anchor) && normalized !== anchor)) {
-      droppedNonAtomic.push(normalized);
-      return false;
-    }
+function normalizeAtomicTerms(terms: string[]): string[] {
+  const dropped = new Set(["", "-", "_"]);
+  return normalizeTerms(terms).filter((term) => {
+    if (dropped.has(term)) return false;
+    if (/\s/u.test(term)) return false;
+    if (/[的]/u.test(term)) return false;
+    if (/[，。；;,:!?]/u.test(term)) return false;
+    if (/\b(of|for|with|without|and|vs)\b/u.test(term)) return false;
     return true;
   });
-  return {
-    filtered,
-    droppedNonAtomic: normalizeTerms(droppedNonAtomic),
-    droppedGeneric: normalizeTerms(droppedGeneric),
-  };
 }
 
-async function extractObjectsFromDocs(input: {
+function buildRecallTerms(
+  primaryNoun: string,
+  discoveredAtomicTerms: string[],
+  existingIncludes: string[],
+  recallBudget: number
+): string[] {
+  const generated = normalizeTerms(
+    discoveredAtomicTerms.map((term) => `${primaryNoun} ${term}`)
+  );
+  return normalizeTerms([...existingIncludes, ...generated]).slice(0, recallBudget);
+}
+
+function buildScoringTerms(
+  primaryNoun: string,
+  secondaryNouns: string[],
+  discoveredAtomicTerms: string[],
+  existingSynonyms: string[]
+): string[] {
+  const atomicExisting = normalizeAtomicTerms(existingSynonyms);
+  const atomicCore = normalizeAtomicTerms([
+    primaryNoun,
+    ...secondaryNouns,
+    ...discoveredAtomicTerms,
+  ]);
+  return normalizeTerms([...atomicExisting, ...atomicCore]);
+}
+
+async function extractAtomicTermsFromDocs(input: {
   name: string;
   description?: string | null;
   docs: CalibrationDoc[];
+  primaryNoun: string;
+  secondaryNouns: string[];
   requestId: string;
-}): Promise<ExtractedObject[]> {
+}): Promise<string[]> {
   if (input.docs.length === 0) return [];
   const evidence = input.docs
     .slice(0, 14)
@@ -434,49 +356,50 @@ async function extractObjectsFromDocs(input: {
     })
     .join("\n");
   const prompt = `
-You extract concrete investigation objects from web snippets.
+You extract atomic nouns from fresh web snippets.
 Topic: ${input.name}
 Description: ${input.description ?? "N/A"}
+Primary noun: ${input.primaryNoun}
+Secondary nouns: ${input.secondaryNouns.join(", ")}
 
 Evidence:
 ${evidence}
 
 Return ONLY JSON:
 {
-  "objects": [
-    { "name": "...", "aliases": ["..."], "category": "product|module|organization|location|country|person|concept|other" }
-  ]
+  "terms": ["...", "..."]
 }
 
 Rules:
-- Keep only concrete entities explicitly supported by evidence.
-- Favor tools/modules/products/organizations/locations/countries involved in the topic.
-- Include short aliases when clearly present (example: nickname or acronym).
-- Avoid generic words with no retrieval value.
-- Max 20 objects.
+- Keep only atomic noun terms related to the secondary nouns.
+- Keep terms concrete and searchable.
+- Exclude abstract interpretation phrases.
+- Do not output "X 的 Y" or multi-word semantic phrases.
+- Max 24 terms.
 `;
   try {
-    const result = await llmGateway.json<
-      z.infer<typeof ObjectExtractionResultSchema>
-    >("keyword-object-extraction", {
+    const result = await llmGateway.json<z.infer<typeof AtomicTermResultSchema>>(
+      "keyword-atomic-term-extraction",
+      {
       prompt,
-      schema: ObjectExtractionResultSchema,
+      schema: AtomicTermResultSchema,
       temperature: 0.2,
       metadata: { requestId: input.requestId },
-    });
+      }
+    );
     writeWebDeriveIoLog({
       event: "derive-llm-request-response",
       requestId: input.requestId,
       request: {
-        task: "keyword-object-extraction",
+        task: "keyword-atomic-term-extraction",
         prompt,
         temperature: 0.2,
       },
       response: result,
     });
-    return normalizeObjectList(result.objects).slice(0, 20);
+    return normalizeAtomicTerms(result.terms ?? []).slice(0, 24);
   } catch (error) {
-    logger.warn("keyword object extraction failed", {
+    logger.warn("keyword atomic term extraction failed", {
       requestId: input.requestId,
       error: logger.normalizeError(error),
     });
@@ -484,7 +407,7 @@ Rules:
       event: "derive-llm-request-response",
       requestId: input.requestId,
       request: {
-        task: "keyword-object-extraction",
+        task: "keyword-atomic-term-extraction",
         prompt,
         temperature: 0.2,
       },
@@ -766,35 +689,6 @@ async function collectCalibrationDocs(
   };
 }
 
-function toCalibrationContext(docs: CalibrationDoc[]): string {
-  if (docs.length === 0) return "No calibration docs";
-  return docs
-    .slice(0, 18)
-    .map((doc, index) => {
-      const title = doc.title || "(untitled)";
-      const snippet = doc.snippet || "(no snippet)";
-      return `${index + 1}. title: ${title}\n   snippet: ${snippet}\n   url: ${doc.url ?? "-"}`;
-    })
-    .join("\n");
-}
-
-function sanitizeDerivedResult(input: z.infer<typeof DeriveResultSchema>) {
-  const includes = normalizeTerms(input.includes);
-  const synonyms = normalizeTerms(input.synonyms);
-  const excludes = normalizeTerms(input.excludes);
-  const excludeSet = new Set(excludes);
-  const cleanedIncludes = includes.filter((item) => !excludeSet.has(item));
-  const cleanedSynonyms = synonyms.filter(
-    (item) => !excludeSet.has(item) && !cleanedIncludes.includes(item)
-  );
-  return {
-    includes: cleanedIncludes,
-    synonyms: cleanedSynonyms,
-    excludes,
-    topicTerms: normalizeTerms(input.topicTerms ?? []),
-  };
-}
-
 function detectScripts(value: string): Set<string> {
   const detected = new Set<string>();
   if (/[\u0600-\u06FF]/u.test(value)) detected.add("arabic");
@@ -872,7 +766,6 @@ export async function POST(req: Request) {
       includes = [],
       synonyms = [],
       excludes = [],
-      lang,
       languages,
       persistedLanguages,
       recallBudget = DEFAULT_RECALL_BUDGET,
@@ -884,13 +777,18 @@ export async function POST(req: Request) {
       description,
     });
     const inputTopicTerms = extractTopicTermsFromText(name, description);
-    const seedNouns = await extractSeedNouns({
+    const nounPlan = await extractTopicNounPlan({
       name,
       description,
       topicTerms: inputTopicTerms,
       requestId,
     });
-    const seedQueries = buildSeedQueries(seedNouns, inputTopicTerms);
+    const seedQueries = buildSeedQueries({
+      primaryNoun: nounPlan.primaryNoun,
+      secondaryNouns: nounPlan.secondaryNouns,
+      searchQueries: nounPlan.searchQueries,
+      topicTerms: inputTopicTerms,
+    });
     const providerOrder = resolveSearchProviderOrder(process.env.SEARCH_ENGINE);
     const calibrationResult =
       calibration === false
@@ -901,161 +799,54 @@ export async function POST(req: Request) {
             triedProviders: [] as SearchProvider[],
           }
         : await collectCalibrationDocs(seedQueries, providerOrder, requestId);
-    const calibrationContext = toCalibrationContext(calibrationResult.docs);
     const degraded =
       calibrationResult.reason === "no_search_provider_configured" ||
       calibrationResult.reason === "provider_request_failed";
-    const topicAnchors = seedNouns.length > 0 ? seedNouns : inputTopicTerms;
-    const extractedObjects = await extractObjectsFromDocs({
+    const discoveredAtomicTerms = await extractAtomicTermsFromDocs({
       name,
       description,
       docs: calibrationResult.docs,
+      primaryNoun: nounPlan.primaryNoun,
+      secondaryNouns: nounPlan.secondaryNouns,
       requestId,
     });
-    const objectHints = buildObjectTermHints(topicAnchors, extractedObjects);
     const explicitExcludeIntent = hasExplicitExcludeIntent(description);
     const topicHintMissing = inputTopicTerms.length === 0;
-
-    const task = "keyword-derivation";
-    const prompt = `
-You are a multilingual keyword strategist.
-Your goal is to generate three sets of terms for a topic:
-1) Recall Terms for broader retrieval (search execution terms);
-2) Scoring Terms for relevance evidence terms;
-3) Exclusion Terms for noisy or ambiguous matches.
-
-Topic Name: ${name}
-Description: ${description || "N/A"}
-Existing Recall Terms: ${includes.join(", ")}
-Existing Scoring Terms: ${synonyms.join(", ")}
-Existing Exclusion Terms: ${excludes.join(", ")}
-Target Language Sensitivity: ${lang}
-Preferred Languages: ${targetLanguages.join(", ")}
-Recall Terms budget: ${Math.min(12, Math.max(6, recallBudget))}
-Search calibration provider: ${calibrationResult.provider ?? "none"}
-Search freshness mode: latest-first
-Seed nouns: ${seedNouns.join(", ") || "none"}
-Seed queries: ${seedQueries.join(" | ")}
-User provided topic terms: ${inputTopicTerms.join(", ") || "none"}
-Topic anchors in use: ${topicAnchors.join(", ") || "none"}
-Explicit exclude intent in description: ${explicitExcludeIntent ? "yes" : "no"}
-
-Calibration evidence (Chinese-first web snippets):
-${calibrationContext}
-
-Extracted investigation objects from evidence:
-${extractedObjects
-  .map((item) => `- ${item.name} (${item.category}) aliases: ${item.aliases.join(", ") || "-"}`)
-  .join("\n") || "- none"}
-
-Object-driven Recall candidates:
-${objectHints.recallHints.join(" | ") || "none"}
-
-Object-driven Scoring candidates:
-${objectHints.scoringHints.join(" | ") || "none"}
-
-Please follow these constraints:
-- First map evidence => objects => terms. Avoid template-like suffix expansion.
-- Respect description constraints, including "include" and "exclude" intent.
-- Generate terms in preferred languages.
-- Keep terms short and searchable (1-4 words).
-- Do not repeat existing terms.
-- Avoid overlap: do not place the same term in both include/synonyms and excludes.
-- Prefer high-signal terms; avoid generic words like memory/system/architecture/tutorial/comparison.
-- Recall Terms should be concise and cost-aware. Prefer object-centric phrases useful for direct search.
-- If evidence reveals community aliases (example: slang / nickname), prioritize them in Recall Terms.
-- Keep topic terms focused. You can add at most 2 high-confidence topic terms in "topicTerms".
-- Scoring Terms must be atomic standalone entities, never phrase-like semantics.
-- Invalid scoring examples: "openclaw记忆系统", "openclaw memory architecture", "iran war comparison".
-- Valid scoring examples: "qmd", "sqlite", "lancedb", "bm25", "mem0".
-- Exclusion Terms should default to empty unless user description or existing exclusions clearly require them.
-
-Requirements:
-- Return ONLY a JSON object:
-{
-  "includes": ["..."],
-  "synonyms": ["..."],
-  "excludes": ["..."],
-  "topicTerms": ["..."]
-}
-- includes: 6-24 terms
-- synonyms: 6-24 terms
-- excludes: 3-16 terms
-- topicTerms: 0-2 terms
-
-`;
-
-    const result = await llmGateway.json<z.infer<typeof DeriveResultSchema>>(
-      task,
-      {
-        prompt,
-        schema: DeriveResultSchema,
-        temperature: 0.5,
-        metadata: { requestId },
-      }
-    );
-    writeWebDeriveIoLog({
-      event: "derive-llm-request-response",
-      requestId,
-      request: {
-        task,
-        prompt,
-        temperature: 0.5,
-      },
-      response: result,
-      details: {
-        model: process.env.LLM_DEFAULT_MODEL ?? "unknown",
-      },
-    });
-
-    const sanitized = sanitizeDerivedResult(result);
     const recallBudgetNormalized = Math.min(12, Math.max(6, recallBudget));
-    const entityTerms = normalizeTerms(objectHints.scoringHints);
-    const entityTermSet = new Set(entityTerms);
-    const includesBudgeted = normalizeTerms([
-      ...objectHints.recallHints,
-      ...sanitized.includes,
-    ])
-      .filter((item) => {
-        if (entityTermSet.size === 0) return true;
-        return Array.from(entityTermSet).some((entity) => item.includes(entity));
-      })
-      .slice(0, recallBudgetNormalized);
-    const synonymsEnriched = normalizeTerms([
-      ...objectHints.scoringHints,
-      ...sanitized.synonyms,
-    ]);
     const finalExcludesRaw =
-      explicitExcludeIntent || excludes.length > 0 ? sanitized.excludes : [];
+      explicitExcludeIntent || excludes.length > 0 ? normalizeTerms(excludes) : [];
     const exclusionSet = new Set(finalExcludesRaw);
-    const includesWithoutExclusion = includesBudgeted.filter(
+    const recallTermsRaw = buildRecallTerms(
+      nounPlan.primaryNoun,
+      discoveredAtomicTerms,
+      normalizeTerms(includes),
+      recallBudgetNormalized
+    );
+    const includesWithoutExclusion = recallTermsRaw.filter(
       (item) => !exclusionSet.has(item)
     );
-    const synonymsWithoutExclusion = synonymsEnriched.filter(
-      (item) => !exclusionSet.has(item) && !includesWithoutExclusion.includes(item)
+    const scoringTermsRaw = buildScoringTerms(
+      nounPlan.primaryNoun,
+      nounPlan.secondaryNouns,
+      discoveredAtomicTerms,
+      normalizeTerms(synonyms)
     );
-    const scoringStandaloneResult = filterStandaloneScoringTerms(
-      synonymsWithoutExclusion,
-      topicAnchors
+    const synonymsWithoutExclusion = scoringTermsRaw.filter(
+      (item) => !exclusionSet.has(item) && !includesWithoutExclusion.includes(item)
     );
     const includesFiltered = filterTermsByLanguages(
       includesWithoutExclusion,
       targetLanguages
     );
     const synonymsFiltered = filterTermsByLanguages(
-      scoringStandaloneResult.filtered,
+      normalizeAtomicTerms(synonymsWithoutExclusion),
       targetLanguages
     );
     const excludesFiltered = filterTermsByLanguages(
       finalExcludesRaw,
       targetLanguages
     );
-    const addedTopicTerms = sanitized.topicTerms
-      .filter((term) => !inputTopicTerms.includes(term))
-      .slice(0, 2);
-    const usedTopicTerms = Array.from(
-      new Set([...inputTopicTerms, ...addedTopicTerms])
-    );
+    const usedTopicTerms = Array.from(new Set([...inputTopicTerms]));
     const filteredByLanguageCount =
       includesFiltered.removedCount +
       synonymsFiltered.removedCount +
@@ -1069,9 +860,7 @@ Requirements:
       reason: calibrationResult.reason,
       seedQueryCount: seedQueries.length,
       calibrationDocCount: calibrationResult.docs.length,
-      extractedObjectCount: extractedObjects.length,
-      droppedNonAtomicScoringCount: scoringStandaloneResult.droppedNonAtomic.length,
-      droppedGenericScoringCount: scoringStandaloneResult.droppedGeneric.length,
+      discoveredAtomicTermCount: discoveredAtomicTerms.length,
       includes: includesFiltered.filtered.length,
       synonyms: synonymsFiltered.filtered.length,
       excludes: excludesFiltered.filtered.length,
@@ -1090,19 +879,16 @@ Requirements:
         searchedProviders: calibrationResult.triedProviders,
         degraded,
         reason: calibrationResult.reason,
-        seedNouns,
+        primaryNoun: nounPlan.primaryNoun,
+        secondaryNouns: nounPlan.secondaryNouns,
         seedQueries,
         freshnessMode: "latest-first",
-        topicAnchorsUsed: topicAnchors,
         calibrationDocCount: calibrationResult.docs.length,
         recallBudget: recallBudgetNormalized,
-        extractionMode: calibrationResult.docs.length > 0 ? "web_calibrated" : "fallback",
-        objectCount: extractedObjects.length,
-        extractedObjects,
-        droppedGenericTerms: scoringStandaloneResult.droppedGeneric,
-        droppedNonAtomicScoringTerms: scoringStandaloneResult.droppedNonAtomic,
+        extractionMode:
+          calibrationResult.docs.length > 0 ? "web_calibrated" : "fallback",
+        discoveredAtomicTerms,
         inputTopicTerms,
-        addedTopicTerms,
         usedTopicTerms,
         filteredByLanguageCount,
         topicHintMissing,
