@@ -69,7 +69,7 @@ const NewsDetailCard = ({
         className
       )}
     >
-      <CardHeader className="flex-shrink-0 space-y-2 px-6 pt-4 pb-2 lg:px-8 lg:pt-5 lg:pb-3">
+      <CardHeader className="flex-shrink-0 space-y-2 px-6 pt-4 pb-1 lg:px-8 lg:pt-5 lg:pb-2">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex flex-wrap items-center gap-2">
             {source ? <Badge variant="secondary">{source}</Badge> : null}
@@ -159,8 +159,8 @@ const NewsDetailCard = ({
           {summary || title || "News Summary"}
         </p>
       </CardHeader>
-      <CardContent className="flex-1 min-h-0 overflow-y-auto scrollbar-hide px-6 pb-4 pt-2 lg:px-8">
-        <Tabs defaultValue="content" className="h-full gap-1">
+      <CardContent className="flex-1 min-h-0 overflow-y-auto scrollbar-hide px-6 pb-4 pt-0 lg:px-8">
+        <Tabs defaultValue="content" className="h-full gap-0">
           <div className="mx-auto flex h-full w-full max-w-4xl flex-col">
             <TabsList className="w-full justify-start bg-muted/70 p-1">
               <TabsTrigger value="content">正文</TabsTrigger>
