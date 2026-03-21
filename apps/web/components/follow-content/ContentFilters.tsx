@@ -55,11 +55,11 @@ export const ContentFilters = () => {
   ).sort((a, b) => Number(b) - Number(a));
 
   return (
-    <div className="m-1 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6">
-      <div className="sm:col-span-2 lg:col-span-2 xl:col-span-2">
+    <div className="m-1 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6">
+      <div className="sm:col-span-2 lg:col-span-2 xl:col-span-2 2xl:col-span-2 min-w-0">
         <Input
           placeholder="Search content"
-          className="rounded-full"
+          className="min-w-0 rounded-full"
           icon={<Search size={16} />}
           iconPosition="right"
           value={filters.search}
@@ -71,7 +71,7 @@ export const ContentFilters = () => {
         value={filters.platform || "__all__"}
         onValueChange={(value) => setPlatform(value === "__all__" ? "" : value)}
       >
-        <SelectTrigger>
+        <SelectTrigger className="w-full min-w-0">
           <SelectValue placeholder="Platform" />
         </SelectTrigger>
         <SelectContent>
@@ -88,7 +88,7 @@ export const ContentFilters = () => {
         value={filters.subjectId || "__all__"}
         onValueChange={(value) => setSubjectId(value === "__all__" ? "" : value)}
       >
-        <SelectTrigger>
+        <SelectTrigger className="w-full min-w-0">
           <SelectValue placeholder="Subject" />
         </SelectTrigger>
         <SelectContent>
@@ -113,7 +113,7 @@ export const ContentFilters = () => {
           setYear(value);
         }}
       >
-        <SelectTrigger>
+        <SelectTrigger className="w-full min-w-0">
           <SelectValue placeholder="Year" />
         </SelectTrigger>
         <SelectContent>
@@ -137,7 +137,7 @@ export const ContentFilters = () => {
           setMonth(value);
         }}
       >
-        <SelectTrigger>
+        <SelectTrigger className="w-full min-w-0">
           <SelectValue placeholder="Month" />
         </SelectTrigger>
         <SelectContent>
@@ -154,7 +154,7 @@ export const ContentFilters = () => {
         value={filters.day || "__all__"}
         onValueChange={(value) => setDay(value === "__all__" ? "" : value)}
       >
-        <SelectTrigger>
+        <SelectTrigger className="w-full min-w-0">
           <SelectValue placeholder="Day" />
         </SelectTrigger>
         <SelectContent>
@@ -173,6 +173,7 @@ export const ContentFilters = () => {
         max={1}
         step={0.05}
         placeholder="Min score (0-1)"
+        className="min-w-0"
         value={filters.minMatchScore}
         onChange={(event) => setMinMatchScore(event.target.value)}
       />
@@ -181,7 +182,7 @@ export const ContentFilters = () => {
         value={filters.matchSource || "__all__"}
         onValueChange={(value) => setMatchSource(value === "__all__" ? "" : value)}
       >
-        <SelectTrigger>
+        <SelectTrigger className="w-full min-w-0">
           <SelectValue placeholder="Match Source" />
         </SelectTrigger>
         <SelectContent>
@@ -197,12 +198,12 @@ export const ContentFilters = () => {
         value={filters.sort}
         onValueChange={(value) => setSort(value as "time" | "matchScore")}
       >
-        <SelectTrigger>
+        <SelectTrigger className="w-full min-w-0">
           <SelectValue placeholder="Sort" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="time">Sort by Time</SelectItem>
-          <SelectItem value="matchScore">Sort by Match Score</SelectItem>
+          <SelectItem value="time">Time Desc</SelectItem>
+          <SelectItem value="matchScore">Score Desc</SelectItem>
         </SelectContent>
       </Select>
     </div>
