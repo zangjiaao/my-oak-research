@@ -514,6 +514,7 @@ async function fetchBySources(
   keywords: QueryKeyword[]
 ): Promise<CleanItem[]> {
   const sourceConcurrency = resolveSourceFetchConcurrency();
+  const recallQueryLimit = resolveRecallQueryLimit();
   const batches = await mapWithConcurrency(
     sources,
     sourceConcurrency,
@@ -534,10 +535,23 @@ async function fetchBySources(
           strategy === "PRECISION_ONLY" || strategy === "HYBRID"
             ? buildKeywordFilterTerms(keywords)
             : [];
-        const recallQueries =
+        const rawRecallQueries =
           strategy === "RECALL_ONLY" || strategy === "HYBRID"
             ? buildRecallQueries(keywords)
             : [];
+        const recallQueries = rawRecallQueries.slice(0, recallQueryLimit);
+        if (rawRecallQueries.length > recallQueries.length) {
+          logger.warn("recall queries truncated by limit", {
+            runId,
+            queryId,
+            sourceId: source.id,
+            sourceName: source.name,
+            strategy,
+            originalCount: rawRecallQueries.length,
+            limitedCount: recallQueries.length,
+            limit: recallQueryLimit,
+          });
+        }
         const objectiveFallback = Array.from(
           new Set(
             keywords
@@ -595,6 +609,16 @@ function resolveSourceFetchConcurrency(): number {
   const parsed = Number(raw);
   if (!Number.isFinite(parsed) || parsed < 1) {
     return 3;
+  }
+  return Math.floor(parsed);
+}
+
+function resolveRecallQueryLimit(): number {
+  const raw = process.env.COLLECT_RECALL_QUERY_LIMIT;
+  if (!raw) return 12;
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed) || parsed < 1) {
+    return 12;
   }
   return Math.floor(parsed);
 }
