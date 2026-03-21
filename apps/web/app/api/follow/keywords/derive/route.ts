@@ -1,7 +1,12 @@
 import { llmGateway } from "@oak/agents/llm-gateway";
 import { json, badRequest, serverError } from "@/app/api/_utils/http";
 import { logger } from "@/lib/logger";
+import {
+  isWebDeriveIoLogEnabled,
+  writeWebDeriveIoLog,
+} from "@/app/api/follow/keywords/derive-io-log";
 import { z } from "zod";
+import { randomUUID } from "node:crypto";
 
 const DEFAULT_DERIVE_LANGUAGES = ["zh", "en"] as const;
 const DEFAULT_RECALL_BUDGET = 8;
@@ -17,6 +22,17 @@ type CalibrationDoc = {
   title: string;
   snippet: string;
   url?: string;
+};
+type SearchCallResult = {
+  docs: CalibrationDoc[];
+  request: {
+    url: string;
+    method: string;
+    headers: Record<string, string>;
+    body?: string;
+  };
+  responseBody: unknown;
+  statusCode: number;
 };
 
 const SEARCH_PROVIDER_ENDPOINTS: Record<SearchProvider, string> = {
@@ -215,7 +231,7 @@ async function fetchJsonWithTimeout(
   url: string,
   init: RequestInit,
   timeoutMs: number
-): Promise<unknown> {
+): Promise<{ json: unknown; statusCode: number }> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -226,7 +242,10 @@ async function fetchJsonWithTimeout(
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`);
     }
-    return await response.json();
+    return {
+      json: await response.json(),
+      statusCode: response.status,
+    };
   } finally {
     clearTimeout(timer);
   }
@@ -235,76 +254,103 @@ async function fetchJsonWithTimeout(
 async function searchWithProvider(
   provider: SearchProvider,
   query: string
-): Promise<CalibrationDoc[]> {
+): Promise<SearchCallResult> {
   if (provider === "anspire") {
     const apiKey = process.env.ANSPIRE_API_KEY;
     if (!apiKey) throw new Error("ANSPIRE_API_KEY missing");
     const params = new URLSearchParams({ query, top_k: "8" });
-    const payload = await fetchJsonWithTimeout(
-      `${SEARCH_PROVIDER_ENDPOINTS.anspire}?${params.toString()}`,
+    const url = `${SEARCH_PROVIDER_ENDPOINTS.anspire}?${params.toString()}`;
+    const method = "GET";
+    const headers = {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    };
+    const response = await fetchJsonWithTimeout(
+      url,
       {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-        },
+        method,
+        headers,
       },
       12000
     );
-    return normalizeCalibrationDocs(payload);
+    return {
+      docs: normalizeCalibrationDocs(response.json),
+      request: { url, method, headers },
+      responseBody: response.json,
+      statusCode: response.statusCode,
+    };
   }
 
   if (provider === "tavily") {
     const apiKey = process.env.TAVILY_API_KEY;
     if (!apiKey) throw new Error("TAVILY_API_KEY missing");
-    const payload = await fetchJsonWithTimeout(
-      SEARCH_PROVIDER_ENDPOINTS.tavily,
+    const url = SEARCH_PROVIDER_ENDPOINTS.tavily;
+    const method = "POST";
+    const headers = { "Content-Type": "application/json" };
+    const body = JSON.stringify({
+      api_key: apiKey,
+      query,
+      max_results: 8,
+      search_depth: "basic",
+      topic: "general",
+      include_answer: false,
+    });
+    const response = await fetchJsonWithTimeout(
+      url,
       {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          api_key: apiKey,
-          query,
-          max_results: 8,
-          search_depth: "basic",
-          topic: "general",
-          include_answer: false,
-        }),
+        method,
+        headers,
+        body,
       },
       12000
     );
-    return normalizeCalibrationDocs(payload);
+    return {
+      docs: normalizeCalibrationDocs(response.json),
+      request: { url, method, headers, body },
+      responseBody: response.json,
+      statusCode: response.statusCode,
+    };
   }
 
   const apiKey = process.env.PARALLEL_API_KEY;
   if (!apiKey) throw new Error("PARALLEL_API_KEY missing");
-  const payload = await fetchJsonWithTimeout(
-    SEARCH_PROVIDER_ENDPOINTS.parallel,
+  const url = SEARCH_PROVIDER_ENDPOINTS.parallel;
+  const method = "POST";
+  const headers = {
+    "Content-Type": "application/json",
+    "x-api-key": apiKey,
+  };
+  const body = JSON.stringify({
+    mode: "one-shot",
+    objective: query,
+    search_queries: [query],
+    max_results: 8,
+    excerpts: {
+      max_chars_per_result: 900,
+      max_chars_total: 8000,
+    },
+  });
+  const response = await fetchJsonWithTimeout(
+    url,
     {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": apiKey,
-      },
-      body: JSON.stringify({
-        mode: "one-shot",
-        objective: query,
-        search_queries: [query],
-        max_results: 8,
-        excerpts: {
-          max_chars_per_result: 900,
-          max_chars_total: 8000,
-        },
-      }),
+      method,
+      headers,
+      body,
     },
     12000
   );
-  return normalizeCalibrationDocs(payload);
+  return {
+    docs: normalizeCalibrationDocs(response.json),
+    request: { url, method, headers, body },
+    responseBody: response.json,
+    statusCode: response.statusCode,
+  };
 }
 
 async function collectCalibrationDocs(
   seedQueries: string[],
-  providerOrder: SearchProvider[]
+  providerOrder: SearchProvider[],
+  requestId: string
 ): Promise<{
   provider?: SearchProvider;
   docs: CalibrationDoc[];
@@ -327,14 +373,36 @@ async function collectCalibrationDocs(
     const docs: CalibrationDoc[] = [];
     for (const query of seedQueries) {
       try {
-        const rows = await searchWithProvider(provider, query);
-        docs.push(...rows);
+        const result = await searchWithProvider(provider, query);
+        docs.push(...result.docs);
+        writeWebDeriveIoLog({
+          event: "derive-search-request-response",
+          requestId,
+          provider,
+          query,
+          url: result.request.url,
+          method: result.request.method,
+          statusCode: result.statusCode,
+          request: {
+            headers: result.request.headers,
+            body: result.request.body ?? null,
+          },
+          response: result.responseBody,
+          details: { parsedCount: result.docs.length },
+        });
       } catch (error) {
         hadRequestError = true;
         logger.warn("keyword derive calibration query failed", {
           provider,
           query,
           error: logger.normalizeError(error),
+        });
+        writeWebDeriveIoLog({
+          event: "derive-search-request-response",
+          requestId,
+          provider,
+          query,
+          error: error instanceof Error ? error.message : "unknown error",
         });
       }
     }
@@ -444,6 +512,10 @@ function filterTermsByLanguages(terms: string[], languages: string[]) {
 
 export async function POST(req: Request) {
   try {
+    const requestId = randomUUID();
+    if (isWebDeriveIoLogEnabled()) {
+      logger.info("keyword derive io log enabled", { requestId });
+    }
     const body = await req.json();
     const parsed = DeriveSchema.safeParse(body);
     if (!parsed.success) {
@@ -477,7 +549,7 @@ export async function POST(req: Request) {
             reason: "calibration_disabled" as CalibrationReason,
             triedProviders: [] as SearchProvider[],
           }
-        : await collectCalibrationDocs(seedQueries, providerOrder);
+        : await collectCalibrationDocs(seedQueries, providerOrder, requestId);
     const calibrationContext = toCalibrationContext(calibrationResult.docs);
     const degraded =
       calibrationResult.reason === "no_search_provider_configured" ||
@@ -537,11 +609,25 @@ Requirements:
     const result = await llmGateway.json<z.infer<typeof DeriveResultSchema>>(
       task,
       {
-      prompt,
-      schema: DeriveResultSchema,
-      temperature: 0.5,
+        prompt,
+        schema: DeriveResultSchema,
+        temperature: 0.5,
+        metadata: { requestId },
       }
     );
+    writeWebDeriveIoLog({
+      event: "derive-llm-request-response",
+      requestId,
+      request: {
+        task,
+        prompt,
+        temperature: 0.5,
+      },
+      response: result,
+      details: {
+        model: process.env.LLM_DEFAULT_MODEL ?? "unknown",
+      },
+    });
 
     const sanitized = sanitizeDerivedResult(result);
     const includesBudgeted = sanitized.includes.slice(
@@ -563,6 +649,7 @@ Requirements:
       excludesFiltered.removedCount;
 
     logger.info("keyword derive completed", {
+      requestId,
       name,
       provider: calibrationResult.provider ?? "none",
       degraded,
@@ -577,11 +664,12 @@ Requirements:
       topicHintMissing,
     });
 
-    return json({
+    const responsePayload = {
       includes: includesFiltered.filtered,
       synonyms: synonymsFiltered.filtered,
       excludes: excludesFiltered.filtered,
       meta: {
+        requestId,
         searchProvider: calibrationResult.provider ?? null,
         searchedProviders: calibrationResult.triedProviders,
         degraded,
@@ -595,7 +683,18 @@ Requirements:
         filteredByLanguageCount,
         topicHintMissing,
       },
+    };
+    writeWebDeriveIoLog({
+      event: "derive-final-output",
+      requestId,
+      details: {
+        provider: calibrationResult.provider ?? null,
+        degraded,
+        reason: calibrationResult.reason,
+      },
+      response: responsePayload,
     });
+    return json(responsePayload);
   } catch (error) {
     return serverError(error);
   }
