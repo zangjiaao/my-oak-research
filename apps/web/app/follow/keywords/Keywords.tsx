@@ -42,7 +42,7 @@ const KeywordsTable = ({
     },
     {
       key: "includes",
-      label: "Includes",
+      label: "Recall Terms",
       render: (keyword) => (
         <div className="flex flex-wrap gap-1 max-w-md">
           {keyword.includes.map((include) => (
@@ -50,12 +50,22 @@ const KeywordsTable = ({
               {include}
             </Badge>
           ))}
-          {keyword.enableAiExpand &&
-            keyword.synonyms.map((synonym) => (
-              <Badge key={synonym} variant="secondary">
-                {synonym}
-              </Badge>
-            ))}
+        </div>
+      ),
+    },
+    {
+      key: "synonyms",
+      label: "Scoring Terms",
+      render: (keyword) => (
+        <div className="flex flex-wrap gap-1 max-w-md">
+          {keyword.synonyms.map((synonym) => (
+            <Badge key={synonym} variant="secondary">
+              {synonym}
+            </Badge>
+          ))}
+          {keyword.enableAiExpand ? (
+            <Badge variant="outline">AI Expand On</Badge>
+          ) : null}
         </div>
       ),
     },
