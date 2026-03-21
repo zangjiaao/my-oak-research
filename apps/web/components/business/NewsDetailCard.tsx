@@ -160,7 +160,7 @@ const NewsDetailCard = ({
         </p>
       </CardHeader>
       <CardContent className="flex-1 min-h-0 overflow-y-auto scrollbar-hide px-6 pb-4 pt-2 lg:px-8">
-        <Tabs defaultValue="content" className="h-full">
+        <Tabs defaultValue="content" className="h-full gap-1">
           <div className="mx-auto flex h-full w-full max-w-4xl flex-col">
             <TabsList className="w-full justify-start bg-muted/70 p-1">
               <TabsTrigger value="content">正文</TabsTrigger>
@@ -168,12 +168,12 @@ const NewsDetailCard = ({
               <TabsTrigger value="links">链接</TabsTrigger>
               <TabsTrigger value="raw">原始</TabsTrigger>
             </TabsList>
-            <TabsContent value="content" className="mt-2">
+            <TabsContent value="content" className="mt-0">
               <article className="prose prose-slate max-w-none text-[15px] leading-7 text-foreground/90 prose-p:my-0 prose-p:leading-7 prose-p:text-foreground/90 prose-headings:mb-3 prose-headings:mt-5 prose-headings:font-semibold prose-headings:text-foreground prose-li:my-1 prose-li:text-foreground/90 prose-strong:text-foreground prose-a:text-primary prose-a:no-underline hover:prose-a:underline">
                 <ReactMarkdown>{markdown}</ReactMarkdown>
               </article>
             </TabsContent>
-            <TabsContent value="media" className="mt-2">
+            <TabsContent value="media" className="mt-0">
             {images && images.length > 0 ? (
               <div className="mb-6 rounded-xl border border-border/70 bg-muted/20 p-4">
                 <div className="mb-3 flex items-center gap-2 text-sm font-medium">
@@ -245,7 +245,7 @@ const NewsDetailCard = ({
               <p className="text-sm text-muted-foreground">暂无媒体内容</p>
             ) : null}
             </TabsContent>
-            <TabsContent value="links" className="mt-2">
+            <TabsContent value="links" className="mt-0">
             {links && links.length > 0 ? (
               <div className="mb-6 rounded-xl border border-border/70 bg-muted/20 p-4">
                 <div className="mb-3 flex items-center gap-2 text-sm font-medium">
@@ -274,7 +274,7 @@ const NewsDetailCard = ({
               <p className="text-sm text-muted-foreground">暂无链接</p>
             )}
             </TabsContent>
-            <TabsContent value="raw" className="mt-2">
+            <TabsContent value="raw" className="mt-0">
               <pre className="max-h-[22rem] overflow-auto rounded-lg border border-border/70 bg-muted/20 p-4 text-xs leading-5">
                 {JSON.stringify(rawContent ?? {}, null, 2)}
               </pre>
