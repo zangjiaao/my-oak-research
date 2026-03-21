@@ -279,20 +279,16 @@ function enforceTopicTermsInNounPlan(
     return { enforced: nounPlan, topicEnforced: false };
   }
   const normalizedTopics = normalizeTerms(topicTerms);
-  const normalizedSecondary = normalizeTerms(nounPlan.secondaryNouns);
-  const missingTopics = normalizedTopics.filter(
-    (topic) => !normalizedSecondary.includes(topic)
+  const normalizedSecondary = normalizeTerms(nounPlan.secondaryNouns).filter(
+    (item) => !normalizedTopics.includes(item)
   );
-  if (missingTopics.length === 0) {
-    return { enforced: nounPlan, topicEnforced: false };
-  }
   const nextSecondary = normalizeTerms([
+    ...normalizedTopics,
     ...normalizedSecondary,
-    ...missingTopics,
   ]).slice(0, 2);
   const nextQueries = normalizeTerms([
     ...nounPlan.searchQueries,
-    ...missingTopics.map((topic) => `${nounPlan.primaryNoun} ${topic}`),
+    ...normalizedTopics.map((topic) => `${nounPlan.primaryNoun} ${topic}`),
   ]);
   return {
     enforced: {
@@ -312,10 +308,12 @@ function buildSeedQueries(input: {
 }): string[] {
   const fromModel = normalizeTerms(input.searchQueries ?? []);
   const topicAnchored = normalizeTerms(
-    input.topicTerms.map((topic) => `${input.primaryNoun} ${topic}`)
+    input.topicTerms
+      .filter((topic) => topic !== input.primaryNoun)
+      .map((topic) => `${input.primaryNoun} ${topic}`)
   );
   if (fromModel.length > 0) {
-    return normalizeTerms([...topicAnchored, ...fromModel]).slice(0, 6);
+    return normalizeTerms([...topicAnchored, ...fromModel]).slice(0, 4);
   }
   const base = normalizeTerms([
     ...input.topicTerms,
@@ -331,7 +329,7 @@ function buildSeedQueries(input: {
     combined.push(`${base[0]} ${base[2]}`);
   }
   combined.push(...base);
-  return normalizeTerms([...topicAnchored, ...combined]).slice(0, 6);
+  return normalizeTerms([...topicAnchored, ...combined]).slice(0, 4);
 }
 
 function toFreshnessQuery(query: string): string {
@@ -363,13 +361,23 @@ function normalizeAtomicTerms(terms: string[]): string[] {
 function buildRecallTerms(
   primaryNoun: string,
   discoveredAtomicTerms: string[],
+  secondaryNouns: string[],
+  topicTerms: string[],
   existingIncludes: string[],
   recallBudget: number
 ): string[] {
-  const generated = normalizeTerms(
+  const generatedFromEntities = normalizeTerms(
     discoveredAtomicTerms.map((term) => `${primaryNoun} ${term}`)
   );
-  return normalizeTerms([...existingIncludes, ...generated]).slice(0, recallBudget);
+  const fallbackGenerated = normalizeTerms([
+    ...topicTerms.map((topic) => `${primaryNoun} ${topic}`),
+    ...secondaryNouns.map((term) => `${primaryNoun} ${term}`),
+  ]);
+  return normalizeTerms([
+    ...existingIncludes,
+    ...generatedFromEntities,
+    ...fallbackGenerated,
+  ]).slice(0, recallBudget);
 }
 
 function buildScoringTerms(
@@ -586,8 +594,10 @@ async function fetchJsonWithTimeout(
 
 async function searchWithProvider(
   provider: SearchProvider,
-  query: string
+  query: string,
+  options?: { relaxed?: boolean }
 ): Promise<SearchCallResult> {
+  const relaxed = options?.relaxed === true;
   const freshnessQuery = toFreshnessQuery(query);
   if (provider === "anspire") {
     const apiKey = process.env.ANSPIRE_API_KEY;
@@ -609,7 +619,7 @@ async function searchWithProvider(
         method,
         headers,
       },
-      12000
+      relaxed ? 10000 : 12000
     );
     return {
       docs: normalizeCalibrationDocs(response.json),
@@ -628,11 +638,11 @@ async function searchWithProvider(
     const body = JSON.stringify({
       api_key: apiKey,
       query: freshnessQuery,
-      max_results: 10,
-      search_depth: "advanced",
+      max_results: relaxed ? 6 : 10,
+      search_depth: relaxed ? "basic" : "advanced",
       topic: "general",
       include_answer: false,
-      include_raw_content: true,
+      include_raw_content: relaxed ? false : true,
       days: 30,
     });
     const response = await fetchJsonWithTimeout(
@@ -642,7 +652,7 @@ async function searchWithProvider(
         headers,
         body,
       },
-      12000
+      relaxed ? 10000 : 12000
     );
     return {
       docs: normalizeCalibrationDocs(response.json),
@@ -677,7 +687,7 @@ async function searchWithProvider(
       headers,
       body,
     },
-    12000
+    relaxed ? 10000 : 12000
   );
   return {
     docs: normalizeCalibrationDocs(response.json),
@@ -743,10 +753,56 @@ async function collectCalibrationDocs(
           details: { parsedCount: result.docs.length, topicHitCount },
         });
       } catch (error) {
+        const firstError =
+          error instanceof Error ? error.message : "unknown error";
+        let retried = false;
+        if (provider === "tavily") {
+          try {
+            retried = true;
+            const fallbackResult = await searchWithProvider(provider, query, {
+              relaxed: true,
+            });
+            const topicHitCount = countTopicHits(fallbackResult.docs, topicTerms);
+            docs.push(...fallbackResult.docs);
+            diagnostics.push({
+              query,
+              parsedCount: fallbackResult.docs.length,
+              topicHitCount,
+            });
+            writeWebDeriveIoLog({
+              event: "derive-search-request-response",
+              requestId,
+              provider,
+              query,
+              url: fallbackResult.request.url,
+              method: fallbackResult.request.method,
+              statusCode: fallbackResult.statusCode,
+              request: {
+                headers: fallbackResult.request.headers,
+                body: fallbackResult.request.body ?? null,
+              },
+              response: fallbackResult.responseBody,
+              details: {
+                parsedCount: fallbackResult.docs.length,
+                topicHitCount,
+                fallbackMode: "relaxed",
+                previousError: firstError,
+              },
+            });
+            continue;
+          } catch (fallbackError) {
+            logger.warn("keyword derive calibration query retry failed", {
+              provider,
+              query,
+              error: logger.normalizeError(fallbackError),
+            });
+          }
+        }
         hadRequestError = true;
         logger.warn("keyword derive calibration query failed", {
           provider,
           query,
+          retried,
           error: logger.normalizeError(error),
         });
         writeWebDeriveIoLog({
@@ -754,7 +810,10 @@ async function collectCalibrationDocs(
           requestId,
           provider,
           query,
-          error: error instanceof Error ? error.message : "unknown error",
+          error: firstError,
+          details: {
+            retried,
+          },
         });
       }
     }
@@ -963,6 +1022,8 @@ export async function POST(req: Request) {
     const recallTermsRaw = buildRecallTerms(
       nounPlan.primaryNoun,
       discoveredAtomicTerms,
+      nounPlan.secondaryNouns,
+      inputTopicTerms,
       normalizeTerms(includes),
       recallBudgetNormalized
     );
