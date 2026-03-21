@@ -13,7 +13,6 @@ import ReactMarkdown from "react-markdown";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
@@ -70,7 +69,7 @@ const NewsDetailCard = ({
         className
       )}
     >
-      <CardHeader className="flex-shrink-0 space-y-2.5 px-6 pt-4 pb-3 lg:px-8 lg:pt-5 lg:pb-4">
+      <CardHeader className="flex-shrink-0 space-y-2 px-6 pt-4 pb-2 lg:px-8 lg:pt-5 lg:pb-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex flex-wrap items-center gap-2">
             {source ? <Badge variant="secondary">{source}</Badge> : null}
@@ -160,8 +159,7 @@ const NewsDetailCard = ({
           {summary || title || "News Summary"}
         </p>
       </CardHeader>
-      <Separator />
-      <CardContent className="flex-1 min-h-0 overflow-y-auto scrollbar-hide px-6 py-4 lg:px-8">
+      <CardContent className="flex-1 min-h-0 overflow-y-auto scrollbar-hide px-6 pb-4 pt-2 lg:px-8">
         <Tabs defaultValue="content" className="h-full">
           <TabsList className="w-full justify-start bg-muted/70 p-1">
             <TabsTrigger value="content">正文</TabsTrigger>
