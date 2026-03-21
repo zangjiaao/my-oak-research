@@ -30,7 +30,7 @@ type WorkerApiIoEntry = {
 
 const API_IO_LOG_ENABLED = process.env.WORKER_API_IO_LOG_ENABLED === "true";
 const API_IO_LOG_DIR = resolveLogDir(
-  process.env.WORKER_API_IO_LOG_DIR || "apps/worker/logs"
+  process.env.WORKER_API_IO_LOG_DIR || "logs"
 );
 const API_IO_LOG_MAX_CHARS = resolveMaxChars(
   process.env.WORKER_API_IO_LOG_MAX_CHARS
@@ -38,7 +38,7 @@ const API_IO_LOG_MAX_CHARS = resolveMaxChars(
 
 function resolveLogDir(rawDir: string): string {
   if (!rawDir.trim()) {
-    return resolve(process.cwd(), "apps/worker/logs");
+    return resolve(process.cwd(), "logs");
   }
   if (isAbsolute(rawDir)) return rawDir;
   return resolve(process.cwd(), rawDir);
@@ -121,4 +121,3 @@ export function writeWorkerApiIoLog(entry: WorkerApiIoEntry): void {
     // best effort logging, never block collector
   }
 }
-

@@ -896,6 +896,15 @@ async function fetchSearchSource(
       ? context.recallQueries
       : [objective];
   if (!searchQueries.some((query) => query.trim().length > 0)) {
+    logger.warn("search source skipped due empty query and objective", {
+      sourceId: source.id,
+      sourceName: source.name,
+      runId: context?.runId,
+      queryId: context?.queryId,
+      configuredObjective,
+      fallbackObjective: context?.objectiveFallback ?? "",
+      recallQueryCount: context?.recallQueries?.length ?? 0,
+    });
     return [];
   }
   const allItems: CleanItem[] = [];
