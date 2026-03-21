@@ -34,6 +34,11 @@ type SearchCallResult = {
   responseBody: unknown;
   statusCode: number;
 };
+type ExtractedObject = {
+  name: string;
+  aliases: string[];
+  category: "product" | "module" | "organization" | "location" | "country" | "person" | "concept" | "other";
+};
 
 const SEARCH_PROVIDER_ENDPOINTS: Record<SearchProvider, string> = {
   parallel:
@@ -62,6 +67,29 @@ const DeriveResultSchema = z.object({
   synonyms: z.array(z.string()).default([]),
   excludes: z.array(z.string()).default([]),
   topicTerms: z.array(z.string()).optional().default([]),
+});
+const ObjectExtractionResultSchema = z.object({
+  objects: z
+    .array(
+      z.object({
+        name: z.string().min(1),
+        aliases: z.array(z.string()).optional().default([]),
+        category: z
+          .enum([
+            "product",
+            "module",
+            "organization",
+            "location",
+            "country",
+            "person",
+            "concept",
+            "other",
+          ])
+          .optional()
+          .default("other"),
+      })
+    )
+    .default([]),
 });
 
 function normalizeTerms(values: string[]): string[] {
@@ -154,6 +182,128 @@ function buildSeedQueries(name: string, description?: string | null): string[] {
   }
   const normalizedName = name.replace(/#/g, " ").replace(/\s+/g, " ").trim();
   return normalizedName ? [normalizedName] : [];
+}
+
+function hasExplicitExcludeIntent(description?: string | null): boolean {
+  const text = String(description ?? "").toLowerCase();
+  return /(排除|不要|不包含|剔除|exclude|excluding|without|not include|avoid)/i.test(
+    text
+  );
+}
+
+function normalizeObjectList(rawObjects: z.infer<typeof ObjectExtractionResultSchema>["objects"]): ExtractedObject[] {
+  const seen = new Set<string>();
+  const normalized: ExtractedObject[] = [];
+  for (const rawObject of rawObjects) {
+    const name = rawObject.name.trim().toLowerCase();
+    if (!name || seen.has(name)) continue;
+    seen.add(name);
+    const aliases = normalizeTerms(rawObject.aliases ?? []).filter(
+      (alias) => alias !== name
+    );
+    normalized.push({
+      name,
+      aliases,
+      category: rawObject.category ?? "other",
+    });
+  }
+  return normalized;
+}
+
+function buildObjectTermHints(
+  topicAnchors: string[],
+  objects: ExtractedObject[]
+): { recallHints: string[]; scoringHints: string[] } {
+  const objectTerms = normalizeTerms(
+    objects.flatMap((item) => [item.name, ...item.aliases])
+  );
+  const recallHints = normalizeTerms(
+    topicAnchors.flatMap((topic) =>
+      objectTerms
+        .filter((term) => term !== topic)
+        .map((term) => `${topic} ${term}`)
+    )
+  );
+  return {
+    recallHints,
+    scoringHints: objectTerms,
+  };
+}
+
+async function extractObjectsFromDocs(input: {
+  name: string;
+  description?: string | null;
+  docs: CalibrationDoc[];
+  requestId: string;
+}): Promise<ExtractedObject[]> {
+  if (input.docs.length === 0) return [];
+  const evidence = input.docs
+    .slice(0, 14)
+    .map((doc, index) => {
+      const title = doc.title || "(untitled)";
+      const snippet = doc.snippet || "(no snippet)";
+      return `${index + 1}. title: ${title}\n   snippet: ${snippet}`;
+    })
+    .join("\n");
+  const prompt = `
+You extract concrete investigation objects from web snippets.
+Topic: ${input.name}
+Description: ${input.description ?? "N/A"}
+
+Evidence:
+${evidence}
+
+Return ONLY JSON:
+{
+  "objects": [
+    { "name": "...", "aliases": ["..."], "category": "product|module|organization|location|country|person|concept|other" }
+  ]
+}
+
+Rules:
+- Keep only concrete entities explicitly supported by evidence.
+- Favor tools/modules/products/organizations/locations/countries involved in the topic.
+- Include short aliases when clearly present (example: nickname or acronym).
+- Avoid generic words with no retrieval value.
+- Max 20 objects.
+`;
+  try {
+    const result = await llmGateway.json<
+      z.infer<typeof ObjectExtractionResultSchema>
+    >("keyword-object-extraction", {
+      prompt,
+      schema: ObjectExtractionResultSchema,
+      temperature: 0.2,
+      metadata: { requestId: input.requestId },
+    });
+    writeWebDeriveIoLog({
+      event: "derive-llm-request-response",
+      requestId: input.requestId,
+      request: {
+        task: "keyword-object-extraction",
+        prompt,
+        temperature: 0.2,
+      },
+      response: result,
+    });
+    return normalizeObjectList(result.objects).slice(0, 20);
+  } catch (error) {
+    logger.warn("keyword object extraction failed", {
+      requestId: input.requestId,
+      error: logger.normalizeError(error),
+    });
+    writeWebDeriveIoLog({
+      event: "derive-llm-request-response",
+      requestId: input.requestId,
+      request: {
+        task: "keyword-object-extraction",
+        prompt,
+        temperature: 0.2,
+      },
+      error: error instanceof Error ? error.message : "unknown error",
+    });
+    return [];
+  }
 }
 
 function flattenSearchRows(payload: unknown): Array<Record<string, unknown>> {
@@ -555,14 +705,23 @@ export async function POST(req: Request) {
       calibrationResult.reason === "no_search_provider_configured" ||
       calibrationResult.reason === "provider_request_failed";
     const inputTopicTerms = extractTopicTermsFromText(name, description);
+    const topicAnchors = seedQueries.length > 0 ? seedQueries : inputTopicTerms;
+    const extractedObjects = await extractObjectsFromDocs({
+      name,
+      description,
+      docs: calibrationResult.docs,
+      requestId,
+    });
+    const objectHints = buildObjectTermHints(topicAnchors, extractedObjects);
+    const explicitExcludeIntent = hasExplicitExcludeIntent(description);
     const topicHintMissing = inputTopicTerms.length === 0;
 
     const task = "keyword-derivation";
     const prompt = `
 You are a multilingual keyword strategist.
 Your goal is to generate three sets of terms for a topic:
-1) Recall Terms for broader retrieval;
-2) Scoring Terms for semantic evidence;
+1) Recall Terms for broader retrieval (search execution terms);
+2) Scoring Terms for relevance evidence terms;
 3) Exclusion Terms for noisy or ambiguous matches.
 
 Topic Name: ${name}
@@ -576,20 +735,35 @@ Recall Terms budget: ${Math.min(12, Math.max(6, recallBudget))}
 Search calibration provider: ${calibrationResult.provider ?? "none"}
 Seed queries: ${seedQueries.join(" | ")}
 User provided topic terms: ${inputTopicTerms.join(", ") || "none"}
+Topic anchors in use: ${topicAnchors.join(", ") || "none"}
+Explicit exclude intent in description: ${explicitExcludeIntent ? "yes" : "no"}
 
 Calibration evidence (Chinese-first web snippets):
 ${calibrationContext}
 
+Extracted investigation objects from evidence:
+${extractedObjects
+  .map((item) => `- ${item.name} (${item.category}) aliases: ${item.aliases.join(", ") || "-"}`)
+  .join("\n") || "- none"}
+
+Object-driven Recall candidates:
+${objectHints.recallHints.join(" | ") || "none"}
+
+Object-driven Scoring candidates:
+${objectHints.scoringHints.join(" | ") || "none"}
+
 Please follow these constraints:
+- First map evidence => objects => terms. Avoid template-like suffix expansion.
 - Respect description constraints, including "include" and "exclude" intent.
 - Generate terms in preferred languages.
 - Keep terms short and searchable (1-4 words).
 - Do not repeat existing terms.
 - Avoid overlap: do not place the same term in both include/synonyms and excludes.
 - Prefer high-signal terms; avoid generic words.
-- Recall Terms should be concise and cost-aware. Avoid bulk translated variants.
+- Recall Terms should be concise and cost-aware. Prefer object-centric phrases useful for direct search.
 - If evidence reveals community aliases (example: slang / nickname), prioritize them in Recall Terms.
 - Keep topic terms focused. You can add at most 2 high-confidence topic terms in "topicTerms".
+- Exclusion Terms should default to empty unless user description or existing exclusions clearly require them.
 
 Requirements:
 - Return ONLY a JSON object:
@@ -630,13 +804,36 @@ Requirements:
     });
 
     const sanitized = sanitizeDerivedResult(result);
-    const includesBudgeted = sanitized.includes.slice(
-      0,
-      Math.min(12, Math.max(6, recallBudget))
+    const recallBudgetNormalized = Math.min(12, Math.max(6, recallBudget));
+    const includesBudgeted = normalizeTerms([
+      ...objectHints.recallHints,
+      ...sanitized.includes,
+    ]).slice(0, recallBudgetNormalized);
+    const synonymsEnriched = normalizeTerms([
+      ...objectHints.scoringHints,
+      ...sanitized.synonyms,
+    ]);
+    const finalExcludesRaw =
+      explicitExcludeIntent || excludes.length > 0 ? sanitized.excludes : [];
+    const exclusionSet = new Set(finalExcludesRaw);
+    const includesWithoutExclusion = includesBudgeted.filter(
+      (item) => !exclusionSet.has(item)
     );
-    const includesFiltered = filterTermsByLanguages(includesBudgeted, targetLanguages);
-    const synonymsFiltered = filterTermsByLanguages(sanitized.synonyms, targetLanguages);
-    const excludesFiltered = filterTermsByLanguages(sanitized.excludes, targetLanguages);
+    const synonymsWithoutExclusion = synonymsEnriched.filter(
+      (item) => !exclusionSet.has(item) && !includesWithoutExclusion.includes(item)
+    );
+    const includesFiltered = filterTermsByLanguages(
+      includesWithoutExclusion,
+      targetLanguages
+    );
+    const synonymsFiltered = filterTermsByLanguages(
+      synonymsWithoutExclusion,
+      targetLanguages
+    );
+    const excludesFiltered = filterTermsByLanguages(
+      finalExcludesRaw,
+      targetLanguages
+    );
     const addedTopicTerms = sanitized.topicTerms
       .filter((term) => !inputTopicTerms.includes(term))
       .slice(0, 2);
@@ -656,6 +853,7 @@ Requirements:
       reason: calibrationResult.reason,
       seedQueryCount: seedQueries.length,
       calibrationDocCount: calibrationResult.docs.length,
+      extractedObjectCount: extractedObjects.length,
       includes: includesFiltered.filtered.length,
       synonyms: synonymsFiltered.filtered.length,
       excludes: excludesFiltered.filtered.length,
@@ -675,8 +873,12 @@ Requirements:
         degraded,
         reason: calibrationResult.reason,
         seedQueries,
+        topicAnchorsUsed: topicAnchors,
         calibrationDocCount: calibrationResult.docs.length,
-        recallBudget: Math.min(12, Math.max(6, recallBudget)),
+        recallBudget: recallBudgetNormalized,
+        extractionMode: calibrationResult.docs.length > 0 ? "web_calibrated" : "fallback",
+        objectCount: extractedObjects.length,
+        extractedObjects,
         inputTopicTerms,
         addedTopicTerms,
         usedTopicTerms,
