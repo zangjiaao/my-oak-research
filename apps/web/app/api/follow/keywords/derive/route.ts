@@ -8,6 +8,11 @@ const DEFAULT_RECALL_BUDGET = 8;
 const DEFAULT_SEARCH_ENGINE = "auto";
 
 type SearchProvider = "anspire" | "tavily" | "parallel";
+type CalibrationReason =
+  | "calibration_disabled"
+  | "no_search_provider_configured"
+  | "provider_request_failed"
+  | null;
 type CalibrationDoc = {
   title: string;
   snippet: string;
@@ -103,6 +108,12 @@ function resolveSearchProviderOrder(rawPreference: string | undefined): SearchPr
   if (normalized === "tavily") return ["tavily"];
   if (normalized === "parallel") return ["parallel"];
   return ["anspire", "tavily", "parallel"];
+}
+
+function isProviderConfigured(provider: SearchProvider): boolean {
+  if (provider === "anspire") return Boolean(process.env.ANSPIRE_API_KEY);
+  if (provider === "tavily") return Boolean(process.env.TAVILY_API_KEY);
+  return Boolean(process.env.PARALLEL_API_KEY);
 }
 
 function buildSeedQueries(name: string, description?: string | null): string[] {
@@ -284,14 +295,32 @@ async function searchWithProvider(
 async function collectCalibrationDocs(
   seedQueries: string[],
   providerOrder: SearchProvider[]
-): Promise<{ provider?: SearchProvider; docs: CalibrationDoc[] }> {
-  for (const provider of providerOrder) {
+): Promise<{
+  provider?: SearchProvider;
+  docs: CalibrationDoc[];
+  reason: CalibrationReason;
+  triedProviders: SearchProvider[];
+}> {
+  const configuredProviders = providerOrder.filter((provider) =>
+    isProviderConfigured(provider)
+  );
+  if (configuredProviders.length === 0) {
+    return {
+      docs: [],
+      reason: "no_search_provider_configured",
+      triedProviders: [],
+    };
+  }
+
+  let hadRequestError = false;
+  for (const provider of configuredProviders) {
     const docs: CalibrationDoc[] = [];
     for (const query of seedQueries) {
       try {
         const rows = await searchWithProvider(provider, query);
         docs.push(...rows);
       } catch (error) {
+        hadRequestError = true;
         logger.warn("keyword derive calibration query failed", {
           provider,
           query,
@@ -300,10 +329,19 @@ async function collectCalibrationDocs(
       }
     }
     if (docs.length > 0) {
-      return { provider, docs: docs.slice(0, 24) };
+      return {
+        provider,
+        docs: docs.slice(0, 24),
+        reason: null,
+        triedProviders: configuredProviders,
+      };
     }
   }
-  return { docs: [] };
+  return {
+    docs: [],
+    reason: hadRequestError ? "provider_request_failed" : null,
+    triedProviders: configuredProviders,
+  };
 }
 
 function toCalibrationContext(docs: CalibrationDoc[]): string {
@@ -363,9 +401,17 @@ export async function POST(req: Request) {
     const providerOrder = resolveSearchProviderOrder(process.env.SEARCH_ENGINE);
     const calibrationResult =
       calibration === false
-        ? { docs: [] as CalibrationDoc[], provider: undefined as SearchProvider | undefined }
+        ? {
+            docs: [] as CalibrationDoc[],
+            provider: undefined as SearchProvider | undefined,
+            reason: "calibration_disabled" as CalibrationReason,
+            triedProviders: [] as SearchProvider[],
+          }
         : await collectCalibrationDocs(seedQueries, providerOrder);
     const calibrationContext = toCalibrationContext(calibrationResult.docs);
+    const degraded =
+      calibrationResult.reason === "no_search_provider_configured" ||
+      calibrationResult.reason === "provider_request_failed";
 
     const task = "keyword-derivation";
     const prompt = `
@@ -430,6 +476,8 @@ Requirements:
     logger.info("keyword derive completed", {
       name,
       provider: calibrationResult.provider ?? "none",
+      degraded,
+      reason: calibrationResult.reason,
       seedQueryCount: seedQueries.length,
       calibrationDocCount: calibrationResult.docs.length,
       includes: includesBudgeted.length,
@@ -443,6 +491,9 @@ Requirements:
       excludes: sanitized.excludes,
       meta: {
         searchProvider: calibrationResult.provider ?? null,
+        searchedProviders: calibrationResult.triedProviders,
+        degraded,
+        reason: calibrationResult.reason,
         seedQueries,
         calibrationDocCount: calibrationResult.docs.length,
         recallBudget: Math.min(12, Math.max(6, recallBudget)),
