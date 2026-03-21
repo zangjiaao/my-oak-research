@@ -21,7 +21,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 const FollowContent = () => {
-  const { contents, selectedContent, selectContent, isLoading, error } =
+  const { contents, selectedContent, selectContent, isLoading, error, filters } =
     useFollowContent();
   const toggleFavorite = useToggleFavorite();
   const queryClient = useQueryClient();
@@ -40,6 +40,24 @@ const FollowContent = () => {
   const isBookmarked = (id: string) => favoriteIds.has(id);
 
   const sortedContents = useMemo(() => {
+    if (filters.sort === "matchScore") {
+      return [...contents].sort((a, b) => {
+        const aScore =
+          a.subjectMatches?.find((match) =>
+            filters.subjectId ? match.subjectId === filters.subjectId : true
+          )?.score ?? -1;
+        const bScore =
+          b.subjectMatches?.find((match) =>
+            filters.subjectId ? match.subjectId === filters.subjectId : true
+          )?.score ?? -1;
+        if (aScore !== bScore) {
+          return bScore - aScore;
+        }
+        const aTime = new Date(a.detailView?.publishedAt ?? a.time).getTime();
+        const bTime = new Date(b.detailView?.publishedAt ?? b.time).getTime();
+        return bTime - aTime;
+      });
+    }
     return [...contents].sort((a, b) => {
       const aTime = new Date(a.detailView?.publishedAt ?? a.time).getTime();
       const bTime = new Date(b.detailView?.publishedAt ?? b.time).getTime();
@@ -50,7 +68,7 @@ const FollowContent = () => {
       const bIndex = b.relation?.recordIndex ?? Number.MAX_SAFE_INTEGER;
       return aIndex - bIndex;
     });
-  }, [contents]);
+  }, [contents, filters.sort, filters.subjectId]);
 
   useEffect(() => {
     if (!selectedContent?.id) {
@@ -139,7 +157,7 @@ const FollowContent = () => {
   }
 
   return (
-    <div className="h-full lg:h-[calc(100vh-7rem)]">
+    <div className="h-full">
       <ScrollArea className="h-full">
         <div className="flex flex-col gap-3 overflow-visible pb-6 pr-2 pl-1">
           {sortedContents.map((content) => (
@@ -169,6 +187,7 @@ const FollowContent = () => {
                 audios={content.detailView?.audios ?? []}
                 files={content.detailView?.files ?? []}
                 rawContent={content.rawRecordContent}
+                subjectMatch={content.subjectMatches?.[0]}
                 bookmarked={isBookmarked(content.id)}
                 onBookmarkToggle={() => {
                   const currentlyBookmarked = isBookmarked(content.id);

@@ -1,4 +1,4 @@
-import { appendFileSync, mkdirSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
 import { dirname, isAbsolute, resolve } from "node:path";
 
 type JsonValue =
@@ -41,7 +41,35 @@ function resolveLogDir(rawDir: string): string {
     return resolve(process.cwd(), "apps/worker/logs");
   }
   if (isAbsolute(rawDir)) return rawDir;
+  if (rawDir.startsWith("apps/")) {
+    const repoRoot = findRepoRoot(process.cwd());
+    if (repoRoot) {
+      return resolve(repoRoot, rawDir);
+    }
+  }
   return resolve(process.cwd(), rawDir);
+}
+
+function findRepoRoot(start: string): string | null {
+  let current = resolve(start);
+  while (true) {
+    const packageJsonPath = resolve(current, "package.json");
+    if (existsSync(packageJsonPath)) {
+      try {
+        const payload = JSON.parse(readFileSync(packageJsonPath, "utf8")) as {
+          workspaces?: unknown;
+        };
+        if (payload.workspaces) {
+          return current;
+        }
+      } catch {
+        // ignore parse errors and continue upward
+      }
+    }
+    const parent = resolve(current, "..");
+    if (parent === current) return null;
+    current = parent;
+  }
 }
 
 function resolveMaxChars(raw: string | undefined): number {
@@ -121,4 +149,3 @@ export function writeWorkerApiIoLog(entry: WorkerApiIoEntry): void {
     // best effort logging, never block collector
   }
 }
-

@@ -228,6 +228,15 @@ ${existingReportData.markdown || "N/A"}
         },
       });
     } else {
+      const materialsWithSnapshot = await attachSubjectMatchSnapshot(
+        materials?.map((m) => ({
+          sourceType: m.sourceType,
+          sourceId: m.sourceId,
+          title: m.title,
+          snippet: m.snippet,
+          metadata: m.metadata,
+        })) ?? []
+      );
       resultReport = await prisma.report.create({
         data: {
           title: llmReport.title,
@@ -238,13 +247,7 @@ ${existingReportData.markdown || "N/A"}
           authorId: userId,
           metadata: llmReport.sections ? { sections: llmReport.sections } : undefined,
           materials: {
-            create: materials?.map((m) => ({
-              sourceType: m.sourceType,
-              sourceId: m.sourceId,
-              title: m.title,
-              snippet: m.snippet,
-              metadata: m.metadata,
-            })) ?? [],
+            create: materialsWithSnapshot,
           },
         },
       });
@@ -274,4 +277,58 @@ ${existingReportData.markdown || "N/A"}
     console.error("[report-generate] Critical API Error:", error);
     return fail(`生成过程发生解析或连接错误: ${error.message || "未知错误"}`, 500);
   }
+}
+
+async function attachSubjectMatchSnapshot<
+  T extends {
+    sourceType: string;
+    sourceId: string;
+    metadata?: unknown;
+  },
+>(materials: T[]): Promise<T[]> {
+  const contentIds = Array.from(
+    new Set(
+      materials
+        .filter((material) => material.sourceType === "FAVORITE")
+        .map((material) => material.sourceId)
+    )
+  );
+  if (contentIds.length === 0) return materials;
+
+  const matches = await prisma.contentSubjectMatch.findMany({
+    where: { contentId: { in: contentIds } },
+    select: {
+      contentId: true,
+      keywordId: true,
+      ruleScore: true,
+      aiScore: true,
+      matchScore: true,
+      matchedIncludes: true,
+      matchedExcludes: true,
+      matchSource: true,
+      reason: true,
+    },
+    orderBy: { matchScore: "desc" },
+  });
+
+  const grouped = new Map<string, typeof matches>();
+  for (const match of matches) {
+    const list = grouped.get(match.contentId) ?? [];
+    list.push(match);
+    grouped.set(match.contentId, list);
+  }
+
+  return materials.map((material) => {
+    if (material.sourceType !== "FAVORITE") return material;
+    const snapshot = grouped.get(material.sourceId) ?? [];
+    return {
+      ...material,
+      metadata: {
+        ...(material.metadata && typeof material.metadata === "object"
+          ? (material.metadata as Record<string, unknown>)
+          : {}),
+        subjectMatchesSnapshot: snapshot,
+      },
+    };
+  });
 }

@@ -242,6 +242,7 @@ const getDefaultValues = (
           social: {
             ...source.social,
             config: socialConfig,
+            keywordStrategy: source.social.keywordStrategy ?? "AUTO",
           } as unknown as SocialFormValues["social"],
         } as SourceFormValues;
       }
@@ -263,6 +264,7 @@ const getDefaultValues = (
         } as any,
         credentialId: null,
         proxyId: null,
+        keywordStrategy: "AUTO",
       };
       return {
         ...base,
@@ -293,6 +295,7 @@ const getDefaultValues = (
         customConfig:
           (searchRelation as unknown as { customConfig?: unknown })
             ?.customConfig ?? undefined,
+        keywordStrategy: searchRelation?.keywordStrategy ?? "AUTO",
       };
       return {
         ...base,

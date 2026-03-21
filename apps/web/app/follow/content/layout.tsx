@@ -35,19 +35,21 @@ const InnerLayout = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-5 gap-2 relative">
+    <div className="relative grid h-[calc(100vh-7rem)] grid-cols-1 gap-2 overflow-hidden lg:grid-cols-5">
       <div
         className={`${
           isContentVisible ? "lg:col-span-2" : "lg:col-span-5"
-        } flex flex-col gap-2 overflow-hidden transition-all duration-300`}
+        } flex min-h-0 flex-col gap-2 overflow-hidden transition-all duration-300`}
       >
         <ContentFilters />
-        <ContentList />
+        <div className="min-h-0 flex-1">
+          <ContentList />
+        </div>
       </div>
 
       <div
         className={`
-          hidden lg:flex lg:flex-col lg:gap-2
+          hidden lg:flex lg:min-h-0 lg:flex-col lg:gap-2
           ${isContentVisible ? "lg:col-span-3" : "lg:hidden"}
         `}
       >
@@ -66,7 +68,7 @@ const InnerLayout = ({ children }: { children: React.ReactNode }) => {
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
-        {children}
+        <div className="min-h-0 flex-1">{children}</div>
       </div>
       {isMobile ? (
         <Sheet

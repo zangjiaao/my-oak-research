@@ -221,6 +221,8 @@ export async function PATCH(
           updateData.options = jsonOrNull(searchData.options);
         if (searchData.credentialId !== undefined)
           updateData.credentialId = searchData.credentialId;
+        if (searchData.keywordStrategy !== undefined)
+          updateData.keywordStrategy = searchData.keywordStrategy;
 
         await tx.searchEngineSourceConfig.update({
           where: { sourceId: id },
@@ -238,6 +240,8 @@ export async function PATCH(
           updateData.credentialId = socialData.credentialId;
         if (socialData.proxyId !== undefined)
           updateData.proxyId = socialData.proxyId;
+        if (socialData.keywordStrategy !== undefined)
+          updateData.keywordStrategy = socialData.keywordStrategy;
 
         await tx.socialMediaSourceConfig.update({
           where: { sourceId: id },

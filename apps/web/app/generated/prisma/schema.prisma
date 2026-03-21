@@ -40,10 +40,11 @@ model Keyword {
   synonyms       String[]
   active         Boolean  @default(true)
 
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-  queries         Query[]
-  contentKeywords ContentKeyword[]
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+  queries               Query[]
+  contentKeywords       ContentKeyword[]
+  contentSubjectMatches ContentSubjectMatch[]
 
   @@unique([name])
 }
@@ -95,6 +96,20 @@ enum SearchPlatform {
   TAVILY
   ANSPIRE
   CUSTOM
+}
+
+enum KeywordStrategy {
+  AUTO
+  RECALL_ONLY
+  PRECISION_ONLY
+  HYBRID
+}
+
+enum ContentSubjectMatchSource {
+  QUERY
+  GATHER
+  AI
+  FUSED
 }
 
 model Proxy {
@@ -259,14 +274,15 @@ model SearchEngineSourceConfig {
   sourceId String @id
   source   Source @relation(fields: [sourceId], references: [id])
 
-  platform    SearchPlatform   @default(CUSTOM)
-  engine      SearchEngineKind
+  platform        SearchPlatform   @default(CUSTOM)
+  engine          SearchEngineKind
   // 标准字段
-  objective   String
+  objective       String
   // API 调用端点（某些场景用自建 SearXNG 或第三方 API）
-  apiEndpoint String?
+  apiEndpoint     String?
   // 透传额外参数（时间窗、结果数、safe mode 等）
-  options     Json? // { timeRange: "7d", num: 50, safe: "active", ... }
+  options         Json? // { timeRange: "7d", num: 50, safe: "active", ... }
+  keywordStrategy KeywordStrategy  @default(AUTO)
 
   // 覆盖凭据（优先级：config > source）
   credentialId String?
@@ -293,8 +309,9 @@ model SocialMediaSourceConfig {
   credential   Credential? @relation(fields: [credentialId], references: [id])
 
   // 某些平台也允许代理覆盖（比如地区限制）
-  proxyId String?
-  proxy   Proxy?  @relation(fields: [proxyId], references: [id])
+  proxyId         String?
+  proxy           Proxy?          @relation(fields: [proxyId], references: [id])
+  keywordStrategy KeywordStrategy @default(AUTO)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -377,21 +394,22 @@ enum ContentType {
 }
 
 model Content {
-  id        String           @id @default(cuid())
-  title     String
-  summary   String
-  markdown  String
-  platform  String
-  type      ContentType
-  time      DateTime
-  url       String?
-  image     String? // 封面图（可选）
-  meta      Json?
-  keywords  ContentKeyword[]
-  entities  ContentEntity?
-  createdAt DateTime         @default(now())
-  updatedAt DateTime         @updatedAt
-  favorites Favorite[]
+  id             String                @id @default(cuid())
+  title          String
+  summary        String
+  markdown       String
+  platform       String
+  type           ContentType
+  time           DateTime
+  url            String?
+  image          String? // 封面图（可选）
+  meta           Json?
+  keywords       ContentKeyword[]
+  subjectMatches ContentSubjectMatch[]
+  entities       ContentEntity?
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+  favorites      Favorite[]
 
   @@index([platform, time])
   @@index([type, time])
@@ -405,6 +423,29 @@ model ContentKeyword {
   keyword   Keyword @relation(fields: [keywordId], references: [id], onDelete: Cascade)
 
   @@unique([contentId, keywordId])
+}
+
+model ContentSubjectMatch {
+  id              String                    @id @default(cuid())
+  contentId       String
+  keywordId       String
+  ruleScore       Float?
+  aiScore         Float?
+  matchScore      Float?
+  matchedIncludes String[]
+  matchedExcludes String[]
+  matchSource     ContentSubjectMatchSource @default(QUERY)
+  reason          String?
+  createdAt       DateTime                  @default(now())
+  updatedAt       DateTime                  @updatedAt
+  content         Content                   @relation(fields: [contentId], references: [id], onDelete: Cascade)
+  keyword         Keyword                   @relation(fields: [keywordId], references: [id], onDelete: Cascade)
+
+  @@unique([contentId, keywordId])
+  @@index([keywordId, matchScore])
+  @@index([keywordId, createdAt])
+  @@index([contentId])
+  @@index([matchSource])
 }
 
 model ContentEntity {

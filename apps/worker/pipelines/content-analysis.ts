@@ -3,7 +3,14 @@ import { z } from "zod";
 import { createHash } from "crypto";
 
 import prisma from "@/lib/prisma";
-import { Prisma, SourceType, ContentType, CrawlerEngine } from "@/app/generated/prisma";
+import {
+  Prisma,
+  SourceType,
+  ContentType,
+  CrawlerEngine,
+  KeywordStrategy,
+  ContentSubjectMatchSource,
+} from "@/app/generated/prisma";
 import {
   SourceWithRelations,
   SocialMediaSource,
@@ -21,6 +28,11 @@ import { buildNormalizedRecordContent } from "./record-content-normalizer";
 const SummarySchema = z.object({
   summary: z.string().min(30).max(400),
   relevance: z.boolean(),
+});
+
+const SubjectScoreSchema = z.object({
+  score: z.number().min(0).max(1),
+  reason: z.string().min(1).max(200),
 });
 
 const SKIP_AI_SUMMARY = process.env.COLLECTOR_SKIP_AI_SUMMARY !== "false";
@@ -47,6 +59,15 @@ type CleanItem = {
   recordIndex?: number;
   intent?: string;
   sourceRequestId?: string;
+};
+
+type QueryKeyword = {
+  id: string;
+  name: string;
+  description?: string | null;
+  includes: string[];
+  excludes: string[];
+  synonyms: string[];
 };
 
 type GatherSocialDriver = "playwright" | "xhttp" | "agent-browser";
@@ -151,14 +172,14 @@ export async function runFocusCollector(runId: string, queryId: string) {
         break;
     }
   });
-  const keywordFilterTerms = buildKeywordFilterTerms(query.keywords);
   const rawItems = await fetchBySources(
     normalizedSources,
     runId,
     queryId,
-    keywordFilterTerms
+    query.keywords
   );
-  const cleaned = await cleanAndDedup(rawItems, runId);
+  const filteredItems = applyExcludePostFilter(rawItems, query.keywords);
+  const cleaned = await cleanAndDedup(filteredItems, runId);
   const sourceStats = new Map<
     string,
     {
@@ -180,7 +201,7 @@ export async function runFocusCollector(runId: string, queryId: string) {
       inserted: 0,
     });
   }
-  for (const item of rawItems) {
+  for (const item of filteredItems) {
     const stats = sourceStats.get(item.sourceId);
     if (!stats) continue;
     stats.fetched += 1;
@@ -317,6 +338,12 @@ export async function runFocusCollector(runId: string, queryId: string) {
         })),
         skipDuplicates: true,
       });
+      await upsertContentSubjectMatches({
+        contentId: content.id,
+        contentText: `${content.title}\n${content.summary}\n${content.markdown}`,
+        item,
+        keywords: query.keywords,
+      });
     }
     await publishContentEvent({
       type: "content:created",
@@ -394,15 +421,81 @@ function mapContentType(sourceType: SourceType): ContentType {
 }
 
 function buildKeywordFilterTerms(
-  keywords: Array<{
-    includes: string[];
-  }>
+  keywords: QueryKeyword[]
 ): string[] {
   const terms: string[] = [];
   for (const keyword of keywords) {
-    terms.push(...keyword.includes);
+    if (keyword.includes.length > 0) {
+      terms.push(...keyword.includes);
+    } else if (keyword.name.trim()) {
+      terms.push(keyword.name.trim());
+    }
   }
   return Array.from(new Set(terms.map((term) => term.trim().toLowerCase()).filter(Boolean)));
+}
+
+function resolveKeywordStrategy(source: SourceWithRelations): KeywordStrategy {
+  if (source.type === SourceType.SEARCH_ENGINE) {
+    return (source as SearchEngineSource).search?.keywordStrategy ?? KeywordStrategy.AUTO;
+  }
+  if (source.type === SourceType.SOCIAL_MEDIA) {
+    const socialSource = source as SocialMediaSource;
+    const configured = socialSource.social?.keywordStrategy ?? KeywordStrategy.AUTO;
+    if (configured !== KeywordStrategy.AUTO) {
+      return configured;
+    }
+    const intent = resolveGatherIntent(asObject(socialSource.social?.config)).type
+      .trim()
+      .toLowerCase();
+    return intent === "search"
+      ? KeywordStrategy.HYBRID
+      : KeywordStrategy.PRECISION_ONLY;
+  }
+  return KeywordStrategy.PRECISION_ONLY;
+}
+
+function buildRecallQueries(keywords: QueryKeyword[]): string[] {
+  const queries: string[] = [];
+  for (const keyword of keywords) {
+    const includeTerms = normalizeStringArray(keyword.includes);
+    const excludeTerms = normalizeStringArray(keyword.excludes);
+    const includeQuery =
+      includeTerms.length > 0 ? includeTerms.join(" OR ") : keyword.name.trim();
+    if (!includeQuery) continue;
+    const excludeQuery = excludeTerms.map((term) => `-"${term}"`).join(" ");
+    queries.push([includeQuery, excludeQuery].filter(Boolean).join(" ").trim());
+  }
+  return Array.from(new Set(queries));
+}
+
+function applyExcludePostFilter(items: CleanItem[], keywords: QueryKeyword[]): CleanItem[] {
+  const excludes = Array.from(
+    new Set(
+      keywords
+        .flatMap((keyword) => normalizeStringArray(keyword.excludes))
+        .map((term) => term.toLowerCase())
+        .filter(Boolean)
+    )
+  );
+  if (excludes.length === 0) return items;
+  return items.filter((item) => {
+    const haystack = `${item.title ?? ""}\n${item.text}\n${item.markdown}`.toLowerCase();
+    return !excludes.some((term) => haystack.includes(term));
+  });
+}
+
+function deduplicateItemsByUrlAndFingerprint(items: CleanItem[]): CleanItem[] {
+  const seen = new Set<string>();
+  const deduped: CleanItem[] = [];
+  for (const item of items) {
+    const signature = item.url?.trim()
+      ? `url:${item.url.trim()}`
+      : `fp:${hashString(`${item.platform}:${item.text.slice(0, 300)}`)}`;
+    if (seen.has(signature)) continue;
+    seen.add(signature);
+    deduped.push(item);
+  }
+  return deduped;
 }
 
 async function cleanAndDedup(
@@ -434,7 +527,7 @@ async function fetchBySources(
   sources: SourceWithRelations[],
   runId: string,
   queryId: string,
-  keywordFilterTerms: string[]
+  keywords: QueryKeyword[]
 ): Promise<CleanItem[]> {
   const sourceConcurrency = resolveSourceFetchConcurrency();
   const batches = await mapWithConcurrency(
@@ -452,12 +545,37 @@ async function fetchBySources(
         driver,
       });
       try {
+        const strategy = resolveKeywordStrategy(source);
+        const keywordFilterTerms =
+          strategy === "PRECISION_ONLY" || strategy === "HYBRID"
+            ? buildKeywordFilterTerms(keywords)
+            : [];
+        const recallQueries =
+          strategy === "RECALL_ONLY" || strategy === "HYBRID"
+            ? buildRecallQueries(keywords)
+            : [];
+        const objectiveFallback = Array.from(
+          new Set(
+            keywords
+              .map((keyword) =>
+                [keyword.name, keyword.description ?? ""]
+                  .join(" ")
+                  .replace(/\s+/g, " ")
+                  .trim()
+              )
+              .filter(Boolean)
+          )
+        )
+          .join("; ")
+          .slice(0, 500);
         const fetched = await executeFetchDriver(
           source,
           driver,
           runId,
           queryId,
-          keywordFilterTerms
+          keywordFilterTerms,
+          recallQueries,
+          objectiveFallback
         );
         console.log(
           `[collector] fetched ${fetched.length} items from ${source.name}`
@@ -550,7 +668,9 @@ async function executeFetchDriver(
   driver: "fetch" | "playwright" | "ai",
   runId: string,
   queryId: string,
-  keywordFilterTerms: string[]
+  keywordFilterTerms: string[],
+  recallQueries: string[],
+  objectiveFallback?: string
 ): Promise<CleanItem[]> {
   switch (driver) {
     case "playwright":
@@ -562,9 +682,22 @@ async function executeFetchDriver(
       }
       return [];
     case "ai":
-      return fetchAICrawlerSource(source, runId, queryId, keywordFilterTerms);
+      return fetchAICrawlerSource(
+        source,
+        runId,
+        queryId,
+        keywordFilterTerms,
+        recallQueries
+      );
     default:
-      return fetchWithDefaultSource(source, runId, queryId, keywordFilterTerms);
+      return fetchWithDefaultSource(
+        source,
+        runId,
+        queryId,
+        keywordFilterTerms,
+        recallQueries,
+        objectiveFallback
+      );
   }
 }
 
@@ -572,7 +705,9 @@ async function fetchWithDefaultSource(
   source: SourceWithRelations,
   runId: string,
   queryId: string,
-  keywordFilterTerms: string[]
+  keywordFilterTerms: string[],
+  recallQueries: string[],
+  objectiveFallback?: string
 ): Promise<CleanItem[]> {
   console.log(
     `[collector] fetchWithDefaultSource ${source.name} (${source.type})`
@@ -583,9 +718,18 @@ async function fetchWithDefaultSource(
     case SourceType.DARKNET:
       return fetchHtmlSource(source as DarknetSource);
     case SourceType.SEARCH_ENGINE:
-      return fetchSearchSource(source as SearchEngineSource, { runId, queryId });
+      return fetchSearchSource(source as SearchEngineSource, {
+        runId,
+        queryId,
+        recallQueries,
+        objectiveFallback,
+      });
     case SourceType.SOCIAL_MEDIA:
-      return fetchSocialSource(source as SocialMediaSource, keywordFilterTerms);
+      return fetchSocialSource(
+        source as SocialMediaSource,
+        keywordFilterTerms,
+        recallQueries
+      );
     default:
       return [];
   }
@@ -644,7 +788,8 @@ async function fetchAICrawlerSource(
   source: SourceWithRelations,
   runId: string,
   queryId: string,
-  keywordFilterTerms: string[]
+  keywordFilterTerms: string[],
+  recallQueries: string[]
 ): Promise<CleanItem[]> {
   if (isWebSource(source) || isDarknetSource(source)) {
     console.log(
@@ -656,12 +801,20 @@ async function fetchAICrawlerSource(
     console.log(
       `[collector] fetchAICrawlerSource -> fetchSearchSource ${source.name}`
     );
-    return fetchSearchSource(source as SearchEngineSource, { runId, queryId });
+    return fetchSearchSource(source as SearchEngineSource, {
+      runId,
+      queryId,
+      recallQueries,
+    });
   }
   console.log(
     `[collector] fetchAICrawlerSource -> fetchSocialSource ${source.name}`
   );
-  return fetchSocialSource(source as SocialMediaSource, keywordFilterTerms);
+  return fetchSocialSource(
+    source as SocialMediaSource,
+    keywordFilterTerms,
+    recallQueries
+  );
 }
 
 function normalizeCleanItem(item: CleanItem): CleanItem {
@@ -720,67 +873,143 @@ async function fetchHtmlSource(
 
 async function fetchSearchSource(
   source: SearchEngineSource,
-  context?: { runId?: string; queryId?: string }
+  context?: {
+    runId?: string;
+    queryId?: string;
+    recallQueries?: string[];
+    objectiveFallback?: string;
+  }
 ): Promise<CleanItem[]> {
   console.log(`[collector] fetchSearchSource ${source.name}`);
-  const objective = (
+  const configuredObjective = (
     (source.search as unknown as { objective?: string })?.objective ?? ""
   ).trim();
-  if (!objective) {
-    return [];
-  }
+  const objective = configuredObjective || (context?.objectiveFallback ?? "").trim();
 
   const provider = detectSearchProvider(
     (source.search as unknown as { platform?: string | null })?.platform,
     source.search?.apiEndpoint,
     source.search?.options
   );
-  const request = buildSearchRequest(source, provider);
-  if (!request.url) {
-    return [
-      {
-        text: `搜索引擎 ${source.name} 未配置 API Endpoint，当前 objective: ${objective}`,
-        markdown: `搜索引擎 ${source.name} 结果占位`,
-        platform: source.name,
-        time: new Date(),
+  const searchQueries =
+    context?.recallQueries && context.recallQueries.length > 0
+      ? context.recallQueries
+      : [objective];
+  if (!searchQueries.some((query) => query.trim().length > 0)) {
+    logger.warn("search source skipped due empty query and objective", {
+      sourceId: source.id,
+      sourceName: source.name,
+      runId: context?.runId,
+      queryId: context?.queryId,
+      configuredObjective,
+      fallbackObjective: context?.objectiveFallback ?? "",
+      recallQueryCount: context?.recallQueries?.length ?? 0,
+    });
+    return [];
+  }
+  const allItems: CleanItem[] = [];
+  for (const recallQuery of searchQueries) {
+    const request = buildSearchRequest(source, provider, recallQuery);
+    if (!request.url) {
+      return [
+        {
+          text: `搜索引擎 ${source.name} 未配置 API Endpoint，当前 objective: ${objective}`,
+          markdown: `搜索引擎 ${source.name} 结果占位`,
+          platform: source.name,
+          time: new Date(),
+          sourceId: source.id,
+          sourceType: source.type,
+        },
+      ];
+    }
+
+    try {
+      const response = await fetchWithTimeoutDetailed(request.url, {
+        method: request.method,
+        headers: request.headers,
+        body: request.body,
+      });
+      const parsedResult = parseSearchResult(response.text);
+      writeWorkerApiIoLog({
+        event: "search-request-response",
+        runId: context?.runId,
+        queryId: context?.queryId,
         sourceId: source.id,
-        sourceType: source.type,
-      },
-    ];
+        sourceName: source.name,
+        platform:
+          (
+            (source.search as unknown as { platform?: string | null })?.platform ??
+            "unknown"
+          ).toString(),
+        provider,
+        url: request.url,
+        method: request.method,
+        statusCode: response.statusCode,
+        request: {
+          headers: request.headers,
+          body: request.body ?? null,
+        },
+        response: {
+          body: response.text,
+        },
+        parsedCount: parsedResult.items.length,
+        requestId: parsedResult.requestId,
+      });
+
+      allItems.push(
+        ...parsedResult.items.map((item) => ({
+          title: item.title,
+          text: item.text,
+          markdown: item.markdown,
+          platform: source.name,
+          url: item.url,
+          time: item.time ? new Date(item.time) : new Date(),
+          sourceId: source.id,
+          sourceType: source.type,
+          sourceRequestId: parsedResult.requestId,
+        }))
+      );
+    } catch (error) {
+      writeWorkerApiIoLog({
+        event: "search-request-response",
+        runId: context?.runId,
+        queryId: context?.queryId,
+        sourceId: source.id,
+        sourceName: source.name,
+        platform:
+          (
+            (source.search as unknown as { platform?: string | null })?.platform ??
+            "unknown"
+          ).toString(),
+        provider,
+        url: request.url,
+        method: request.method,
+        statusCode: -1,
+        request: {
+          headers: request.headers,
+          body: request.body ?? null,
+        },
+        response: {
+          body: "",
+        },
+        parsedCount: 0,
+        error:
+          error instanceof Error ? error.message : "unknown search request error",
+      });
+      logger.error("search request failed", {
+        sourceId: source.id,
+        sourceName: source.name,
+        runId: context?.runId,
+        queryId: context?.queryId,
+        provider,
+        url: request.url,
+        error: logger.normalizeError(error),
+      });
+    }
   }
 
-  const response = await fetchWithTimeoutDetailed(request.url, {
-    method: request.method,
-    headers: request.headers,
-    body: request.body,
-  });
-  const parsedResult = parseSearchResult(response.text);
-  writeWorkerApiIoLog({
-    event: "search-request-response",
-    runId: context?.runId,
-    queryId: context?.queryId,
-    sourceId: source.id,
-    sourceName: source.name,
-    platform:
-      (
-        (source.search as unknown as { platform?: string | null })?.platform ??
-        "unknown"
-      ).toString(),
-    provider,
-    url: request.url,
-    method: request.method,
-    statusCode: response.statusCode,
-    request: {
-      headers: request.headers,
-      body: request.body ?? null,
-    },
-    response: {
-      body: response.text,
-    },
-    parsedCount: parsedResult.items.length,
-    requestId: parsedResult.requestId,
-  });
-  if (!parsedResult.items.length) {
+  const dedupedItems = deduplicateItemsByUrlAndFingerprint(allItems);
+  if (!dedupedItems.length) {
     return [
       {
         text: `搜索引擎 ${source.name} 返回空数据`,
@@ -792,22 +1021,13 @@ async function fetchSearchSource(
       },
     ];
   }
-  return parsedResult.items.map((item) => ({
-    title: item.title,
-    text: item.text,
-    markdown: item.markdown,
-    platform: source.name,
-    url: item.url,
-    time: item.time ? new Date(item.time) : new Date(),
-    sourceId: source.id,
-    sourceType: source.type,
-    sourceRequestId: parsedResult.requestId,
-  }));
+  return dedupedItems;
 }
 
 async function fetchSocialSource(
   source: SocialMediaSource,
-  keywordFilterTerms: string[]
+  keywordFilterTerms: string[],
+  recallQueries: string[]
 ): Promise<CleanItem[]> {
   console.log(`[collector] fetchSocialSource ${source.name} via Python Gather`);
 
@@ -841,42 +1061,58 @@ async function fetchSocialSource(
   delete keywordFilterOptions.keywords;
   const driverOption = normalizeGatherDriverOption(baseConfig, gatherDriver);
   const gatherUserId = resolveGatherPoolUserId(source, sourceConfigObj, driverOption);
-  const driver: GatherDriverPayload =
-    Object.keys(keywordFilterOptions).length > 0
-      ? {
-          name: gatherDriver,
-          ...driverOption,
-          script: intent,
-          filter: keywordFilterOptions,
-        }
-      : {
-          name: gatherDriver,
-          ...driverOption,
-          script: intent,
-        };
+  const normalizedIntentType = intent.type.trim().toLowerCase();
+  const batchedQueries =
+    normalizedIntentType === "search" && recallQueries.length > 0
+      ? Array.from(new Set(recallQueries.map((query) => query.trim()).filter(Boolean)))
+      : [""];
+  const normalizedBatchedQueries = batchedQueries.length > 0 ? batchedQueries : [""];
+  const normalizedItems: CleanItem[] = [];
 
   try {
-    const response = await fetch(`${gatherUrl}/v3/fetch`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        platform: gatherPlatform,
-        userId: gatherUserId,
-        keywords: keywordFilterTerms,
-        driver,
-        sourceId: source.id,
-        output,
-      }),
-    });
+    for (const recallQuery of normalizedBatchedQueries) {
+      const intentForRequest = injectRecallQueryIntoIntent(intent, recallQuery);
+      const driver: GatherDriverPayload =
+        Object.keys(keywordFilterOptions).length > 0
+          ? {
+              name: gatherDriver,
+              ...driverOption,
+              script: intentForRequest,
+              filter: keywordFilterOptions,
+            }
+          : {
+              name: gatherDriver,
+              ...driverOption,
+              script: intentForRequest,
+            };
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Gather service returned ${response.status}: ${errorText}`);
+      const response = await fetch(`${gatherUrl}/v3/fetch`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          platform: gatherPlatform,
+          userId: gatherUserId,
+          keywords: keywordFilterTerms,
+          driver,
+          sourceId: source.id,
+          output,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(
+          `Gather service returned ${response.status}: ${errorText}`
+        );
+      }
+
+      const data = await response.json();
+      const items = Array.isArray(data?.items) ? data.items : [];
+      normalizedItems.push(
+        ...normalizeGatherItems(items, source, intentForRequest.type)
+      );
     }
-
-    const data = await response.json();
-    const items = Array.isArray(data?.items) ? data.items : [];
-    return normalizeGatherItems(items, source, intent.type);
+    return deduplicateItemsByUrlAndFingerprint(normalizedItems);
   } catch (error) {
     console.error(`[collector] fetchSocialSource error:`, error);
     throw new Error(
@@ -1139,6 +1375,26 @@ function resolveGatherIntent(
   return {
     type: intentType,
     args: {},
+  };
+}
+
+function injectRecallQueryIntoIntent(
+  intent: GatherIntentPayload,
+  recallQuery: string
+): GatherIntentPayload {
+  if (intent.type.trim().toLowerCase() !== "search") {
+    return intent;
+  }
+  const normalizedQuery = recallQuery.trim();
+  if (!normalizedQuery) {
+    return intent;
+  }
+  return {
+    ...intent,
+    args: {
+      ...intent.args,
+      query: normalizedQuery,
+    },
   };
 }
 
@@ -1502,6 +1758,195 @@ function normalizeGatherItems(
   return normalized;
 }
 
+async function upsertContentSubjectMatches(input: {
+  contentId: string;
+  contentText: string;
+  item: CleanItem;
+  keywords: QueryKeyword[];
+}): Promise<void> {
+  const { contentId, contentText, item, keywords } = input;
+  for (const keyword of keywords) {
+    const recallTerms = normalizeStringArray(
+      keyword.includes.length > 0 ? keyword.includes : [keyword.name]
+    );
+    const scoringTerms = normalizeStringArray(
+      keyword.synonyms.length > 0
+        ? keyword.synonyms
+        : keyword.includes.length > 0
+          ? keyword.includes
+          : [keyword.name]
+    );
+    const excludes = normalizeStringArray(keyword.excludes);
+    const matchedRecallTerms = recallTerms.filter((term) =>
+      contentText.toLowerCase().includes(term.toLowerCase())
+    );
+    const matchedScoringTerms = scoringTerms.filter((term) =>
+      contentText.toLowerCase().includes(term.toLowerCase())
+    );
+    const matchedExcludes = excludes.filter((term) =>
+      contentText.toLowerCase().includes(term.toLowerCase())
+    );
+    const ruleScore = calculateRuleScore({
+      recallTerms,
+      scoringTerms,
+      excludes,
+      matchedRecallTerms,
+      matchedScoringTerms,
+      matchedExcludes,
+      gatherScore: item.keywordMatchScore,
+      gatherMatchedKeywords: item.matchedKeywords ?? [],
+      contentText,
+    });
+    const aiResult = await scoreSubjectWithAI({
+      keyword,
+      contentText,
+    }).catch((error) => {
+      logger.warn("subject ai score failed", {
+        contentId,
+        keywordId: keyword.id,
+        error: logger.normalizeError(error),
+      });
+      return null;
+    });
+    const aiScore = aiResult?.score ?? null;
+    const finalScore =
+      aiScore == null
+        ? ruleScore
+        : roundScore(0.25 * ruleScore + 0.75 * aiScore);
+    const matchSource =
+      aiScore == null
+        ? item.keywordMatchScore == null
+          ? ContentSubjectMatchSource.QUERY
+          : ContentSubjectMatchSource.GATHER
+        : ContentSubjectMatchSource.FUSED;
+
+    await prisma.contentSubjectMatch.upsert({
+      where: {
+        contentId_keywordId: {
+          contentId,
+          keywordId: keyword.id,
+        },
+      },
+      create: {
+        contentId,
+        keywordId: keyword.id,
+        ruleScore,
+        aiScore,
+        matchScore: finalScore,
+        matchedIncludes: matchedScoringTerms,
+        matchedExcludes,
+        matchSource,
+        reason: aiResult?.reason ?? null,
+      },
+      update: {
+        ruleScore,
+        aiScore,
+        matchScore: finalScore,
+        matchedIncludes: matchedScoringTerms,
+        matchedExcludes,
+        matchSource,
+        reason: aiResult?.reason ?? null,
+      },
+    });
+  }
+}
+
+function calculateRuleScore(input: {
+  recallTerms: string[];
+  scoringTerms: string[];
+  excludes: string[];
+  matchedRecallTerms: string[];
+  matchedScoringTerms: string[];
+  matchedExcludes: string[];
+  gatherScore?: number;
+  gatherMatchedKeywords: string[];
+  contentText: string;
+}): number {
+  const {
+    recallTerms,
+    scoringTerms,
+    excludes,
+    matchedRecallTerms,
+    matchedScoringTerms,
+    matchedExcludes,
+    gatherScore,
+    gatherMatchedKeywords,
+    contentText,
+  } = input;
+
+  const recallRatio =
+    recallTerms.length > 0 ? matchedRecallTerms.length / recallTerms.length : 0;
+  const scoringRatio =
+    scoringTerms.length > 0
+      ? matchedScoringTerms.length / scoringTerms.length
+      : 0;
+  const excludeRatio =
+    excludes.length > 0 ? matchedExcludes.length / excludes.length : 0;
+  const gatherBoost =
+    typeof gatherScore === "number" ? Math.min(1, Math.max(0, gatherScore)) : 0;
+  const gatherMatched = gatherMatchedKeywords.length > 0 ? 1 : 0;
+  const titleText = contentText.split("\n")[0]?.toLowerCase() ?? "";
+  const titleAnchorMatch =
+    recallTerms.length > 0 &&
+    recallTerms.some((term) => titleText.includes(term.toLowerCase()))
+      ? 1
+      : 0;
+  const evidenceMatch = matchedScoringTerms.length > 0 ? 1 : 0;
+
+  const score =
+    0.05 +
+    scoringRatio * 0.45 +
+    recallRatio * 0.1 +
+    evidenceMatch * 0.1 +
+    titleAnchorMatch * 0.05 +
+    gatherBoost * 0.15 +
+    gatherMatched * 0.05 -
+    excludeRatio * 0.35;
+  return roundScore(Math.min(1, Math.max(0.05, score)));
+}
+
+async function scoreSubjectWithAI(input: {
+  keyword: QueryKeyword;
+  contentText: string;
+}): Promise<{ score: number; reason: string } | null> {
+  const disabled = process.env.COLLECTOR_ENABLE_SUBJECT_AI_SCORE === "false";
+  if (disabled) {
+    return null;
+  }
+  const prompt = stripPromptLike(
+    `你是主题相关度打分器。请判断内容与主题是否相关，并输出 JSON: {"score":0-1,"reason":"简短原因"}。
+评分原则：
+1) 主题名称和主题描述是核心判断依据；
+2) 召回词仅用于检索，不应主导最终评分；
+3) 评分词是辅助证据，命中可加分，但不能替代主题语义；
+4) 若只出现个别词但语义无关，应给低分。
+主题名称: ${input.keyword.name}
+主题描述: ${input.keyword.description ?? ""}
+召回词: ${(input.keyword.includes ?? []).join(", ")}
+评分词: ${(input.keyword.synonyms ?? []).join(", ")}
+排除词: ${(input.keyword.excludes ?? []).join(", ")}
+内容:
+${input.contentText.slice(0, 8000)}`
+  );
+  const result = await llmGateway.json<{ score: number; reason: string }>(
+    "subject-score",
+    {
+      prompt: redact(prompt),
+      schema: SubjectScoreSchema,
+      temperature: 0.1,
+      metadata: { keywordId: input.keyword.id },
+    }
+  );
+  return {
+    score: roundScore(Math.min(1, Math.max(0, result.score))),
+    reason: result.reason.trim().slice(0, 200),
+  };
+}
+
+function roundScore(score: number): number {
+  return Math.round(score * 10000) / 10000;
+}
+
 async function summarizeWithRetry(
   item: CleanItem,
   keywords: string,
@@ -1714,12 +2159,15 @@ function detectSearchProvider(
 
 function buildSearchRequest(
   source: SearchEngineSource,
-  provider: SearchProvider
+  provider: SearchProvider,
+  objectiveOverride?: string
 ): SearchRequestConfig {
   const search = source.search;
   const options = asObject(search?.options);
   const objective =
-    (search as unknown as { objective?: string })?.objective ?? "";
+    objectiveOverride ??
+    (search as unknown as { objective?: string })?.objective ??
+    "";
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
   };

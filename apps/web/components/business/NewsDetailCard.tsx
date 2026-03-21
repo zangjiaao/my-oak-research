@@ -13,7 +13,6 @@ import ReactMarkdown from "react-markdown";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
@@ -29,6 +28,7 @@ const NewsDetailCard = ({
   audios,
   files,
   rawContent,
+  subjectMatch,
   className,
   bookmarked,
   onBookmarkToggle,
@@ -46,6 +46,16 @@ const NewsDetailCard = ({
   audios?: string[];
   files?: string[];
   rawContent?: Record<string, unknown>;
+  subjectMatch?: {
+    subjectId: string;
+    score: number | null;
+    ruleScore: number | null;
+    aiScore: number | null;
+    matchSource: "QUERY" | "GATHER" | "AI" | "FUSED";
+    matchedIncludes: string[];
+    matchedExcludes: string[];
+    reason: string | null;
+  };
   className?: string;
   bookmarked?: boolean;
   onBookmarkToggle?: () => void;
@@ -55,11 +65,11 @@ const NewsDetailCard = ({
   return (
     <Card
       className={cn(
-        "h-full border-border/80 bg-card/95 shadow-sm backdrop-blur-sm flex flex-col",
+        "h-full border-border/80 bg-card/95 shadow-sm backdrop-blur-sm flex flex-col gap-0 py-0",
         className
       )}
     >
-      <CardHeader className="flex-shrink-0 space-y-2.5 px-6 pt-4 pb-3 lg:px-8 lg:pt-5 lg:pb-4">
+      <CardHeader className="flex-shrink-0 space-y-2 px-6 pt-4 pb-1 lg:px-8 lg:pt-5 lg:pb-2">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex flex-wrap items-center gap-2">
             {source ? <Badge variant="secondary">{source}</Badge> : null}
@@ -68,6 +78,39 @@ const NewsDetailCard = ({
               <Badge variant="outline">
                 时间: {new Date(publishedAt).toLocaleString()}
               </Badge>
+            ) : null}
+            {subjectMatch ? (
+              <>
+                <Badge variant="secondary">
+                  相关度:{" "}
+                  {typeof subjectMatch.score === "number"
+                    ? subjectMatch.score.toFixed(2)
+                    : "N/A"}
+                </Badge>
+                <Badge variant="outline">{subjectMatch.matchSource}</Badge>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Badge variant="outline" className="cursor-help">
+                      Subject {subjectMatch.subjectId.slice(0, 8)}
+                    </Badge>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="max-w-xs space-y-1 text-xs">
+                    <p>
+                      includes:{" "}
+                      {subjectMatch.matchedIncludes.length
+                        ? subjectMatch.matchedIncludes.join(", ")
+                        : "-"}
+                    </p>
+                    <p>
+                      excludes:{" "}
+                      {subjectMatch.matchedExcludes.length
+                        ? subjectMatch.matchedExcludes.join(", ")
+                        : "-"}
+                    </p>
+                    {subjectMatch.reason ? <p>reason: {subjectMatch.reason}</p> : null}
+                  </TooltipContent>
+                </Tooltip>
+              </>
             ) : null}
           </div>
           <div className="flex items-center gap-1">
@@ -116,21 +159,21 @@ const NewsDetailCard = ({
           {summary || title || "News Summary"}
         </p>
       </CardHeader>
-      <Separator />
-      <CardContent className="flex-1 min-h-0 overflow-y-auto scrollbar-hide px-6 py-4 lg:px-8">
-        <Tabs defaultValue="content" className="h-full">
-          <TabsList className="w-full justify-start bg-muted/70 p-1">
-            <TabsTrigger value="content">正文</TabsTrigger>
-            <TabsTrigger value="media">媒体</TabsTrigger>
-            <TabsTrigger value="links">链接</TabsTrigger>
-            <TabsTrigger value="raw">原始</TabsTrigger>
-          </TabsList>
-          <TabsContent value="content" className="pt-4">
-            <article className="prose prose-slate max-w-3xl text-[15px] leading-7 text-foreground/90 prose-p:my-0 prose-p:leading-7 prose-p:text-foreground/90 prose-headings:mb-3 prose-headings:mt-5 prose-headings:font-semibold prose-headings:text-foreground prose-li:my-1 prose-li:text-foreground/90 prose-strong:text-foreground prose-a:text-primary prose-a:no-underline hover:prose-a:underline">
-              <ReactMarkdown>{markdown}</ReactMarkdown>
-            </article>
-          </TabsContent>
-          <TabsContent value="media" className="pt-5">
+      <CardContent className="flex-1 min-h-0 overflow-y-auto scrollbar-hide px-6 pb-4 pt-2 lg:px-8">
+        <Tabs defaultValue="content" className="h-full gap-2">
+          <div className="mx-auto flex h-full w-full max-w-4xl flex-col">
+            <TabsList className="w-full justify-start bg-muted/70 p-1">
+              <TabsTrigger value="content">正文</TabsTrigger>
+              <TabsTrigger value="media">媒体</TabsTrigger>
+              <TabsTrigger value="links">链接</TabsTrigger>
+              <TabsTrigger value="raw">原始</TabsTrigger>
+            </TabsList>
+            <TabsContent value="content" className="mt-3">
+              <article className="prose prose-slate max-w-none text-[15px] leading-7 text-foreground/90 prose-p:my-0 prose-p:leading-7 prose-p:text-foreground/90 prose-headings:mb-3 prose-headings:mt-5 prose-headings:font-semibold prose-headings:text-foreground prose-li:my-1 prose-li:text-foreground/90 prose-strong:text-foreground prose-a:text-primary prose-a:no-underline hover:prose-a:underline">
+                <ReactMarkdown>{markdown}</ReactMarkdown>
+              </article>
+            </TabsContent>
+            <TabsContent value="media" className="mt-3">
             {images && images.length > 0 ? (
               <div className="mb-6 rounded-xl border border-border/70 bg-muted/20 p-4">
                 <div className="mb-3 flex items-center gap-2 text-sm font-medium">
@@ -201,8 +244,8 @@ const NewsDetailCard = ({
             {!images?.length && !audios?.length && !files?.length ? (
               <p className="text-sm text-muted-foreground">暂无媒体内容</p>
             ) : null}
-          </TabsContent>
-          <TabsContent value="links" className="pt-5">
+            </TabsContent>
+            <TabsContent value="links" className="mt-3">
             {links && links.length > 0 ? (
               <div className="mb-6 rounded-xl border border-border/70 bg-muted/20 p-4">
                 <div className="mb-3 flex items-center gap-2 text-sm font-medium">
@@ -230,12 +273,13 @@ const NewsDetailCard = ({
             ) : (
               <p className="text-sm text-muted-foreground">暂无链接</p>
             )}
-          </TabsContent>
-          <TabsContent value="raw" className="pt-5">
-            <pre className="max-h-[22rem] overflow-auto rounded-lg border border-border/70 bg-muted/20 p-4 text-xs leading-5">
-              {JSON.stringify(rawContent ?? {}, null, 2)}
-            </pre>
-          </TabsContent>
+            </TabsContent>
+            <TabsContent value="raw" className="mt-3">
+              <pre className="max-h-[22rem] overflow-auto rounded-lg border border-border/70 bg-muted/20 p-4 text-xs leading-5">
+                {JSON.stringify(rawContent ?? {}, null, 2)}
+              </pre>
+            </TabsContent>
+          </div>
         </Tabs>
       </CardContent>
     </Card>

@@ -60,6 +60,16 @@ export type ContentItem = {
     relatedKey: string;
   };
   rawRecordContent?: Record<string, unknown>;
+  subjectMatches?: Array<{
+    subjectId: string;
+    ruleScore: number | null;
+    aiScore: number | null;
+    score: number | null;
+    matchedIncludes: string[];
+    matchedExcludes: string[];
+    matchSource: "QUERY" | "GATHER" | "AI" | "FUSED";
+    reason: string | null;
+  }>;
 };
 
 type FollowContentFilters = {
@@ -67,6 +77,20 @@ type FollowContentFilters = {
   search?: string;
   from?: string;
   to?: string;
+  subjectId?: string;
+  minMatchScore?: string;
+  matchSource?: "QUERY" | "GATHER" | "AI" | "FUSED";
+  sort?: "time" | "matchScore";
+};
+
+type SubjectOption = {
+  id: string;
+  name: string;
+};
+
+type FollowContentResponse = {
+  items: ContentItem[];
+  nextCursor: string | null;
 };
 
 type FollowContentContextValue = {
@@ -81,12 +105,21 @@ type FollowContentContextValue = {
     month: string;
     day: string;
     search: string;
+    subjectId: string;
+    minMatchScore: string;
+    matchSource: string;
+    sort: "time" | "matchScore";
   };
+  subjectOptions: SubjectOption[];
   setPlatform: (val: string) => void;
   setYear: (val: string) => void;
   setMonth: (val: string) => void;
   setDay: (val: string) => void;
   setSearch: (val: string) => void;
+  setSubjectId: (val: string) => void;
+  setMinMatchScore: (val: string) => void;
+  setMatchSource: (val: string) => void;
+  setSort: (val: "time" | "matchScore") => void;
 };
 
 const FollowContentContext = createContext<
@@ -135,7 +168,20 @@ const fetchContents = async (filters: FollowContentFilters) => {
   if (filters.to) {
     params.set("to", filters.to);
   }
+  if (filters.subjectId) {
+    params.set("subjectId", filters.subjectId);
+  }
+  if (filters.minMatchScore) {
+    params.set("minMatchScore", filters.minMatchScore);
+  }
+  if (filters.matchSource) {
+    params.set("matchSource", filters.matchSource);
+  }
+  if (filters.sort) {
+    params.set("sort", filters.sort);
+  }
 
+  params.set("includeSubjectMatches", "true");
   params.set("limit", "30");
   const url = `/api/focus-bulletin/content${
     params.toString() ? `?${params.toString()}` : ""
@@ -167,10 +213,33 @@ export const FollowContentProvider = ({
   const [month, setMonth] = useState("");
   const [day, setDay] = useState("");
   const [search, setSearch] = useState("");
+  const [subjectId, setSubjectId] = useState("");
+  const [minMatchScore, setMinMatchScore] = useState("");
+  const [matchSource, setMatchSource] = useState("");
+  const [sort, setSort] = useState<"time" | "matchScore">("time");
   const [selectedContentId, setSelectedContentId] = useState<string | null>(
     null
   );
   const queryClient = useQueryClient();
+  const { data: subjectOptionsData } = useQuery({
+    queryKey: ["keywords", "subject-options"],
+    queryFn: async (): Promise<SubjectOption[]> => {
+      const response = await fetch("/api/follow/keywords?pageSize=200", {
+        cache: "no-store",
+      });
+      if (!response.ok) {
+        throw new Error("Can not fetch subjects");
+      }
+      const data = await response.json();
+      const items = Array.isArray(data?.items) ? data.items : [];
+      return items
+        .map((item: { id?: string; name?: string }) => ({
+          id: String(item.id ?? ""),
+          name: String(item.name ?? ""),
+        }))
+        .filter((item: SubjectOption) => Boolean(item.id && item.name));
+    },
+  });
 
   const { from, to } = useMemo(
     () => buildDateRange(year, month, day),
@@ -178,11 +247,23 @@ export const FollowContentProvider = ({
   );
 
   const queryFilters = useMemo(
-    () => ({ platform, search, from, to }),
-    [platform, search, from, to]
+    () => ({
+      platform,
+      search,
+      from,
+      to,
+      subjectId,
+      minMatchScore,
+      matchSource:
+        matchSource && matchSource !== "__all__"
+          ? (matchSource as "QUERY" | "GATHER" | "AI" | "FUSED")
+          : undefined,
+      sort,
+    }),
+    [platform, search, from, to, subjectId, minMatchScore, matchSource, sort]
   );
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error } = useQuery<FollowContentResponse>({
     queryKey: ["follow-content", queryFilters],
     queryFn: () => fetchContents(queryFilters),
     placeholderData: (prev) => prev,
@@ -216,10 +297,28 @@ export const FollowContentProvider = ({
     };
   }, [queryClient]);
 
-  const contents: ContentItem[] = useMemo(
-    () => data?.items ?? [],
-    [data?.items]
-  );
+  const contents: ContentItem[] = useMemo(() => {
+    const items: ContentItem[] = data?.items ?? [];
+    if (sort !== "matchScore") {
+      return items;
+    }
+    return [...items].sort((left, right) => {
+      const leftScore =
+        left.subjectMatches?.find((match) =>
+          subjectId ? match.subjectId === subjectId : true
+        )?.score ?? -1;
+      const rightScore =
+        right.subjectMatches?.find((match) =>
+          subjectId ? match.subjectId === subjectId : true
+        )?.score ?? -1;
+      if (leftScore !== rightScore) {
+        return rightScore - leftScore;
+      }
+      const leftTime = new Date(left.detailView?.publishedAt ?? left.time).getTime();
+      const rightTime = new Date(right.detailView?.publishedAt ?? right.time).getTime();
+      return rightTime - leftTime;
+    });
+  }, [data?.items, sort, subjectId]);
 
   useEffect(() => {
     if (isLoading) {
@@ -254,12 +353,27 @@ export const FollowContentProvider = ({
       isLoading,
       error: error ?? null,
       selectContent,
-      filters: { platform, year, month, day, search },
+      subjectOptions: subjectOptionsData ?? [],
+      filters: {
+        platform,
+        year,
+        month,
+        day,
+        search,
+        subjectId,
+        minMatchScore,
+        matchSource,
+        sort,
+      },
       setPlatform,
       setYear,
       setMonth,
       setDay,
       setSearch,
+      setSubjectId,
+      setMinMatchScore,
+      setMatchSource,
+      setSort,
     }),
     [
       contents,
@@ -267,11 +381,16 @@ export const FollowContentProvider = ({
       isLoading,
       error,
       selectContent,
+      subjectOptionsData,
       platform,
       year,
       month,
       day,
       search,
+      subjectId,
+      minMatchScore,
+      matchSource,
+      sort,
     ]
   );
 
