@@ -551,6 +551,11 @@ async function fetchBySources(
             limitedCount: recallQueries.length,
             limit: recallQueryLimit,
           });
+          await publishTaskEvent(runId, {
+            type: "fetch-recall-limit",
+            message: `召回检索词触发系统限制：${rawRecallQueries.length} -> ${recallQueries.length}（limit=${recallQueryLimit}）`,
+            sourceId: source.id,
+          });
         }
         const objectiveFallback = Array.from(
           new Set(

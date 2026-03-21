@@ -10,6 +10,9 @@ import { randomUUID } from "node:crypto";
 
 const DEFAULT_DERIVE_LANGUAGES = ["zh", "en"] as const;
 const DEFAULT_RECALL_SOFT_LIMIT = 64;
+const DEFAULT_SCORING_SOFT_LIMIT = 120;
+const DEFAULT_EXCLUSION_SOFT_LIMIT = 80;
+const DEFAULT_QUERY_PER_LANGUAGE_LIMIT = 2;
 const DEFAULT_SEARCH_ENGINE = "auto";
 
 type SearchProvider = "anspire" | "tavily" | "parallel";
@@ -72,6 +75,16 @@ const AtomicTermResultSchema = z.object({
 });
 const TranslationResultSchema = z.object({
   terms: z.array(z.string()).default([]),
+});
+const MultilingualSeedQuerySchema = z.object({
+  queries: z
+    .array(
+      z.object({
+        language: z.string().min(1),
+        query: z.string().min(1),
+      })
+    )
+    .default([]),
 });
 
 function normalizeTerms(values: string[]): string[] {
@@ -170,6 +183,47 @@ function resolveRecallSoftLimit(rawBudget?: number): number {
   return DEFAULT_RECALL_SOFT_LIMIT;
 }
 
+function resolvePositiveEnvLimit(
+  envKey: string,
+  fallback: number,
+  rawOverride?: number
+): number {
+  if (
+    typeof rawOverride === "number" &&
+    Number.isFinite(rawOverride) &&
+    rawOverride > 0
+  ) {
+    return Math.floor(rawOverride);
+  }
+  const envRaw = process.env[envKey];
+  const envParsed = envRaw ? Number(envRaw) : NaN;
+  if (Number.isFinite(envParsed) && envParsed > 0) {
+    return Math.floor(envParsed);
+  }
+  return fallback;
+}
+
+function resolveScoringSoftLimit(): number {
+  return resolvePositiveEnvLimit(
+    "WEB_DERIVE_SCORING_SOFT_LIMIT",
+    DEFAULT_SCORING_SOFT_LIMIT
+  );
+}
+
+function resolveExclusionSoftLimit(): number {
+  return resolvePositiveEnvLimit(
+    "WEB_DERIVE_EXCLUSION_SOFT_LIMIT",
+    DEFAULT_EXCLUSION_SOFT_LIMIT
+  );
+}
+
+function resolveQueryPerLanguageLimit(): number {
+  return resolvePositiveEnvLimit(
+    "WEB_DERIVE_QUERY_PER_LANGUAGE_LIMIT",
+    DEFAULT_QUERY_PER_LANGUAGE_LIMIT
+  );
+}
+
 function isProviderConfigured(provider: SearchProvider): boolean {
   if (provider === "anspire") return Boolean(process.env.ANSPIRE_API_KEY);
   if (provider === "tavily") return Boolean(process.env.TAVILY_API_KEY);
@@ -254,7 +308,7 @@ Return ONLY JSON:
     });
     const primaryNoun = normalizeTerms([response.primaryNoun])[0];
     const secondaryNouns = normalizeTerms(response.secondaryNouns ?? []).slice(0, 2);
-    const searchQueries = normalizeTerms(response.searchQueries ?? []).slice(0, 4);
+    const searchQueries = normalizeTerms(response.searchQueries ?? []);
     if (primaryNoun) {
       return {
         primaryNoun,
@@ -283,6 +337,118 @@ Return ONLY JSON:
     ...fallback,
     searchQueries: [],
   };
+}
+
+async function buildMultilingualSeedQueries(input: {
+  name: string;
+  description?: string | null;
+  requestId: string;
+  primaryNoun: string;
+  secondaryNouns: string[];
+  topicTerms: string[];
+  languages: string[];
+  queryPerLanguageLimit: number;
+}): Promise<{ seedQueries: string[]; byLanguage: Record<string, string[]> }> {
+  const languages = normalizeTerms(input.languages);
+  if (languages.length === 0) {
+    return { seedQueries: [], byLanguage: {} };
+  }
+
+  const fallbackQueries = buildSeedQueries({
+    primaryNoun: input.primaryNoun,
+    secondaryNouns: input.secondaryNouns,
+    searchQueries: [],
+    topicTerms: input.topicTerms,
+  });
+  const prompt = `
+Generate multilingual web search queries for keyword calibration.
+Topic name: ${input.name}
+Description: ${input.description ?? "N/A"}
+Primary noun: ${input.primaryNoun}
+Secondary nouns: ${input.secondaryNouns.join(", ")}
+Topic tags: ${input.topicTerms.join(", ") || "none"}
+Target languages: ${languages.join(", ")}
+
+Rules:
+- Produce up to ${input.queryPerLanguageLimit} queries per language.
+- Keep each query concise and searchable.
+- Keep product/entity tokens unchanged when needed (e.g. qmd, mem0, bm25).
+- Focus on latest investigation signals.
+- Do not output explanations.
+
+Return ONLY JSON:
+{
+  "queries": [
+    { "language": "zh", "query": "..." },
+    { "language": "en", "query": "..." }
+  ]
+}
+`;
+
+  try {
+    const response = await llmGateway.json<
+      z.infer<typeof MultilingualSeedQuerySchema>
+    >("keyword-multilingual-seed-queries", {
+      prompt,
+      schema: MultilingualSeedQuerySchema,
+      temperature: 0.2,
+      metadata: { requestId: input.requestId },
+    });
+    writeWebDeriveIoLog({
+      event: "derive-llm-request-response",
+      requestId: input.requestId,
+      request: {
+        task: "keyword-multilingual-seed-queries",
+        prompt,
+        temperature: 0.2,
+      },
+      response,
+    });
+
+    const byLanguage: Record<string, string[]> = {};
+    for (const lang of languages) {
+      byLanguage[lang] = [];
+    }
+    for (const item of response.queries ?? []) {
+      const language = String(item.language ?? "").trim().toLowerCase();
+      const query = normalizeTerms([item.query ?? ""])[0];
+      if (!language || !query) continue;
+      if (!languages.includes(language)) continue;
+      const bucket = byLanguage[language] ?? [];
+      if (bucket.length >= input.queryPerLanguageLimit) continue;
+      if (!bucket.includes(query)) {
+        bucket.push(query);
+      }
+      byLanguage[language] = bucket;
+    }
+
+    const flattened = normalizeTerms(
+      languages.flatMap((language) => byLanguage[language] ?? [])
+    );
+    return {
+      seedQueries: normalizeTerms([...fallbackQueries, ...flattened]),
+      byLanguage,
+    };
+  } catch (error) {
+    logger.warn("keyword multilingual seed queries failed", {
+      requestId: input.requestId,
+      error: logger.normalizeError(error),
+    });
+    writeWebDeriveIoLog({
+      event: "derive-llm-request-response",
+      requestId: input.requestId,
+      request: {
+        task: "keyword-multilingual-seed-queries",
+        prompt,
+        temperature: 0.2,
+      },
+      error: error instanceof Error ? error.message : "unknown error",
+    });
+    return {
+      seedQueries: fallbackQueries,
+      byLanguage: {},
+    };
+  }
 }
 
 function enforceTopicTermsInNounPlan(
@@ -327,7 +493,7 @@ function buildSeedQueries(input: {
       .map((topic) => `${input.primaryNoun} ${topic}`)
   );
   if (fromModel.length > 0) {
-    return normalizeTerms([...topicAnchored, ...fromModel]).slice(0, 4);
+    return normalizeTerms([...topicAnchored, ...fromModel]);
   }
   const base = normalizeTerms([
     ...input.topicTerms,
@@ -343,7 +509,7 @@ function buildSeedQueries(input: {
     combined.push(`${base[0]} ${base[2]}`);
   }
   combined.push(...base);
-  return normalizeTerms([...topicAnchored, ...combined]).slice(0, 4);
+  return normalizeTerms([...topicAnchored, ...combined]);
 }
 
 function toFreshnessQuery(query: string): string {
@@ -940,7 +1106,6 @@ async function backfillTermsByLanguage(input: {
   terms: string[];
   languages: string[];
   atomicOnly: boolean;
-  maxTerms: number;
 }): Promise<{
   terms: string[];
   addedCount: number;
@@ -975,7 +1140,7 @@ Rules:
 - Output terms only in missing target languages.
 - Do not add explanations.
 ${input.atomicOnly ? "- Keep each term atomic (single token where possible)." : "- Keep terms searchable and concise."}
-- Max ${input.maxTerms} output terms.
+- Keep output compact and avoid noisy generic terms.
 
 Return ONLY JSON:
 {
@@ -1007,10 +1172,7 @@ Return ONLY JSON:
     const normalized = normalizeTerms(translated.terms ?? []).filter((term) =>
       missingLanguages.some((language) => hasLanguageCoverage(term, language))
     );
-    const merged = normalizeTerms([...input.terms, ...normalized]).slice(
-      0,
-      input.maxTerms
-    );
+    const merged = normalizeTerms([...input.terms, ...normalized]);
     return {
       terms: merged,
       addedCount: Math.max(0, merged.length - input.terms.length),
@@ -1068,6 +1230,9 @@ export async function POST(req: Request) {
       calibration,
     } = parsed.data;
     const recallSoftLimit = resolveRecallSoftLimit(recallBudget);
+    const scoringSoftLimit = resolveScoringSoftLimit();
+    const exclusionSoftLimit = resolveExclusionSoftLimit();
+    const queryPerLanguageLimit = resolveQueryPerLanguageLimit();
     const targetLanguages = mergeLanguagePreferences({
       languages,
       persistedLanguages,
@@ -1084,12 +1249,26 @@ export async function POST(req: Request) {
       nounPlanRaw,
       inputTopicTerms
     );
-    const seedQueries = buildSeedQueries({
+    const baseSeedQueries = buildSeedQueries({
       primaryNoun: nounPlan.primaryNoun,
       secondaryNouns: nounPlan.secondaryNouns,
       searchQueries: nounPlan.searchQueries,
       topicTerms: inputTopicTerms,
     });
+    const multilingualSeed = await buildMultilingualSeedQueries({
+      name,
+      description,
+      requestId,
+      primaryNoun: nounPlan.primaryNoun,
+      secondaryNouns: nounPlan.secondaryNouns,
+      topicTerms: inputTopicTerms,
+      languages: targetLanguages,
+      queryPerLanguageLimit,
+    });
+    const seedQueries = normalizeTerms([
+      ...baseSeedQueries,
+      ...multilingualSeed.seedQueries,
+    ]);
     const providerOrder = resolveSearchProviderOrder(process.env.SEARCH_ENGINE);
     const calibrationResult =
       calibration === false
@@ -1200,7 +1379,6 @@ export async function POST(req: Request) {
       terms: includesFiltered.filtered,
       languages: targetLanguages,
       atomicOnly: false,
-      maxTerms: Math.max(256, includesFiltered.filtered.length + 64),
     });
     const synonymsBackfill = await backfillTermsByLanguage({
       requestId,
@@ -1208,7 +1386,6 @@ export async function POST(req: Request) {
       terms: synonymsFiltered.filtered,
       languages: targetLanguages,
       atomicOnly: true,
-      maxTerms: 60,
     });
     const excludesBackfill =
       excludesFiltered.filtered.length > 0
@@ -1218,7 +1395,6 @@ export async function POST(req: Request) {
             terms: excludesFiltered.filtered,
             languages: targetLanguages,
             atomicOnly: true,
-            maxTerms: 40,
           })
         : {
             terms: excludesFiltered.filtered,
@@ -1245,8 +1421,17 @@ export async function POST(req: Request) {
     const topicHitCountInSearch =
       calibrationResult.topicHitCount + hop2Result.topicHitCount;
     const recallOverSoftLimit = includesBackfill.terms.length > recallSoftLimit;
+    const scoringOverSoftLimit = synonymsBackfill.terms.length > scoringSoftLimit;
+    const exclusionOverSoftLimit =
+      excludesBackfill.terms.length > exclusionSoftLimit;
     const recallWarning = recallOverSoftLimit
       ? `Recall terms exceed soft limit (${includesBackfill.terms.length}/${recallSoftLimit}); downstream collection cost may increase.`
+      : null;
+    const scoringWarning = scoringOverSoftLimit
+      ? `Scoring terms exceed soft limit (${synonymsBackfill.terms.length}/${scoringSoftLimit}); scoring stability may degrade.`
+      : null;
+    const exclusionWarning = exclusionOverSoftLimit
+      ? `Exclusion terms exceed soft limit (${excludesBackfill.terms.length}/${exclusionSoftLimit}); review precision impact.`
       : null;
     const specificityPool = new Set(normalizeTerms(nounPlan.secondaryNouns));
     const specificTermCount = discoveredAtomicTerms.filter(
@@ -1278,6 +1463,10 @@ export async function POST(req: Request) {
       topicHintMissing,
       recallSoftLimit,
       recallOverSoftLimit,
+      scoringSoftLimit,
+      scoringOverSoftLimit,
+      exclusionSoftLimit,
+      exclusionOverSoftLimit,
     });
 
     const responsePayload = {
@@ -1293,6 +1482,9 @@ export async function POST(req: Request) {
         primaryNoun: nounPlan.primaryNoun,
         secondaryNouns: nounPlan.secondaryNouns,
         seedQueries,
+        seedQueriesByLanguage: multilingualSeed.byLanguage,
+        seedQueryCount: seedQueries.length,
+        queryPerLanguageLimit,
         queryDiagnostics,
         freshnessMode: "latest-first",
         calibrationDocCount: mergedDocs.length,
@@ -1300,6 +1492,14 @@ export async function POST(req: Request) {
         recallTermCount: includesBackfill.terms.length,
         recallOverSoftLimit,
         recallWarning,
+        scoringSoftLimit,
+        scoringTermCount: synonymsBackfill.terms.length,
+        scoringOverSoftLimit,
+        scoringWarning,
+        exclusionSoftLimit,
+        exclusionTermCount: excludesBackfill.terms.length,
+        exclusionOverSoftLimit,
+        exclusionWarning,
         extractionMode:
           mergedDocs.length > 0 ? "web_calibrated" : "fallback",
         topicEnforced,

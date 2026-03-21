@@ -37,6 +37,14 @@ type DeriveMeta = {
   recallTermCount?: number;
   recallOverSoftLimit?: boolean;
   recallWarning?: string | null;
+  scoringSoftLimit?: number;
+  scoringTermCount?: number;
+  scoringOverSoftLimit?: boolean;
+  scoringWarning?: string | null;
+  exclusionSoftLimit?: number;
+  exclusionTermCount?: number;
+  exclusionOverSoftLimit?: boolean;
+  exclusionWarning?: string | null;
 };
 
 const TERM_SPLIT_RE = /[,\n\r，、;；\t]+/;
@@ -205,11 +213,13 @@ const EditKeywordDialog = ({
       if (!enableAiExpand) {
         setValue("enableAiExpand", true);
       }
-      if (data.meta?.recallOverSoftLimit) {
-        toast.warning(
-          data.meta?.recallWarning ??
-            `Recall terms are high (${data.meta?.recallTermCount ?? "?"}/${data.meta?.recallSoftLimit ?? "?"}).`
-        );
+      const warnings = [
+        data.meta?.recallOverSoftLimit ? data.meta?.recallWarning : null,
+        data.meta?.scoringOverSoftLimit ? data.meta?.scoringWarning : null,
+        data.meta?.exclusionOverSoftLimit ? data.meta?.exclusionWarning : null,
+      ].filter((item): item is string => Boolean(item));
+      for (const warning of warnings) {
+        toast.warning(warning);
       }
       toast.success(
         `Derived +${data.includes?.length ?? 0} recall, +${data.synonyms?.length ?? 0} scoring, +${data.excludes?.length ?? 0} exclusion terms`
@@ -322,6 +332,18 @@ const EditKeywordDialog = ({
           <p className="text-xs text-amber-600">
             {deriveMeta.recallWarning ??
               `召回词较多（${deriveMeta.recallTermCount ?? "?"}/${deriveMeta.recallSoftLimit ?? "?"}），后续检索成本可能上升。`}
+          </p>
+        ) : null}
+        {deriveMeta?.scoringOverSoftLimit ? (
+          <p className="text-xs text-amber-600">
+            {deriveMeta.scoringWarning ??
+              `评分词较多（${deriveMeta.scoringTermCount ?? "?"}/${deriveMeta.scoringSoftLimit ?? "?"}），评分稳定性可能下降。`}
+          </p>
+        ) : null}
+        {deriveMeta?.exclusionOverSoftLimit ? (
+          <p className="text-xs text-amber-600">
+            {deriveMeta.exclusionWarning ??
+              `排除词较多（${deriveMeta.exclusionTermCount ?? "?"}/${deriveMeta.exclusionSoftLimit ?? "?"}），请检查是否过度过滤。`}
           </p>
         ) : null}
         <ErrorMessage>{errors.includes?.message}</ErrorMessage>
