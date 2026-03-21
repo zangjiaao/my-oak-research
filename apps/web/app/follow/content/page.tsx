@@ -169,6 +169,7 @@ const FollowContent = () => {
                 audios={content.detailView?.audios ?? []}
                 files={content.detailView?.files ?? []}
                 rawContent={content.rawRecordContent}
+                subjectMatch={content.subjectMatches?.[0]}
                 bookmarked={isBookmarked(content.id)}
                 onBookmarkToggle={() => {
                   const currentlyBookmarked = isBookmarked(content.id);

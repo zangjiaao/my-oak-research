@@ -60,6 +60,16 @@ export type ContentItem = {
     relatedKey: string;
   };
   rawRecordContent?: Record<string, unknown>;
+  subjectMatches?: Array<{
+    subjectId: string;
+    ruleScore: number | null;
+    aiScore: number | null;
+    score: number | null;
+    matchedIncludes: string[];
+    matchedExcludes: string[];
+    matchSource: "QUERY" | "GATHER" | "AI" | "FUSED";
+    reason: string | null;
+  }>;
 };
 
 type FollowContentFilters = {
@@ -136,6 +146,7 @@ const fetchContents = async (filters: FollowContentFilters) => {
     params.set("to", filters.to);
   }
 
+  params.set("includeSubjectMatches", "true");
   params.set("limit", "30");
   const url = `/api/focus-bulletin/content${
     params.toString() ? `?${params.toString()}` : ""

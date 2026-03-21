@@ -5,6 +5,9 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { NewsCard } from "@/components/business";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Sparkles } from "lucide-react";
 import { useFollowContent } from "./context";
 import { useToggleFavorite, useFavorites } from "@/hooks/useFavorites";
 
@@ -74,6 +77,11 @@ export const ContentList = () => {
         {contents.map((content) => {
           const isActive = selectedContent?.id === content.id;
           const bookmarked = isBookmarked(content.id);
+          const topMatch = content.subjectMatches?.[0];
+          const topScore =
+            typeof topMatch?.score === "number"
+              ? topMatch.score.toFixed(2)
+              : null;
           return (
             <div
               key={content.id}
@@ -102,6 +110,38 @@ export const ContentList = () => {
                   });
                 }}
               />
+              {topMatch ? (
+                <div className="mt-2 flex items-center gap-2 px-2">
+                  <Badge variant="secondary" className="gap-1.5">
+                    <Sparkles className="size-3.5" />
+                    相关度 {topScore ?? "N/A"}
+                  </Badge>
+                  <Badge variant="outline">{topMatch.matchSource}</Badge>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Badge variant="outline" className="cursor-help">
+                        Subject {topMatch.subjectId.slice(0, 8)}
+                      </Badge>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="max-w-xs text-xs">
+                      <p>
+                        includes:
+                        {" "}
+                        {topMatch.matchedIncludes.length
+                          ? topMatch.matchedIncludes.join(", ")
+                          : "-"}
+                      </p>
+                      <p>
+                        excludes:
+                        {" "}
+                        {topMatch.matchedExcludes.length
+                          ? topMatch.matchedExcludes.join(", ")
+                          : "-"}
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+              ) : null}
             </div>
           );
         })}

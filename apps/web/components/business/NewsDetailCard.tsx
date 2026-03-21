@@ -29,6 +29,7 @@ const NewsDetailCard = ({
   audios,
   files,
   rawContent,
+  subjectMatch,
   className,
   bookmarked,
   onBookmarkToggle,
@@ -46,6 +47,16 @@ const NewsDetailCard = ({
   audios?: string[];
   files?: string[];
   rawContent?: Record<string, unknown>;
+  subjectMatch?: {
+    subjectId: string;
+    score: number | null;
+    ruleScore: number | null;
+    aiScore: number | null;
+    matchSource: "QUERY" | "GATHER" | "AI" | "FUSED";
+    matchedIncludes: string[];
+    matchedExcludes: string[];
+    reason: string | null;
+  };
   className?: string;
   bookmarked?: boolean;
   onBookmarkToggle?: () => void;
@@ -68,6 +79,39 @@ const NewsDetailCard = ({
               <Badge variant="outline">
                 时间: {new Date(publishedAt).toLocaleString()}
               </Badge>
+            ) : null}
+            {subjectMatch ? (
+              <>
+                <Badge variant="secondary">
+                  相关度:{" "}
+                  {typeof subjectMatch.score === "number"
+                    ? subjectMatch.score.toFixed(2)
+                    : "N/A"}
+                </Badge>
+                <Badge variant="outline">{subjectMatch.matchSource}</Badge>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Badge variant="outline" className="cursor-help">
+                      Subject {subjectMatch.subjectId.slice(0, 8)}
+                    </Badge>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="max-w-xs space-y-1 text-xs">
+                    <p>
+                      includes:{" "}
+                      {subjectMatch.matchedIncludes.length
+                        ? subjectMatch.matchedIncludes.join(", ")
+                        : "-"}
+                    </p>
+                    <p>
+                      excludes:{" "}
+                      {subjectMatch.matchedExcludes.length
+                        ? subjectMatch.matchedExcludes.join(", ")
+                        : "-"}
+                    </p>
+                    {subjectMatch.reason ? <p>reason: {subjectMatch.reason}</p> : null}
+                  </TooltipContent>
+                </Tooltip>
+              </>
             ) : null}
           </div>
           <div className="flex items-center gap-1">
