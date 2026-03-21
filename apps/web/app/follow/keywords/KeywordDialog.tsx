@@ -21,7 +21,6 @@ import { MultiSelect } from "@/components/common/multi-select";
 import { Button } from "@/components/ui/button";
 import { Sparkles, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
 type KeywordWithCategory = Prisma.KeywordGetPayload<{
@@ -213,24 +212,6 @@ const EditKeywordDialog = ({
     }
   };
 
-  const applyPreset = (preset: "recall" | "balanced" | "precision") => {
-    if (preset === "recall") {
-      setValue("includes", "openclaw\nmemory\nmem");
-      setValue("synonyms", "记忆模块\n长期记忆\nmemory architecture");
-      setValue("excludes", "");
-      return;
-    }
-    if (preset === "balanced") {
-      setValue("includes", "openclaw\nopenclaw memory");
-      setValue("synonyms", "记忆模块\n记忆策略\nmemory architecture");
-      setValue("excludes", "music\nsong");
-      return;
-    }
-    setValue("includes", "openclaw");
-    setValue("synonyms", "记忆模块\n长期记忆\ncontext memory\nmemory architecture");
-    setValue("excludes", "song\nlyrics");
-  };
-
   return (
     <SettingEditDialog
       props={{ open, onOpenChange: setOpen }}
@@ -252,40 +233,6 @@ const EditKeywordDialog = ({
       triggerButton={triggerButton}
       onSubmit={handleSubmit(onSubmit)}
     >
-      <Card className="border-border/70 bg-muted/20">
-        <CardContent className="space-y-3 px-4 py-3">
-          <p className="text-sm font-medium">主题词配置建议</p>
-          <p className="text-xs text-muted-foreground">
-            先用召回词尽量找全内容，再用评分词判断内容是否真正贴近主题。
-          </p>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => applyPreset("recall")}
-            >
-              偏召回
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => applyPreset("balanced")}
-            >
-              平衡
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => applyPreset("precision")}
-            >
-              偏精准
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
       <div className="grid gap-3">
         <Label htmlFor="keyword">Name</Label>
         <Input id="keyword" placeholder="Keyword Name" {...register("name")} />
