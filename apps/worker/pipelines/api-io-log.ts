@@ -20,6 +20,10 @@ type WorkerApiIoEntry = {
   provider: string;
   recallQuery?: string;
   recallQueryCount?: number;
+  queryOrigin?: "recall" | "objective_fallback";
+  rawRecallQueryCount?: number;
+  effectiveRecallQueryCount?: number;
+  skippedByRetryDedup?: boolean;
   url: string;
   method: string;
   statusCode: number;

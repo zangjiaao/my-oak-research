@@ -110,6 +110,7 @@ const SOCIAL_PLATFORM_DRIVER_SUPPORT: Record<string, readonly GatherSocialDriver
 const GATHER_OUTPUT_FIELD_RULE_TTL_MS = 5 * 60 * 1000;
 const gatherOutputFieldRuleCache = new Map<string, GatherOutputField>();
 let gatherOutputFieldRuleCacheExpireAt = 0;
+const runSearchSignatureCache = new Map<string, Set<string>>();
 
 function isWebSource(source: SourceWithRelations): source is WebSource {
   return source.type === SourceType.WEB;
@@ -117,6 +118,120 @@ function isWebSource(source: SourceWithRelations): source is WebSource {
 
 function isDarknetSource(source: SourceWithRelations): source is DarknetSource {
   return source.type === SourceType.DARKNET;
+}
+
+function stripNullBytes(value: string): string {
+  return value.replace(/\u0000/g, "");
+}
+
+function sanitizeJsonForDb(value: unknown): unknown {
+  if (value === null || value === undefined) {
+    return null;
+  }
+  if (typeof value === "string") {
+    return stripNullBytes(value);
+  }
+  if (typeof value === "number" || typeof value === "boolean") {
+    return value;
+  }
+  if (Array.isArray(value)) {
+    return value.map((item) => sanitizeJsonForDb(item));
+  }
+  if (typeof value === "object") {
+    const output: Record<string, unknown> = {};
+    for (const [key, item] of Object.entries(value as Record<string, unknown>)) {
+      output[key] = sanitizeJsonForDb(item);
+    }
+    return output;
+  }
+  return String(value);
+}
+
+function extractTopicAnchorsFromDescription(value?: string | null): string[] {
+  const text = String(value ?? "");
+  const matches = text.match(/#([a-zA-Z0-9][\w.-]{0,63})/g) ?? [];
+  return Array.from(
+    new Set(
+      matches.map((item) => item.slice(1).trim()).filter(Boolean)
+    )
+  );
+}
+
+function stripNullBytesNullable(value: string | null | undefined): string | null {
+  if (typeof value !== "string") return null;
+  return stripNullBytes(value);
+}
+
+function sanitizeObjectiveFallback(keywords: QueryKeyword[]): string {
+  const parts = keywords
+    .map((keyword) => {
+      const name = stripNullBytes(keyword.name ?? "").trim();
+      if (!name) return "";
+      const anchors = extractTopicAnchorsFromDescription(keyword.description)
+        .slice(0, 4)
+        .join(" ");
+      return [name, anchors]
+        .join(" ")
+        .replace(/[#]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+    })
+    .filter(Boolean);
+  return Array.from(new Set(parts)).join("; ").slice(0, 120);
+}
+
+function buildSearchSuccessSignature(input: {
+  sourceId: string;
+  provider: string;
+  recallQuery: string;
+}): string {
+  return [
+    input.sourceId.trim().toLowerCase(),
+    input.provider.trim().toLowerCase(),
+    input.recallQuery.trim().toLowerCase(),
+  ].join("|");
+}
+
+async function loadRunSearchSuccessSignatures(runId?: string): Promise<Set<string>> {
+  if (!runId) return new Set<string>();
+  const cached = runSearchSignatureCache.get(runId);
+  if (cached) return cached;
+  const row = await prisma.queryRun.findUnique({
+    where: { id: runId },
+    select: { meta: true },
+  });
+  const meta = asObject(row?.meta);
+  const existing = normalizeStringArray(meta.searchSuccessSignatures);
+  const set = new Set(existing);
+  runSearchSignatureCache.set(runId, set);
+  return set;
+}
+
+async function persistRunSearchSuccessSignatures(
+  runId: string,
+  signatures: Set<string>
+): Promise<void> {
+  const row = await prisma.queryRun.findUnique({
+    where: { id: runId },
+    select: { meta: true },
+  });
+  if (!row) return;
+  const currentMeta = asObject(row.meta);
+  const merged = Array.from(
+    new Set([
+      ...normalizeStringArray(currentMeta.searchSuccessSignatures),
+      ...Array.from(signatures),
+    ])
+  );
+  await prisma.queryRun.update({
+    where: { id: runId },
+    data: {
+      meta: {
+        ...currentMeta,
+        searchSuccessSignatures: merged,
+      },
+    },
+  });
 }
 
 export async function runFocusCollector(runId: string, queryId: string) {
@@ -297,34 +412,50 @@ export async function runFocusCollector(runId: string, queryId: string) {
       rawRecordContent: item.recordContent,
     });
 
+    const sanitizedTitle = stripNullBytes(contentTitle);
+    const sanitizedSummary = stripNullBytes(summary.summary);
+    const sanitizedMarkdown = stripNullBytes(item.markdown);
+    const sanitizedPlatform = stripNullBytes(item.platform);
+    const sanitizedUrl = item.url ? stripNullBytes(item.url) : undefined;
+    const sanitizedRecordContent = sanitizeJsonForDb(
+      normalizedRecordContent
+    ) as Prisma.InputJsonValue;
     const content = await prisma.content.create({
       data: {
-        title: contentTitle,
-        summary: summary.summary,
-        markdown: item.markdown,
-        platform: item.platform,
+        title: sanitizedTitle,
+        summary: sanitizedSummary,
+        markdown: sanitizedMarkdown,
+        platform: sanitizedPlatform,
         type: mapContentType(item.sourceType),
         time: contentTime,
-        url: item.url,
+        url: sanitizedUrl,
         meta: {
           queryId,
           runId,
-          sourceRequestId: item.sourceRequestId ?? null,
-          sourceFingerprint: item.fingerprint,
-          driver: item.driver,
-          matchedKeywords: item.matchedKeywords ?? [],
+          sourceRequestId: item.sourceRequestId
+            ? stripNullBytes(item.sourceRequestId)
+            : null,
+          sourceFingerprint: item.fingerprint
+            ? stripNullBytes(item.fingerprint)
+            : null,
+          driver: item.driver ? stripNullBytes(item.driver) : null,
+          matchedKeywords: (item.matchedKeywords ?? []).map((term) =>
+            stripNullBytes(term)
+          ),
           keywordMatchScore: item.keywordMatchScore ?? null,
-          recordId: normalizedRecordContent.relation.recordId,
-          recordType: normalizedRecordContent.relation.recordType,
-          recordTime: normalizedRecordContent.detailView.publishedAt,
-          recordContent: normalizedRecordContent as Prisma.InputJsonValue,
-          schemaVersion: normalizedRecordContent.schemaVersion,
+          recordId: stripNullBytesNullable(normalizedRecordContent.relation.recordId),
+          recordType: stripNullBytesNullable(normalizedRecordContent.relation.recordType),
+          recordTime: stripNullBytesNullable(normalizedRecordContent.detailView.publishedAt),
+          recordContent: sanitizedRecordContent,
+          schemaVersion: stripNullBytesNullable(normalizedRecordContent.schemaVersion),
           recordIndex: normalizedRecordContent.relation.recordIndex,
-          keywords: expandedKeywords,
+          keywords: expandedKeywords.map((keywordValue) =>
+            stripNullBytes(keywordValue)
+          ),
           summaryRelevance: summary.relevance,
-          sourceId: item.sourceId,
+          sourceId: stripNullBytes(item.sourceId),
           sourceType: item.sourceType,
-          intent: item.intent ?? null,
+          intent: item.intent ? stripNullBytes(item.intent) : null,
         },
       },
     });
@@ -435,7 +566,9 @@ function buildKeywordFilterTerms(
 
 function resolveKeywordStrategy(source: SourceWithRelations): KeywordStrategy {
   if (source.type === SourceType.SEARCH_ENGINE) {
-    return (source as SearchEngineSource).search?.keywordStrategy ?? KeywordStrategy.AUTO;
+    const configured =
+      (source as SearchEngineSource).search?.keywordStrategy ?? KeywordStrategy.AUTO;
+    return configured === KeywordStrategy.AUTO ? KeywordStrategy.HYBRID : configured;
   }
   if (source.type === SourceType.SOCIAL_MEDIA) {
     const socialSource = source as SocialMediaSource;
@@ -557,20 +690,7 @@ async function fetchBySources(
             sourceId: source.id,
           });
         }
-        const objectiveFallback = Array.from(
-          new Set(
-            keywords
-              .map((keyword) =>
-                [keyword.name, keyword.description ?? ""]
-                  .join(" ")
-                  .replace(/\s+/g, " ")
-                  .trim()
-              )
-              .filter(Boolean)
-          )
-        )
-          .join("; ")
-          .slice(0, 500);
+        const objectiveFallback = sanitizeObjectiveFallback(keywords);
         const fetched = await executeFetchDriver(
           source,
           driver,
@@ -904,10 +1024,17 @@ async function fetchSearchSource(
     source.search?.apiEndpoint,
     source.search?.options
   );
-  const searchQueries =
-    context?.recallQueries && context.recallQueries.length > 0
-      ? context.recallQueries
-      : [objective];
+  const searchQueries = Array.from(
+    new Set(
+      (
+        context?.recallQueries && context.recallQueries.length > 0
+          ? context.recallQueries
+          : [objective]
+      )
+        .map((query) => query.trim())
+        .filter(Boolean)
+    )
+  );
   if (!searchQueries.some((query) => query.trim().length > 0)) {
     logger.warn("search source skipped due empty query and objective", {
       sourceId: source.id,
@@ -921,8 +1048,59 @@ async function fetchSearchSource(
     return [];
   }
   const allItems: CleanItem[] = [];
+  const searchSuccessSignatures = await loadRunSearchSuccessSignatures(context?.runId);
   for (const recallQuery of searchQueries) {
-    const request = buildSearchRequest(source, provider, recallQuery);
+    const normalizedRecallQuery = recallQuery.trim();
+    if (!normalizedRecallQuery) continue;
+    const signature = buildSearchSuccessSignature({
+      sourceId: source.id,
+      provider,
+      recallQuery: normalizedRecallQuery,
+    });
+    if (searchSuccessSignatures.has(signature)) {
+      if (context?.runId) {
+        await publishTaskEvent(context.runId, {
+          type: "fetch-search-skip-retry-dup",
+          sourceId: source.id,
+          message: `跳过重复检索：${normalizedRecallQuery}`,
+        });
+      }
+      writeWorkerApiIoLog({
+        event: "search-request-response",
+        runId: context?.runId,
+        queryId: context?.queryId,
+        sourceId: source.id,
+        sourceName: source.name,
+        platform:
+          (
+            (source.search as unknown as { platform?: string | null })?.platform ??
+            "unknown"
+          ).toString(),
+        provider,
+        recallQuery: normalizedRecallQuery,
+        recallQueryCount: searchQueries.length,
+        queryOrigin:
+          context?.recallQueries && context.recallQueries.length > 0
+            ? "recall"
+            : "objective_fallback",
+        rawRecallQueryCount: context?.recallQueries?.length ?? 0,
+        effectiveRecallQueryCount: searchQueries.length,
+        skippedByRetryDedup: true,
+        url: source.search?.apiEndpoint ?? "",
+        method: "SKIP",
+        statusCode: 0,
+        request: {
+          headers: {},
+          body: null,
+        },
+        response: {
+          body: "",
+        },
+        parsedCount: 0,
+      });
+      continue;
+    }
+    const request = buildSearchRequest(source, provider, normalizedRecallQuery);
     if (!request.url) {
       return [
         {
@@ -955,8 +1133,15 @@ async function fetchSearchSource(
             "unknown"
           ).toString(),
         provider,
-        recallQuery,
+        recallQuery: normalizedRecallQuery,
         recallQueryCount: searchQueries.length,
+        queryOrigin:
+          context?.recallQueries && context.recallQueries.length > 0
+            ? "recall"
+            : "objective_fallback",
+        rawRecallQueryCount: context?.recallQueries?.length ?? 0,
+        effectiveRecallQueryCount: searchQueries.length,
+        skippedByRetryDedup: false,
         url: request.url,
         method: request.method,
         statusCode: response.statusCode,
@@ -970,6 +1155,10 @@ async function fetchSearchSource(
         parsedCount: parsedResult.items.length,
         requestId: parsedResult.requestId,
       });
+      searchSuccessSignatures.add(signature);
+      if (context?.runId) {
+        await persistRunSearchSuccessSignatures(context.runId, searchSuccessSignatures);
+      }
 
       allItems.push(
         ...parsedResult.items.map((item) => ({
@@ -997,8 +1186,15 @@ async function fetchSearchSource(
             "unknown"
           ).toString(),
         provider,
-        recallQuery,
+        recallQuery: normalizedRecallQuery,
         recallQueryCount: searchQueries.length,
+        queryOrigin:
+          context?.recallQueries && context.recallQueries.length > 0
+            ? "recall"
+            : "objective_fallback",
+        rawRecallQueryCount: context?.recallQueries?.length ?? 0,
+        effectiveRecallQueryCount: searchQueries.length,
+        skippedByRetryDedup: false,
         url: request.url,
         method: request.method,
         statusCode: -1,
