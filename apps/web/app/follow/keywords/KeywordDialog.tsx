@@ -27,6 +27,13 @@ import { Badge } from "@/components/ui/badge";
 type KeywordWithCategory = Prisma.KeywordGetPayload<{
   include: { category: true };
 }>;
+type DeriveMeta = {
+  searchProvider?: string | null;
+  degraded?: boolean;
+  reason?: string | null;
+  filteredByLanguageCount?: number;
+  usedTopicTerms?: string[];
+};
 
 const TERM_SPLIT_RE = /[,\n\r，、;；\t]+/;
 const DEFAULT_DERIVE_LANGUAGES = ["zh", "en"];
@@ -66,6 +73,7 @@ const EditKeywordDialog = ({
 }) => {
   const [open, setOpen] = useState(false);
   const [isDeriving, setIsDeriving] = useState(false);
+  const [deriveMeta, setDeriveMeta] = useState<DeriveMeta | null>(null);
 
   const mutation = useKeywordMutation({
     keywordId: keyword?.id,
@@ -160,6 +168,7 @@ const EditKeywordDialog = ({
       if (!response.ok) throw new Error("Failed to derive keywords");
 
       const data = await response.json();
+      setDeriveMeta(data.meta ?? null);
       const nextIncludes = mergeUniqueTerms(values.includes, data.includes ?? []);
       const nextSynonyms = mergeUniqueTerms(values.synonyms, data.synonyms ?? []);
       const nextExclusions = mergeUniqueTerms(values.excludes, data.excludes ?? []);
@@ -289,10 +298,13 @@ const EditKeywordDialog = ({
         <Label htmlFor="description">Description</Label>
         <Textarea
           id="description"
-          placeholder="Description"
+          placeholder="Description (you can mark topic anchors like #openclaw #qmd)"
           rows={3}
           {...register("description")}
         />
+        <p className="text-xs text-muted-foreground">
+          Tip: add `#topic` tags to lock first-round web search anchors.
+        </p>
         <ErrorMessage>{errors.description?.message}</ErrorMessage>
       </div>
       <div className="grid gap-3">
@@ -358,6 +370,22 @@ const EditKeywordDialog = ({
             <p className="text-sm text-muted-foreground">
               用于相关性打分，建议填写“主题证据词”（如功能、机制、上下文）。
             </p>
+            {deriveMeta ? (
+              <p className="text-xs text-muted-foreground">
+                {deriveMeta.degraded
+                  ? `Derived in fallback mode (${deriveMeta.reason ?? "unknown"}).`
+                  : `Calibrated by ${deriveMeta.searchProvider ?? "unknown provider"}.`}
+                {deriveMeta.filteredByLanguageCount
+                  ? ` Filtered ${deriveMeta.filteredByLanguageCount} terms by language.`
+                  : ""}
+                {Array.isArray(deriveMeta.usedTopicTerms) &&
+                deriveMeta.usedTopicTerms.length > 0
+                  ? ` Topic terms: ${deriveMeta.usedTopicTerms
+                      .map((term) => `#${term}`)
+                      .join(", ")}.`
+                  : ""}
+              </p>
+            ) : null}
           </div>
           <div className="flex items-center gap-2">
             <Label

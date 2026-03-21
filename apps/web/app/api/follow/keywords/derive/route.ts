@@ -45,6 +45,7 @@ const DeriveResultSchema = z.object({
   includes: z.array(z.string()).default([]),
   synonyms: z.array(z.string()).default([]),
   excludes: z.array(z.string()).default([]),
+  topicTerms: z.array(z.string()).optional().default([]),
 });
 
 function normalizeTerms(values: string[]): string[] {
@@ -100,6 +101,20 @@ function mergeLanguagePreferences(input: {
   return merged.length > 0 ? merged : defaultLanguages;
 }
 
+function extractTopicTermsFromText(...inputs: Array<string | null | undefined>): string[] {
+  const set = new Set<string>();
+  const pattern = /(^|\s)#([a-zA-Z0-9][\w.-]{0,63})/g;
+  for (const input of inputs) {
+    const text = String(input ?? "");
+    let match: RegExpExecArray | null;
+    while ((match = pattern.exec(text)) !== null) {
+      const value = match[2]?.trim().toLowerCase();
+      if (value) set.add(value);
+    }
+  }
+  return Array.from(set);
+}
+
 function resolveSearchProviderOrder(rawPreference: string | undefined): SearchProvider[] {
   const normalized = String(rawPreference ?? DEFAULT_SEARCH_ENGINE)
     .trim()
@@ -117,17 +132,12 @@ function isProviderConfigured(provider: SearchProvider): boolean {
 }
 
 function buildSeedQueries(name: string, description?: string | null): string[] {
-  const normalizedName = name.replace(/\s+/g, " ").trim();
-  const normalizedDescription = (description ?? "").replace(/\s+/g, " ").trim();
-  const candidates = [
-    normalizedName,
-    normalizedDescription
-      ? `${normalizedName} ${normalizedDescription.slice(0, 28)}`
-      : "",
-    `${normalizedName} 别名 俗称`,
-    `${normalizedName} alias nickname`,
-  ];
-  return Array.from(new Set(candidates.map((item) => item.trim()).filter(Boolean))).slice(0, 3);
+  const topicTerms = extractTopicTermsFromText(name, description);
+  if (topicTerms.length > 0) {
+    return topicTerms.slice(0, 3);
+  }
+  const normalizedName = name.replace(/#/g, " ").replace(/\s+/g, " ").trim();
+  return normalizedName ? [normalizedName] : [];
 }
 
 function flattenSearchRows(payload: unknown): Array<Record<string, unknown>> {
@@ -369,7 +379,67 @@ function sanitizeDerivedResult(input: z.infer<typeof DeriveResultSchema>) {
     includes: cleanedIncludes,
     synonyms: cleanedSynonyms,
     excludes,
+    topicTerms: normalizeTerms(input.topicTerms ?? []),
   };
+}
+
+function detectScripts(value: string): Set<string> {
+  const detected = new Set<string>();
+  if (/[\u0600-\u06FF]/u.test(value)) detected.add("arabic");
+  if (/[\u3040-\u30FF]/u.test(value)) detected.add("japanese");
+  if (/[\u4E00-\u9FFF]/u.test(value)) detected.add("han");
+  if (/[\u0400-\u04FF]/u.test(value)) detected.add("cyrillic");
+  if (/[A-Za-z]/.test(value)) detected.add("latin");
+  return detected;
+}
+
+function languageToScriptGroups(language: string): string[] {
+  switch (language.toLowerCase()) {
+    case "zh":
+      return ["han"];
+    case "ja":
+      return ["japanese", "han"];
+    case "ar":
+      return ["arabic"];
+    case "ru":
+      return ["cyrillic"];
+    case "en":
+    case "de":
+    case "fr":
+    case "es":
+      return ["latin"];
+    default:
+      return [];
+  }
+}
+
+function filterTermsByLanguages(terms: string[], languages: string[]) {
+  const allowedGroups = new Set(
+    languages.flatMap((language) => languageToScriptGroups(language))
+  );
+  if (allowedGroups.size === 0) {
+    return { filtered: terms, removedCount: 0 };
+  }
+
+  const filtered: string[] = [];
+  let removedCount = 0;
+  for (const term of terms) {
+    const scripts = detectScripts(term);
+    if (scripts.size === 0) {
+      filtered.push(term);
+      continue;
+    }
+    const hasUnsupported = Array.from(scripts).some(
+      (group) => !allowedGroups.has(group)
+    );
+    const hasAllowed = Array.from(scripts).some((group) => allowedGroups.has(group));
+    if (!hasUnsupported && hasAllowed) {
+      filtered.push(term);
+    } else {
+      removedCount += 1;
+    }
+  }
+  return { filtered, removedCount };
 }
 
 export async function POST(req: Request) {
@@ -431,6 +501,7 @@ Preferred Languages: ${targetLanguages.join(", ")}
 Recall Terms budget: ${Math.min(12, Math.max(6, recallBudget))}
 Search calibration provider: ${calibrationResult.provider ?? "none"}
 Seed queries: ${seedQueries.join(" | ")}
+User provided topic terms: ${extractTopicTermsFromText(name, description).join(", ") || "none"}
 
 Calibration evidence (Chinese-first web snippets):
 ${calibrationContext}
@@ -444,17 +515,20 @@ Please follow these constraints:
 - Prefer high-signal terms; avoid generic words.
 - Recall Terms should be concise and cost-aware. Avoid bulk translated variants.
 - If evidence reveals community aliases (example: slang / nickname), prioritize them in Recall Terms.
+- Keep topic terms focused. You can add at most 2 high-confidence topic terms in "topicTerms".
 
 Requirements:
 - Return ONLY a JSON object:
 {
   "includes": ["..."],
   "synonyms": ["..."],
-  "excludes": ["..."]
+  "excludes": ["..."],
+  "topicTerms": ["..."]
 }
 - includes: 6-24 terms
 - synonyms: 6-24 terms
 - excludes: 3-16 terms
+- topicTerms: 0-2 terms
 
 `;
 
@@ -472,6 +546,20 @@ Requirements:
       0,
       Math.min(12, Math.max(6, recallBudget))
     );
+    const includesFiltered = filterTermsByLanguages(includesBudgeted, targetLanguages);
+    const synonymsFiltered = filterTermsByLanguages(sanitized.synonyms, targetLanguages);
+    const excludesFiltered = filterTermsByLanguages(sanitized.excludes, targetLanguages);
+    const inputTopicTerms = extractTopicTermsFromText(name, description);
+    const addedTopicTerms = sanitized.topicTerms
+      .filter((term) => !inputTopicTerms.includes(term))
+      .slice(0, 2);
+    const usedTopicTerms = Array.from(
+      new Set([...inputTopicTerms, ...addedTopicTerms])
+    );
+    const filteredByLanguageCount =
+      includesFiltered.removedCount +
+      synonymsFiltered.removedCount +
+      excludesFiltered.removedCount;
 
     logger.info("keyword derive completed", {
       name,
@@ -480,15 +568,17 @@ Requirements:
       reason: calibrationResult.reason,
       seedQueryCount: seedQueries.length,
       calibrationDocCount: calibrationResult.docs.length,
-      includes: includesBudgeted.length,
-      synonyms: sanitized.synonyms.length,
-      excludes: sanitized.excludes.length,
+      includes: includesFiltered.filtered.length,
+      synonyms: synonymsFiltered.filtered.length,
+      excludes: excludesFiltered.filtered.length,
+      topicTerms: usedTopicTerms.length,
+      filteredByLanguageCount,
     });
 
     return json({
-      includes: includesBudgeted,
-      synonyms: sanitized.synonyms,
-      excludes: sanitized.excludes,
+      includes: includesFiltered.filtered,
+      synonyms: synonymsFiltered.filtered,
+      excludes: excludesFiltered.filtered,
       meta: {
         searchProvider: calibrationResult.provider ?? null,
         searchedProviders: calibrationResult.triedProviders,
@@ -497,6 +587,10 @@ Requirements:
         seedQueries,
         calibrationDocCount: calibrationResult.docs.length,
         recallBudget: Math.min(12, Math.max(6, recallBudget)),
+        inputTopicTerms,
+        addedTopicTerms,
+        usedTopicTerms,
+        filteredByLanguageCount,
       },
     });
   } catch (error) {
