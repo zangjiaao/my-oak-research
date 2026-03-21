@@ -1119,7 +1119,7 @@ async function fetchSearchSource(
         method: request.method,
         headers: request.headers,
         body: request.body,
-      });
+      }, request.timeoutMs);
       const parsedResult = parseSearchResult(response.text);
       writeWorkerApiIoLog({
         event: "search-request-response",
@@ -1142,6 +1142,7 @@ async function fetchSearchSource(
         rawRecallQueryCount: context?.recallQueries?.length ?? 0,
         effectiveRecallQueryCount: searchQueries.length,
         skippedByRetryDedup: false,
+        timeoutMs: request.timeoutMs ?? 12_000,
         url: request.url,
         method: request.method,
         statusCode: response.statusCode,
@@ -1195,6 +1196,7 @@ async function fetchSearchSource(
         rawRecallQueryCount: context?.recallQueries?.length ?? 0,
         effectiveRecallQueryCount: searchQueries.length,
         skippedByRetryDedup: false,
+        timeoutMs: request.timeoutMs ?? 12_000,
         url: request.url,
         method: request.method,
         statusCode: -1,
@@ -1207,7 +1209,11 @@ async function fetchSearchSource(
         },
         parsedCount: 0,
         error:
-          error instanceof Error ? error.message : "unknown search request error",
+          error instanceof Error
+            ? error.name === "AbortError"
+              ? `Request timeout after ${request.timeoutMs ?? 12_000}ms`
+              : error.message
+            : "unknown search request error",
       });
       logger.error("search request failed", {
         sourceId: source.id,
@@ -2275,23 +2281,27 @@ async function fetchWithTimeout(
 
 async function fetchWithTimeoutDetailed(
   url: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
+  timeoutMs = 12_000
 ): Promise<{ text: string; statusCode: number }> {
   console.log(`[collector] fetchWithTimeout ${url}`, {
     method: options.method ?? "GET",
   });
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 12_000);
-  const response = await fetch(url, { ...options, signal: controller.signal });
-  clearTimeout(timeout);
-  if (!response.ok) {
-    throw new Error(`请求 ${url} 失败 (${response.status})`);
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(url, { ...options, signal: controller.signal });
+    if (!response.ok) {
+      throw new Error(`请求 ${url} 失败 (${response.status})`);
+    }
+    const text = await response.text();
+    return {
+      text,
+      statusCode: response.status,
+    };
+  } finally {
+    clearTimeout(timeout);
   }
-  const text = await response.text();
-  return {
-    text,
-    statusCode: response.status,
-  };
 }
 
 function toMarkdown(html: string) {
@@ -2331,6 +2341,7 @@ type SearchRequestConfig = {
   method: "GET" | "POST";
   headers: Record<string, string>;
   body?: string;
+  timeoutMs?: number;
 };
 
 const SEARCH_PROVIDER_ENDPOINTS = {
@@ -2403,6 +2414,11 @@ function buildSearchRequest(
     );
     const fetchPolicyObject = asObject(fetchPolicy);
 
+    const requestTimeoutMs =
+      toNumberOption(options.request_timeout_ms, options.requestTimeoutMs) ??
+      toNumberOption(options.timeout_ms, options.timeoutMs) ??
+      toNumberOption(process.env.WORKER_PARALLEL_REQUEST_TIMEOUT_MS) ??
+      90_000;
     const payload: Record<string, unknown> = {
       mode: pickString(options.mode) ?? "one-shot",
       objective,
@@ -2437,6 +2453,7 @@ function buildSearchRequest(
       method: "POST",
       headers,
       body: JSON.stringify(stripUndefined(payload)),
+      timeoutMs: Math.max(5_000, Math.floor(requestTimeoutMs)),
     };
   }
 

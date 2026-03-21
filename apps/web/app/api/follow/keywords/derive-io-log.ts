@@ -98,9 +98,26 @@ function truncateValue(value: unknown): JsonValue {
   return String(value);
 }
 
+function parseJsonString(value: string): unknown {
+  const text = value.trim();
+  if (!text) return null;
+  if (!(text.startsWith("{") || text.startsWith("["))) return null;
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
+}
+
 function redactSensitive(value: unknown): JsonValue {
   if (value == null) return null;
   if (Array.isArray(value)) return value.map((item) => redactSensitive(item));
+  if (typeof value === "string") {
+    const parsed = parseJsonString(value);
+    if (parsed == null) return truncateValue(value);
+    const redacted = redactSensitive(parsed);
+    return truncateValue(JSON.stringify(redacted));
+  }
   if (typeof value !== "object") return truncateValue(value);
 
   const output: Record<string, JsonValue> = {};
