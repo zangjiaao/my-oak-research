@@ -923,51 +923,89 @@ async function fetchSearchSource(
       ];
     }
 
-    const response = await fetchWithTimeoutDetailed(request.url, {
-      method: request.method,
-      headers: request.headers,
-      body: request.body,
-    });
-    const parsedResult = parseSearchResult(response.text);
-    writeWorkerApiIoLog({
-      event: "search-request-response",
-      runId: context?.runId,
-      queryId: context?.queryId,
-      sourceId: source.id,
-      sourceName: source.name,
-      platform:
-        (
-          (source.search as unknown as { platform?: string | null })?.platform ??
-          "unknown"
-        ).toString(),
-      provider,
-      url: request.url,
-      method: request.method,
-      statusCode: response.statusCode,
-      request: {
+    try {
+      const response = await fetchWithTimeoutDetailed(request.url, {
+        method: request.method,
         headers: request.headers,
-        body: request.body ?? null,
-      },
-      response: {
-        body: response.text,
-      },
-      parsedCount: parsedResult.items.length,
-      requestId: parsedResult.requestId,
-    });
-
-    allItems.push(
-      ...parsedResult.items.map((item) => ({
-        title: item.title,
-        text: item.text,
-        markdown: item.markdown,
-        platform: source.name,
-        url: item.url,
-        time: item.time ? new Date(item.time) : new Date(),
+        body: request.body,
+      });
+      const parsedResult = parseSearchResult(response.text);
+      writeWorkerApiIoLog({
+        event: "search-request-response",
+        runId: context?.runId,
+        queryId: context?.queryId,
         sourceId: source.id,
-        sourceType: source.type,
-        sourceRequestId: parsedResult.requestId,
-      }))
-    );
+        sourceName: source.name,
+        platform:
+          (
+            (source.search as unknown as { platform?: string | null })?.platform ??
+            "unknown"
+          ).toString(),
+        provider,
+        url: request.url,
+        method: request.method,
+        statusCode: response.statusCode,
+        request: {
+          headers: request.headers,
+          body: request.body ?? null,
+        },
+        response: {
+          body: response.text,
+        },
+        parsedCount: parsedResult.items.length,
+        requestId: parsedResult.requestId,
+      });
+
+      allItems.push(
+        ...parsedResult.items.map((item) => ({
+          title: item.title,
+          text: item.text,
+          markdown: item.markdown,
+          platform: source.name,
+          url: item.url,
+          time: item.time ? new Date(item.time) : new Date(),
+          sourceId: source.id,
+          sourceType: source.type,
+          sourceRequestId: parsedResult.requestId,
+        }))
+      );
+    } catch (error) {
+      writeWorkerApiIoLog({
+        event: "search-request-response",
+        runId: context?.runId,
+        queryId: context?.queryId,
+        sourceId: source.id,
+        sourceName: source.name,
+        platform:
+          (
+            (source.search as unknown as { platform?: string | null })?.platform ??
+            "unknown"
+          ).toString(),
+        provider,
+        url: request.url,
+        method: request.method,
+        statusCode: -1,
+        request: {
+          headers: request.headers,
+          body: request.body ?? null,
+        },
+        response: {
+          body: "",
+        },
+        parsedCount: 0,
+        error:
+          error instanceof Error ? error.message : "unknown search request error",
+      });
+      logger.error("search request failed", {
+        sourceId: source.id,
+        sourceName: source.name,
+        runId: context?.runId,
+        queryId: context?.queryId,
+        provider,
+        url: request.url,
+        error: logger.normalizeError(error),
+      });
+    }
   }
 
   const dedupedItems = deduplicateItemsByUrlAndFingerprint(allItems);
