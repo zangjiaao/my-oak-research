@@ -9,50 +9,43 @@ type JsonValue =
   | JsonValue[]
   | { [key: string]: JsonValue };
 
-type WorkerApiIoEntry = {
-  event: "search-request-response";
+type WebDeriveIoEvent =
+  | "derive-search-request-response"
+  | "derive-llm-request-response"
+  | "derive-final-output";
+
+type WebDeriveIoEntry = {
+  event: WebDeriveIoEvent;
   time?: string;
-  runId?: string;
-  queryId?: string;
-  sourceId: string;
-  sourceName: string;
-  platform: string;
-  provider: string;
-  recallQuery?: string;
-  recallQueryCount?: number;
-  queryOrigin?: "recall" | "objective_fallback";
-  rawRecallQueryCount?: number;
-  effectiveRecallQueryCount?: number;
-  skippedByRetryDedup?: boolean;
-  timeoutMs?: number;
-  url: string;
-  method: string;
-  statusCode: number;
-  request: JsonValue;
-  response: JsonValue;
-  parsedCount: number;
-  requestId?: string;
+  requestId: string;
+  provider?: string;
+  query?: string;
+  url?: string;
+  method?: string;
+  statusCode?: number;
+  request?: unknown;
+  response?: unknown;
+  details?: unknown;
   error?: string;
 };
 
-const API_IO_LOG_ENABLED = process.env.WORKER_API_IO_LOG_ENABLED === "true";
-const API_IO_LOG_DIR = resolveLogDir(
-  process.env.WORKER_API_IO_LOG_DIR || "apps/worker/logs"
+const WEB_DERIVE_IO_LOG_ENABLED =
+  process.env.WEB_DERIVE_IO_LOG_ENABLED === "true";
+const WEB_DERIVE_IO_LOG_DIR = resolveLogDir(
+  process.env.WEB_DERIVE_IO_LOG_DIR || "apps/web/logs"
 );
-const API_IO_LOG_MAX_CHARS = resolveMaxChars(
-  process.env.WORKER_API_IO_LOG_MAX_CHARS
+const WEB_DERIVE_IO_LOG_MAX_CHARS = resolveMaxChars(
+  process.env.WEB_DERIVE_IO_LOG_MAX_CHARS
 );
 
 function resolveLogDir(rawDir: string): string {
   if (!rawDir.trim()) {
-    return resolve(process.cwd(), "apps/worker/logs");
+    return resolve(process.cwd(), "apps/web/logs");
   }
   if (isAbsolute(rawDir)) return rawDir;
   if (rawDir.startsWith("apps/")) {
     const repoRoot = findRepoRoot(process.cwd());
-    if (repoRoot) {
-      return resolve(repoRoot, rawDir);
-    }
+    if (repoRoot) return resolve(repoRoot, rawDir);
   }
   return resolve(process.cwd(), rawDir);
 }
@@ -70,7 +63,7 @@ function findRepoRoot(start: string): string | null {
           return current;
         }
       } catch {
-        // ignore parse errors and continue upward
+        // ignore and continue upward
       }
     }
     const parent = resolve(current, "..");
@@ -81,24 +74,20 @@ function findRepoRoot(start: string): string | null {
 
 function resolveMaxChars(raw: string | undefined): number {
   const parsed = Number(raw);
-  if (!Number.isFinite(parsed) || parsed < 256) {
-    return 12000;
-  }
+  if (!Number.isFinite(parsed) || parsed < 256) return 12000;
   return Math.floor(parsed);
 }
 
 function truncateString(value: string): string {
-  if (value.length <= API_IO_LOG_MAX_CHARS) return value;
-  return `${value.slice(0, API_IO_LOG_MAX_CHARS)}...(truncated, total=${value.length})`;
+  if (value.length <= WEB_DERIVE_IO_LOG_MAX_CHARS) return value;
+  return `${value.slice(0, WEB_DERIVE_IO_LOG_MAX_CHARS)}...(truncated, total=${value.length})`;
 }
 
 function truncateValue(value: unknown): JsonValue {
   if (value == null) return null;
   if (typeof value === "string") return truncateString(value);
   if (typeof value === "number" || typeof value === "boolean") return value;
-  if (Array.isArray(value)) {
-    return value.map((item) => truncateValue(item));
-  }
+  if (Array.isArray(value)) return value.map((item) => truncateValue(item));
   if (typeof value === "object") {
     const output: Record<string, JsonValue> = {};
     for (const [key, nested] of Object.entries(value)) {
@@ -122,18 +111,14 @@ function parseJsonString(value: string): unknown {
 
 function redactSensitive(value: unknown): JsonValue {
   if (value == null) return null;
-  if (Array.isArray(value)) {
-    return value.map((item) => redactSensitive(item));
-  }
+  if (Array.isArray(value)) return value.map((item) => redactSensitive(item));
   if (typeof value === "string") {
     const parsed = parseJsonString(value);
     if (parsed == null) return truncateValue(value);
     const redacted = redactSensitive(parsed);
     return truncateValue(JSON.stringify(redacted));
   }
-  if (typeof value !== "object") {
-    return truncateValue(value);
-  }
+  if (typeof value !== "object") return truncateValue(value);
 
   const output: Record<string, JsonValue> = {};
   for (const [key, nested] of Object.entries(value)) {
@@ -154,22 +139,26 @@ function redactSensitive(value: unknown): JsonValue {
   return output;
 }
 
-export function writeWorkerApiIoLog(entry: WorkerApiIoEntry): void {
-  if (!API_IO_LOG_ENABLED) return;
+export function writeWebDeriveIoLog(entry: WebDeriveIoEntry): void {
+  if (!WEB_DERIVE_IO_LOG_ENABLED) return;
   try {
     const now = new Date();
     const dateTag = now.toISOString().slice(0, 10);
-    const filePath = resolve(API_IO_LOG_DIR, `search-api-io-${dateTag}.jsonl`);
+    const filePath = resolve(WEB_DERIVE_IO_LOG_DIR, `derive-api-io-${dateTag}.jsonl`);
     mkdirSync(dirname(filePath), { recursive: true });
-
     const payload = {
       ...entry,
       time: entry.time ?? now.toISOString(),
-      request: truncateValue(redactSensitive(entry.request)),
-      response: truncateValue(redactSensitive(entry.response)),
+      request: redactSensitive(truncateValue(entry.request)),
+      response: redactSensitive(truncateValue(entry.response)),
+      details: redactSensitive(truncateValue(entry.details)),
     };
     appendFileSync(filePath, `${JSON.stringify(payload)}\n`, "utf8");
   } catch {
-    // best effort logging, never block collector
+    // best effort logging, do not block API responses
   }
+}
+
+export function isWebDeriveIoLogEnabled(): boolean {
+  return WEB_DERIVE_IO_LOG_ENABLED;
 }

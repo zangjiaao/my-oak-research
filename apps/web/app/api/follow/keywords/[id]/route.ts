@@ -20,6 +20,21 @@ function normalizeTokens(arr: string[] | undefined) {
     .filter((s) => (seen.has(s) ? false : (seen.add(s), true)));
 }
 
+const DEFAULT_DERIVE_LANGUAGES = ["zh", "en"] as const;
+
+function ensureDeriveLanguages<T extends { deriveLanguages?: string[] | null }>(
+  item: T
+): T & { deriveLanguages: string[] } {
+  const normalized = normalizeTokens(item.deriveLanguages ?? []);
+  return {
+    ...item,
+    deriveLanguages:
+      normalized && normalized.length > 0
+        ? normalized
+        : [...DEFAULT_DERIVE_LANGUAGES],
+  };
+}
+
 export async function GET(
   _: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -30,7 +45,7 @@ export async function GET(
       include: { category: true },
     });
     if (!item) return notFound("Keyword not found");
-    return json(item);
+    return json(ensureDeriveLanguages(item));
   } catch (e) {
     return serverError(e);
   }
@@ -60,10 +75,14 @@ export async function PATCH(
     const hasIncludes = bodyHas("includes");
     const hasExcludes = bodyHas("excludes");
     const hasSynonyms = bodyHas("synonyms");
+    const hasDeriveLanguages = bodyHas("deriveLanguages");
 
     const includes = hasIncludes ? normalizeTokens(data.includes) : undefined;
     const excludes = hasExcludes ? normalizeTokens(data.excludes) : undefined;
     const synonyms = hasSynonyms ? normalizeTokens(data.synonyms) : undefined;
+    const deriveLanguages = hasDeriveLanguages
+      ? normalizeTokens(data.deriveLanguages)
+      : undefined;
 
     // 交叉去重（仅在提供时处理）
     let includesClean = includes;
@@ -90,6 +109,14 @@ export async function PATCH(
         ...(hasIncludes ? { includes: includesClean ?? [] } : {}),
         ...(hasExcludes ? { excludes: excludes ?? [] } : {}),
         ...(hasSynonyms ? { synonyms: synonymsClean ?? [] } : {}),
+        ...(hasDeriveLanguages
+          ? {
+              deriveLanguages:
+                deriveLanguages && deriveLanguages.length > 0
+                  ? deriveLanguages
+                  : [...DEFAULT_DERIVE_LANGUAGES],
+            }
+          : {}),
         ...("active" in data ? { active: !!data.active } : {}),
         ...("enableAiExpand" in data
           ? { enableAiExpand: !!data.enableAiExpand }
@@ -101,7 +128,7 @@ export async function PATCH(
     // 若请求体里带 enableAiExpand=true，可在此触发异步扩展并随后 PATCH 回写
     // if (data.enableAiExpand) queue.add('keywords.aiExpand', { keywordId: updated.id })
 
-    return json(updated);
+    return json(ensureDeriveLanguages(updated));
   } catch (e) {
     if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002")
       return conflict("Keyword name already exists in this category");

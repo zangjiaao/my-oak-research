@@ -111,6 +111,8 @@ type FollowContentContextValue = {
     sort: "time" | "matchScore";
   };
   subjectOptions: SubjectOption[];
+  subjectOptionsError: string | null;
+  subjectOptionsLoading: boolean;
   setPlatform: (val: string) => void;
   setYear: (val: string) => void;
   setMonth: (val: string) => void;
@@ -221,10 +223,14 @@ export const FollowContentProvider = ({
     null
   );
   const queryClient = useQueryClient();
-  const { data: subjectOptionsData } = useQuery({
+  const {
+    data: subjectOptionsData,
+    error: subjectOptionsQueryError,
+    isLoading: subjectOptionsLoading,
+  } = useQuery({
     queryKey: ["keywords", "subject-options"],
     queryFn: async (): Promise<SubjectOption[]> => {
-      const response = await fetch("/api/follow/keywords?pageSize=200", {
+      const response = await fetch("/api/follow/keywords?pageSize=100", {
         cache: "no-store",
       });
       if (!response.ok) {
@@ -263,7 +269,11 @@ export const FollowContentProvider = ({
     [platform, search, from, to, subjectId, minMatchScore, matchSource, sort]
   );
 
-  const { data, isLoading, error } = useQuery<FollowContentResponse>({
+  const {
+    data,
+    isLoading,
+    error: contentQueryError,
+  } = useQuery<FollowContentResponse>({
     queryKey: ["follow-content", queryFilters],
     queryFn: () => fetchContents(queryFilters),
     placeholderData: (prev) => prev,
@@ -351,9 +361,14 @@ export const FollowContentProvider = ({
       contents,
       selectedContent,
       isLoading,
-      error: error ?? null,
+      error: contentQueryError ?? null,
       selectContent,
       subjectOptions: subjectOptionsData ?? [],
+      subjectOptionsError:
+        subjectOptionsQueryError instanceof Error
+          ? subjectOptionsQueryError.message
+          : null,
+      subjectOptionsLoading,
       filters: {
         platform,
         year,
@@ -379,9 +394,11 @@ export const FollowContentProvider = ({
       contents,
       selectedContent,
       isLoading,
-      error,
+      contentQueryError,
       selectContent,
       subjectOptionsData,
+      subjectOptionsQueryError,
+      subjectOptionsLoading,
       platform,
       year,
       month,

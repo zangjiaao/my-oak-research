@@ -12,6 +12,19 @@ function normalizeTokens(arr: string[]) {
     .filter((s) => (seen.has(s) ? false : (seen.add(s), true)));
 }
 
+const DEFAULT_DERIVE_LANGUAGES = ["zh", "en"] as const;
+
+function ensureDeriveLanguages<T extends { deriveLanguages?: string[] | null }>(
+  item: T
+): T & { deriveLanguages: string[] } {
+  const normalized = normalizeTokens(item.deriveLanguages ?? []);
+  return {
+    ...item,
+    deriveLanguages:
+      normalized.length > 0 ? normalized : [...DEFAULT_DERIVE_LANGUAGES],
+  };
+}
+
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
@@ -43,7 +56,12 @@ export async function GET(req: Request) {
       }),
     ]);
 
-    return json({ total, page, pageSize, items });
+    return json({
+      total,
+      page,
+      pageSize,
+      items: items.map((item) => ensureDeriveLanguages(item)),
+    });
   } catch (e) {
     return serverError(e);
   }
@@ -73,6 +91,7 @@ export async function POST(req: Request) {
     }
     const includes = normalizeTokens(data.includes);
     const excludes = normalizeTokens(data.excludes);
+    const deriveLanguages = normalizeTokens(data.deriveLanguages ?? []);
     const synonyms = normalizeTokens(data.synonyms || []);
 
     // 可选：交叉检查，排除重叠
@@ -90,6 +109,10 @@ export async function POST(req: Request) {
         categoryId: data.categoryId ?? undefined,
         includes: includesClean,
         excludes,
+        deriveLanguages:
+          deriveLanguages.length > 0
+            ? deriveLanguages
+            : [...DEFAULT_DERIVE_LANGUAGES],
         synonyms: synonymsClean,
         active: data.active,
         enableAiExpand: data.enableAiExpand,
@@ -100,7 +123,7 @@ export async function POST(req: Request) {
     // TODO: 若需要 AI 扩展，可在此触发队列任务，异步回填 synonyms
     // if (data.enableAiExpand) queue.add('keywords.aiExpand', { keywordId: created.id })
 
-    return json(created, 201);
+    return json(ensureDeriveLanguages(created), 201);
   } catch (e) {
     const prismaError = e as { code?: string; meta?: { target?: string[] } };
     if (prismaError?.code === "P2002") {

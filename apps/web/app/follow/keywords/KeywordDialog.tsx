@@ -16,18 +16,55 @@ import { Textarea } from "@/components/ui/textarea";
 import { ErrorMessage } from "@/components/business";
 import { SettingEditDialog } from "@/components/layout";
 import { useKeywordMutation } from "@/hooks/useKeywordMutation";
+import { MultiSelect } from "@/components/common/multi-select";
 
 import { Button } from "@/components/ui/button";
 import { Sparkles, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
 type KeywordWithCategory = Prisma.KeywordGetPayload<{
   include: { category: true };
 }>;
+type DeriveMeta = {
+  searchProvider?: string | null;
+  degraded?: boolean;
+  reason?: string | null;
+  filteredByLanguageCount?: number;
+  usedTopicTerms?: string[];
+  topicHintMissing?: boolean;
+  recallSoftLimit?: number;
+  recallTermCount?: number;
+  recallOverSoftLimit?: boolean;
+  recallWarning?: string | null;
+  scoringSoftLimit?: number;
+  scoringTermCount?: number;
+  scoringOverSoftLimit?: boolean;
+  scoringWarning?: string | null;
+  exclusionSoftLimit?: number;
+  exclusionTermCount?: number;
+  exclusionOverSoftLimit?: boolean;
+  exclusionWarning?: string | null;
+  termLanguageMatrix?: {
+    includes?: Record<string, number>;
+    synonyms?: Record<string, number>;
+    excludes?: Record<string, number>;
+  };
+  translationBackfillMode?: string;
+};
 
 const TERM_SPLIT_RE = /[,\n\r，、;；\t]+/;
+const DEFAULT_DERIVE_LANGUAGES = ["zh", "en"];
+const LANGUAGE_OPTIONS = [
+  { label: "Chinese (zh)", value: "zh" },
+  { label: "English (en)", value: "en" },
+  { label: "Japanese (ja)", value: "ja" },
+  { label: "Arabic (ar)", value: "ar" },
+  { label: "German (de)", value: "de" },
+  { label: "French (fr)", value: "fr" },
+  { label: "Spanish (es)", value: "es" },
+  { label: "Russian (ru)", value: "ru" },
+];
 
 function parseTerms(input: unknown): string[] {
   if (Array.isArray(input)) {
@@ -37,6 +74,24 @@ function parseTerms(input: unknown): string[] {
     .split(TERM_SPLIT_RE)
     .map((item) => item.trim())
     .filter(Boolean);
+}
+
+function mergeUniqueTerms(...inputs: Array<unknown>): string[] {
+  return Array.from(new Set(inputs.flatMap((input) => parseTerms(input))));
+}
+
+function extractHashtagTopics(...inputs: Array<unknown>): string[] {
+  const set = new Set<string>();
+  const pattern = /(^|\s)#([a-zA-Z0-9][\w.-]{0,63})/g;
+  for (const input of inputs) {
+    const text = String(input ?? "");
+    let match: RegExpExecArray | null;
+    while ((match = pattern.exec(text)) !== null) {
+      const token = match[2]?.trim().toLowerCase();
+      if (token) set.add(token);
+    }
+  }
+  return Array.from(set);
 }
 
 const EditKeywordDialog = ({
@@ -50,6 +105,7 @@ const EditKeywordDialog = ({
 }) => {
   const [open, setOpen] = useState(false);
   const [isDeriving, setIsDeriving] = useState(false);
+  const [deriveMeta, setDeriveMeta] = useState<DeriveMeta | null>(null);
 
   const mutation = useKeywordMutation({
     keywordId: keyword?.id,
@@ -85,6 +141,11 @@ const EditKeywordDialog = ({
       excludes: Array.isArray(keyword?.excludes)
         ? keyword.excludes.join("\n")
         : keyword?.excludes || "",
+      deriveLanguages:
+        Array.isArray(keyword?.deriveLanguages) &&
+        keyword.deriveLanguages.length > 0
+          ? keyword.deriveLanguages
+          : DEFAULT_DERIVE_LANGUAGES,
       enableAiExpand: keyword?.enableAiExpand || false,
       lang: (keyword?.lang as "auto" | "zh" | "en" | "ja") || "auto",
       active: keyword?.active ?? true,
@@ -96,6 +157,11 @@ const EditKeywordDialog = ({
   const scoringTermsText = watch("synonyms");
   const recallTermsCount = parseTerms(includesText).length;
   const scoringTermsCount = parseTerms(scoringTermsText).length;
+  const includesLanguageSummary = deriveMeta?.termLanguageMatrix?.includes
+    ? Object.entries(deriveMeta.termLanguageMatrix.includes)
+        .map(([language, count]) => `${language}:${count}`)
+        .join(", ")
+    : null;
 
   const onSubmit = async (
     data: z.infer<typeof KeywordUpdateSchema | typeof KeywordCreateSchema>
@@ -108,6 +174,10 @@ const EditKeywordDialog = ({
     if (!values.name) {
       toast.error("Please enter a keyword name first");
       return;
+    }
+    const topicTerms = extractHashtagTopics(values.name, values.description);
+    if (topicTerms.length === 0) {
+      toast("建议在 Name/Description 中添加 #topic（例如 #openclaw）以提升检索质量");
     }
     setIsDeriving(true);
     try {
@@ -122,6 +192,16 @@ const EditKeywordDialog = ({
             : String(values.includes)
               .split(/[,\n\r，、;；\t]+/)
               .filter(Boolean),
+          synonyms: Array.isArray(values.synonyms)
+            ? values.synonyms
+            : parseTerms(values.synonyms),
+          excludes: Array.isArray(values.excludes)
+            ? values.excludes
+            : parseTerms(values.excludes),
+          languages: Array.isArray(values.deriveLanguages)
+            ? values.deriveLanguages
+            : DEFAULT_DERIVE_LANGUAGES,
+          persistedLanguages: keyword?.deriveLanguages ?? DEFAULT_DERIVE_LANGUAGES,
           lang: values.lang,
         }),
       });
@@ -129,46 +209,38 @@ const EditKeywordDialog = ({
       if (!response.ok) throw new Error("Failed to derive keywords");
 
       const data = await response.json();
-      const currentSynonyms = (
-        Array.isArray(values.synonyms) ? values.synonyms : parseTerms(values.synonyms)
-      ).map((s) => String(s).trim());
-
-      const derivedKeywords = (data.keywords || []).map((s: string) =>
-        String(s).trim()
+      setDeriveMeta(data.meta ?? null);
+      const nextIncludes = mergeUniqueTerms(values.includes, data.includes ?? []);
+      const nextSynonyms = mergeUniqueTerms(values.synonyms, data.synonyms ?? []);
+      const nextExclusions = mergeUniqueTerms(values.excludes, data.excludes ?? []);
+      const exclusionSet = new Set(nextExclusions);
+      const sanitizedIncludes = nextIncludes.filter((item) => !exclusionSet.has(item));
+      const sanitizedSynonyms = nextSynonyms.filter(
+        (item) => !exclusionSet.has(item) && !sanitizedIncludes.includes(item)
       );
-
-      const combined = Array.from(
-        new Set([...currentSynonyms, ...derivedKeywords])
-      );
-      setValue("synonyms", combined.join("\n"));
+      setValue("includes", sanitizedIncludes.join("\n"));
+      setValue("synonyms", sanitizedSynonyms.join("\n"));
+      setValue("excludes", nextExclusions.join("\n"));
       if (!enableAiExpand) {
         setValue("enableAiExpand", true);
       }
-      toast.success(`Derived ${data.keywords.length} keywords`);
+      const warnings = [
+        data.meta?.recallOverSoftLimit ? data.meta?.recallWarning : null,
+        data.meta?.scoringOverSoftLimit ? data.meta?.scoringWarning : null,
+        data.meta?.exclusionOverSoftLimit ? data.meta?.exclusionWarning : null,
+      ].filter((item): item is string => Boolean(item));
+      for (const warning of warnings) {
+        toast.warning(warning);
+      }
+      toast.success(
+        `Derived +${data.includes?.length ?? 0} recall, +${data.synonyms?.length ?? 0} scoring, +${data.excludes?.length ?? 0} exclusion terms`
+      );
     } catch (error) {
       console.error(error);
       toast.error("Failed to derive keywords");
     } finally {
       setIsDeriving(false);
     }
-  };
-
-  const applyPreset = (preset: "recall" | "balanced" | "precision") => {
-    if (preset === "recall") {
-      setValue("includes", "openclaw\nmemory\nmem");
-      setValue("synonyms", "记忆模块\n长期记忆\nmemory architecture");
-      setValue("excludes", "");
-      return;
-    }
-    if (preset === "balanced") {
-      setValue("includes", "openclaw\nopenclaw memory");
-      setValue("synonyms", "记忆模块\n记忆策略\nmemory architecture");
-      setValue("excludes", "music\nsong");
-      return;
-    }
-    setValue("includes", "openclaw");
-    setValue("synonyms", "记忆模块\n长期记忆\ncontext memory\nmemory architecture");
-    setValue("excludes", "song\nlyrics");
   };
 
   return (
@@ -192,40 +264,6 @@ const EditKeywordDialog = ({
       triggerButton={triggerButton}
       onSubmit={handleSubmit(onSubmit)}
     >
-      <Card className="border-border/70 bg-muted/20">
-        <CardContent className="space-y-3 px-4 py-3">
-          <p className="text-sm font-medium">主题词配置建议</p>
-          <p className="text-xs text-muted-foreground">
-            先用召回词尽量找全内容，再用评分词判断内容是否真正贴近主题。
-          </p>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => applyPreset("recall")}
-            >
-              偏召回
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => applyPreset("balanced")}
-            >
-              平衡
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => applyPreset("precision")}
-            >
-              偏精准
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
       <div className="grid gap-3">
         <Label htmlFor="keyword">Name</Label>
         <Input id="keyword" placeholder="Keyword Name" {...register("name")} />
@@ -257,11 +295,35 @@ const EditKeywordDialog = ({
         <Label htmlFor="description">Description</Label>
         <Textarea
           id="description"
-          placeholder="Description"
+          placeholder="Description (you can mark topic anchors like #openclaw #qmd)"
           rows={3}
           {...register("description")}
         />
+        <p className="text-xs text-muted-foreground">
+          Tip: add `#topic` tags to lock first-round web search anchors.
+        </p>
         <ErrorMessage>{errors.description?.message}</ErrorMessage>
+      </div>
+      <div className="grid gap-3">
+        <Label htmlFor="deriveLanguages">Generation Languages</Label>
+        <Controller
+          name="deriveLanguages"
+          control={control}
+          render={({ field }) => (
+            <MultiSelect
+              options={LANGUAGE_OPTIONS}
+              value={Array.isArray(field.value) ? field.value : DEFAULT_DERIVE_LANGUAGES}
+              onValueChange={(next) =>
+                field.onChange(next.length > 0 ? next : DEFAULT_DERIVE_LANGUAGES)
+              }
+              placeholder="Choose generation languages"
+            />
+          )}
+        />
+        <p className="text-xs text-muted-foreground">
+          Defaults to Chinese and English. Add more languages for multilingual term generation.
+        </p>
+        <ErrorMessage>{errors.deriveLanguages?.message}</ErrorMessage>
       </div>
       <div className="grid gap-3">
         <div className="flex items-center justify-between">
@@ -277,6 +339,24 @@ const EditKeywordDialog = ({
         <p className="text-xs text-muted-foreground">
           用于尽量多找内容（召回）。不会直接决定最终相关度高低。
         </p>
+        {deriveMeta?.recallOverSoftLimit ? (
+          <p className="text-xs text-amber-600">
+            {deriveMeta.recallWarning ??
+              `召回词较多（${deriveMeta.recallTermCount ?? "?"}/${deriveMeta.recallSoftLimit ?? "?"}），后续检索成本可能上升。`}
+          </p>
+        ) : null}
+        {deriveMeta?.scoringOverSoftLimit ? (
+          <p className="text-xs text-amber-600">
+            {deriveMeta.scoringWarning ??
+              `评分词较多（${deriveMeta.scoringTermCount ?? "?"}/${deriveMeta.scoringSoftLimit ?? "?"}），评分稳定性可能下降。`}
+          </p>
+        ) : null}
+        {deriveMeta?.exclusionOverSoftLimit ? (
+          <p className="text-xs text-amber-600">
+            {deriveMeta.exclusionWarning ??
+              `排除词较多（${deriveMeta.exclusionTermCount ?? "?"}/${deriveMeta.exclusionSoftLimit ?? "?"}），请检查是否过度过滤。`}
+          </p>
+        ) : null}
         <ErrorMessage>{errors.includes?.message}</ErrorMessage>
         <div className="flex justify-between items-center group">
           <div className="grid gap-2">
@@ -305,6 +385,28 @@ const EditKeywordDialog = ({
             <p className="text-sm text-muted-foreground">
               用于相关性打分，建议填写“主题证据词”（如功能、机制、上下文）。
             </p>
+            {deriveMeta ? (
+              <p className="text-xs text-muted-foreground">
+                {deriveMeta.degraded
+                  ? `Derived in fallback mode (${deriveMeta.reason ?? "unknown"}).`
+                  : `Calibrated by ${deriveMeta.searchProvider ?? "unknown provider"}.`}
+                {deriveMeta.filteredByLanguageCount
+                  ? ` Filtered ${deriveMeta.filteredByLanguageCount} terms by language.`
+                  : ""}
+                {Array.isArray(deriveMeta.usedTopicTerms) &&
+                deriveMeta.usedTopicTerms.length > 0
+                  ? ` Topic terms: ${deriveMeta.usedTopicTerms
+                      .map((term) => `#${term}`)
+                      .join(", ")}.`
+                  : ""}
+                {deriveMeta.topicHintMissing
+                  ? " Add #topic anchors for better calibration."
+                  : ""}
+                {includesLanguageSummary
+                  ? ` Includes by language: ${includesLanguageSummary}.`
+                  : ""}
+              </p>
+            ) : null}
           </div>
           <div className="flex items-center gap-2">
             <Label
@@ -341,10 +443,10 @@ const EditKeywordDialog = ({
         </div>
       </div>
       <div className="grid gap-3">
-        <Label htmlFor="excludes">Excludes(Optional)</Label>
+        <Label htmlFor="excludes">Exclusion Terms (Optional)</Label>
         <Textarea
           id="excludes"
-          placeholder="Excludes"
+          placeholder="Exclusion terms"
           rows={3}
           {...register("excludes")}
         />

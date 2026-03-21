@@ -84,7 +84,7 @@ const KeywordSettingCard = ({ initialKeywords, categories }: Props) => {
   return (
     <SettingCard
       title="Manage Keywords"
-      description="配置 Recall Terms（召回词）与 Scoring Terms（评分词）。"
+      description="Configure Recall Terms, Scoring Terms, and Exclusion Terms."
       count={filteredKeywords.length}
       countLabel="keywords"
     >

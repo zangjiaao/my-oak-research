@@ -71,7 +71,7 @@ const KeywordsTable = ({
     },
     {
       key: "excludes",
-      label: "Excludes",
+      label: "Exclusion Terms",
       render: (keyword) => (
         <div className="flex flex-wrap gap-1 max-w-2xl">
           {keyword.excludes.map((exclude) => (

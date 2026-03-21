@@ -136,6 +136,7 @@ exports.Prisma.KeywordScalarFieldEnum = {
   categoryId: 'categoryId',
   includes: 'includes',
   excludes: 'excludes',
+  deriveLanguages: 'deriveLanguages',
   enableAiExpand: 'enableAiExpand',
   synonyms: 'synonyms',
   active: 'active',

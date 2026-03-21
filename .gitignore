@@ -94,3 +94,6 @@ apps/gather/logs/
 
 # Worker API IO logs
 apps/worker/logs/
+
+# Web derive IO logs
+apps/web/logs/

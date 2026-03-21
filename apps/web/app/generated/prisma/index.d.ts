@@ -5165,6 +5165,7 @@ export namespace Prisma {
     categoryId: number
     includes: number
     excludes: number
+    deriveLanguages: number
     enableAiExpand: number
     synonyms: number
     active: number
@@ -5206,6 +5207,7 @@ export namespace Prisma {
     categoryId?: true
     includes?: true
     excludes?: true
+    deriveLanguages?: true
     enableAiExpand?: true
     synonyms?: true
     active?: true
@@ -5294,6 +5296,7 @@ export namespace Prisma {
     categoryId: string | null
     includes: string[]
     excludes: string[]
+    deriveLanguages: string[]
     enableAiExpand: boolean
     synonyms: string[]
     active: boolean
@@ -5326,6 +5329,7 @@ export namespace Prisma {
     categoryId?: boolean
     includes?: boolean
     excludes?: boolean
+    deriveLanguages?: boolean
     enableAiExpand?: boolean
     synonyms?: boolean
     active?: boolean
@@ -5346,6 +5350,7 @@ export namespace Prisma {
     categoryId?: boolean
     includes?: boolean
     excludes?: boolean
+    deriveLanguages?: boolean
     enableAiExpand?: boolean
     synonyms?: boolean
     active?: boolean
@@ -5362,6 +5367,7 @@ export namespace Prisma {
     categoryId?: boolean
     includes?: boolean
     excludes?: boolean
+    deriveLanguages?: boolean
     enableAiExpand?: boolean
     synonyms?: boolean
     active?: boolean
@@ -5378,6 +5384,7 @@ export namespace Prisma {
     categoryId?: boolean
     includes?: boolean
     excludes?: boolean
+    deriveLanguages?: boolean
     enableAiExpand?: boolean
     synonyms?: boolean
     active?: boolean
@@ -5385,7 +5392,7 @@ export namespace Prisma {
     updatedAt?: boolean
   }
 
-  export type KeywordOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "name" | "description" | "lang" | "categoryId" | "includes" | "excludes" | "enableAiExpand" | "synonyms" | "active" | "createdAt" | "updatedAt", ExtArgs["result"]["keyword"]>
+  export type KeywordOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "name" | "description" | "lang" | "categoryId" | "includes" | "excludes" | "deriveLanguages" | "enableAiExpand" | "synonyms" | "active" | "createdAt" | "updatedAt", ExtArgs["result"]["keyword"]>
   export type KeywordInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     category?: boolean | Keyword$categoryArgs<ExtArgs>
     queries?: boolean | Keyword$queriesArgs<ExtArgs>
@@ -5416,6 +5423,7 @@ export namespace Prisma {
       categoryId: string | null
       includes: string[]
       excludes: string[]
+      deriveLanguages: string[]
       enableAiExpand: boolean
       synonyms: string[]
       active: boolean
@@ -5855,6 +5863,7 @@ export namespace Prisma {
     readonly categoryId: FieldRef<"Keyword", 'String'>
     readonly includes: FieldRef<"Keyword", 'String[]'>
     readonly excludes: FieldRef<"Keyword", 'String[]'>
+    readonly deriveLanguages: FieldRef<"Keyword", 'String[]'>
     readonly enableAiExpand: FieldRef<"Keyword", 'Boolean'>
     readonly synonyms: FieldRef<"Keyword", 'String[]'>
     readonly active: FieldRef<"Keyword", 'Boolean'>
@@ -36068,6 +36077,7 @@ export namespace Prisma {
     categoryId: 'categoryId',
     includes: 'includes',
     excludes: 'excludes',
+    deriveLanguages: 'deriveLanguages',
     enableAiExpand: 'enableAiExpand',
     synonyms: 'synonyms',
     active: 'active',
@@ -36847,6 +36857,7 @@ export namespace Prisma {
     categoryId?: StringNullableFilter<"Keyword"> | string | null
     includes?: StringNullableListFilter<"Keyword">
     excludes?: StringNullableListFilter<"Keyword">
+    deriveLanguages?: StringNullableListFilter<"Keyword">
     enableAiExpand?: BoolFilter<"Keyword"> | boolean
     synonyms?: StringNullableListFilter<"Keyword">
     active?: BoolFilter<"Keyword"> | boolean
@@ -36866,6 +36877,7 @@ export namespace Prisma {
     categoryId?: SortOrderInput | SortOrder
     includes?: SortOrder
     excludes?: SortOrder
+    deriveLanguages?: SortOrder
     enableAiExpand?: SortOrder
     synonyms?: SortOrder
     active?: SortOrder
@@ -36888,6 +36900,7 @@ export namespace Prisma {
     categoryId?: StringNullableFilter<"Keyword"> | string | null
     includes?: StringNullableListFilter<"Keyword">
     excludes?: StringNullableListFilter<"Keyword">
+    deriveLanguages?: StringNullableListFilter<"Keyword">
     enableAiExpand?: BoolFilter<"Keyword"> | boolean
     synonyms?: StringNullableListFilter<"Keyword">
     active?: BoolFilter<"Keyword"> | boolean
@@ -36907,6 +36920,7 @@ export namespace Prisma {
     categoryId?: SortOrderInput | SortOrder
     includes?: SortOrder
     excludes?: SortOrder
+    deriveLanguages?: SortOrder
     enableAiExpand?: SortOrder
     synonyms?: SortOrder
     active?: SortOrder
@@ -36928,6 +36942,7 @@ export namespace Prisma {
     categoryId?: StringNullableWithAggregatesFilter<"Keyword"> | string | null
     includes?: StringNullableListFilter<"Keyword">
     excludes?: StringNullableListFilter<"Keyword">
+    deriveLanguages?: StringNullableListFilter<"Keyword">
     enableAiExpand?: BoolWithAggregatesFilter<"Keyword"> | boolean
     synonyms?: StringNullableListFilter<"Keyword">
     active?: BoolWithAggregatesFilter<"Keyword"> | boolean
@@ -38984,6 +38999,7 @@ export namespace Prisma {
     lang?: string | null
     includes?: KeywordCreateincludesInput | string[]
     excludes?: KeywordCreateexcludesInput | string[]
+    deriveLanguages?: KeywordCreatederiveLanguagesInput | string[]
     enableAiExpand?: boolean
     synonyms?: KeywordCreatesynonymsInput | string[]
     active?: boolean
@@ -39003,6 +39019,7 @@ export namespace Prisma {
     categoryId?: string | null
     includes?: KeywordCreateincludesInput | string[]
     excludes?: KeywordCreateexcludesInput | string[]
+    deriveLanguages?: KeywordCreatederiveLanguagesInput | string[]
     enableAiExpand?: boolean
     synonyms?: KeywordCreatesynonymsInput | string[]
     active?: boolean
@@ -39020,6 +39037,7 @@ export namespace Prisma {
     lang?: NullableStringFieldUpdateOperationsInput | string | null
     includes?: KeywordUpdateincludesInput | string[]
     excludes?: KeywordUpdateexcludesInput | string[]
+    deriveLanguages?: KeywordUpdatederiveLanguagesInput | string[]
     enableAiExpand?: BoolFieldUpdateOperationsInput | boolean
     synonyms?: KeywordUpdatesynonymsInput | string[]
     active?: BoolFieldUpdateOperationsInput | boolean
@@ -39039,6 +39057,7 @@ export namespace Prisma {
     categoryId?: NullableStringFieldUpdateOperationsInput | string | null
     includes?: KeywordUpdateincludesInput | string[]
     excludes?: KeywordUpdateexcludesInput | string[]
+    deriveLanguages?: KeywordUpdatederiveLanguagesInput | string[]
     enableAiExpand?: BoolFieldUpdateOperationsInput | boolean
     synonyms?: KeywordUpdatesynonymsInput | string[]
     active?: BoolFieldUpdateOperationsInput | boolean
@@ -39057,6 +39076,7 @@ export namespace Prisma {
     categoryId?: string | null
     includes?: KeywordCreateincludesInput | string[]
     excludes?: KeywordCreateexcludesInput | string[]
+    deriveLanguages?: KeywordCreatederiveLanguagesInput | string[]
     enableAiExpand?: boolean
     synonyms?: KeywordCreatesynonymsInput | string[]
     active?: boolean
@@ -39071,6 +39091,7 @@ export namespace Prisma {
     lang?: NullableStringFieldUpdateOperationsInput | string | null
     includes?: KeywordUpdateincludesInput | string[]
     excludes?: KeywordUpdateexcludesInput | string[]
+    deriveLanguages?: KeywordUpdatederiveLanguagesInput | string[]
     enableAiExpand?: BoolFieldUpdateOperationsInput | boolean
     synonyms?: KeywordUpdatesynonymsInput | string[]
     active?: BoolFieldUpdateOperationsInput | boolean
@@ -39086,6 +39107,7 @@ export namespace Prisma {
     categoryId?: NullableStringFieldUpdateOperationsInput | string | null
     includes?: KeywordUpdateincludesInput | string[]
     excludes?: KeywordUpdateexcludesInput | string[]
+    deriveLanguages?: KeywordUpdatederiveLanguagesInput | string[]
     enableAiExpand?: BoolFieldUpdateOperationsInput | boolean
     synonyms?: KeywordUpdatesynonymsInput | string[]
     active?: BoolFieldUpdateOperationsInput | boolean
@@ -41439,6 +41461,7 @@ export namespace Prisma {
     categoryId?: SortOrder
     includes?: SortOrder
     excludes?: SortOrder
+    deriveLanguages?: SortOrder
     enableAiExpand?: SortOrder
     synonyms?: SortOrder
     active?: SortOrder
@@ -43152,6 +43175,10 @@ export namespace Prisma {
     set: string[]
   }
 
+  export type KeywordCreatederiveLanguagesInput = {
+    set: string[]
+  }
+
   export type KeywordCreatesynonymsInput = {
     set: string[]
   }
@@ -43208,6 +43235,11 @@ export namespace Prisma {
   }
 
   export type KeywordUpdateexcludesInput = {
+    set?: string[]
+    push?: string | string[]
+  }
+
+  export type KeywordUpdatederiveLanguagesInput = {
     set?: string[]
     push?: string | string[]
   }
@@ -45524,6 +45556,7 @@ export namespace Prisma {
     lang?: string | null
     includes?: KeywordCreateincludesInput | string[]
     excludes?: KeywordCreateexcludesInput | string[]
+    deriveLanguages?: KeywordCreatederiveLanguagesInput | string[]
     enableAiExpand?: boolean
     synonyms?: KeywordCreatesynonymsInput | string[]
     active?: boolean
@@ -45541,6 +45574,7 @@ export namespace Prisma {
     lang?: string | null
     includes?: KeywordCreateincludesInput | string[]
     excludes?: KeywordCreateexcludesInput | string[]
+    deriveLanguages?: KeywordCreatederiveLanguagesInput | string[]
     enableAiExpand?: boolean
     synonyms?: KeywordCreatesynonymsInput | string[]
     active?: boolean
@@ -45588,6 +45622,7 @@ export namespace Prisma {
     categoryId?: StringNullableFilter<"Keyword"> | string | null
     includes?: StringNullableListFilter<"Keyword">
     excludes?: StringNullableListFilter<"Keyword">
+    deriveLanguages?: StringNullableListFilter<"Keyword">
     enableAiExpand?: BoolFilter<"Keyword"> | boolean
     synonyms?: StringNullableListFilter<"Keyword">
     active?: BoolFilter<"Keyword"> | boolean
@@ -47696,6 +47731,7 @@ export namespace Prisma {
     lang?: string | null
     includes?: KeywordCreateincludesInput | string[]
     excludes?: KeywordCreateexcludesInput | string[]
+    deriveLanguages?: KeywordCreatederiveLanguagesInput | string[]
     enableAiExpand?: boolean
     synonyms?: KeywordCreatesynonymsInput | string[]
     active?: boolean
@@ -47714,6 +47750,7 @@ export namespace Prisma {
     categoryId?: string | null
     includes?: KeywordCreateincludesInput | string[]
     excludes?: KeywordCreateexcludesInput | string[]
+    deriveLanguages?: KeywordCreatederiveLanguagesInput | string[]
     enableAiExpand?: boolean
     synonyms?: KeywordCreatesynonymsInput | string[]
     active?: boolean
@@ -48297,6 +48334,7 @@ export namespace Prisma {
     lang?: string | null
     includes?: KeywordCreateincludesInput | string[]
     excludes?: KeywordCreateexcludesInput | string[]
+    deriveLanguages?: KeywordCreatederiveLanguagesInput | string[]
     enableAiExpand?: boolean
     synonyms?: KeywordCreatesynonymsInput | string[]
     active?: boolean
@@ -48315,6 +48353,7 @@ export namespace Prisma {
     categoryId?: string | null
     includes?: KeywordCreateincludesInput | string[]
     excludes?: KeywordCreateexcludesInput | string[]
+    deriveLanguages?: KeywordCreatederiveLanguagesInput | string[]
     enableAiExpand?: boolean
     synonyms?: KeywordCreatesynonymsInput | string[]
     active?: boolean
@@ -48394,6 +48433,7 @@ export namespace Prisma {
     lang?: NullableStringFieldUpdateOperationsInput | string | null
     includes?: KeywordUpdateincludesInput | string[]
     excludes?: KeywordUpdateexcludesInput | string[]
+    deriveLanguages?: KeywordUpdatederiveLanguagesInput | string[]
     enableAiExpand?: BoolFieldUpdateOperationsInput | boolean
     synonyms?: KeywordUpdatesynonymsInput | string[]
     active?: BoolFieldUpdateOperationsInput | boolean
@@ -48412,6 +48452,7 @@ export namespace Prisma {
     categoryId?: NullableStringFieldUpdateOperationsInput | string | null
     includes?: KeywordUpdateincludesInput | string[]
     excludes?: KeywordUpdateexcludesInput | string[]
+    deriveLanguages?: KeywordUpdatederiveLanguagesInput | string[]
     enableAiExpand?: BoolFieldUpdateOperationsInput | boolean
     synonyms?: KeywordUpdatesynonymsInput | string[]
     active?: BoolFieldUpdateOperationsInput | boolean
@@ -48469,6 +48510,7 @@ export namespace Prisma {
     lang?: string | null
     includes?: KeywordCreateincludesInput | string[]
     excludes?: KeywordCreateexcludesInput | string[]
+    deriveLanguages?: KeywordCreatederiveLanguagesInput | string[]
     enableAiExpand?: boolean
     synonyms?: KeywordCreatesynonymsInput | string[]
     active?: boolean
@@ -48487,6 +48529,7 @@ export namespace Prisma {
     categoryId?: string | null
     includes?: KeywordCreateincludesInput | string[]
     excludes?: KeywordCreateexcludesInput | string[]
+    deriveLanguages?: KeywordCreatederiveLanguagesInput | string[]
     enableAiExpand?: boolean
     synonyms?: KeywordCreatesynonymsInput | string[]
     active?: boolean
@@ -48566,6 +48609,7 @@ export namespace Prisma {
     lang?: NullableStringFieldUpdateOperationsInput | string | null
     includes?: KeywordUpdateincludesInput | string[]
     excludes?: KeywordUpdateexcludesInput | string[]
+    deriveLanguages?: KeywordUpdatederiveLanguagesInput | string[]
     enableAiExpand?: BoolFieldUpdateOperationsInput | boolean
     synonyms?: KeywordUpdatesynonymsInput | string[]
     active?: BoolFieldUpdateOperationsInput | boolean
@@ -48584,6 +48628,7 @@ export namespace Prisma {
     categoryId?: NullableStringFieldUpdateOperationsInput | string | null
     includes?: KeywordUpdateincludesInput | string[]
     excludes?: KeywordUpdateexcludesInput | string[]
+    deriveLanguages?: KeywordUpdatederiveLanguagesInput | string[]
     enableAiExpand?: BoolFieldUpdateOperationsInput | boolean
     synonyms?: KeywordUpdatesynonymsInput | string[]
     active?: BoolFieldUpdateOperationsInput | boolean
@@ -49622,6 +49667,7 @@ export namespace Prisma {
     lang?: string | null
     includes?: KeywordCreateincludesInput | string[]
     excludes?: KeywordCreateexcludesInput | string[]
+    deriveLanguages?: KeywordCreatederiveLanguagesInput | string[]
     enableAiExpand?: boolean
     synonyms?: KeywordCreatesynonymsInput | string[]
     active?: boolean
@@ -49636,6 +49682,7 @@ export namespace Prisma {
     lang?: NullableStringFieldUpdateOperationsInput | string | null
     includes?: KeywordUpdateincludesInput | string[]
     excludes?: KeywordUpdateexcludesInput | string[]
+    deriveLanguages?: KeywordUpdatederiveLanguagesInput | string[]
     enableAiExpand?: BoolFieldUpdateOperationsInput | boolean
     synonyms?: KeywordUpdatesynonymsInput | string[]
     active?: BoolFieldUpdateOperationsInput | boolean
@@ -49653,6 +49700,7 @@ export namespace Prisma {
     lang?: NullableStringFieldUpdateOperationsInput | string | null
     includes?: KeywordUpdateincludesInput | string[]
     excludes?: KeywordUpdateexcludesInput | string[]
+    deriveLanguages?: KeywordUpdatederiveLanguagesInput | string[]
     enableAiExpand?: BoolFieldUpdateOperationsInput | boolean
     synonyms?: KeywordUpdatesynonymsInput | string[]
     active?: BoolFieldUpdateOperationsInput | boolean
@@ -49670,6 +49718,7 @@ export namespace Prisma {
     lang?: NullableStringFieldUpdateOperationsInput | string | null
     includes?: KeywordUpdateincludesInput | string[]
     excludes?: KeywordUpdateexcludesInput | string[]
+    deriveLanguages?: KeywordUpdatederiveLanguagesInput | string[]
     enableAiExpand?: BoolFieldUpdateOperationsInput | boolean
     synonyms?: KeywordUpdatesynonymsInput | string[]
     active?: BoolFieldUpdateOperationsInput | boolean
@@ -50280,6 +50329,7 @@ export namespace Prisma {
     lang?: NullableStringFieldUpdateOperationsInput | string | null
     includes?: KeywordUpdateincludesInput | string[]
     excludes?: KeywordUpdateexcludesInput | string[]
+    deriveLanguages?: KeywordUpdatederiveLanguagesInput | string[]
     enableAiExpand?: BoolFieldUpdateOperationsInput | boolean
     synonyms?: KeywordUpdatesynonymsInput | string[]
     active?: BoolFieldUpdateOperationsInput | boolean
@@ -50298,6 +50348,7 @@ export namespace Prisma {
     categoryId?: NullableStringFieldUpdateOperationsInput | string | null
     includes?: KeywordUpdateincludesInput | string[]
     excludes?: KeywordUpdateexcludesInput | string[]
+    deriveLanguages?: KeywordUpdatederiveLanguagesInput | string[]
     enableAiExpand?: BoolFieldUpdateOperationsInput | boolean
     synonyms?: KeywordUpdatesynonymsInput | string[]
     active?: BoolFieldUpdateOperationsInput | boolean
@@ -50315,6 +50366,7 @@ export namespace Prisma {
     categoryId?: NullableStringFieldUpdateOperationsInput | string | null
     includes?: KeywordUpdateincludesInput | string[]
     excludes?: KeywordUpdateexcludesInput | string[]
+    deriveLanguages?: KeywordUpdatederiveLanguagesInput | string[]
     enableAiExpand?: BoolFieldUpdateOperationsInput | boolean
     synonyms?: KeywordUpdatesynonymsInput | string[]
     active?: BoolFieldUpdateOperationsInput | boolean
