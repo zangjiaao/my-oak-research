@@ -230,6 +230,21 @@ function buildObjectTermHints(
   };
 }
 
+function filterStandaloneScoringTerms(
+  terms: string[],
+  topicAnchors: string[]
+): string[] {
+  const anchors = normalizeTerms(topicAnchors);
+  if (anchors.length === 0) return terms;
+  return terms.filter((term) => {
+    const normalized = term.trim().toLowerCase();
+    if (!normalized) return false;
+    return !anchors.some(
+      (anchor) => normalized.includes(anchor) && normalized !== anchor
+    );
+  });
+}
+
 async function extractObjectsFromDocs(input: {
   name: string;
   description?: string | null;
@@ -763,6 +778,8 @@ Please follow these constraints:
 - Recall Terms should be concise and cost-aware. Prefer object-centric phrases useful for direct search.
 - If evidence reveals community aliases (example: slang / nickname), prioritize them in Recall Terms.
 - Keep topic terms focused. You can add at most 2 high-confidence topic terms in "topicTerms".
+- Scoring Terms must be standalone terms, never topic+modifier phrases.
+- Example: "qmd" is valid scoring term, "openclaw qmd" is not.
 - Exclusion Terms should default to empty unless user description or existing exclusions clearly require them.
 
 Requirements:
@@ -822,12 +839,16 @@ Requirements:
     const synonymsWithoutExclusion = synonymsEnriched.filter(
       (item) => !exclusionSet.has(item) && !includesWithoutExclusion.includes(item)
     );
+    const scoringStandaloneTerms = filterStandaloneScoringTerms(
+      synonymsWithoutExclusion,
+      topicAnchors
+    );
     const includesFiltered = filterTermsByLanguages(
       includesWithoutExclusion,
       targetLanguages
     );
     const synonymsFiltered = filterTermsByLanguages(
-      synonymsWithoutExclusion,
+      scoringStandaloneTerms,
       targetLanguages
     );
     const excludesFiltered = filterTermsByLanguages(
