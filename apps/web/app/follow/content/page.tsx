@@ -157,7 +157,7 @@ const FollowContent = () => {
   }
 
   return (
-    <div className="h-full lg:h-[calc(100vh-7rem)]">
+    <div className="h-full">
       <ScrollArea className="h-full">
         <div className="flex flex-col gap-3 overflow-visible pb-6 pr-2 pl-1">
           {sortedContents.map((content) => (

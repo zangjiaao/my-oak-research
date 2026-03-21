@@ -26,7 +26,7 @@ export const ContentList = () => {
   const isBookmarked = (id: string) => favoriteIds.has(id);
 
   return (
-    <ScrollArea className="h-[calc(100vh-11rem)]">
+    <ScrollArea className="h-full">
       <div className="flex flex-col gap-4 overflow-visible pl-1 pr-4 pt-1">
         {isLoading && (
           <div className="space-y-4">
