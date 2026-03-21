@@ -554,13 +554,28 @@ async function fetchBySources(
           strategy === "RECALL_ONLY" || strategy === "HYBRID"
             ? buildRecallQueries(keywords)
             : [];
+        const objectiveFallback = Array.from(
+          new Set(
+            keywords
+              .map((keyword) =>
+                [keyword.name, keyword.description ?? ""]
+                  .join(" ")
+                  .replace(/\s+/g, " ")
+                  .trim()
+              )
+              .filter(Boolean)
+          )
+        )
+          .join("; ")
+          .slice(0, 500);
         const fetched = await executeFetchDriver(
           source,
           driver,
           runId,
           queryId,
           keywordFilterTerms,
-          recallQueries
+          recallQueries,
+          objectiveFallback
         );
         console.log(
           `[collector] fetched ${fetched.length} items from ${source.name}`
@@ -654,7 +669,8 @@ async function executeFetchDriver(
   runId: string,
   queryId: string,
   keywordFilterTerms: string[],
-  recallQueries: string[]
+  recallQueries: string[],
+  objectiveFallback?: string
 ): Promise<CleanItem[]> {
   switch (driver) {
     case "playwright":
@@ -679,7 +695,8 @@ async function executeFetchDriver(
         runId,
         queryId,
         keywordFilterTerms,
-        recallQueries
+        recallQueries,
+        objectiveFallback
       );
   }
 }
@@ -689,7 +706,8 @@ async function fetchWithDefaultSource(
   runId: string,
   queryId: string,
   keywordFilterTerms: string[],
-  recallQueries: string[]
+  recallQueries: string[],
+  objectiveFallback?: string
 ): Promise<CleanItem[]> {
   console.log(
     `[collector] fetchWithDefaultSource ${source.name} (${source.type})`
@@ -704,6 +722,7 @@ async function fetchWithDefaultSource(
         runId,
         queryId,
         recallQueries,
+        objectiveFallback,
       });
     case SourceType.SOCIAL_MEDIA:
       return fetchSocialSource(
@@ -854,12 +873,18 @@ async function fetchHtmlSource(
 
 async function fetchSearchSource(
   source: SearchEngineSource,
-  context?: { runId?: string; queryId?: string; recallQueries?: string[] }
+  context?: {
+    runId?: string;
+    queryId?: string;
+    recallQueries?: string[];
+    objectiveFallback?: string;
+  }
 ): Promise<CleanItem[]> {
   console.log(`[collector] fetchSearchSource ${source.name}`);
-  const objective = (
+  const configuredObjective = (
     (source.search as unknown as { objective?: string })?.objective ?? ""
   ).trim();
+  const objective = configuredObjective || (context?.objectiveFallback ?? "").trim();
 
   const provider = detectSearchProvider(
     (source.search as unknown as { platform?: string | null })?.platform,
