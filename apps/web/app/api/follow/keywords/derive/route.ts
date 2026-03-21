@@ -34,6 +34,11 @@ type SearchCallResult = {
   responseBody: unknown;
   statusCode: number;
 };
+type QueryDiagnostics = {
+  query: string;
+  parsedCount: number;
+  topicHitCount: number;
+};
 
 const SEARCH_PROVIDER_ENDPOINTS: Record<SearchProvider, string> = {
   parallel:
@@ -73,6 +78,14 @@ function normalizeTerms(values: string[]): string[] {
     .filter(Boolean)
     .map((value) => value.toLowerCase())
     .filter((value) => (seen.has(value) ? false : (seen.add(value), true)));
+}
+
+function countTopicHits(docs: CalibrationDoc[], topicTerms: string[]): number {
+  if (topicTerms.length === 0) return 0;
+  return docs.filter((doc) => {
+    const content = `${doc.title} ${doc.snippet}`.toLowerCase();
+    return topicTerms.some((term) => content.includes(term));
+  }).length;
 }
 
 function asObject(value: unknown): Record<string, unknown> {
@@ -258,6 +271,39 @@ Return ONLY JSON:
   };
 }
 
+function enforceTopicTermsInNounPlan(
+  nounPlan: { primaryNoun: string; secondaryNouns: string[]; searchQueries: string[] },
+  topicTerms: string[]
+): { enforced: typeof nounPlan; topicEnforced: boolean } {
+  if (topicTerms.length === 0) {
+    return { enforced: nounPlan, topicEnforced: false };
+  }
+  const normalizedTopics = normalizeTerms(topicTerms);
+  const normalizedSecondary = normalizeTerms(nounPlan.secondaryNouns);
+  const missingTopics = normalizedTopics.filter(
+    (topic) => !normalizedSecondary.includes(topic)
+  );
+  if (missingTopics.length === 0) {
+    return { enforced: nounPlan, topicEnforced: false };
+  }
+  const nextSecondary = normalizeTerms([
+    ...normalizedSecondary,
+    ...missingTopics,
+  ]).slice(0, 2);
+  const nextQueries = normalizeTerms([
+    ...nounPlan.searchQueries,
+    ...missingTopics.map((topic) => `${nounPlan.primaryNoun} ${topic}`),
+  ]);
+  return {
+    enforced: {
+      ...nounPlan,
+      secondaryNouns: nextSecondary.length > 0 ? nextSecondary : normalizedTopics.slice(0, 1),
+      searchQueries: nextQueries,
+    },
+    topicEnforced: true,
+  };
+}
+
 function buildSeedQueries(input: {
   primaryNoun: string;
   secondaryNouns: string[];
@@ -265,8 +311,11 @@ function buildSeedQueries(input: {
   topicTerms: string[];
 }): string[] {
   const fromModel = normalizeTerms(input.searchQueries ?? []);
+  const topicAnchored = normalizeTerms(
+    input.topicTerms.map((topic) => `${input.primaryNoun} ${topic}`)
+  );
   if (fromModel.length > 0) {
-    return fromModel.slice(0, 5);
+    return normalizeTerms([...topicAnchored, ...fromModel]).slice(0, 6);
   }
   const base = normalizeTerms([
     ...input.topicTerms,
@@ -282,7 +331,7 @@ function buildSeedQueries(input: {
     combined.push(`${base[0]} ${base[2]}`);
   }
   combined.push(...base);
-  return normalizeTerms(combined).slice(0, 5);
+  return normalizeTerms([...topicAnchored, ...combined]).slice(0, 6);
 }
 
 function toFreshnessQuery(query: string): string {
@@ -371,9 +420,9 @@ Return ONLY JSON:
 }
 
 Rules:
-- Keep only atomic noun terms related to the secondary nouns.
-- Keep terms concrete and searchable.
-- Exclude abstract interpretation phrases.
+- Keep only atomic noun terms directly related to secondary nouns.
+- Prefer concrete entities: plugins, libraries, algorithms, models, tools, organizations, places.
+- Exclude generic words like memory/system/context/model/update.
 - Do not output "X 的 Y" or multi-word semantic phrases.
 - Max 24 terms.
 `;
@@ -488,6 +537,29 @@ function normalizeCalibrationDocs(payload: unknown): CalibrationDoc[] {
   return unique;
 }
 
+function dedupeCalibrationDocs(docs: CalibrationDoc[]): CalibrationDoc[] {
+  const seen = new Set<string>();
+  const deduped: CalibrationDoc[] = [];
+  for (const doc of docs) {
+    const signature = `${doc.title}|${doc.snippet}|${doc.url ?? ""}`.toLowerCase();
+    if (seen.has(signature)) continue;
+    seen.add(signature);
+    deduped.push(doc);
+  }
+  return deduped;
+}
+
+function buildSecondHopQueries(
+  primaryNoun: string,
+  atomicTerms: string[],
+  topicTerms: string[]
+): string[] {
+  const boosted = normalizeTerms(
+    atomicTerms.filter((term) => !topicTerms.includes(term)).slice(0, 4)
+  );
+  return normalizeTerms(boosted.map((term) => `${primaryNoun} ${term}`)).slice(0, 4);
+}
+
 async function fetchJsonWithTimeout(
   url: string,
   init: RequestInit,
@@ -556,10 +628,11 @@ async function searchWithProvider(
     const body = JSON.stringify({
       api_key: apiKey,
       query: freshnessQuery,
-      max_results: 8,
-      search_depth: "basic",
+      max_results: 10,
+      search_depth: "advanced",
       topic: "general",
       include_answer: false,
+      include_raw_content: true,
       days: 30,
     });
     const response = await fetchJsonWithTimeout(
@@ -617,10 +690,13 @@ async function searchWithProvider(
 async function collectCalibrationDocs(
   seedQueries: string[],
   providerOrder: SearchProvider[],
-  requestId: string
+  requestId: string,
+  topicTerms: string[]
 ): Promise<{
   provider?: SearchProvider;
   docs: CalibrationDoc[];
+  diagnostics: QueryDiagnostics[];
+  topicHitCount: number;
   reason: CalibrationReason;
   triedProviders: SearchProvider[];
 }> {
@@ -630,6 +706,8 @@ async function collectCalibrationDocs(
   if (configuredProviders.length === 0) {
     return {
       docs: [],
+      diagnostics: [],
+      topicHitCount: 0,
       reason: "no_search_provider_configured",
       triedProviders: [],
     };
@@ -638,10 +716,17 @@ async function collectCalibrationDocs(
   let hadRequestError = false;
   for (const provider of configuredProviders) {
     const docs: CalibrationDoc[] = [];
+    const diagnostics: QueryDiagnostics[] = [];
     for (const query of seedQueries) {
       try {
         const result = await searchWithProvider(provider, query);
+        const topicHitCount = countTopicHits(result.docs, topicTerms);
         docs.push(...result.docs);
+        diagnostics.push({
+          query,
+          parsedCount: result.docs.length,
+          topicHitCount,
+        });
         writeWebDeriveIoLog({
           event: "derive-search-request-response",
           requestId,
@@ -655,7 +740,7 @@ async function collectCalibrationDocs(
             body: result.request.body ?? null,
           },
           response: result.responseBody,
-          details: { parsedCount: result.docs.length },
+          details: { parsedCount: result.docs.length, topicHitCount },
         });
       } catch (error) {
         hadRequestError = true;
@@ -674,9 +759,15 @@ async function collectCalibrationDocs(
       }
     }
     if (docs.length > 0) {
+      const totalTopicHitCount = diagnostics.reduce(
+        (sum, item) => sum + item.topicHitCount,
+        0
+      );
       return {
         provider,
         docs: docs.slice(0, 24),
+        diagnostics,
+        topicHitCount: totalTopicHitCount,
         reason: null,
         triedProviders: configuredProviders,
       };
@@ -684,6 +775,8 @@ async function collectCalibrationDocs(
   }
   return {
     docs: [],
+    diagnostics: [],
+    topicHitCount: 0,
     reason: hadRequestError ? "provider_request_failed" : null,
     triedProviders: configuredProviders,
   };
@@ -777,12 +870,16 @@ export async function POST(req: Request) {
       description,
     });
     const inputTopicTerms = extractTopicTermsFromText(name, description);
-    const nounPlan = await extractTopicNounPlan({
+    const nounPlanRaw = await extractTopicNounPlan({
       name,
       description,
       topicTerms: inputTopicTerms,
       requestId,
     });
+    const { enforced: nounPlan, topicEnforced } = enforceTopicTermsInNounPlan(
+      nounPlanRaw,
+      inputTopicTerms
+    );
     const seedQueries = buildSeedQueries({
       primaryNoun: nounPlan.primaryNoun,
       secondaryNouns: nounPlan.secondaryNouns,
@@ -794,15 +891,22 @@ export async function POST(req: Request) {
       calibration === false
         ? {
             docs: [] as CalibrationDoc[],
+            diagnostics: [] as QueryDiagnostics[],
+            topicHitCount: 0,
             provider: undefined as SearchProvider | undefined,
             reason: "calibration_disabled" as CalibrationReason,
             triedProviders: [] as SearchProvider[],
           }
-        : await collectCalibrationDocs(seedQueries, providerOrder, requestId);
+        : await collectCalibrationDocs(
+            seedQueries,
+            providerOrder,
+            requestId,
+            inputTopicTerms
+          );
     const degraded =
       calibrationResult.reason === "no_search_provider_configured" ||
       calibrationResult.reason === "provider_request_failed";
-    const discoveredAtomicTerms = await extractAtomicTermsFromDocs({
+    const discoveredAtomicTermsHop1 = await extractAtomicTermsFromDocs({
       name,
       description,
       docs: calibrationResult.docs,
@@ -810,6 +914,46 @@ export async function POST(req: Request) {
       secondaryNouns: nounPlan.secondaryNouns,
       requestId,
     });
+    const hop2Queries = buildSecondHopQueries(
+      nounPlan.primaryNoun,
+      discoveredAtomicTermsHop1,
+      inputTopicTerms
+    );
+    const hop2Result =
+      calibration !== false && hop2Queries.length > 0
+        ? await collectCalibrationDocs(
+            hop2Queries,
+            providerOrder,
+            requestId,
+            inputTopicTerms
+          )
+        : {
+            docs: [] as CalibrationDoc[],
+            diagnostics: [] as QueryDiagnostics[],
+            topicHitCount: 0,
+            provider: calibrationResult.provider,
+            reason: null as CalibrationReason,
+            triedProviders: calibrationResult.triedProviders,
+          };
+    const mergedDocs = dedupeCalibrationDocs([
+      ...calibrationResult.docs,
+      ...hop2Result.docs,
+    ]).slice(0, 36);
+    const discoveredAtomicTermsHop2 =
+      hop2Result.docs.length > 0
+        ? await extractAtomicTermsFromDocs({
+            name,
+            description,
+            docs: mergedDocs,
+            primaryNoun: nounPlan.primaryNoun,
+            secondaryNouns: nounPlan.secondaryNouns,
+            requestId,
+          })
+        : [];
+    const discoveredAtomicTerms = normalizeTerms([
+      ...discoveredAtomicTermsHop1,
+      ...discoveredAtomicTermsHop2,
+    ]);
     const explicitExcludeIntent = hasExplicitExcludeIntent(description);
     const topicHintMissing = inputTopicTerms.length === 0;
     const recallBudgetNormalized = Math.min(12, Math.max(6, recallBudget));
@@ -851,6 +995,20 @@ export async function POST(req: Request) {
       includesFiltered.removedCount +
       synonymsFiltered.removedCount +
       excludesFiltered.removedCount;
+    const queryDiagnostics = [
+      ...calibrationResult.diagnostics,
+      ...hop2Result.diagnostics,
+    ];
+    const topicHitCountInSearch =
+      calibrationResult.topicHitCount + hop2Result.topicHitCount;
+    const specificityPool = new Set(normalizeTerms(nounPlan.secondaryNouns));
+    const specificTermCount = discoveredAtomicTerms.filter(
+      (term) => !specificityPool.has(term)
+    ).length;
+    const entitySpecificityScore =
+      discoveredAtomicTerms.length > 0
+        ? Number((specificTermCount / discoveredAtomicTerms.length).toFixed(2))
+        : 0;
 
     logger.info("keyword derive completed", {
       requestId,
@@ -859,7 +1017,11 @@ export async function POST(req: Request) {
       degraded,
       reason: calibrationResult.reason,
       seedQueryCount: seedQueries.length,
-      calibrationDocCount: calibrationResult.docs.length,
+      calibrationDocCount: mergedDocs.length,
+      topicEnforced,
+      topicHitCountInSearch,
+      hop2Enabled: hop2Queries.length > 0,
+      entitySpecificityScore,
       discoveredAtomicTermCount: discoveredAtomicTerms.length,
       includes: includesFiltered.filtered.length,
       synonyms: synonymsFiltered.filtered.length,
@@ -882,11 +1044,16 @@ export async function POST(req: Request) {
         primaryNoun: nounPlan.primaryNoun,
         secondaryNouns: nounPlan.secondaryNouns,
         seedQueries,
+        queryDiagnostics,
         freshnessMode: "latest-first",
-        calibrationDocCount: calibrationResult.docs.length,
+        calibrationDocCount: mergedDocs.length,
         recallBudget: recallBudgetNormalized,
         extractionMode:
-          calibrationResult.docs.length > 0 ? "web_calibrated" : "fallback",
+          mergedDocs.length > 0 ? "web_calibrated" : "fallback",
+        topicEnforced,
+        topicHitCountInSearch,
+        hop2Enabled: hop2Queries.length > 0,
+        entitySpecificityScore,
         discoveredAtomicTerms,
         inputTopicTerms,
         usedTopicTerms,
