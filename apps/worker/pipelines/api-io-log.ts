@@ -18,6 +18,8 @@ type WorkerApiIoEntry = {
   sourceName: string;
   platform: string;
   provider: string;
+  recallQuery?: string;
+  recallQueryCount?: number;
   url: string;
   method: string;
   statusCode: number;

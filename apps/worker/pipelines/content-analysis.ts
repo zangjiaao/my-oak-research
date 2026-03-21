@@ -457,12 +457,15 @@ function buildRecallQueries(keywords: QueryKeyword[]): string[] {
   const queries: string[] = [];
   for (const keyword of keywords) {
     const includeTerms = normalizeStringArray(keyword.includes);
-    const includeQuery =
-      includeTerms.length > 0 ? includeTerms.join(" OR ") : keyword.name.trim();
-    if (!includeQuery) continue;
-    queries.push(includeQuery);
+    if (includeTerms.length > 0) {
+      queries.push(...includeTerms);
+      continue;
+    }
+    const fallbackName = keyword.name.trim();
+    if (!fallbackName) continue;
+    queries.push(fallbackName);
   }
-  return Array.from(new Set(queries));
+  return Array.from(new Set(queries.map((query) => query.trim()).filter(Boolean)));
 }
 
 function deduplicateItemsByUrlAndFingerprint(items: CleanItem[]): CleanItem[] {
@@ -923,6 +926,8 @@ async function fetchSearchSource(
             "unknown"
           ).toString(),
         provider,
+        recallQuery,
+        recallQueryCount: searchQueries.length,
         url: request.url,
         method: request.method,
         statusCode: response.statusCode,
@@ -963,6 +968,8 @@ async function fetchSearchSource(
             "unknown"
           ).toString(),
         provider,
+        recallQuery,
+        recallQueryCount: searchQueries.length,
         url: request.url,
         method: request.method,
         statusCode: -1,
