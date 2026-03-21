@@ -68,6 +68,9 @@ const DeriveResultSchema = z.object({
   excludes: z.array(z.string()).default([]),
   topicTerms: z.array(z.string()).optional().default([]),
 });
+const SeedNounResultSchema = z.object({
+  seedNouns: z.array(z.string()).default([]),
+});
 const ObjectExtractionResultSchema = z.object({
   objects: z
     .array(
@@ -91,6 +94,32 @@ const ObjectExtractionResultSchema = z.object({
     )
     .default([]),
 });
+const GENERIC_ENTITY_TERMS = new Set(
+  [
+    "记忆",
+    "memory",
+    "system",
+    "systems",
+    "架构",
+    "architecture",
+    "模块",
+    "module",
+    "插件",
+    "plugin",
+    "优化",
+    "optimization",
+    "检索",
+    "retrieval",
+    "向量",
+    "vector",
+    "全文",
+    "search",
+    "comparison",
+    "tutorial",
+    "source code",
+    "pros cons",
+  ].map((item) => item.toLowerCase())
+);
 
 function normalizeTerms(values: string[]): string[] {
   const seen = new Set<string>();
@@ -175,13 +204,116 @@ function isProviderConfigured(provider: SearchProvider): boolean {
   return Boolean(process.env.PARALLEL_API_KEY);
 }
 
-function buildSeedQueries(name: string, description?: string | null): string[] {
-  const topicTerms = extractTopicTermsFromText(name, description);
-  if (topicTerms.length > 0) {
-    return topicTerms.slice(0, 3);
+function splitSearchTokens(input: string): string[] {
+  return input
+    .toLowerCase()
+    .replace(/#/g, " ")
+    .split(/[\s,.;:!?/|()[\]{}，。；：！？、]+/g)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function fallbackSeedNouns(
+  name: string,
+  description?: string | null,
+  topicTerms: string[] = []
+): string[] {
+  const candidates = normalizeTerms([
+    ...topicTerms,
+    ...splitSearchTokens(name),
+    ...splitSearchTokens(description ?? ""),
+  ]);
+  return candidates
+    .filter((item) => !GENERIC_ENTITY_TERMS.has(item))
+    .slice(0, 3);
+}
+
+async function extractSeedNouns(input: {
+  name: string;
+  description?: string | null;
+  topicTerms: string[];
+  requestId: string;
+}): Promise<string[]> {
+  const prompt = `
+Extract 2-3 core search nouns from a topic.
+Topic name: ${input.name}
+Description: ${input.description ?? "N/A"}
+User topic tags: ${input.topicTerms.join(", ") || "none"}
+
+Rules:
+- Return concise nouns for first-round web search.
+- Prefer proper nouns and concrete subject nouns.
+- Avoid generic words like memory/system/architecture.
+- Keep nouns atomic and searchable.
+
+Return ONLY JSON:
+{
+  "seedNouns": ["...", "...", "..."]
+}
+`;
+  try {
+    const response = await llmGateway.json<
+      z.infer<typeof SeedNounResultSchema>
+    >("keyword-seed-noun-extraction", {
+      prompt,
+      schema: SeedNounResultSchema,
+      temperature: 0.2,
+      metadata: { requestId: input.requestId },
+    });
+    writeWebDeriveIoLog({
+      event: "derive-llm-request-response",
+      requestId: input.requestId,
+      request: {
+        task: "keyword-seed-noun-extraction",
+        prompt,
+        temperature: 0.2,
+      },
+      response,
+    });
+    const normalized = normalizeTerms(response.seedNouns ?? []).filter(
+      (item) => !GENERIC_ENTITY_TERMS.has(item)
+    );
+    if (normalized.length > 0) {
+      return normalized.slice(0, 3);
+    }
+  } catch (error) {
+    logger.warn("keyword seed noun extraction failed", {
+      requestId: input.requestId,
+      error: logger.normalizeError(error),
+    });
+    writeWebDeriveIoLog({
+      event: "derive-llm-request-response",
+      requestId: input.requestId,
+      request: {
+        task: "keyword-seed-noun-extraction",
+        prompt,
+        temperature: 0.2,
+      },
+      error: error instanceof Error ? error.message : "unknown error",
+    });
   }
-  const normalizedName = name.replace(/#/g, " ").replace(/\s+/g, " ").trim();
-  return normalizedName ? [normalizedName] : [];
+  return fallbackSeedNouns(input.name, input.description, input.topicTerms);
+}
+
+function buildSeedQueries(seedNouns: string[], topicTerms: string[]): string[] {
+  const base = normalizeTerms([...topicTerms, ...seedNouns]).slice(0, 3);
+  if (base.length === 0) return [];
+  const combined: string[] = [];
+  if (base.length >= 2) {
+    combined.push(`${base[0]} ${base[1]}`);
+  }
+  if (base.length >= 3) {
+    combined.push(`${base[0]} ${base[2]}`);
+  }
+  combined.push(...base);
+  return normalizeTerms(combined).slice(0, 5);
+}
+
+function toFreshnessQuery(query: string): string {
+  if (/[\u4E00-\u9FFF]/u.test(query)) {
+    return `${query} 最新`;
+  }
+  return `${query} latest`;
 }
 
 function hasExplicitExcludeIntent(description?: string | null): boolean {
@@ -196,10 +328,10 @@ function normalizeObjectList(rawObjects: z.infer<typeof ObjectExtractionResultSc
   const normalized: ExtractedObject[] = [];
   for (const rawObject of rawObjects) {
     const name = rawObject.name.trim().toLowerCase();
-    if (!name || seen.has(name)) continue;
+    if (!name || seen.has(name) || GENERIC_ENTITY_TERMS.has(name)) continue;
     seen.add(name);
     const aliases = normalizeTerms(rawObject.aliases ?? []).filter(
-      (alias) => alias !== name
+      (alias) => alias !== name && !GENERIC_ENTITY_TERMS.has(alias)
     );
     normalized.push({
       name,
@@ -211,21 +343,34 @@ function normalizeObjectList(rawObjects: z.infer<typeof ObjectExtractionResultSc
 }
 
 function buildObjectTermHints(
-  topicAnchors: string[],
+  seedNouns: string[],
   objects: ExtractedObject[]
 ): { recallHints: string[]; scoringHints: string[] } {
   const objectTerms = normalizeTerms(
     objects.flatMap((item) => [item.name, ...item.aliases])
   );
+  const primarySubject = seedNouns[0];
+  const secondarySubject = seedNouns[1];
+  const subjectCombinations = normalizeTerms(
+    [primarySubject, secondarySubject].filter(Boolean) as string[]
+  );
   const recallHints = normalizeTerms(
-    topicAnchors.flatMap((topic) =>
-      objectTerms
-        .filter((term) => term !== topic)
-        .map((term) => `${topic} ${term}`)
-    )
+    objectTerms.flatMap((term) => {
+      const candidates: string[] = [];
+      if (primarySubject && primarySubject !== term) {
+        candidates.push(`${primarySubject} ${term}`);
+      }
+      if (secondarySubject && secondarySubject !== term) {
+        candidates.push(`${secondarySubject} ${term}`);
+      }
+      return candidates;
+    })
   );
   return {
-    recallHints,
+    recallHints: normalizeTerms([
+      ...subjectCombinations,
+      ...recallHints,
+    ]),
     scoringHints: objectTerms,
   };
 }
@@ -233,16 +378,44 @@ function buildObjectTermHints(
 function filterStandaloneScoringTerms(
   terms: string[],
   topicAnchors: string[]
-): string[] {
+): { filtered: string[]; droppedNonAtomic: string[]; droppedGeneric: string[] } {
   const anchors = normalizeTerms(topicAnchors);
-  if (anchors.length === 0) return terms;
-  return terms.filter((term) => {
+  const droppedNonAtomic: string[] = [];
+  const droppedGeneric: string[] = [];
+  const filtered = terms.filter((term) => {
     const normalized = term.trim().toLowerCase();
     if (!normalized) return false;
-    return !anchors.some(
-      (anchor) => normalized.includes(anchor) && normalized !== anchor
-    );
+    if (GENERIC_ENTITY_TERMS.has(normalized)) {
+      droppedGeneric.push(normalized);
+      return false;
+    }
+    if (/\s/u.test(normalized)) {
+      droppedNonAtomic.push(normalized);
+      return false;
+    }
+    if (/[的]/u.test(normalized) || /\b(of|for|with|without|and|vs)\b/u.test(normalized)) {
+      droppedNonAtomic.push(normalized);
+      return false;
+    }
+    if (
+      /\b(architecture|optimization|comparison|tutorial|source|pros|cons|system)\b/u.test(
+        normalized
+      )
+    ) {
+      droppedGeneric.push(normalized);
+      return false;
+    }
+    if (anchors.some((anchor) => normalized.includes(anchor) && normalized !== anchor)) {
+      droppedNonAtomic.push(normalized);
+      return false;
+    }
+    return true;
   });
+  return {
+    filtered,
+    droppedNonAtomic: normalizeTerms(droppedNonAtomic),
+    droppedGeneric: normalizeTerms(droppedGeneric),
+  };
 }
 
 async function extractObjectsFromDocs(input: {
@@ -420,10 +593,15 @@ async function searchWithProvider(
   provider: SearchProvider,
   query: string
 ): Promise<SearchCallResult> {
+  const freshnessQuery = toFreshnessQuery(query);
   if (provider === "anspire") {
     const apiKey = process.env.ANSPIRE_API_KEY;
     if (!apiKey) throw new Error("ANSPIRE_API_KEY missing");
-    const params = new URLSearchParams({ query, top_k: "8" });
+    const params = new URLSearchParams({
+      query: freshnessQuery,
+      top_k: "8",
+      sort: "latest",
+    });
     const url = `${SEARCH_PROVIDER_ENDPOINTS.anspire}?${params.toString()}`;
     const method = "GET";
     const headers = {
@@ -454,11 +632,12 @@ async function searchWithProvider(
     const headers = { "Content-Type": "application/json" };
     const body = JSON.stringify({
       api_key: apiKey,
-      query,
+      query: freshnessQuery,
       max_results: 8,
       search_depth: "basic",
       topic: "general",
       include_answer: false,
+      days: 30,
     });
     const response = await fetchJsonWithTimeout(
       url,
@@ -487,8 +666,8 @@ async function searchWithProvider(
   };
   const body = JSON.stringify({
     mode: "one-shot",
-    objective: query,
-    search_queries: [query],
+    objective: freshnessQuery,
+    search_queries: [freshnessQuery],
     max_results: 8,
     excerpts: {
       max_chars_per_result: 900,
@@ -704,7 +883,14 @@ export async function POST(req: Request) {
       persistedLanguages,
       description,
     });
-    const seedQueries = buildSeedQueries(name, description);
+    const inputTopicTerms = extractTopicTermsFromText(name, description);
+    const seedNouns = await extractSeedNouns({
+      name,
+      description,
+      topicTerms: inputTopicTerms,
+      requestId,
+    });
+    const seedQueries = buildSeedQueries(seedNouns, inputTopicTerms);
     const providerOrder = resolveSearchProviderOrder(process.env.SEARCH_ENGINE);
     const calibrationResult =
       calibration === false
@@ -719,8 +905,7 @@ export async function POST(req: Request) {
     const degraded =
       calibrationResult.reason === "no_search_provider_configured" ||
       calibrationResult.reason === "provider_request_failed";
-    const inputTopicTerms = extractTopicTermsFromText(name, description);
-    const topicAnchors = seedQueries.length > 0 ? seedQueries : inputTopicTerms;
+    const topicAnchors = seedNouns.length > 0 ? seedNouns : inputTopicTerms;
     const extractedObjects = await extractObjectsFromDocs({
       name,
       description,
@@ -748,6 +933,8 @@ Target Language Sensitivity: ${lang}
 Preferred Languages: ${targetLanguages.join(", ")}
 Recall Terms budget: ${Math.min(12, Math.max(6, recallBudget))}
 Search calibration provider: ${calibrationResult.provider ?? "none"}
+Search freshness mode: latest-first
+Seed nouns: ${seedNouns.join(", ") || "none"}
 Seed queries: ${seedQueries.join(" | ")}
 User provided topic terms: ${inputTopicTerms.join(", ") || "none"}
 Topic anchors in use: ${topicAnchors.join(", ") || "none"}
@@ -774,12 +961,13 @@ Please follow these constraints:
 - Keep terms short and searchable (1-4 words).
 - Do not repeat existing terms.
 - Avoid overlap: do not place the same term in both include/synonyms and excludes.
-- Prefer high-signal terms; avoid generic words.
+- Prefer high-signal terms; avoid generic words like memory/system/architecture/tutorial/comparison.
 - Recall Terms should be concise and cost-aware. Prefer object-centric phrases useful for direct search.
 - If evidence reveals community aliases (example: slang / nickname), prioritize them in Recall Terms.
 - Keep topic terms focused. You can add at most 2 high-confidence topic terms in "topicTerms".
-- Scoring Terms must be standalone terms, never topic+modifier phrases.
-- Example: "qmd" is valid scoring term, "openclaw qmd" is not.
+- Scoring Terms must be atomic standalone entities, never phrase-like semantics.
+- Invalid scoring examples: "openclaw记忆系统", "openclaw memory architecture", "iran war comparison".
+- Valid scoring examples: "qmd", "sqlite", "lancedb", "bm25", "mem0".
 - Exclusion Terms should default to empty unless user description or existing exclusions clearly require them.
 
 Requirements:
@@ -822,10 +1010,17 @@ Requirements:
 
     const sanitized = sanitizeDerivedResult(result);
     const recallBudgetNormalized = Math.min(12, Math.max(6, recallBudget));
+    const entityTerms = normalizeTerms(objectHints.scoringHints);
+    const entityTermSet = new Set(entityTerms);
     const includesBudgeted = normalizeTerms([
       ...objectHints.recallHints,
       ...sanitized.includes,
-    ]).slice(0, recallBudgetNormalized);
+    ])
+      .filter((item) => {
+        if (entityTermSet.size === 0) return true;
+        return Array.from(entityTermSet).some((entity) => item.includes(entity));
+      })
+      .slice(0, recallBudgetNormalized);
     const synonymsEnriched = normalizeTerms([
       ...objectHints.scoringHints,
       ...sanitized.synonyms,
@@ -839,7 +1034,7 @@ Requirements:
     const synonymsWithoutExclusion = synonymsEnriched.filter(
       (item) => !exclusionSet.has(item) && !includesWithoutExclusion.includes(item)
     );
-    const scoringStandaloneTerms = filterStandaloneScoringTerms(
+    const scoringStandaloneResult = filterStandaloneScoringTerms(
       synonymsWithoutExclusion,
       topicAnchors
     );
@@ -848,7 +1043,7 @@ Requirements:
       targetLanguages
     );
     const synonymsFiltered = filterTermsByLanguages(
-      scoringStandaloneTerms,
+      scoringStandaloneResult.filtered,
       targetLanguages
     );
     const excludesFiltered = filterTermsByLanguages(
@@ -875,6 +1070,8 @@ Requirements:
       seedQueryCount: seedQueries.length,
       calibrationDocCount: calibrationResult.docs.length,
       extractedObjectCount: extractedObjects.length,
+      droppedNonAtomicScoringCount: scoringStandaloneResult.droppedNonAtomic.length,
+      droppedGenericScoringCount: scoringStandaloneResult.droppedGeneric.length,
       includes: includesFiltered.filtered.length,
       synonyms: synonymsFiltered.filtered.length,
       excludes: excludesFiltered.filtered.length,
@@ -893,13 +1090,17 @@ Requirements:
         searchedProviders: calibrationResult.triedProviders,
         degraded,
         reason: calibrationResult.reason,
+        seedNouns,
         seedQueries,
+        freshnessMode: "latest-first",
         topicAnchorsUsed: topicAnchors,
         calibrationDocCount: calibrationResult.docs.length,
         recallBudget: recallBudgetNormalized,
         extractionMode: calibrationResult.docs.length > 0 ? "web_calibrated" : "fallback",
         objectCount: extractedObjects.length,
         extractedObjects,
+        droppedGenericTerms: scoringStandaloneResult.droppedGeneric,
+        droppedNonAtomicScoringTerms: scoringStandaloneResult.droppedNonAtomic,
         inputTopicTerms,
         addedTopicTerms,
         usedTopicTerms,
