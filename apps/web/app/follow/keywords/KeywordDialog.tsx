@@ -45,6 +45,12 @@ type DeriveMeta = {
   exclusionTermCount?: number;
   exclusionOverSoftLimit?: boolean;
   exclusionWarning?: string | null;
+  termLanguageMatrix?: {
+    includes?: Record<string, number>;
+    synonyms?: Record<string, number>;
+    excludes?: Record<string, number>;
+  };
+  translationBackfillMode?: string;
 };
 
 const TERM_SPLIT_RE = /[,\n\r，、;；\t]+/;
@@ -151,6 +157,11 @@ const EditKeywordDialog = ({
   const scoringTermsText = watch("synonyms");
   const recallTermsCount = parseTerms(includesText).length;
   const scoringTermsCount = parseTerms(scoringTermsText).length;
+  const includesLanguageSummary = deriveMeta?.termLanguageMatrix?.includes
+    ? Object.entries(deriveMeta.termLanguageMatrix.includes)
+        .map(([language, count]) => `${language}:${count}`)
+        .join(", ")
+    : null;
 
   const onSubmit = async (
     data: z.infer<typeof KeywordUpdateSchema | typeof KeywordCreateSchema>
@@ -390,6 +401,9 @@ const EditKeywordDialog = ({
                   : ""}
                 {deriveMeta.topicHintMissing
                   ? " Add #topic anchors for better calibration."
+                  : ""}
+                {includesLanguageSummary
+                  ? ` Includes by language: ${includesLanguageSummary}.`
                   : ""}
               </p>
             ) : null}

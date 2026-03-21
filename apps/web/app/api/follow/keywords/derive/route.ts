@@ -73,8 +73,8 @@ const TopicNounPlanSchema = z.object({
 const AtomicTermResultSchema = z.object({
   terms: z.array(z.string()).default([]),
 });
-const TranslationResultSchema = z.object({
-  terms: z.array(z.string()).default([]),
+const FullLanguageBackfillSchema = z.object({
+  byLanguage: z.record(z.string(), z.array(z.string())).default({}),
 });
 const MultilingualSeedQuerySchema = z.object({
   queries: z
@@ -1030,6 +1030,29 @@ function detectScripts(value: string): Set<string> {
   return detected;
 }
 
+function hasKana(value: string): boolean {
+  return /[\u3040-\u30FF]/u.test(value);
+}
+
+function hasHan(value: string): boolean {
+  return /[\u4E00-\u9FFF]/u.test(value);
+}
+
+function hasArabic(value: string): boolean {
+  return /[\u0600-\u06FF]/u.test(value);
+}
+
+function hasCyrillic(value: string): boolean {
+  return /[\u0400-\u04FF]/u.test(value);
+}
+
+function hasLatinWord(value: string, minLen = 4): boolean {
+  return value
+    .toLowerCase()
+    .split(/[\s/_-]+/g)
+    .some((token) => /[a-z]/.test(token) && token.length >= minLen);
+}
+
 function languageToScriptGroups(language: string): string[] {
   switch (language.toLowerCase()) {
     case "zh":
@@ -1080,10 +1103,17 @@ function filterTermsByLanguages(terms: string[], languages: string[]) {
 }
 
 function hasLanguageCoverage(term: string, language: string): boolean {
+  const normalized = language.toLowerCase();
+  if (normalized === "ja") return hasKana(term);
+  if (normalized === "zh") return hasHan(term) && !hasKana(term);
+  if (normalized === "ar") return hasArabic(term);
+  if (normalized === "ru") return hasCyrillic(term);
+  if (["en", "de", "fr", "es"].includes(normalized)) {
+    return hasLatinWord(term, 4);
+  }
   const scripts = detectScripts(term);
   const groups = languageToScriptGroups(language);
-  if (groups.length === 0) return false;
-  if (scripts.size === 0) return false;
+  if (groups.length === 0 || scripts.size === 0) return false;
   return Array.from(scripts).some((script) => groups.includes(script));
 }
 
@@ -1112,48 +1142,56 @@ async function backfillTermsByLanguage(input: {
   applied: boolean;
   coverageBefore: Record<string, number>;
   coverageAfter: Record<string, number>;
+  byLanguageCounts: Record<string, number>;
+  mode: "full_per_language";
 }> {
   const coverageBefore = computeLanguageCoverage(input.terms, input.languages);
-  const missingLanguages = input.languages.filter(
-    (language) => (coverageBefore[language] ?? 0) === 0
-  );
-  if (missingLanguages.length === 0 || input.terms.length === 0) {
+  if (input.terms.length === 0 || input.languages.length === 0) {
+    const emptyCounts = Object.fromEntries(
+      input.languages.map((language) => [language, 0])
+    );
     return {
       terms: input.terms,
       addedCount: 0,
       applied: false,
       coverageBefore,
       coverageAfter: coverageBefore,
+      byLanguageCounts: emptyCounts,
+      mode: "full_per_language",
     };
   }
 
   const prompt = `
-You translate keyword terms for multilingual coverage.
+You translate keyword terms for full multilingual coverage.
 Term type: ${input.termType}
 Existing terms: ${input.terms.join(", ")}
-Target languages to add: ${missingLanguages.join(", ")}
+Target languages: ${input.languages.join(", ")}
 Atomic-only: ${input.atomicOnly ? "yes" : "no"}
 
 Rules:
 - Keep original meaning and search intent.
 - Keep product/entity tokens unchanged when needed (e.g. qmd, mem0, bm25).
-- Output terms only in missing target languages.
+- Return translated terms for EVERY target language.
+- For each language, output a complete list covering all existing terms.
 - Do not add explanations.
 ${input.atomicOnly ? "- Keep each term atomic (single token where possible)." : "- Keep terms searchable and concise."}
 - Keep output compact and avoid noisy generic terms.
 
 Return ONLY JSON:
 {
-  "terms": ["...", "..."]
+  "byLanguage": {
+    "zh": ["...", "..."],
+    "en": ["...", "..."]
+  }
 }
 `;
 
   try {
-    const translated = await llmGateway.json<z.infer<typeof TranslationResultSchema>>(
+    const translated = await llmGateway.json<z.infer<typeof FullLanguageBackfillSchema>>(
       "keyword-language-backfill",
       {
         prompt,
-        schema: TranslationResultSchema,
+        schema: FullLanguageBackfillSchema,
         temperature: 0.2,
         metadata: { requestId: input.requestId },
       }
@@ -1169,16 +1207,25 @@ Return ONLY JSON:
       response: translated,
     });
 
-    const normalized = normalizeTerms(translated.terms ?? []).filter((term) =>
-      missingLanguages.some((language) => hasLanguageCoverage(term, language))
-    );
-    const merged = normalizeTerms([...input.terms, ...normalized]);
+    const byLanguageCounts: Record<string, number> = {};
+    const translatedTerms: string[] = [];
+    for (const language of input.languages) {
+      const languageTerms = translated.byLanguage?.[language];
+      const normalized = normalizeTerms(
+        Array.isArray(languageTerms) ? languageTerms : []
+      );
+      byLanguageCounts[language] = normalized.length;
+      translatedTerms.push(...normalized);
+    }
+    const merged = normalizeTerms([...input.terms, ...translatedTerms]);
     return {
       terms: merged,
       addedCount: Math.max(0, merged.length - input.terms.length),
-      applied: normalized.length > 0,
+      applied: translatedTerms.length > 0,
       coverageBefore,
       coverageAfter: computeLanguageCoverage(merged, input.languages),
+      byLanguageCounts,
+      mode: "full_per_language",
     };
   } catch (error) {
     logger.warn("keyword language backfill failed", {
@@ -1202,6 +1249,10 @@ Return ONLY JSON:
       applied: false,
       coverageBefore,
       coverageAfter: coverageBefore,
+      byLanguageCounts: Object.fromEntries(
+        input.languages.map((language) => [language, 0])
+      ),
+      mode: "full_per_language",
     };
   }
 }
@@ -1408,6 +1459,10 @@ export async function POST(req: Request) {
               excludesFiltered.filtered,
               targetLanguages
             ),
+            byLanguageCounts: Object.fromEntries(
+              targetLanguages.map((language) => [language, 0])
+            ),
+            mode: "full_per_language" as const,
           };
     const usedTopicTerms = Array.from(new Set([...inputTopicTerms]));
     const filteredByLanguageCount =
@@ -1517,6 +1572,12 @@ export async function POST(req: Request) {
           synonyms: synonymsBackfill.coverageAfter,
           excludes: excludesBackfill.coverageAfter,
         },
+        termLanguageMatrix: {
+          includes: includesBackfill.byLanguageCounts,
+          synonyms: synonymsBackfill.byLanguageCounts,
+          excludes: excludesBackfill.byLanguageCounts,
+        },
+        translationBackfillMode: "full_per_language",
         translationBackfillApplied:
           includesBackfill.applied ||
           synonymsBackfill.applied ||
