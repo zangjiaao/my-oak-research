@@ -36,6 +36,7 @@ model Keyword {
 
   includes       String[]
   excludes       String[]
+  deriveLanguages String[] @default([])
   enableAiExpand Boolean  @default(false)
   synonyms       String[]
   active         Boolean  @default(true)

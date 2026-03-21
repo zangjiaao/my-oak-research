@@ -34,11 +34,12 @@ model Keyword {
   categoryId String?
   category   Category? @relation(fields: [categoryId], references: [id])
 
-  includes       String[]
-  excludes       String[]
-  enableAiExpand Boolean  @default(false)
-  synonyms       String[]
-  active         Boolean  @default(true)
+  includes        String[]
+  excludes        String[]
+  deriveLanguages String[] @default([])
+  enableAiExpand  Boolean  @default(false)
+  synonyms        String[]
+  active          Boolean  @default(true)
 
   createdAt             DateTime              @default(now())
   updatedAt             DateTime              @updatedAt

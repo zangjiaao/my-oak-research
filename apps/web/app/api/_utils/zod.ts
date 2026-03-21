@@ -85,6 +85,11 @@ export const KeywordCreateSchema = z.object({
   categoryId: cuidOpt,
   includes: delimitedStringArray({ minItems: 1, itemMax: 40, totalMax: 200 }),
   excludes: delimitedStringArray({ minItems: 0, itemMax: 40, totalMax: 200 }),
+  deriveLanguages: delimitedStringArray({
+    minItems: 1,
+    itemMax: 20,
+    totalMax: 12,
+  }).default(["zh", "en"]),
   enableAiExpand: z.boolean().optional().default(false),
   synonyms: delimitedStringArray({
     minItems: 0,

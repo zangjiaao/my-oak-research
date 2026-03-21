@@ -178,8 +178,7 @@ export async function runFocusCollector(runId: string, queryId: string) {
     queryId,
     query.keywords
   );
-  const filteredItems = applyExcludePostFilter(rawItems, query.keywords);
-  const cleaned = await cleanAndDedup(filteredItems, runId);
+  const cleaned = await cleanAndDedup(rawItems, runId);
   const sourceStats = new Map<
     string,
     {
@@ -201,7 +200,7 @@ export async function runFocusCollector(runId: string, queryId: string) {
       inserted: 0,
     });
   }
-  for (const item of filteredItems) {
+  for (const item of rawItems) {
     const stats = sourceStats.get(item.sourceId);
     if (!stats) continue;
     stats.fetched += 1;
@@ -458,30 +457,12 @@ function buildRecallQueries(keywords: QueryKeyword[]): string[] {
   const queries: string[] = [];
   for (const keyword of keywords) {
     const includeTerms = normalizeStringArray(keyword.includes);
-    const excludeTerms = normalizeStringArray(keyword.excludes);
     const includeQuery =
       includeTerms.length > 0 ? includeTerms.join(" OR ") : keyword.name.trim();
     if (!includeQuery) continue;
-    const excludeQuery = excludeTerms.map((term) => `-"${term}"`).join(" ");
-    queries.push([includeQuery, excludeQuery].filter(Boolean).join(" ").trim());
+    queries.push(includeQuery);
   }
   return Array.from(new Set(queries));
-}
-
-function applyExcludePostFilter(items: CleanItem[], keywords: QueryKeyword[]): CleanItem[] {
-  const excludes = Array.from(
-    new Set(
-      keywords
-        .flatMap((keyword) => normalizeStringArray(keyword.excludes))
-        .map((term) => term.toLowerCase())
-        .filter(Boolean)
-    )
-  );
-  if (excludes.length === 0) return items;
-  return items.filter((item) => {
-    const haystack = `${item.title ?? ""}\n${item.text}\n${item.markdown}`.toLowerCase();
-    return !excludes.some((term) => haystack.includes(term));
-  });
 }
 
 function deduplicateItemsByUrlAndFingerprint(items: CleanItem[]): CleanItem[] {

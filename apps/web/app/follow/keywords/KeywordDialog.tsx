@@ -16,6 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ErrorMessage } from "@/components/business";
 import { SettingEditDialog } from "@/components/layout";
 import { useKeywordMutation } from "@/hooks/useKeywordMutation";
+import { MultiSelect } from "@/components/common/multi-select";
 
 import { Button } from "@/components/ui/button";
 import { Sparkles, Loader2 } from "lucide-react";
@@ -28,6 +29,17 @@ type KeywordWithCategory = Prisma.KeywordGetPayload<{
 }>;
 
 const TERM_SPLIT_RE = /[,\n\r，、;；\t]+/;
+const DEFAULT_DERIVE_LANGUAGES = ["zh", "en"];
+const LANGUAGE_OPTIONS = [
+  { label: "Chinese (zh)", value: "zh" },
+  { label: "English (en)", value: "en" },
+  { label: "Japanese (ja)", value: "ja" },
+  { label: "Arabic (ar)", value: "ar" },
+  { label: "German (de)", value: "de" },
+  { label: "French (fr)", value: "fr" },
+  { label: "Spanish (es)", value: "es" },
+  { label: "Russian (ru)", value: "ru" },
+];
 
 function parseTerms(input: unknown): string[] {
   if (Array.isArray(input)) {
@@ -37,6 +49,10 @@ function parseTerms(input: unknown): string[] {
     .split(TERM_SPLIT_RE)
     .map((item) => item.trim())
     .filter(Boolean);
+}
+
+function mergeUniqueTerms(...inputs: Array<unknown>): string[] {
+  return Array.from(new Set(inputs.flatMap((input) => parseTerms(input))));
 }
 
 const EditKeywordDialog = ({
@@ -85,6 +101,11 @@ const EditKeywordDialog = ({
       excludes: Array.isArray(keyword?.excludes)
         ? keyword.excludes.join("\n")
         : keyword?.excludes || "",
+      deriveLanguages:
+        Array.isArray(keyword?.deriveLanguages) &&
+        keyword.deriveLanguages.length > 0
+          ? keyword.deriveLanguages
+          : DEFAULT_DERIVE_LANGUAGES,
       enableAiExpand: keyword?.enableAiExpand || false,
       lang: (keyword?.lang as "auto" | "zh" | "en" | "ja") || "auto",
       active: keyword?.active ?? true,
@@ -122,6 +143,16 @@ const EditKeywordDialog = ({
             : String(values.includes)
               .split(/[,\n\r，、;；\t]+/)
               .filter(Boolean),
+          synonyms: Array.isArray(values.synonyms)
+            ? values.synonyms
+            : parseTerms(values.synonyms),
+          excludes: Array.isArray(values.excludes)
+            ? values.excludes
+            : parseTerms(values.excludes),
+          languages: Array.isArray(values.deriveLanguages)
+            ? values.deriveLanguages
+            : DEFAULT_DERIVE_LANGUAGES,
+          persistedLanguages: keyword?.deriveLanguages ?? DEFAULT_DERIVE_LANGUAGES,
           lang: values.lang,
         }),
       });
@@ -129,22 +160,23 @@ const EditKeywordDialog = ({
       if (!response.ok) throw new Error("Failed to derive keywords");
 
       const data = await response.json();
-      const currentSynonyms = (
-        Array.isArray(values.synonyms) ? values.synonyms : parseTerms(values.synonyms)
-      ).map((s) => String(s).trim());
-
-      const derivedKeywords = (data.keywords || []).map((s: string) =>
-        String(s).trim()
+      const nextIncludes = mergeUniqueTerms(values.includes, data.includes ?? []);
+      const nextSynonyms = mergeUniqueTerms(values.synonyms, data.synonyms ?? []);
+      const nextExclusions = mergeUniqueTerms(values.excludes, data.excludes ?? []);
+      const exclusionSet = new Set(nextExclusions);
+      const sanitizedIncludes = nextIncludes.filter((item) => !exclusionSet.has(item));
+      const sanitizedSynonyms = nextSynonyms.filter(
+        (item) => !exclusionSet.has(item) && !sanitizedIncludes.includes(item)
       );
-
-      const combined = Array.from(
-        new Set([...currentSynonyms, ...derivedKeywords])
-      );
-      setValue("synonyms", combined.join("\n"));
+      setValue("includes", sanitizedIncludes.join("\n"));
+      setValue("synonyms", sanitizedSynonyms.join("\n"));
+      setValue("excludes", nextExclusions.join("\n"));
       if (!enableAiExpand) {
         setValue("enableAiExpand", true);
       }
-      toast.success(`Derived ${data.keywords.length} keywords`);
+      toast.success(
+        `Derived +${data.includes?.length ?? 0} recall, +${data.synonyms?.length ?? 0} scoring, +${data.excludes?.length ?? 0} exclusion terms`
+      );
     } catch (error) {
       console.error(error);
       toast.error("Failed to derive keywords");
@@ -264,6 +296,27 @@ const EditKeywordDialog = ({
         <ErrorMessage>{errors.description?.message}</ErrorMessage>
       </div>
       <div className="grid gap-3">
+        <Label htmlFor="deriveLanguages">Generation Languages</Label>
+        <Controller
+          name="deriveLanguages"
+          control={control}
+          render={({ field }) => (
+            <MultiSelect
+              options={LANGUAGE_OPTIONS}
+              value={Array.isArray(field.value) ? field.value : DEFAULT_DERIVE_LANGUAGES}
+              onValueChange={(next) =>
+                field.onChange(next.length > 0 ? next : DEFAULT_DERIVE_LANGUAGES)
+              }
+              placeholder="Choose generation languages"
+            />
+          )}
+        />
+        <p className="text-xs text-muted-foreground">
+          Defaults to Chinese and English. Add more languages for multilingual term generation.
+        </p>
+        <ErrorMessage>{errors.deriveLanguages?.message}</ErrorMessage>
+      </div>
+      <div className="grid gap-3">
         <div className="flex items-center justify-between">
           <Label htmlFor="includes">Recall Terms（召回词）</Label>
           <Badge variant="outline">{recallTermsCount} terms</Badge>
@@ -341,10 +394,10 @@ const EditKeywordDialog = ({
         </div>
       </div>
       <div className="grid gap-3">
-        <Label htmlFor="excludes">Excludes(Optional)</Label>
+        <Label htmlFor="excludes">Exclusion Terms (Optional)</Label>
         <Textarea
           id="excludes"
-          placeholder="Excludes"
+          placeholder="Exclusion terms"
           rows={3}
           {...register("excludes")}
         />
