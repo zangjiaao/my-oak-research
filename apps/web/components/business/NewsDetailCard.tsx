@@ -168,12 +168,12 @@ const NewsDetailCard = ({
               <TabsTrigger value="links">链接</TabsTrigger>
               <TabsTrigger value="raw">原始</TabsTrigger>
             </TabsList>
-            <TabsContent value="content" className="mt-2">
+            <TabsContent value="content" className="mt-3">
               <article className="prose prose-slate max-w-none text-[15px] leading-7 text-foreground/90 prose-p:my-0 prose-p:leading-7 prose-p:text-foreground/90 prose-headings:mb-3 prose-headings:mt-5 prose-headings:font-semibold prose-headings:text-foreground prose-li:my-1 prose-li:text-foreground/90 prose-strong:text-foreground prose-a:text-primary prose-a:no-underline hover:prose-a:underline">
                 <ReactMarkdown>{markdown}</ReactMarkdown>
               </article>
             </TabsContent>
-            <TabsContent value="media" className="mt-2">
+            <TabsContent value="media" className="mt-3">
             {images && images.length > 0 ? (
               <div className="mb-6 rounded-xl border border-border/70 bg-muted/20 p-4">
                 <div className="mb-3 flex items-center gap-2 text-sm font-medium">
@@ -245,7 +245,7 @@ const NewsDetailCard = ({
               <p className="text-sm text-muted-foreground">暂无媒体内容</p>
             ) : null}
             </TabsContent>
-            <TabsContent value="links" className="mt-2">
+            <TabsContent value="links" className="mt-3">
             {links && links.length > 0 ? (
               <div className="mb-6 rounded-xl border border-border/70 bg-muted/20 p-4">
                 <div className="mb-3 flex items-center gap-2 text-sm font-medium">
@@ -274,7 +274,7 @@ const NewsDetailCard = ({
               <p className="text-sm text-muted-foreground">暂无链接</p>
             )}
             </TabsContent>
-            <TabsContent value="raw" className="mt-2">
+            <TabsContent value="raw" className="mt-3">
               <pre className="max-h-[22rem] overflow-auto rounded-lg border border-border/70 bg-muted/20 p-4 text-xs leading-5">
                 {JSON.stringify(rawContent ?? {}, null, 2)}
               </pre>
