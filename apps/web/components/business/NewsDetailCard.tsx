@@ -65,7 +65,7 @@ const NewsDetailCard = ({
   return (
     <Card
       className={cn(
-        "h-full border-border/80 bg-card/95 shadow-sm backdrop-blur-sm flex flex-col",
+        "h-full border-border/80 bg-card/95 shadow-sm backdrop-blur-sm flex flex-col gap-0 py-0",
         className
       )}
     >
