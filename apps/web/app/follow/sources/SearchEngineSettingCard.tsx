@@ -65,6 +65,15 @@ const SearchEngineSettingCard = () => {
         .includes(searchQuery.toLowerCase())
   );
 
+  const getDisplayObjective = (source: SearchEngineSource) => {
+    const description = source.description?.trim();
+    if (description) return description;
+    return (
+      (source.search as unknown as { objective?: string })?.objective?.trim() ||
+      "-"
+    );
+  };
+
   const columns: DataTableColumn<SearchEngineSource>[] = [
     {
       key: "name",
@@ -85,7 +94,7 @@ const SearchEngineSettingCard = () => {
       className: "max-w-xs",
       render: (source) => (
         <span className="text-sm break-all whitespace-normal">
-          {(source.search as unknown as { objective?: string })?.objective}
+          {getDisplayObjective(source)}
         </span>
       ),
     },
