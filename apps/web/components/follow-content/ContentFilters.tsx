@@ -9,8 +9,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search } from "lucide-react";
+import { Search, SlidersHorizontal } from "lucide-react";
 import { useFollowContent } from "./context";
+import { Button } from "@/components/ui/button";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 
 const months = Array.from({ length: 12 }, (_, index) => ({
   value: String(index + 1),
@@ -55,8 +61,9 @@ export const ContentFilters = () => {
   ).sort((a, b) => Number(b) - Number(a));
 
   return (
-    <div className="m-1 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6">
-      <div className="sm:col-span-2 lg:col-span-2 xl:col-span-2 2xl:col-span-2 min-w-0">
+    <div className="m-1 space-y-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="min-w-[220px] flex-1">
         <Input
           placeholder="Search content"
           className="min-w-0 rounded-full"
@@ -71,7 +78,7 @@ export const ContentFilters = () => {
         value={filters.platform || "__all__"}
         onValueChange={(value) => setPlatform(value === "__all__" ? "" : value)}
       >
-        <SelectTrigger className="w-full min-w-0">
+          <SelectTrigger className="min-w-[150px]">
           <SelectValue placeholder="Platform" />
         </SelectTrigger>
         <SelectContent>
@@ -79,23 +86,6 @@ export const ContentFilters = () => {
           {platformOptions.map((option) => (
             <SelectItem key={option} value={option}>
               {option}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-
-      <Select
-        value={filters.subjectId || "__all__"}
-        onValueChange={(value) => setSubjectId(value === "__all__" ? "" : value)}
-      >
-        <SelectTrigger className="w-full min-w-0">
-          <SelectValue placeholder="Subject" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="__all__">All Subjects</SelectItem>
-          {subjectOptions.map((subject) => (
-            <SelectItem key={subject.id} value={subject.id}>
-              {subject.name}
             </SelectItem>
           ))}
         </SelectContent>
@@ -113,7 +103,7 @@ export const ContentFilters = () => {
           setYear(value);
         }}
       >
-        <SelectTrigger className="w-full min-w-0">
+          <SelectTrigger className="min-w-[120px]">
           <SelectValue placeholder="Year" />
         </SelectTrigger>
         <SelectContent>
@@ -137,7 +127,7 @@ export const ContentFilters = () => {
           setMonth(value);
         }}
       >
-        <SelectTrigger className="w-full min-w-0">
+          <SelectTrigger className="min-w-[130px]">
           <SelectValue placeholder="Month" />
         </SelectTrigger>
         <SelectContent>
@@ -154,7 +144,7 @@ export const ContentFilters = () => {
         value={filters.day || "__all__"}
         onValueChange={(value) => setDay(value === "__all__" ? "" : value)}
       >
-        <SelectTrigger className="w-full min-w-0">
+          <SelectTrigger className="min-w-[110px]">
           <SelectValue placeholder="Day" />
         </SelectTrigger>
         <SelectContent>
@@ -167,45 +157,91 @@ export const ContentFilters = () => {
         </SelectContent>
       </Select>
 
-      <Input
-        type="number"
-        min={0}
-        max={1}
-        step={0.05}
-        placeholder="Min score (0-1)"
-        className="min-w-0"
-        value={filters.minMatchScore}
-        onChange={(event) => setMinMatchScore(event.target.value)}
-      />
+        <Collapsible>
+          <CollapsibleTrigger asChild>
+            <Button variant="outline" className="gap-1.5">
+              <SlidersHorizontal className="size-4" />
+              高级筛选
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="mt-2 w-full rounded-lg border border-border/70 bg-muted/20 p-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <Select
+                value={filters.subjectId || "__all__"}
+                onValueChange={(value) =>
+                  setSubjectId(value === "__all__" ? "" : value)
+                }
+              >
+                <SelectTrigger className="min-w-[180px]">
+                  <SelectValue placeholder="Subject" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all__">All Subjects</SelectItem>
+                  {subjectOptions.map((subject) => (
+                    <SelectItem key={subject.id} value={subject.id}>
+                      {subject.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
 
-      <Select
-        value={filters.matchSource || "__all__"}
-        onValueChange={(value) => setMatchSource(value === "__all__" ? "" : value)}
-      >
-        <SelectTrigger className="w-full min-w-0">
-          <SelectValue placeholder="Match Source" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="__all__">All Sources</SelectItem>
-          <SelectItem value="FUSED">FUSED</SelectItem>
-          <SelectItem value="AI">AI</SelectItem>
-          <SelectItem value="GATHER">GATHER</SelectItem>
-          <SelectItem value="QUERY">QUERY</SelectItem>
-        </SelectContent>
-      </Select>
+              <Input
+                type="number"
+                min={0}
+                max={1}
+                step={0.05}
+                placeholder="Min score (0-1)"
+                className="min-w-[150px]"
+                value={filters.minMatchScore}
+                onChange={(event) => setMinMatchScore(event.target.value)}
+              />
 
-      <Select
-        value={filters.sort}
-        onValueChange={(value) => setSort(value as "time" | "matchScore")}
-      >
-        <SelectTrigger className="w-full min-w-0">
-          <SelectValue placeholder="Sort" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="time">Time Desc</SelectItem>
-          <SelectItem value="matchScore">Score Desc</SelectItem>
-        </SelectContent>
-      </Select>
+              <Select
+                value={filters.matchSource || "__all__"}
+                onValueChange={(value) =>
+                  setMatchSource(value === "__all__" ? "" : value)
+                }
+              >
+                <SelectTrigger className="min-w-[160px]">
+                  <SelectValue placeholder="Match Source" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all__">All Sources</SelectItem>
+                  <SelectItem value="FUSED">FUSED</SelectItem>
+                  <SelectItem value="AI">AI</SelectItem>
+                  <SelectItem value="GATHER">GATHER</SelectItem>
+                  <SelectItem value="QUERY">QUERY</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select
+                value={filters.sort}
+                onValueChange={(value) => setSort(value as "time" | "matchScore")}
+              >
+                <SelectTrigger className="min-w-[150px]">
+                  <SelectValue placeholder="Sort" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="time">Time Desc</SelectItem>
+                  <SelectItem value="matchScore">Score Desc</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setSubjectId("");
+                  setMinMatchScore("");
+                  setMatchSource("");
+                  setSort("time");
+                }}
+              >
+                清空高级筛选
+              </Button>
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+      </div>
     </div>
   );
 };
