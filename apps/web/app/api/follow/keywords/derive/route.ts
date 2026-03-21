@@ -482,6 +482,8 @@ export async function POST(req: Request) {
     const degraded =
       calibrationResult.reason === "no_search_provider_configured" ||
       calibrationResult.reason === "provider_request_failed";
+    const inputTopicTerms = extractTopicTermsFromText(name, description);
+    const topicHintMissing = inputTopicTerms.length === 0;
 
     const task = "keyword-derivation";
     const prompt = `
@@ -501,7 +503,7 @@ Preferred Languages: ${targetLanguages.join(", ")}
 Recall Terms budget: ${Math.min(12, Math.max(6, recallBudget))}
 Search calibration provider: ${calibrationResult.provider ?? "none"}
 Seed queries: ${seedQueries.join(" | ")}
-User provided topic terms: ${extractTopicTermsFromText(name, description).join(", ") || "none"}
+User provided topic terms: ${inputTopicTerms.join(", ") || "none"}
 
 Calibration evidence (Chinese-first web snippets):
 ${calibrationContext}
@@ -549,7 +551,6 @@ Requirements:
     const includesFiltered = filterTermsByLanguages(includesBudgeted, targetLanguages);
     const synonymsFiltered = filterTermsByLanguages(sanitized.synonyms, targetLanguages);
     const excludesFiltered = filterTermsByLanguages(sanitized.excludes, targetLanguages);
-    const inputTopicTerms = extractTopicTermsFromText(name, description);
     const addedTopicTerms = sanitized.topicTerms
       .filter((term) => !inputTopicTerms.includes(term))
       .slice(0, 2);
@@ -573,6 +574,7 @@ Requirements:
       excludes: excludesFiltered.filtered.length,
       topicTerms: usedTopicTerms.length,
       filteredByLanguageCount,
+      topicHintMissing,
     });
 
     return json({
@@ -591,6 +593,7 @@ Requirements:
         addedTopicTerms,
         usedTopicTerms,
         filteredByLanguageCount,
+        topicHintMissing,
       },
     });
   } catch (error) {

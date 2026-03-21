@@ -33,6 +33,7 @@ type DeriveMeta = {
   reason?: string | null;
   filteredByLanguageCount?: number;
   usedTopicTerms?: string[];
+  topicHintMissing?: boolean;
 };
 
 const TERM_SPLIT_RE = /[,\n\r，、;；\t]+/;
@@ -60,6 +61,20 @@ function parseTerms(input: unknown): string[] {
 
 function mergeUniqueTerms(...inputs: Array<unknown>): string[] {
   return Array.from(new Set(inputs.flatMap((input) => parseTerms(input))));
+}
+
+function extractHashtagTopics(...inputs: Array<unknown>): string[] {
+  const set = new Set<string>();
+  const pattern = /(^|\s)#([a-zA-Z0-9][\w.-]{0,63})/g;
+  for (const input of inputs) {
+    const text = String(input ?? "");
+    let match: RegExpExecArray | null;
+    while ((match = pattern.exec(text)) !== null) {
+      const token = match[2]?.trim().toLowerCase();
+      if (token) set.add(token);
+    }
+  }
+  return Array.from(set);
 }
 
 const EditKeywordDialog = ({
@@ -137,6 +152,10 @@ const EditKeywordDialog = ({
     if (!values.name) {
       toast.error("Please enter a keyword name first");
       return;
+    }
+    const topicTerms = extractHashtagTopics(values.name, values.description);
+    if (topicTerms.length === 0) {
+      toast("建议在 Name/Description 中添加 #topic（例如 #openclaw）以提升检索质量");
     }
     setIsDeriving(true);
     try {
@@ -383,6 +402,9 @@ const EditKeywordDialog = ({
                   ? ` Topic terms: ${deriveMeta.usedTopicTerms
                       .map((term) => `#${term}`)
                       .join(", ")}.`
+                  : ""}
+                {deriveMeta.topicHintMissing
+                  ? " Add #topic anchors for better calibration."
                   : ""}
               </p>
             ) : null}
