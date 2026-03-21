@@ -70,6 +70,9 @@ const TopicNounPlanSchema = z.object({
 const AtomicTermResultSchema = z.object({
   terms: z.array(z.string()).default([]),
 });
+const TranslationResultSchema = z.object({
+  terms: z.array(z.string()).default([]),
+});
 
 function normalizeTerms(values: string[]): string[] {
   const seen = new Set<string>();
@@ -900,6 +903,137 @@ function filterTermsByLanguages(terms: string[], languages: string[]) {
   return { filtered, removedCount };
 }
 
+function hasLanguageCoverage(term: string, language: string): boolean {
+  const scripts = detectScripts(term);
+  const groups = languageToScriptGroups(language);
+  if (groups.length === 0) return false;
+  if (scripts.size === 0) return false;
+  return Array.from(scripts).some((script) => groups.includes(script));
+}
+
+function computeLanguageCoverage(
+  terms: string[],
+  languages: string[]
+): Record<string, number> {
+  const coverage: Record<string, number> = {};
+  for (const language of languages) {
+    coverage[language] = terms.filter((term) =>
+      hasLanguageCoverage(term, language)
+    ).length;
+  }
+  return coverage;
+}
+
+async function backfillTermsByLanguage(input: {
+  requestId: string;
+  termType: "recall" | "scoring" | "exclusion";
+  terms: string[];
+  languages: string[];
+  atomicOnly: boolean;
+  maxTerms: number;
+}): Promise<{
+  terms: string[];
+  addedCount: number;
+  applied: boolean;
+  coverageBefore: Record<string, number>;
+  coverageAfter: Record<string, number>;
+}> {
+  const coverageBefore = computeLanguageCoverage(input.terms, input.languages);
+  const missingLanguages = input.languages.filter(
+    (language) => (coverageBefore[language] ?? 0) === 0
+  );
+  if (missingLanguages.length === 0 || input.terms.length === 0) {
+    return {
+      terms: input.terms,
+      addedCount: 0,
+      applied: false,
+      coverageBefore,
+      coverageAfter: coverageBefore,
+    };
+  }
+
+  const prompt = `
+You translate keyword terms for multilingual coverage.
+Term type: ${input.termType}
+Existing terms: ${input.terms.join(", ")}
+Target languages to add: ${missingLanguages.join(", ")}
+Atomic-only: ${input.atomicOnly ? "yes" : "no"}
+
+Rules:
+- Keep original meaning and search intent.
+- Keep product/entity tokens unchanged when needed (e.g. qmd, mem0, bm25).
+- Output terms only in missing target languages.
+- Do not add explanations.
+${input.atomicOnly ? "- Keep each term atomic (single token where possible)." : "- Keep terms searchable and concise."}
+- Max ${input.maxTerms} output terms.
+
+Return ONLY JSON:
+{
+  "terms": ["...", "..."]
+}
+`;
+
+  try {
+    const translated = await llmGateway.json<z.infer<typeof TranslationResultSchema>>(
+      "keyword-language-backfill",
+      {
+        prompt,
+        schema: TranslationResultSchema,
+        temperature: 0.2,
+        metadata: { requestId: input.requestId },
+      }
+    );
+    writeWebDeriveIoLog({
+      event: "derive-llm-request-response",
+      requestId: input.requestId,
+      request: {
+        task: "keyword-language-backfill",
+        prompt,
+        temperature: 0.2,
+      },
+      response: translated,
+    });
+
+    const normalized = normalizeTerms(translated.terms ?? []).filter((term) =>
+      missingLanguages.some((language) => hasLanguageCoverage(term, language))
+    );
+    const merged = normalizeTerms([...input.terms, ...normalized]).slice(
+      0,
+      input.maxTerms
+    );
+    return {
+      terms: merged,
+      addedCount: Math.max(0, merged.length - input.terms.length),
+      applied: normalized.length > 0,
+      coverageBefore,
+      coverageAfter: computeLanguageCoverage(merged, input.languages),
+    };
+  } catch (error) {
+    logger.warn("keyword language backfill failed", {
+      requestId: input.requestId,
+      error: logger.normalizeError(error),
+      termType: input.termType,
+    });
+    writeWebDeriveIoLog({
+      event: "derive-llm-request-response",
+      requestId: input.requestId,
+      request: {
+        task: "keyword-language-backfill",
+        prompt,
+        temperature: 0.2,
+      },
+      error: error instanceof Error ? error.message : "unknown error",
+    });
+    return {
+      terms: input.terms,
+      addedCount: 0,
+      applied: false,
+      coverageBefore,
+      coverageAfter: coverageBefore,
+    };
+  }
+}
+
 export async function POST(req: Request) {
   try {
     const requestId = randomUUID();
@@ -1051,6 +1185,45 @@ export async function POST(req: Request) {
       finalExcludesRaw,
       targetLanguages
     );
+    const includesBackfill = await backfillTermsByLanguage({
+      requestId,
+      termType: "recall",
+      terms: includesFiltered.filtered,
+      languages: targetLanguages,
+      atomicOnly: false,
+      maxTerms: recallBudgetNormalized,
+    });
+    const synonymsBackfill = await backfillTermsByLanguage({
+      requestId,
+      termType: "scoring",
+      terms: synonymsFiltered.filtered,
+      languages: targetLanguages,
+      atomicOnly: true,
+      maxTerms: 60,
+    });
+    const excludesBackfill =
+      excludesFiltered.filtered.length > 0
+        ? await backfillTermsByLanguage({
+            requestId,
+            termType: "exclusion",
+            terms: excludesFiltered.filtered,
+            languages: targetLanguages,
+            atomicOnly: true,
+            maxTerms: 40,
+          })
+        : {
+            terms: excludesFiltered.filtered,
+            addedCount: 0,
+            applied: false,
+            coverageBefore: computeLanguageCoverage(
+              excludesFiltered.filtered,
+              targetLanguages
+            ),
+            coverageAfter: computeLanguageCoverage(
+              excludesFiltered.filtered,
+              targetLanguages
+            ),
+          };
     const usedTopicTerms = Array.from(new Set([...inputTopicTerms]));
     const filteredByLanguageCount =
       includesFiltered.removedCount +
@@ -1084,18 +1257,18 @@ export async function POST(req: Request) {
       hop2Enabled: hop2Queries.length > 0,
       entitySpecificityScore,
       discoveredAtomicTermCount: discoveredAtomicTerms.length,
-      includes: includesFiltered.filtered.length,
-      synonyms: synonymsFiltered.filtered.length,
-      excludes: excludesFiltered.filtered.length,
+      includes: includesBackfill.terms.length,
+      synonyms: synonymsBackfill.terms.length,
+      excludes: excludesBackfill.terms.length,
       topicTerms: usedTopicTerms.length,
       filteredByLanguageCount,
       topicHintMissing,
     });
 
     const responsePayload = {
-      includes: includesFiltered.filtered,
-      synonyms: synonymsFiltered.filtered,
-      excludes: excludesFiltered.filtered,
+      includes: includesBackfill.terms,
+      synonyms: synonymsBackfill.terms,
+      excludes: excludesBackfill.terms,
       meta: {
         requestId,
         searchProvider: calibrationResult.provider ?? null,
@@ -1116,6 +1289,24 @@ export async function POST(req: Request) {
         hop2Enabled: hop2Queries.length > 0,
         entitySpecificityScore,
         discoveredAtomicTerms,
+        languageCoverageBefore: {
+          includes: includesBackfill.coverageBefore,
+          synonyms: synonymsBackfill.coverageBefore,
+          excludes: excludesBackfill.coverageBefore,
+        },
+        languageCoverageAfter: {
+          includes: includesBackfill.coverageAfter,
+          synonyms: synonymsBackfill.coverageAfter,
+          excludes: excludesBackfill.coverageAfter,
+        },
+        translationBackfillApplied:
+          includesBackfill.applied ||
+          synonymsBackfill.applied ||
+          excludesBackfill.applied,
+        translationAddedCount:
+          includesBackfill.addedCount +
+          synonymsBackfill.addedCount +
+          excludesBackfill.addedCount,
         inputTopicTerms,
         usedTopicTerms,
         filteredByLanguageCount,
