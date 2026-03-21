@@ -35,6 +35,8 @@ export const ContentFilters = () => {
     contents,
     filters,
     subjectOptions,
+    subjectOptionsError,
+    subjectOptionsLoading,
     setPlatform,
     setYear,
     setMonth,
@@ -186,6 +188,14 @@ export const ContentFilters = () => {
               ))}
             </SelectContent>
           </Select>
+          {subjectOptionsLoading ? (
+            <span className="text-xs text-muted-foreground">Loading subjects...</span>
+          ) : null}
+          {subjectOptionsError ? (
+            <span className="text-xs text-destructive">
+              Subjects 加载失败，请刷新页面重试
+            </span>
+          ) : null}
 
           <Input
             type="number"
