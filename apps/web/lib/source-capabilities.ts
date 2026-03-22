@@ -83,6 +83,7 @@ type WorkerApiPlatformConfig = {
 };
 
 const PLATFORM_META: Record<string, PlatformMeta> = {
+  "36KR": { category: "STREAM", region: "domestic", auth: { required: false } },
   BBC: { category: "STREAM", region: "foreign", auth: { required: false } },
   REUTERS: {
     category: "STREAM",

@@ -554,6 +554,7 @@ export function buildSourceCreateData(input: {
   const socialConfig = {
     ...config,
     driver: "playwright",
+    category: template.category,
     intent,
     tags: template.tags,
     networkPolicy: effectiveNetworkPolicy,

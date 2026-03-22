@@ -1,4 +1,8 @@
-import type { Source, SearchEngineSourceConfig, SocialMediaSourceConfig } from "@/app/generated/prisma";
+import type {
+  Source,
+  SearchEngineSourceConfig,
+  SocialMediaSourceConfig,
+} from "@/app/generated/prisma";
 import { classifyCategoryByPlatform } from "@/lib/source-capabilities";
 
 export type SourceCategory = "STREAM" | "INTERACTIVE" | "RETRIEVAL";
@@ -19,12 +23,28 @@ function hasDarknetProvider(options: unknown): boolean {
   return DARKNET_PROVIDER_KEYWORDS.some((item) => provider.includes(item));
 }
 
+function normalizeCategory(value: unknown): SourceCategory | null {
+  if (typeof value !== "string") return null;
+  const normalized = value.trim().toUpperCase();
+  if (normalized === "STREAM") return "STREAM";
+  if (normalized === "INTERACTIVE") return "INTERACTIVE";
+  if (normalized === "RETRIEVAL") return "RETRIEVAL";
+  return null;
+}
+
 export function classifySourceCategory(source: {
   type: Source["type"];
   search?: Pick<SearchEngineSourceConfig, "options"> | null;
-  social?: Pick<SocialMediaSourceConfig, "platform"> | null;
+  social?: Pick<SocialMediaSourceConfig, "platform" | "config"> | null;
   searchPlatform?: string | null;
 }): SourceCategory {
+  const configCategory = normalizeCategory(
+    asRecord(source.social?.config).category
+  );
+  if (configCategory) {
+    return configCategory;
+  }
+
   const socialCategory = classifyCategoryByPlatform(source.social?.platform);
   if (socialCategory) {
     return socialCategory;
