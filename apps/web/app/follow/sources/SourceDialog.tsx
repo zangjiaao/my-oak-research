@@ -1203,39 +1203,6 @@ const SourceDialog = ({
                       </div>
                     </div>
 
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <div className="grid gap-2">
-                        <Label>Active</Label>
-                        <ControlledSelect
-                          value={form.watch("active") ? "true" : "false"}
-                          onValueChange={(value) => form.setValue("active", value === "true")}
-                        >
-                          <SelectItem value="true">true</SelectItem>
-                          <SelectItem value="false">false</SelectItem>
-                        </ControlledSelect>
-                      </div>
-                      <div className="grid gap-2">
-                        <Label>Rate Limit</Label>
-                        <Input
-                          type="number"
-                          min={1}
-                          max={600}
-                          value={form.watch("rateLimit") ?? 10}
-                          onChange={(event) =>
-                            form.setValue("rateLimit", Number(event.target.value || 10))
-                          }
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid gap-2">
-                      <Label>State File</Label>
-                      <Input
-                        value={stateFile}
-                        onChange={(event) => setStateFile(event.target.value)}
-                        placeholder=".auth/x_auth.json"
-                      />
-                    </div>
                   </CardContent>
                 </CollapsibleContent>
               </Card>
