@@ -79,8 +79,11 @@ export async function GET() {
       return {
         key: template.key,
         type: template.type,
+        category: template.category,
         platform: template.platform,
         driver: template.driver,
+        networkPolicy: template.networkPolicy,
+        tags: template.tags,
         intent: template.intent,
         title: template.title,
         description: template.description,

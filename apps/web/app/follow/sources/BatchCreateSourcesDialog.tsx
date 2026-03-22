@@ -371,7 +371,7 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
                                       <Badge variant="outline">{template.category}</Badge>
                                       <Badge variant="outline">{template.driver}</Badge>
                                       <Badge variant="outline">{template.intent.type}</Badge>
-                                      {template.tags.includes("darknet") ? (
+                                      {(template.tags ?? []).includes("darknet") ? (
                                         <Badge variant="secondary">darknet</Badge>
                                       ) : null}
                                       {template.exists ? <Badge>EXISTS</Badge> : null}
