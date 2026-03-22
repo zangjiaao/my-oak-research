@@ -846,7 +846,7 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
                             </div>
                           ) : null}
 
-                          <div className="space-y-1.5 rounded-md border bg-background/70 p-3">
+                          <div className="space-y-2.5 rounded-md border bg-background/70 p-3">
                             <Label>Network</Label>
                             <ControlledSelect
                               value={platformProxyId}
