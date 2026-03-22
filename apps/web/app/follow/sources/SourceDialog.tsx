@@ -565,6 +565,22 @@ const SourceDialog = ({
     setAuthStatus(null);
   }, [open, initialScriptState]);
 
+  useEffect(() => {
+    if (!platformPopoverOpen) return;
+    const el = popoverContainerRef.current;
+    if (!el) return;
+    let scrollParent: HTMLElement | null = el.parentElement;
+    while (scrollParent) {
+      const { overflowY } = getComputedStyle(scrollParent);
+      if (overflowY === "auto" || overflowY === "scroll") break;
+      scrollParent = scrollParent.parentElement;
+    }
+    if (!scrollParent) return;
+    const close = () => setPlatformPopoverOpen(false);
+    scrollParent.addEventListener("scroll", close, { passive: true });
+    return () => scrollParent!.removeEventListener("scroll", close);
+  }, [platformPopoverOpen]);
+
   const { data: catalog, isLoading: loadingCatalog } = useQuery<GatherCatalogResponse>({
     queryKey: ["gather-script-catalog"],
     queryFn: () => apiFetcher("/api/follow/gather-scripts/catalog"),
