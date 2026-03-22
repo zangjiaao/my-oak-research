@@ -4,7 +4,6 @@ import React from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import WebSiteSettingCard from "./WebSiteSettingCard";
 import SocialMediaSettingCard from "./SocialMediaSettingCard";
-import DarknetSettingCard from "./DarknetSettingCard";
 import SearchEngineSettingCard from "./SearchEngineSettingCard";
 import ProxySettingCard from "./ProxySettingCard";
 import BatchCreateSourcesDialog from "./BatchCreateSourcesDialog";
@@ -32,10 +31,7 @@ const Sources = () => {
           <SocialMediaSettingCard />
         </TabsContent>
         <TabsContent value="search-engines">
-          <div className="space-y-3">
-            <SearchEngineSettingCard />
-            <DarknetSettingCard />
-          </div>
+          <SearchEngineSettingCard />
         </TabsContent>
         <TabsContent value="proxy">
           <ProxySettingCard />
