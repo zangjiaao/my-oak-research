@@ -319,8 +319,7 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
         return selectedTemplateId;
       }
     }
-    const options = getAuthOptions(platform, kind);
-    return options[0]?.id ?? null;
+    return null;
   };
 
   const setAuthBusy = (key: string, value: boolean) => {
