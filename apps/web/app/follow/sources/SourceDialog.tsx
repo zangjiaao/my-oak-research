@@ -42,7 +42,7 @@ import type { Proxy } from "@/app/generated/prisma";
 import { SourceType } from "@/app/generated/prisma";
 import { SourceWithRelations } from "@/lib/types";
 import { useSourceMutation } from "@/hooks/useSourceMutation";
-import { type SourceCapability, getRegionTag } from "@/lib/source-capabilities";
+import { type SourceCapability } from "@/lib/source-capabilities";
 import { cn } from "@/lib/utils";
 
 type SourceFormValues = {
@@ -100,8 +100,12 @@ function inferCategoryFromSourceType(type: SourceType): SourceCategory {
   return "RETRIEVAL";
 }
 
-function getPlatformRegion(platform: string): "国内" | "国外" {
-  return getRegionTag(platform) === "domestic" ? "国内" : "国外";
+function getPlatformRegion(tags?: string[]): "国内" | "国外" | "未配置" {
+  if (Array.isArray(tags)) {
+    if (tags.includes("domestic")) return "国内";
+    if (tags.includes("foreign")) return "国外";
+  }
+  return "未配置";
 }
 
 function splitToUrls(value: unknown): string[] {
@@ -1038,7 +1042,12 @@ const SourceDialog = ({
                       {selectedPlatform ? (
                         <>
                           <span className="truncate">{selectedPlatform}</span>
-                          <Badge variant="outline">{getPlatformRegion(selectedPlatform)}</Badge>
+                          <Badge variant="outline">
+                            {getPlatformRegion(selectedCapability?.tags)}
+                          </Badge>
+                          {selectedCapability?.tags?.includes("UNSPECIFIED") ? (
+                            <Badge variant="secondary">UNSPECIFIED</Badge>
+                          ) : null}
                         </>
                       ) : loadingCapabilities ? (
                         <span className="text-muted-foreground">Loading...</span>
@@ -1089,7 +1098,21 @@ const SourceDialog = ({
                               )}
                             />
                             <span className="mr-2 truncate">{platform}</span>
-                            <Badge variant="outline">{getPlatformRegion(platform)}</Badge>
+                            {(() => {
+                              const optionCapability = capabilityByPlatform.get(
+                                normalizePlatform(platform)
+                              );
+                              return (
+                                <>
+                                  <Badge variant="outline">
+                                    {getPlatformRegion(optionCapability?.tags)}
+                                  </Badge>
+                                  {optionCapability?.tags?.includes("UNSPECIFIED") ? (
+                                    <Badge variant="secondary">UNSPECIFIED</Badge>
+                                  ) : null}
+                                </>
+                              );
+                            })()}
                           </CommandItem>
                         ))}
                       </CommandGroup>

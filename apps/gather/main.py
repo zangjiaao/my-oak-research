@@ -286,6 +286,7 @@ _PLAYWRIGHT_POOL_SWEEP_TASK: asyncio.Task[Any] | None = None
 _PLAYWRIGHT_POOL_SWEEP_INTERVAL_MS = max(1000, int(os.getenv("GATHER_PLAYWRIGHT_POOL_SWEEP_INTERVAL_MS", "5000")))
 _SCRIPT_SAMPLE_LINE_RE = re.compile(r"^\s*//\s*Sample\s+/v3/fetch key parts\s*$")
 _SCRIPT_SAMPLE_ENTRY_RE = re.compile(r"^\s*//\s*([^:]+):\s*(.+?)\s*$")
+_SCRIPT_ALLOWED_CATEGORIES = {"STREAM", "INTERACTIVE", "RETRIEVAL"}
 
 
 def build_error_response(
@@ -334,6 +335,54 @@ def _parse_script_sample_payload(script_content: str) -> dict[str, Any]:
     return sample
 
 
+def _normalize_script_category(value: Any) -> str | None:
+    if not isinstance(value, str):
+        return None
+    normalized = value.strip().upper()
+    if not normalized:
+        return None
+    if normalized in _SCRIPT_ALLOWED_CATEGORIES:
+        return normalized
+    return None
+
+
+def _normalize_script_tags(value: Any) -> list[str]:
+    if isinstance(value, list):
+        return [str(item).strip() for item in value if str(item).strip()]
+    if isinstance(value, str):
+        return [part.strip() for part in re.split(r"[,\s]+", value) if part.strip()]
+    return []
+
+
+def _extract_script_meta(sample_payload: dict[str, Any]) -> dict[str, Any]:
+    meta: dict[str, Any] = {}
+    category = _normalize_script_category(sample_payload.get("category"))
+    if category:
+        meta["category"] = category
+
+    auth_raw = sample_payload.get("auth")
+    auth_obj = auth_raw if isinstance(auth_raw, dict) else {}
+    auth_required = auth_obj.get("required", sample_payload.get("auth.required"))
+    auth_kind = auth_obj.get("kind", sample_payload.get("auth.kind"))
+    auth_description = auth_obj.get("description", sample_payload.get("auth.description"))
+
+    auth_meta: dict[str, Any] = {}
+    if isinstance(auth_required, bool):
+        auth_meta["required"] = auth_required
+    if isinstance(auth_kind, str) and auth_kind.strip():
+        auth_meta["kind"] = auth_kind.strip()
+    if isinstance(auth_description, str) and auth_description.strip():
+        auth_meta["description"] = auth_description.strip()
+    if auth_meta:
+        meta["auth"] = auth_meta
+
+    tags = _normalize_script_tags(sample_payload.get("tags"))
+    if tags:
+        meta["tags"] = tags
+
+    return meta
+
+
 def _build_scripts_catalog() -> dict[str, Any]:
     items: list[dict[str, Any]] = []
     platform_map: dict[str, set[str]] = {}
@@ -355,6 +404,7 @@ def _build_scripts_catalog() -> dict[str, Any]:
                 sample_intent,
             )
         sample_output = sample_payload.get("output.field")
+        script_meta = _extract_script_meta(sample_payload)
 
         item = {
             "key": spec.key,
@@ -367,6 +417,7 @@ def _build_scripts_catalog() -> dict[str, Any]:
                 "intentArgs": sample_intent,
                 "outputField": sample_output if isinstance(sample_output, (list, dict)) else None,
             },
+            "meta": script_meta,
         }
         items.append(item)
         platform_map.setdefault(item["platform"], set()).add(spec.intent)

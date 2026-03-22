@@ -23,6 +23,15 @@ type GatherCatalogItem = {
     intentArgs?: Record<string, unknown>;
     outputField?: unknown;
   };
+  meta?: {
+    category?: string;
+    auth?: {
+      required?: boolean;
+      kind?: string;
+      description?: string;
+    };
+    tags?: string[];
+  };
 };
 
 function mergeCapabilities(input: {
@@ -91,4 +100,3 @@ export async function GET(req: Request) {
     return serverError(error);
   }
 }
-

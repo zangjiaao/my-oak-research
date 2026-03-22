@@ -49,6 +49,15 @@ type GatherCatalogItem = {
     intentArgs?: Record<string, unknown>;
     outputField?: unknown;
   };
+  meta?: {
+    category?: string;
+    auth?: {
+      required?: boolean;
+      kind?: string;
+      description?: string;
+    };
+    tags?: string[];
+  };
 };
 
 type WorkerApiPlatformConfig = {
@@ -281,6 +290,26 @@ function buildAuthRequirement(platform: string): {
   };
 }
 
+function normalizeGatherCategory(value: unknown): SourceCategory | null {
+  if (typeof value !== "string") return null;
+  const normalized = value.trim().toUpperCase();
+  if (normalized === "STREAM") return "STREAM";
+  if (normalized === "INTERACTIVE") return "INTERACTIVE";
+  if (normalized === "RETRIEVAL") return "RETRIEVAL";
+  return null;
+}
+
+function normalizeTags(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return Array.from(
+    new Set(
+      value
+        .map((item) => String(item).trim())
+        .filter(Boolean)
+    )
+  );
+}
+
 export function buildGatherCapabilities(items: GatherCatalogItem[]): SourceCapability[] {
   const grouped = new Map<string, SourceCapability>();
 
@@ -299,7 +328,31 @@ export function buildGatherCapabilities(items: GatherCatalogItem[]): SourceCapab
       continue;
     }
 
-    const category = classifyCategoryByPlatform(platform) ?? "RETRIEVAL";
+    const metaCategory = normalizeGatherCategory(item.meta?.category);
+    const category =
+      metaCategory ??
+      classifyCategoryByPlatform(platform) ??
+      "RETRIEVAL";
+    const rawAuth = item.meta?.auth;
+    const tags = normalizeTags(item.meta?.tags);
+    const authMetaRequired = rawAuth?.required;
+    const authRequirement =
+      typeof authMetaRequired === "boolean"
+        ? {
+            required: authMetaRequired,
+            kind:
+              typeof rawAuth?.kind === "string" && rawAuth.kind.trim()
+                ? rawAuth.kind.trim()
+                : undefined,
+            description:
+              typeof rawAuth?.description === "string" && rawAuth.description.trim()
+                ? rawAuth.description.trim()
+                : undefined,
+          }
+        : buildAuthRequirement(platform);
+    if (!metaCategory || typeof authMetaRequired !== "boolean") {
+      tags.push("UNSPECIFIED");
+    }
     grouped.set(platform, {
       platform,
       category,
@@ -307,8 +360,10 @@ export function buildGatherCapabilities(items: GatherCatalogItem[]): SourceCapab
         engine: "gather_playwright",
         driver: "playwright",
       },
-      tags: [getRegionTag(platform)],
-      authRequirement: buildAuthRequirement(platform),
+      tags: Array.from(
+        new Set([getRegionTag(platform), ...tags])
+      ),
+      authRequirement,
       intents: [
         {
           key: item.key,
