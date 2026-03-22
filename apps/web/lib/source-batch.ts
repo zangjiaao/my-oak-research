@@ -1,11 +1,8 @@
 import { createHash } from "node:crypto";
 
 import { Prisma, SourceType } from "@/app/generated/prisma";
-import {
-  getSupportedDrivers,
-  type KnownSocialPlatform,
-  type SocialDriver,
-} from "@/lib/social-driver-support";
+import { type KnownSocialPlatform } from "@/lib/social-driver-support";
+import type { SourceCategory, SourceNetworkPolicy } from "@/lib/source-taxonomy";
 
 type JsonObject = Record<string, unknown>;
 
@@ -18,8 +15,11 @@ export type BatchCredentialRequirement = {
 export type BatchTemplate = {
   key: string;
   type: SourceType;
+  category: SourceCategory;
   platform: string;
   driver: string;
+  networkPolicy: SourceNetworkPolicy;
+  tags: string[];
   intent: {
     type: string;
     args: Record<string, unknown>;
@@ -76,8 +76,6 @@ const CREDENTIAL_REQUIRED_SOCIAL = new Set<KnownSocialPlatform>([
   "FACEBOOK",
 ]);
 
-const SEARCH_PLATFORMS = ["PARALLEL", "TAVILY", "ANSPIRE", "CUSTOM"] as const;
-
 function credentialKindForPlatform(platform: string): string {
   const normalized = platform.trim().toLowerCase();
   if (!normalized) return "unknown-cookie";
@@ -90,82 +88,159 @@ function buildSocialTemplates(): BatchTemplate[] {
   const templates: BatchTemplate[] = [];
 
   for (const platform of SOCIAL_PLATFORMS) {
-    const drivers = getSupportedDrivers(platform) as readonly SocialDriver[];
-    for (const driver of drivers) {
-      const requiredArgs = REQUIRED_SOCIAL_ARGS[platform] ?? [];
-      const baseArgs = Object.fromEntries(requiredArgs.map((field) => [field, ""]));
-      templates.push({
-        key: `social:${platform}:${driver}:search`,
-        type: "SOCIAL_MEDIA",
-        platform,
-        driver,
+    const requiredArgs = REQUIRED_SOCIAL_ARGS[platform] ?? [];
+    const baseArgs = Object.fromEntries(requiredArgs.map((field) => [field, ""]));
+    templates.push({
+      key: `interactive:${platform}:playwright:search`,
+      type: "SOCIAL_MEDIA",
+      category: "INTERACTIVE",
+      platform,
+      driver: "playwright",
+      networkPolicy: "DEFAULT",
+      tags: [],
+      intent: { type: "search", args: baseArgs },
+      title: `${platform}`,
+      description: `Collect ${platform} data with Playwright-based gather scripts.`,
+      defaultConfig: {
         intent: { type: "search", args: baseArgs },
-        title: `${platform} / ${driver}`,
-        description: `Collect ${platform} data with ${driver}.`,
-        defaultConfig: {
-          intent: { type: "search", args: baseArgs },
-          driver,
-          keywordStrategy: "AUTO",
-        },
-        requiredFields: requiredArgs.map((field) => `intent.args.${field}`),
-        credentialRequirements: CREDENTIAL_REQUIRED_SOCIAL.has(platform)
-          ? [
-              {
-                kind: credentialKindForPlatform(platform),
-                required: true,
-                description: `${platform} auth credential`,
-              },
-            ]
-          : [],
-      });
-    }
+        driver: "playwright",
+        keywordStrategy: "AUTO",
+      },
+      requiredFields: requiredArgs.map((field) => `intent.args.${field}`),
+      credentialRequirements: CREDENTIAL_REQUIRED_SOCIAL.has(platform)
+        ? [
+            {
+              kind: credentialKindForPlatform(platform),
+              required: true,
+              description: `${platform} auth credential`,
+            },
+          ]
+        : [],
+    });
   }
 
   return templates;
 }
 
 function buildSearchTemplates(): BatchTemplate[] {
-  return SEARCH_PLATFORMS.map((platform) => ({
-    key: `search:${platform}:builtin:search`,
-    type: "SEARCH_ENGINE",
-    platform,
-    driver: "builtin",
-    intent: { type: "search", args: {} },
-    title: `${platform} Search`,
-    description: `Query via ${platform}.`,
-    defaultConfig: {
-      platform,
-      engine: "CUSTOM",
-      objective: "",
-      apiEndpoint: null,
-      options: {},
-      keywordStrategy: "AUTO",
+  return [
+    {
+      key: "retrieval:PARALLEL:playwright:search",
+      type: "SEARCH_ENGINE",
+      category: "RETRIEVAL",
+      platform: "PARALLEL",
+      driver: "playwright",
+      networkPolicy: "DEFAULT",
+      tags: [],
+      intent: { type: "search", args: {} },
+      title: "Parallel Search",
+      description: "Search through Parallel API.",
+      defaultConfig: {
+        platform: "PARALLEL",
+        engine: "CUSTOM",
+        objective: "",
+        apiEndpoint: null,
+        options: { provider: "parallel" },
+        keywordStrategy: "AUTO",
+      },
+      requiredFields: ["objective"],
+      credentialRequirements: [
+        {
+          kind: "parallel-api-key",
+          required: true,
+          description: "Parallel API credential",
+        },
+      ],
     },
-    requiredFields: ["objective"],
-    credentialRequirements:
-      platform === "CUSTOM"
-        ? []
-        : [
-            {
-              kind: `${platform.toLowerCase()}-api-key`,
-              required: true,
-              description: `${platform} API credential`,
-            },
-          ],
-  }));
+    {
+      key: "retrieval:TAVILY:playwright:search",
+      type: "SEARCH_ENGINE",
+      category: "RETRIEVAL",
+      platform: "TAVILY",
+      driver: "playwright",
+      networkPolicy: "DEFAULT",
+      tags: [],
+      intent: { type: "search", args: {} },
+      title: "Tavily Search",
+      description: "Search through Tavily API.",
+      defaultConfig: {
+        platform: "TAVILY",
+        engine: "CUSTOM",
+        objective: "",
+        apiEndpoint: null,
+        options: { provider: "tavily" },
+        keywordStrategy: "AUTO",
+      },
+      requiredFields: ["objective"],
+      credentialRequirements: [
+        {
+          kind: "tavily-api-key",
+          required: true,
+          description: "Tavily API credential",
+        },
+      ],
+    },
+    {
+      key: "retrieval:GOOGLE:playwright:search",
+      type: "SEARCH_ENGINE",
+      category: "RETRIEVAL",
+      platform: "CUSTOM",
+      driver: "playwright",
+      networkPolicy: "DEFAULT",
+      tags: [],
+      intent: { type: "search", args: {} },
+      title: "Google Search",
+      description: "Search through Google-compatible retrieval backend.",
+      defaultConfig: {
+        platform: "CUSTOM",
+        engine: "CUSTOM",
+        objective: "",
+        apiEndpoint: null,
+        options: { provider: "google" },
+        keywordStrategy: "AUTO",
+      },
+      requiredFields: ["objective"],
+      credentialRequirements: [],
+    },
+    {
+      key: "retrieval:DARKWEBGO:playwright:search",
+      type: "SEARCH_ENGINE",
+      category: "RETRIEVAL",
+      platform: "CUSTOM",
+      driver: "playwright",
+      networkPolicy: "TOR_SOCKS5H",
+      tags: ["darknet"],
+      intent: { type: "search", args: {} },
+      title: "DarkWebGo Search",
+      description: "Darknet retrieval through TOR(socks5h) network policy.",
+      defaultConfig: {
+        platform: "CUSTOM",
+        engine: "CUSTOM",
+        objective: "",
+        apiEndpoint: null,
+        options: { provider: "darkwebgo" },
+        keywordStrategy: "AUTO",
+      },
+      requiredFields: ["objective", "proxyId"],
+      credentialRequirements: [],
+    },
+  ];
 }
 
 export const SOURCE_BATCH_TEMPLATES: BatchTemplate[] = [
   {
-    key: "web:WEB:builtin:crawl",
+    key: "stream:BBC:playwright:feed",
     type: "WEB",
+    category: "STREAM",
     platform: "WEB",
-    driver: "builtin",
+    driver: "playwright",
+    networkPolicy: "DEFAULT",
+    tags: ["stream"],
     intent: { type: "crawl", args: {} },
-    title: "Web Site Crawl",
-    description: "Crawl public websites.",
+    title: "BBC Stream",
+    description: "Stream-like collection from BBC feeds/pages.",
     defaultConfig: {
-      url: "",
+      url: "https://www.bbc.com/news",
       crawlerEngine: "FETCH",
       render: false,
       robotsRespect: true,
@@ -176,22 +251,25 @@ export const SOURCE_BATCH_TEMPLATES: BatchTemplate[] = [
     credentialRequirements: [],
   },
   {
-    key: "darknet:DARKNET:builtin:crawl",
-    type: "DARKNET",
-    platform: "DARKNET",
-    driver: "builtin",
+    key: "stream:REUTERS:playwright:feed",
+    type: "WEB",
+    category: "STREAM",
+    platform: "WEB",
+    driver: "playwright",
+    networkPolicy: "DEFAULT",
+    tags: ["stream"],
     intent: { type: "crawl", args: {} },
-    title: "Darknet Crawl",
-    description: "Crawl darknet endpoints via proxy.",
+    title: "Reuters Stream",
+    description: "Stream-like collection from Reuters feeds/pages.",
     defaultConfig: {
-      url: "",
+      url: "https://www.reuters.com/world/",
       crawlerEngine: "FETCH",
       render: false,
+      robotsRespect: true,
       headers: null,
       parseRules: null,
-      proxyId: "",
     },
-    requiredFields: ["url", "proxyId"],
+    requiredFields: ["url"],
     credentialRequirements: [],
   },
   ...buildSearchTemplates(),
@@ -408,10 +486,14 @@ export function buildSourceCreateData(input: {
     typeof config.description === "string" && config.description.trim()
       ? config.description.trim()
       : template.description;
+  const descriptionWithTags =
+    template.tags.length > 0
+      ? `${description} [tags:${template.tags.join(",")}]`
+      : description;
 
   const base = {
     name: displayName,
-    description,
+    description: descriptionWithTags,
     type: template.type,
     active: defaults?.active ?? true,
     rateLimit: defaults?.rateLimit ?? 10,
@@ -452,6 +534,12 @@ export function buildSourceCreateData(input: {
   }
 
   if (template.type === "SEARCH_ENGINE") {
+    const optionObject = {
+      ...(asRecord(config.options)),
+      tags: template.tags,
+      networkPolicy: template.networkPolicy,
+      executionMode: "worker-dispatch",
+    };
     return {
       ...base,
       search: {
@@ -462,7 +550,7 @@ export function buildSourceCreateData(input: {
           typeof config.apiEndpoint === "string" && config.apiEndpoint.trim()
             ? config.apiEndpoint.trim()
             : null,
-        options: withJsonNull(config.options ?? null),
+        options: withJsonNull(optionObject),
         credentialId: resolvedCredentialId,
         keywordStrategy:
           typeof config.keywordStrategy === "string"
@@ -483,8 +571,11 @@ export function buildSourceCreateData(input: {
 
   const socialConfig = {
     ...config,
-    driver: template.driver,
+    driver: "playwright",
     intent,
+    tags: template.tags,
+    networkPolicy: template.networkPolicy,
+    executionMode: "worker-dispatch",
   };
 
   delete (socialConfig as JsonObject).name;
@@ -533,10 +624,7 @@ export function sourceIdentityFromSource(source: {
     return {
       type: "SOCIAL_MEDIA",
       platform: source.social.platform,
-      driver:
-        typeof config.driver === "string" && config.driver.trim()
-          ? config.driver
-          : "playwright",
+      driver: "playwright",
       intentType:
         typeof intent.type === "string" && intent.type.trim()
           ? intent.type
@@ -549,7 +637,7 @@ export function sourceIdentityFromSource(source: {
     return {
       type: "SEARCH_ENGINE",
       platform: source.search.platform,
-      driver: "builtin",
+      driver: "playwright",
       intentType: "search",
       intentArgsHash: computeIntentArgsHash({}),
     };
@@ -559,7 +647,7 @@ export function sourceIdentityFromSource(source: {
     return {
       type: "WEB",
       platform: "WEB",
-      driver: "builtin",
+      driver: "playwright",
       intentType: "crawl",
       intentArgsHash: computeIntentArgsHash({}),
     };
@@ -569,7 +657,7 @@ export function sourceIdentityFromSource(source: {
     return {
       type: "DARKNET",
       platform: "DARKNET",
-      driver: "builtin",
+      driver: "playwright",
       intentType: "crawl",
       intentArgsHash: computeIntentArgsHash({}),
     };

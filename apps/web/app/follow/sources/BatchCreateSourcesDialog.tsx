@@ -34,8 +34,11 @@ import type { Proxy } from "@/app/generated/prisma";
 type BatchTemplate = {
   key: string;
   type: "WEB" | "DARKNET" | "SEARCH_ENGINE" | "SOCIAL_MEDIA";
+  category: "STREAM" | "INTERACTIVE" | "RETRIEVAL";
   platform: string;
   driver: string;
+  networkPolicy: "DEFAULT" | "TOR_SOCKS5H";
+  tags: string[];
   intent: { type: string; args: Record<string, unknown> };
   title: string;
   description: string;
@@ -114,10 +117,25 @@ function labelFromPath(path: string): string {
     .replace(/^./, (char) => char.toUpperCase());
 }
 
+function groupedByCategory(templates: BatchTemplate[]) {
+  return templates.reduce<Record<string, BatchTemplate[]>>((acc, template) => {
+    acc[template.category] = acc[template.category] ?? [];
+    acc[template.category].push(template);
+    return acc;
+  }, {});
+}
+
+function categoryLabel(category: BatchTemplate["category"]): string {
+  if (category === "STREAM") return "Stream Platforms";
+  if (category === "INTERACTIVE") return "Interactive Platforms";
+  return "Retrieval Platforms";
+}
+
 function groupedByPlatform(templates: BatchTemplate[]) {
   return templates.reduce<Record<string, BatchTemplate[]>>((acc, template) => {
-    acc[template.platform] = acc[template.platform] ?? [];
-    acc[template.platform].push(template);
+    const key = template.platform || template.category;
+    acc[key] = acc[key] ?? [];
+    acc[key].push(template);
     return acc;
   }, {});
 }
@@ -155,7 +173,7 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
   const templates = templateQuery.data?.items ?? [];
   const credentials = credentialQuery.data?.credentials ?? [];
 
-  const groupedTemplates = useMemo(() => groupedByPlatform(templates), [templates]);
+  const groupedTemplates = useMemo(() => groupedByCategory(templates), [templates]);
 
   const selectedTemplates = templates.filter((item) => state[item.key]?.enabled);
 
@@ -320,11 +338,16 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
                       Loading templates...
                     </div>
                   ) : (
-                    Object.entries(groupedTemplates).map(([platform, items]) => (
-                      <div key={platform} className="space-y-2">
-                        <div className="text-sm font-semibold">{platform}</div>
-                        <div className="space-y-2">
-                          {items.map((template) => {
+                    Object.entries(groupedTemplates).map(([category, items]) => (
+                      <div key={category} className="space-y-2">
+                        <div className="text-sm font-semibold">
+                          {categoryLabel(category as BatchTemplate["category"])}
+                        </div>
+                        <div className="space-y-3">
+                          {Object.entries(groupedByPlatform(items)).map(([platform, platformItems]) => (
+                            <div key={`${category}-${platform}`} className="space-y-2">
+                              <div className="text-xs font-semibold text-muted-foreground">{platform}</div>
+                              {platformItems.map((template) => {
                             const enabled = Boolean(state[template.key]?.enabled);
                             const localMissing = enabled ? getLocalMissing(template) : [];
                             const serverInvalid = invalidMap[template.key] ?? [];
@@ -345,13 +368,22 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
                                       <div className="min-w-0 text-sm font-medium break-words">
                                         {template.title}
                                       </div>
+                                      <Badge variant="outline">{template.category}</Badge>
                                       <Badge variant="outline">{template.driver}</Badge>
                                       <Badge variant="outline">{template.intent.type}</Badge>
+                                      {template.tags.includes("darknet") ? (
+                                        <Badge variant="secondary">darknet</Badge>
+                                      ) : null}
                                       {template.exists ? <Badge>EXISTS</Badge> : null}
                                     </div>
                                     <div className="text-xs text-muted-foreground break-words">
                                       {template.description}
                                     </div>
+                                    {template.networkPolicy === "TOR_SOCKS5H" ? (
+                                      <div className="text-xs text-amber-600">
+                                        Network: TOR / socks5h required
+                                      </div>
+                                    ) : null}
                                     {(localMissing.length > 0 || serverInvalid.length > 0) && enabled ? (
                                       <div className="text-xs text-red-600 break-words">
                                         Missing: {Array.from(new Set([...localMissing, ...serverInvalid])).join(", ")}
@@ -362,6 +394,8 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
                               </label>
                             );
                           })}
+                            </div>
+                          ))}
                         </div>
                       </div>
                     ))
