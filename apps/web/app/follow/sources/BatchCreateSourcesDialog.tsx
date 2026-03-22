@@ -21,6 +21,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { apiFetcher } from "@/lib/fetcher";
 import type { Proxy } from "@/app/generated/prisma";
 
@@ -57,6 +64,8 @@ type ItemFormState = {
   config: Record<string, unknown>;
   credentialRefs?: Record<string, string | null>;
 };
+
+const SELECT_NONE = "__none__";
 
 function isEmptyValue(value: unknown): boolean {
   if (value === null || value === undefined) return true;
@@ -369,19 +378,23 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                       <div className="space-y-1">
                         <Label>Active</Label>
-                        <select
-                          className="h-9 w-full rounded-md border bg-background px-2 text-sm"
+                        <Select
                           value={defaults.active ? "true" : "false"}
-                          onChange={(event) =>
+                          onValueChange={(value) =>
                             setDefaults((prev) => ({
                               ...prev,
-                              active: event.target.value === "true",
+                              active: value === "true",
                             }))
                           }
                         >
-                          <option value="true">true</option>
-                          <option value="false">false</option>
-                        </select>
+                          <SelectTrigger className="w-full">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="true">true</SelectItem>
+                            <SelectItem value="false">false</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                       <div className="space-y-1">
                         <Label>Rate Limit</Label>
@@ -400,23 +413,27 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
                       </div>
                       <div className="space-y-1">
                         <Label>Proxy</Label>
-                        <select
-                          className="h-9 w-full rounded-md border bg-background px-2 text-sm"
-                          value={defaults.proxyId ?? ""}
-                          onChange={(event) =>
+                        <Select
+                          value={defaults.proxyId ?? SELECT_NONE}
+                          onValueChange={(value) =>
                             setDefaults((prev) => ({
                               ...prev,
-                              proxyId: event.target.value || null,
+                              proxyId: value === SELECT_NONE ? null : value,
                             }))
                           }
                         >
-                          <option value="">None</option>
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="None" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value={SELECT_NONE}>None</SelectItem>
                           {proxies.map((proxy) => (
-                            <option key={proxy.id} value={proxy.id}>
+                            <SelectItem key={proxy.id} value={proxy.id}>
                               {proxy.name}
-                            </option>
+                            </SelectItem>
                           ))}
-                        </select>
+                          </SelectContent>
+                        </Select>
                       </div>
                     </div>
                   </div>
@@ -485,24 +502,31 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
                             return (
                               <div key={requirement.kind} className="space-y-1.5">
                                 <Label>{requirement.description}</Label>
-                                <select
-                                  className="h-9 w-full rounded-md border bg-background px-2 text-sm"
-                                  value={state[template.key]?.credentialRefs?.[requirement.kind] ?? ""}
-                                  onChange={(event) =>
+                                <Select
+                                  value={
+                                    state[template.key]?.credentialRefs?.[requirement.kind] ??
+                                    SELECT_NONE
+                                  }
+                                  onValueChange={(value) =>
                                     handleCredentialRefChange(
                                       template.key,
                                       requirement.kind,
-                                      event.target.value
+                                      value === SELECT_NONE ? "" : value
                                     )
                                   }
                                 >
-                                  <option value="">Select credential</option>
+                                  <SelectTrigger className="w-full">
+                                    <SelectValue placeholder="Select credential" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value={SELECT_NONE}>Select credential</SelectItem>
                                   {options.map((item) => (
-                                    <option key={item.id} value={item.id}>
+                                    <SelectItem key={item.id} value={item.id}>
                                       {item.name}
-                                    </option>
+                                    </SelectItem>
                                   ))}
-                                </select>
+                                  </SelectContent>
+                                </Select>
                               </div>
                             );
                           })}
