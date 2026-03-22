@@ -4,10 +4,12 @@ import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { Check, ChevronsUpDown } from "lucide-react";
 
 import { SettingEditDialog } from "@/components/layout";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -15,15 +17,25 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { ControlledSelect } from "@/components/ui/controlled-select";
 import { SelectItem } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+} from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ErrorMessage } from "@/components/business";
 import { apiFetcher } from "@/lib/fetcher";
 import type { Proxy } from "@/app/generated/prisma";
 import { SourceType } from "@/app/generated/prisma";
 import { SourceWithRelations } from "@/lib/types";
 import { useSourceMutation } from "@/hooks/useSourceMutation";
+import { cn } from "@/lib/utils";
 
 type SourceFormValues = {
   name: string;
@@ -78,6 +90,8 @@ const SEARCH_PLATFORM_MAP: Record<string, "PARALLEL" | "TAVILY" | "ANSPIRE" | "C
   ANSPIRE: "ANSPIRE",
 };
 
+const DOMESTIC_PLATFORMS = new Set(["XIAOHONGSHU", "DOUYIN", "WEIBO"]);
+
 function normalizePlatform(value?: string | null): string {
   return String(value ?? "").trim().toUpperCase();
 }
@@ -90,6 +104,10 @@ function inferCategoryFromSourceType(type: SourceType): SourceCategory {
 
 function inferCategoryFromPlatform(platform: string): SourceCategory {
   return PLATFORM_CATEGORY_MAP[normalizePlatform(platform)] ?? "RETRIEVAL";
+}
+
+function getPlatformRegion(platform: string): "国内" | "国外" {
+  return DOMESTIC_PLATFORMS.has(normalizePlatform(platform)) ? "国内" : "国外";
 }
 
 function parseArgsText(argsText: string): Record<string, unknown> {
@@ -378,6 +396,8 @@ const SourceDialog = ({
   const [selectedIntentType, setSelectedIntentType] = useState(initialScriptState.intentType);
   const [intentArgsText, setIntentArgsText] = useState(initialScriptState.intentArgsText);
   const [networkPolicy, setNetworkPolicy] = useState<NetworkPolicy>(initialScriptState.networkPolicy);
+  const [platformPopoverOpen, setPlatformPopoverOpen] = useState(false);
+  const [platformSearch, setPlatformSearch] = useState("");
 
   useEffect(() => {
     if (!open) return;
@@ -447,6 +467,14 @@ const SourceDialog = ({
     }
     return Array.from(grouped).sort((a, b) => a.localeCompare(b));
   }, [catalog?.items, expectedCategory]);
+
+  const filteredPlatformOptions = useMemo(() => {
+    const keyword = platformSearch.trim().toLowerCase();
+    if (!keyword) return platformOptions;
+    return platformOptions.filter((platform) =>
+      platform.toLowerCase().includes(keyword)
+    );
+  }, [platformOptions, platformSearch]);
 
   const intentOptions = useMemo(() => {
     const platform = normalizePlatform(selectedPlatform);
@@ -561,27 +589,67 @@ const SourceDialog = ({
           </CardHeader>
           <CardContent className="grid gap-4">
             <div className="grid gap-2">
-              <Label>Platform</Label>
-              <ControlledSelect
-                value={selectedPlatform || null}
-                onValueChange={(value) => {
-                  setSelectedPlatform(value ?? "");
-                  if (!value) return;
-                  const available = (catalog?.items ?? []).filter(
-                    (item) => normalizePlatform(item.platform) === normalizePlatform(value)
-                  );
-                  if (available.length > 0) {
-                    setSelectedIntentType(available[0]?.intent || "search");
-                  }
-                }}
-                placeholder={loadingCatalog ? "Loading..." : "Select platform"}
-              >
-                {platformOptions.map((platform) => (
-                  <SelectItem key={platform} value={platform}>
-                    {platform}
-                  </SelectItem>
-                ))}
-              </ControlledSelect>
+              <Popover open={platformPopoverOpen} onOpenChange={setPlatformPopoverOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    className="h-10 w-full justify-between"
+                  >
+                    <span className="flex min-w-0 items-center gap-2">
+                      {selectedPlatform ? (
+                        <>
+                          <span className="truncate">{selectedPlatform}</span>
+                          <Badge variant="outline">{getPlatformRegion(selectedPlatform)}</Badge>
+                        </>
+                      ) : loadingCatalog ? (
+                        <span className="text-muted-foreground">Loading...</span>
+                      ) : (
+                        <span className="text-muted-foreground">Select platform</span>
+                      )}
+                    </span>
+                    <ChevronsUpDown className="size-4 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                  <Command>
+                    <CommandInput
+                      placeholder="Search platform..."
+                      value={platformSearch}
+                      onValueChange={setPlatformSearch}
+                    />
+                    <CommandEmpty>No platform found.</CommandEmpty>
+                    <CommandGroup>
+                      {filteredPlatformOptions.map((platform) => (
+                        <CommandItem
+                          key={platform}
+                          value={platform}
+                          onSelect={() => {
+                            setSelectedPlatform(platform);
+                            const available = (catalog?.items ?? []).filter(
+                              (item) =>
+                                normalizePlatform(item.platform) === normalizePlatform(platform)
+                            );
+                            if (available.length > 0) {
+                              setSelectedIntentType(available[0]?.intent || "search");
+                            }
+                            setPlatformPopoverOpen(false);
+                          }}
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 size-4",
+                              platform === selectedPlatform ? "opacity-100" : "opacity-0"
+                            )}
+                          />
+                          <span className="mr-2">{platform}</span>
+                          <Badge variant="outline">{getPlatformRegion(platform)}</Badge>
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
           </CardContent>
         </Card>
