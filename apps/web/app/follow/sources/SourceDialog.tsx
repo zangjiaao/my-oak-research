@@ -971,7 +971,7 @@ const SourceDialog = ({
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent
-                  container={popoverContainerRef.current}
+                  portal={false}
                   side="bottom"
                   align="start"
                   collisionPadding={8}
