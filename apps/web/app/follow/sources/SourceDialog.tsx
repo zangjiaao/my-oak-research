@@ -1,26 +1,11 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
-import { Controller, useForm } from "react-hook-form";
-import type {
-  Control,
-  FieldErrors,
-  Resolver,
-  UseFormRegister,
-  UseFormWatch,
-} from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { useEffect, useMemo, useState } from "react";
+import { useForm } from "react-hook-form";
+import { useQuery } from "@tanstack/react-query";
 import { z } from "zod";
 import { toast } from "sonner";
-import {
-  SourceCreateSchema,
-  SourceUpdateSchema,
-  WebSourceCreateSchema,
-  DarknetSourceCreateSchema,
-  SearchEngineSourceCreateSchema,
-  SocialMediaSourceCreateSchema,
-  CrawlerEngineEnum,
-} from "@/app/api/_utils/zod";
+
 import { SettingEditDialog } from "@/components/layout";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -33,426 +18,325 @@ import {
 } from "@/components/ui/card";
 import { ControlledSelect } from "@/components/ui/controlled-select";
 import { SelectItem } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { ErrorMessage } from "@/components/business";
+import { apiFetcher } from "@/lib/fetcher";
 import type { Proxy } from "@/app/generated/prisma";
 import { SourceType } from "@/app/generated/prisma";
-import {
-  SourceWithRelations,
-  WebSource,
-  DarknetSource,
-  SocialMediaSource,
-  SearchEngineSource,
-} from "@/lib/types";
-import { Textarea } from "@/components/ui/textarea";
-import SelectProxy from "./SelectProxy";
+import { SourceWithRelations } from "@/lib/types";
 import { useSourceMutation } from "@/hooks/useSourceMutation";
-import { SocialMediaFields } from "./SocialMediaFields";
-import { DarknetFields } from "./DarknetFields";
-import { SearchEngineFields } from "./SearchEngineFields";
-import { getDefaultDriver } from "@/lib/social-driver-support";
 
-type SourceFormValues = z.infer<typeof SourceCreateSchema>;
-type WebFormValues = Extract<SourceFormValues, { type: "WEB" }>;
-type DarknetFormValues = Extract<SourceFormValues, { type: "DARKNET" }>;
-type SocialFormValues = Extract<SourceFormValues, { type: "SOCIAL_MEDIA" }>;
-type SearchFormValues = Extract<SourceFormValues, { type: "SEARCH_ENGINE" }>;
-
-const isWebSource = (
-  source: SourceWithRelations | undefined
-): source is WebSource => source?.type === "WEB";
-
-const isDarknetSource = (
-  source: SourceWithRelations | undefined
-): source is DarknetSource => source?.type === "DARKNET";
-
-const isSocialSource = (
-  source: SourceWithRelations | undefined
-): source is SocialMediaSource => source?.type === "SOCIAL_MEDIA";
-
-const isSearchSource = (
-  source: SourceWithRelations | undefined
-): source is SearchEngineSource => source?.type === "SEARCH_ENGINE";
-
-const SUPPORTED_SEARCH_PLATFORMS = [
-  "PARALLEL",
-  "TAVILY",
-  "ANSPIRE",
-  "CUSTOM",
-] as const;
-
-function inferSearchPlatform(
-  platform: unknown,
-  apiEndpoint: unknown,
-  options: unknown
-): (typeof SUPPORTED_SEARCH_PLATFORMS)[number] {
-  if (
-    typeof platform === "string" &&
-    SUPPORTED_SEARCH_PLATFORMS.includes(
-      platform as (typeof SUPPORTED_SEARCH_PLATFORMS)[number]
-    )
-  ) {
-    return platform as (typeof SUPPORTED_SEARCH_PLATFORMS)[number];
-  }
-  const optionProvider =
-    options && typeof options === "object" && !Array.isArray(options)
-      ? String(
-          (options as Record<string, unknown>).provider ??
-            (options as Record<string, unknown>).platform ??
-            ""
-        ).toLowerCase()
-      : "";
-  if (optionProvider.includes("parallel")) return "PARALLEL";
-  if (optionProvider.includes("tavily")) return "TAVILY";
-  if (optionProvider.includes("anspire")) return "ANSPIRE";
-
-  const endpoint = String(apiEndpoint ?? "").toLowerCase();
-  if (endpoint.includes("parallel.ai")) return "PARALLEL";
-  if (endpoint.includes("tavily.com")) return "TAVILY";
-  if (endpoint.includes("anspire.cn")) return "ANSPIRE";
-  return "CUSTOM";
-}
-
-function asRecord(value: unknown): Record<string, unknown> {
-  if (value && typeof value === "object" && !Array.isArray(value)) {
-    return value as Record<string, unknown>;
-  }
-  return {};
-}
-
-// Helper to get schema based on type
-const getValidationSchema = (type: SourceType, isUpdate: boolean) => {
-  if (isUpdate) return SourceUpdateSchema;
-
-  switch (type) {
-    case "WEB":
-      return WebSourceCreateSchema;
-    case "DARKNET":
-      return DarknetSourceCreateSchema;
-    case "SEARCH_ENGINE":
-      return SearchEngineSourceCreateSchema;
-    case "SOCIAL_MEDIA":
-      return SocialMediaSourceCreateSchema;
-    default:
-      return SourceCreateSchema;
-  }
+type SourceFormValues = {
+  name: string;
+  description?: string | null;
+  active?: boolean;
+  rateLimit?: number | null;
+  proxyId?: string | null;
+  credentialId?: string | null;
 };
 
-// Helper to get default values
-const getDefaultValues = (
-  source?: SourceWithRelations,
-  sourceType?: SourceType
-): SourceFormValues => {
-  const effectiveType: SourceType = source?.type || sourceType || "WEB";
+type GatherCatalogItem = {
+  key: string;
+  platform: string;
+  intent: string;
+  mode: string;
+  sample?: {
+    intentType?: string;
+    intentArgs?: Record<string, unknown>;
+  };
+};
+
+type GatherCatalogResponse = {
+  items: GatherCatalogItem[];
+};
+
+type SourceCategory = "STREAM" | "INTERACTIVE" | "RETRIEVAL";
+type NetworkPolicy = "DEFAULT" | "TOR_SOCKS5H";
+
+const PLATFORM_CATEGORY_MAP: Record<string, SourceCategory> = {
+  BBC: "STREAM",
+  REUTERS: "STREAM",
+  X: "INTERACTIVE",
+  XIAOHONGSHU: "INTERACTIVE",
+  REDDIT: "INTERACTIVE",
+  TELEGRAM: "INTERACTIVE",
+  INSTAGRAM: "INTERACTIVE",
+  FACEBOOK: "INTERACTIVE",
+  DOUYIN: "INTERACTIVE",
+  TIKTOK: "INTERACTIVE",
+  WEIBO: "INTERACTIVE",
+  WHATSAPP: "INTERACTIVE",
+  PARALLEL: "RETRIEVAL",
+  TAVILY: "RETRIEVAL",
+  GOOGLE: "RETRIEVAL",
+  DARKWEBGO: "RETRIEVAL",
+  DARKSEARCH: "RETRIEVAL",
+};
+
+const SEARCH_PLATFORM_MAP: Record<string, "PARALLEL" | "TAVILY" | "ANSPIRE" | "CUSTOM"> = {
+  PARALLEL: "PARALLEL",
+  TAVILY: "TAVILY",
+  ANSPIRE: "ANSPIRE",
+};
+
+function normalizePlatform(value?: string | null): string {
+  return String(value ?? "").trim().toUpperCase();
+}
+
+function inferCategoryFromSourceType(type: SourceType): SourceCategory {
+  if (type === "WEB") return "STREAM";
+  if (type === "SOCIAL_MEDIA") return "INTERACTIVE";
+  return "RETRIEVAL";
+}
+
+function inferCategoryFromPlatform(platform: string): SourceCategory {
+  return PLATFORM_CATEGORY_MAP[normalizePlatform(platform)] ?? "RETRIEVAL";
+}
+
+function parseArgsText(argsText: string): Record<string, unknown> {
+  const raw = argsText.trim();
+  if (!raw) return {};
+  try {
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      return parsed as Record<string, unknown>;
+    }
+    return {};
+  } catch {
+    return {};
+  }
+}
+
+function splitToUrls(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value.map((item) => String(item).trim()).filter(Boolean);
+  }
+  const raw = String(value ?? "").trim();
+  if (!raw) return [];
+  return raw
+    .split(/[\n\r,，;；\t]+/g)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function stringifyIntentArgs(value: unknown): string {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return "{}";
+  }
+  return JSON.stringify(value, null, 2);
+}
+
+function getInitialScriptState(source?: SourceWithRelations): {
+  platform: string;
+  intentType: string;
+  intentArgsText: string;
+  networkPolicy: NetworkPolicy;
+} {
+  if (!source) {
+    return {
+      platform: "",
+      intentType: "search",
+      intentArgsText: "{}",
+      networkPolicy: "DEFAULT" as NetworkPolicy,
+    };
+  }
+
+  if (source.type === "SOCIAL_MEDIA" && "social" in source && source.social) {
+    const config = (source.social.config as Record<string, unknown>) ?? {};
+    const intent =
+      config.intent && typeof config.intent === "object" && !Array.isArray(config.intent)
+        ? (config.intent as Record<string, unknown>)
+        : {};
+    const intentArgs =
+      intent.args && typeof intent.args === "object" && !Array.isArray(intent.args)
+        ? (intent.args as Record<string, unknown>)
+        : {};
+
+    return {
+      platform: source.social.platform ?? "",
+      intentType:
+        typeof intent.type === "string" && intent.type.trim() ? intent.type : "search",
+      intentArgsText: stringifyIntentArgs(intentArgs),
+      networkPolicy:
+        typeof config.networkPolicy === "string" && config.networkPolicy === "TOR_SOCKS5H"
+          ? "TOR_SOCKS5H"
+          : "DEFAULT",
+    };
+  }
+
+  if (source.type === "SEARCH_ENGINE" && "search" in source && source.search) {
+    const options =
+      source.search.options && typeof source.search.options === "object"
+        ? (source.search.options as Record<string, unknown>)
+        : {};
+    return {
+      platform: String(options.provider ?? source.search.platform ?? ""),
+      intentType: "search",
+      intentArgsText: stringifyIntentArgs({ query: source.search.objective ?? "" }),
+      networkPolicy:
+        typeof options.networkPolicy === "string" && options.networkPolicy === "TOR_SOCKS5H"
+          ? "TOR_SOCKS5H"
+          : "DEFAULT",
+    };
+  }
+
+  if (source.type === "WEB" && "web" in source && source.web) {
+    return {
+      platform: "BBC",
+      intentType: "crawl",
+      intentArgsText: stringifyIntentArgs({ url: source.web.url ?? [] }),
+      networkPolicy: "DEFAULT" as NetworkPolicy,
+    };
+  }
+
+  if (source.type === "DARKNET" && "darknet" in source && source.darknet) {
+    return {
+      platform: "DARKWEBGO",
+      intentType: "search",
+      intentArgsText: stringifyIntentArgs({ url: source.darknet.url ?? [] }),
+      networkPolicy: "TOR_SOCKS5H" as NetworkPolicy,
+    };
+  }
+
+  return {
+    platform: "",
+    intentType: "search",
+    intentArgsText: "{}",
+    networkPolicy: "DEFAULT" as NetworkPolicy,
+  };
+}
+
+function buildPayloadFromUnified(input: {
+  effectiveType: SourceType;
+  values: SourceFormValues;
+  platform: string;
+  intentType: string;
+  intentArgsText: string;
+  networkPolicy: NetworkPolicy;
+}) {
+  const { effectiveType, values, platform, intentType, intentArgsText, networkPolicy } = input;
+  const intentArgs = parseArgsText(intentArgsText);
 
   const base = {
-    name: source?.name ?? "",
-    description: source?.description ?? "",
+    name: values.name.trim(),
+    description: values.description?.trim() ?? "",
     type: effectiveType,
-    active: source?.active ?? true,
-    rateLimit: source?.rateLimit ?? 10,
-    proxyId: source?.proxyId ?? null,
-    credentialId: source?.credentialId ?? null,
+    active: values.active ?? true,
+    rateLimit: values.rateLimit ?? 10,
+    proxyId: values.proxyId ?? null,
+    credentialId: values.credentialId ?? null,
   };
 
-  switch (effectiveType) {
-    case "WEB": {
-      const webRelation = isWebSource(source) ? source.web : undefined;
-      const webConfig: WebFormValues["web"] = {
-        url: (Array.isArray(webRelation?.url)
-          ? webRelation.url.join("\n")
-          : (webRelation?.url ?? "")) as any,
-        crawlerEngine: webRelation?.crawlerEngine ?? "FETCH",
-        render: webRelation?.render ?? false,
-        robotsRespect: webRelation?.robotsRespect ?? true,
-        headers:
-          (webRelation?.headers as Record<string, string> | null | undefined) ??
-          undefined,
-        crawlerConfig:
-          (webRelation as unknown as { crawlerConfig?: unknown })
-            ?.crawlerConfig ?? undefined,
-        parseRules:
-          (
-            webRelation as unknown as {
-              parseRules?: Record<string, unknown> | null;
-            }
-          )?.parseRules ?? undefined,
-        proxyId: webRelation?.proxyId ?? null,
-      };
-      return {
-        ...base,
-        type: "WEB",
-        web: webConfig,
-      } as SourceFormValues;
+  if (effectiveType === "WEB") {
+    const urls = splitToUrls(
+      intentArgs.url ?? intentArgs.urls ?? intentArgs.targetUrl ?? intentArgs.site
+    );
+    if (urls.length === 0) {
+      return { error: "Stream source requires at least one URL in intent args (url/urls/targetUrl)." };
     }
-    case "DARKNET": {
-      const darknetRelation = isDarknetSource(source)
-        ? source.darknet
-        : undefined;
-      const darknetConfig: DarknetFormValues["darknet"] = {
-        url: (Array.isArray(darknetRelation?.url)
-          ? darknetRelation.url.join("\n")
-          : (darknetRelation?.url ?? "")) as any,
-        headers:
-          (darknetRelation?.headers as
-            | Record<string, string>
-            | null
-            | undefined) ?? undefined,
-        crawlerEngine: darknetRelation?.crawlerEngine ?? "FETCH",
-        crawlerConfig:
-          (darknetRelation as unknown as { crawlerConfig?: unknown })
-            ?.crawlerConfig ?? undefined,
-        proxyId: darknetRelation?.proxyId ?? "",
-        render:
-          typeof (darknetRelation as unknown as { render?: boolean })
-            ?.render === "boolean"
-            ? ((darknetRelation as unknown as { render?: boolean })?.render ??
-              false)
-            : false,
-        parseRules:
-          (
-            darknetRelation as unknown as {
-              parseRules?: Record<string, unknown> | null;
-            }
-          )?.parseRules ?? undefined,
-      };
-      return {
+    return {
+      payload: {
         ...base,
-        type: "DARKNET",
-        darknet: darknetConfig,
-      } as SourceFormValues;
-    }
-    case "SOCIAL_MEDIA": {
-      if (isSocialSource(source)) {
-        const socialConfig = {
-          ...(source.social.config as Record<string, unknown>),
-        };
-
-        if (typeof socialConfig.driver !== "string") {
-          socialConfig.driver = getDefaultDriver(source.social.platform);
-        }
-        if (!asRecord(socialConfig.intent).type) {
-          socialConfig.intent = {
-            type: "search",
-            args: {},
-          };
-        }
-        return {
-          ...base,
-          type: "SOCIAL_MEDIA",
-          social: {
-            ...source.social,
-            config: socialConfig,
-            keywordStrategy: source.social.keywordStrategy ?? "AUTO",
-          } as unknown as SocialFormValues["social"],
-        } as SourceFormValues;
-      }
-      const defaultSocial: SocialFormValues["social"] = {
-        platform: "X",
-        config: {
-          driver: getDefaultDriver("X"),
-          intent: {
-            type: "search",
-            args: {},
-          },
-          playwright: {
-            mode: "eval-js",
-            headless: false,
-            poolEnabled: true,
-            poolIdleTimeoutMs: 120000,
-            targetUrl: "",
-          },
-        } as any,
-        credentialId: null,
-        proxyId: null,
-        keywordStrategy: "AUTO",
-      };
-      return {
-        ...base,
-        type: "SOCIAL_MEDIA",
-        social: defaultSocial,
-      } as SourceFormValues;
-    }
-    case "SEARCH_ENGINE": {
-      const searchRelation = isSearchSource(source) ? source.search : undefined;
-      const searchConfig: SearchFormValues["search"] = {
-        platform: searchRelation
-          ? inferSearchPlatform(
-              (searchRelation as unknown as { platform?: unknown })?.platform,
-              searchRelation?.apiEndpoint,
-              searchRelation?.options
-            )
-          : "PARALLEL",
-        engine: searchRelation?.engine ?? "CUSTOM",
-        objective:
-          (searchRelation as unknown as { objective?: string })?.objective ?? "",
-        apiEndpoint: searchRelation?.apiEndpoint ?? null,
-        options:
-          (searchRelation?.options as
-            | Record<string, unknown>
-            | null
-            | undefined) ?? undefined,
-        credentialId: searchRelation?.credentialId ?? null,
-        customConfig:
-          (searchRelation as unknown as { customConfig?: unknown })
-            ?.customConfig ?? undefined,
-        keywordStrategy: searchRelation?.keywordStrategy ?? "AUTO",
-      };
-      return {
-        ...base,
-        type: "SEARCH_ENGINE",
-        search: searchConfig,
-      } as SourceFormValues;
-    }
-    default:
-      return {
-        ...base,
-        type: "WEB",
+        type: "WEB" as const,
         web: {
-          url: "",
-          crawlerEngine: "FETCH",
+          url: urls,
+          crawlerEngine: "FETCH" as const,
           render: false,
           robotsRespect: true,
-          headers: undefined,
-          crawlerConfig: undefined,
-          parseRules: undefined,
-          proxyId: null,
-        } as any,
-      } as SourceFormValues;
+          headers: null,
+          parseRules: null,
+          proxyId: values.proxyId ?? null,
+        },
+      },
+    };
   }
-};
 
-interface CommonFieldsProps {
-  register: UseFormRegister<SourceFormValues>;
-  errors: FieldErrors<SourceFormValues>;
-}
-
-const getFirstErrorMessage = (errors: FieldErrors<SourceFormValues>): string | undefined => {
-  const queue: unknown[] = [errors];
-  while (queue.length > 0) {
-    const current = queue.shift();
-    if (!current || typeof current !== "object") continue;
-    if ("message" in current && typeof (current as { message?: unknown }).message === "string") {
-      return (current as { message: string }).message;
+  if (effectiveType === "SEARCH_ENGINE") {
+    const provider = normalizePlatform(platform);
+    const objective = String(
+      intentArgs.query ?? intentArgs.keyword ?? intentArgs.objective ?? ""
+    ).trim();
+    if (!objective) {
+      return { error: "Retrieval source requires query/objective in intent args." };
     }
-    queue.push(...Object.values(current as Record<string, unknown>));
+
+    const mappedPlatform = SEARCH_PLATFORM_MAP[provider] ?? "CUSTOM";
+
+    return {
+      payload: {
+        ...base,
+        type: "SEARCH_ENGINE" as const,
+        search: {
+          platform: mappedPlatform,
+          engine: "CUSTOM" as const,
+          objective,
+          apiEndpoint: null,
+          options: {
+            provider: provider || "CUSTOM",
+            intentType,
+            intentArgs,
+            networkPolicy,
+          },
+          credentialId: values.credentialId ?? null,
+          keywordStrategy: "AUTO" as const,
+        },
+      },
+    };
   }
-  return undefined;
-};
 
-const CommonFields = ({ register, errors }: CommonFieldsProps) => (
-  <Card className="gap-4 bg-muted/30">
-    <CardHeader>
-      <CardTitle>Basic Info</CardTitle>
-      <CardDescription>
-        Configure source display name and description.
-      </CardDescription>
-    </CardHeader>
-    <CardContent className="grid gap-4">
-      <div className="grid gap-3">
-        <Label htmlFor="name">Name</Label>
-        <Input id="name" placeholder="Name" {...register("name")} />
-        <ErrorMessage>{errors.name?.message?.toString()}</ErrorMessage>
-      </div>
-      <div className="grid gap-3">
-        <Label htmlFor="description">Description</Label>
-        <Textarea
-          id="description"
-          placeholder="Description"
-          rows={3}
-          {...register("description")}
-        />
-        <ErrorMessage>{errors.description?.message?.toString()}</ErrorMessage>
-      </div>
-    </CardContent>
-  </Card>
-);
+  if (effectiveType === "DARKNET") {
+    const urls = splitToUrls(
+      intentArgs.url ?? intentArgs.urls ?? intentArgs.targetUrl ?? intentArgs.site
+    );
+    if (urls.length === 0) {
+      return { error: "Darknet source requires at least one URL in intent args." };
+    }
+    if (!values.proxyId) {
+      return { error: "Darknet source requires proxy configuration." };
+    }
 
-interface WebFieldsProps {
-  register: UseFormRegister<SourceFormValues>;
-  control: Control<SourceFormValues>;
-  errors: FieldErrors<SourceFormValues>;
-  proxies: Proxy[];
-  watch: UseFormWatch<SourceFormValues>;
-  isUpdate: boolean;
+    return {
+      payload: {
+        ...base,
+        type: "DARKNET" as const,
+        darknet: {
+          url: urls,
+          headers: null,
+          crawlerEngine: "FETCH" as const,
+          proxyId: values.proxyId,
+          render: false,
+          parseRules: null,
+        },
+      },
+    };
+  }
+
+  const normalizedPlatform = normalizePlatform(platform);
+  if (!normalizedPlatform) {
+    return { error: "Interactive source requires a platform." };
+  }
+
+  return {
+    payload: {
+      ...base,
+      type: "SOCIAL_MEDIA" as const,
+      social: {
+        platform: normalizedPlatform,
+        config: {
+          driver: "playwright",
+          intent: {
+            type: intentType || "search",
+            args: intentArgs,
+          },
+          networkPolicy,
+        },
+        credentialId: values.credentialId ?? null,
+        proxyId: values.proxyId ?? null,
+        keywordStrategy: "AUTO" as const,
+      },
+    },
+  };
 }
-
-const WebFields = ({
-  register,
-  control,
-  errors,
-  proxies,
-  watch,
-  isUpdate,
-}: WebFieldsProps) => {
-  const crawlerEngine = watch("web.crawlerEngine") as
-    | z.infer<typeof CrawlerEngineEnum>
-    | undefined;
-  const webErrors = errors as FieldErrors<
-    z.infer<typeof WebSourceCreateSchema>
-  >;
-  return (
-    <>
-      <div className="grid gap-3">
-        <Label htmlFor="web.url">URL(s)</Label>
-        <Textarea
-          id="web.url"
-          placeholder={"https://www.example.com\nhttps://another.com"}
-          rows={5}
-          {...register("web.url")}
-        />
-        <p className="text-xs text-muted-foreground">
-          Enter one or more URLs, one per line.
-        </p>
-        <ErrorMessage>{webErrors.web?.url?.message?.toString()}</ErrorMessage>
-      </div>
-      <div className="grid gap-3">
-        <Label htmlFor="web.crawlerEngine">Crawler Engine</Label>
-        <Controller
-          name="web.crawlerEngine"
-          control={control}
-          render={({ field }) => (
-            <ControlledSelect
-              value={field.value as string}
-              onValueChange={field.onChange}
-              placeholder="Select a crawler engine"
-            >
-              {Object.values(CrawlerEngineEnum.enum).map((engine) => (
-                <SelectItem key={engine} value={engine}>
-                  {engine}
-                </SelectItem>
-              ))}
-            </ControlledSelect>
-          )}
-        />
-        <ErrorMessage>
-          {webErrors.web?.crawlerEngine?.message?.toString()}
-        </ErrorMessage>
-      </div>
-      {crawlerEngine === "CUSTOM" && (
-        <div className="grid gap-3">
-          <Label htmlFor="web.crawlerConfig">
-            Custom Crawler Config (JSON)
-          </Label>
-          <Textarea
-            id="web.crawlerConfig"
-            placeholder={'{ "key": "value" }'}
-            rows={5}
-            {...register("web.crawlerConfig")}
-          />
-          <ErrorMessage>
-            {webErrors.web?.crawlerConfig?.message?.toString()}
-          </ErrorMessage>
-        </div>
-      )}
-      <SelectProxy
-        control={control}
-        proxies={proxies}
-        error={errors.proxyId?.message?.toString()}
-      />
-      {/* Add other WEB fields: headers, parseRules, crawlerEngine, etc. */}
-    </>
-  );
-};
 
 const SourceDialog = ({
   triggerButton,
@@ -469,9 +353,7 @@ const SourceDialog = ({
   onOpenChange: (open: boolean) => void;
   open: boolean;
 }) => {
-  const [currentSource, setCurrentSource] = useState<
-    SourceWithRelations | undefined
-  >(propSource);
+  const [currentSource, setCurrentSource] = useState<SourceWithRelations | undefined>(propSource);
   const [currentSourceType, setCurrentSourceType] = useState(propSourceType);
 
   useEffect(() => {
@@ -482,37 +364,51 @@ const SourceDialog = ({
   }, [open, propSource, propSourceType]);
 
   const isUpdate = !!currentSource;
-  const effectiveType: SourceType =
-    currentSourceType || currentSource?.type || "WEB";
+  const effectiveType: SourceType = currentSourceType || currentSource?.type || "SOCIAL_MEDIA";
 
-  const validationSchema = useMemo(
-    () => getValidationSchema(effectiveType, isUpdate),
-    [effectiveType, isUpdate]
-  );
+  const initialScriptState = useMemo(() => getInitialScriptState(currentSource), [currentSource]);
 
-  const defaultValues = useMemo(
-    () => getDefaultValues(currentSource, currentSourceType),
-    [currentSource, currentSourceType]
-  );
+  const [selectedPlatform, setSelectedPlatform] = useState(initialScriptState.platform);
+  const [selectedIntentType, setSelectedIntentType] = useState(initialScriptState.intentType);
+  const [intentArgsText, setIntentArgsText] = useState(initialScriptState.intentArgsText);
+  const [networkPolicy, setNetworkPolicy] = useState<NetworkPolicy>(initialScriptState.networkPolicy);
 
-  const {
-    control,
-    register,
-    handleSubmit,
-    watch,
-    setValue,
-    formState: { errors },
-    reset,
-  } = useForm<SourceFormValues>({
-    resolver: zodResolver(validationSchema) as Resolver<SourceFormValues>,
-    defaultValues,
+  useEffect(() => {
+    if (!open) return;
+    setSelectedPlatform(initialScriptState.platform);
+    setSelectedIntentType(initialScriptState.intentType);
+    setIntentArgsText(initialScriptState.intentArgsText);
+    setNetworkPolicy(initialScriptState.networkPolicy);
+  }, [open, initialScriptState]);
+
+  const { data: catalog, isLoading: loadingCatalog } = useQuery<GatherCatalogResponse>({
+    queryKey: ["gather-script-catalog"],
+    queryFn: () => apiFetcher("/api/follow/gather-scripts/catalog"),
+    enabled: open,
+  });
+
+  const form = useForm<SourceFormValues>({
+    defaultValues: {
+      name: currentSource?.name ?? "",
+      description: currentSource?.description ?? "",
+      active: currentSource?.active ?? true,
+      rateLimit: currentSource?.rateLimit ?? 10,
+      proxyId: currentSource?.proxyId ?? null,
+      credentialId: currentSource?.credentialId ?? null,
+    },
   });
 
   useEffect(() => {
-    if (open) {
-      reset(defaultValues);
-    }
-  }, [open, defaultValues, reset]);
+    if (!open) return;
+    form.reset({
+      name: currentSource?.name ?? "",
+      description: currentSource?.description ?? "",
+      active: currentSource?.active ?? true,
+      rateLimit: currentSource?.rateLimit ?? 10,
+      proxyId: currentSource?.proxyId ?? null,
+      credentialId: currentSource?.credentialId ?? null,
+    });
+  }, [open, currentSource, form]);
 
   const mutation = useSourceMutation({
     sourceId: currentSource?.id,
@@ -520,13 +416,88 @@ const SourceDialog = ({
     onSuccess: () => {
       onOpenChange(false);
       if (!isUpdate) {
-        reset();
+        form.reset({
+          name: "",
+          description: "",
+          active: true,
+          rateLimit: 10,
+          proxyId: null,
+          credentialId: null,
+        });
       }
     },
   });
 
-  const onSubmit = (data: z.infer<typeof SourceCreateSchema>) =>
-    mutation.mutate(data);
+  const expectedCategory = inferCategoryFromSourceType(effectiveType);
+
+  const platformOptions = useMemo(() => {
+    const items = catalog?.items ?? [];
+    const grouped = new Set<string>();
+    for (const item of items) {
+      const platform = normalizePlatform(item.platform);
+      if (!platform) continue;
+      if (inferCategoryFromPlatform(platform) !== expectedCategory) continue;
+      grouped.add(platform);
+    }
+    return Array.from(grouped).sort((a, b) => a.localeCompare(b));
+  }, [catalog?.items, expectedCategory]);
+
+  const intentOptions = useMemo(() => {
+    const platform = normalizePlatform(selectedPlatform);
+    const intents = new Set<string>();
+    for (const item of catalog?.items ?? []) {
+      if (normalizePlatform(item.platform) !== platform) continue;
+      if (item.intent) intents.add(item.intent);
+    }
+    if (intents.size === 0) intents.add("search");
+    return Array.from(intents).sort((a, b) => a.localeCompare(b));
+  }, [catalog?.items, selectedPlatform]);
+
+  const onSubmit = (values: SourceFormValues) => {
+    if (!values.name.trim()) {
+      toast.error("Name is required.");
+      return;
+    }
+    if (loadingCatalog) {
+      toast.error("Scripts catalog is loading, please retry.");
+      return;
+    }
+    if (!catalog || !Array.isArray(catalog.items) || catalog.items.length === 0) {
+      toast.error("Scripts catalog unavailable. Please retry later.");
+      return;
+    }
+    if (!selectedPlatform) {
+      toast.error("Please select a platform.");
+      return;
+    }
+    if (!selectedIntentType) {
+      toast.error("Please select an intent.");
+      return;
+    }
+
+    try {
+      JSON.parse(intentArgsText || "{}");
+    } catch {
+      toast.error("Intent args must be valid JSON.");
+      return;
+    }
+
+    const built = buildPayloadFromUnified({
+      effectiveType,
+      values,
+      platform: selectedPlatform,
+      intentType: selectedIntentType,
+      intentArgsText,
+      networkPolicy,
+    });
+
+    if ("error" in built) {
+      toast.error(built.error);
+      return;
+    }
+
+    mutation.mutate(built.payload as z.infer<any>);
+  };
 
   return (
     <SettingEditDialog
@@ -535,7 +506,7 @@ const SourceDialog = ({
       description={
         isUpdate
           ? "Edit this source."
-          : `Add a new ${currentSourceType} source.`
+          : `Add a new ${expectedCategory.toLowerCase()} source.`
       }
       triggerButton={triggerButton}
       buttonText={
@@ -547,52 +518,159 @@ const SourceDialog = ({
             ? "Update"
             : "Add"
       }
-      onSubmit={handleSubmit(onSubmit, (formErrors) => {
-        toast.error(getFirstErrorMessage(formErrors) || "Please check required fields.");
-      })}
+      onSubmit={form.handleSubmit(onSubmit)}
     >
       <div className="grid gap-4">
-        <CommonFields register={register} errors={errors} />
-        {effectiveType === "WEB" && (
-          <WebFields
-            register={register}
-            control={control}
-            errors={errors}
-            proxies={proxies}
-            watch={watch}
-            isUpdate={isUpdate}
-          />
-        )}
-        {effectiveType === "DARKNET" && (
-          <DarknetFields
-            register={register}
-            control={control}
-            errors={errors}
-            proxies={proxies}
-            watch={watch}
-          />
-        )}
-        {effectiveType === "SOCIAL_MEDIA" && (
-          <SocialMediaFields
-            register={register}
-            control={control}
-            errors={errors}
-            proxies={proxies}
-            watch={watch}
-            setValue={setValue}
-            sourceId={currentSource?.id}
-          />
-        )}
-        {effectiveType === "SEARCH_ENGINE" && (
-          <SearchEngineFields
-            register={register}
-            control={control}
-            errors={errors}
-            watch={watch}
-            setValue={setValue}
-          />
-        )}
-        {/* Add other source type fields here */}
+        <Card className="gap-4 bg-muted/30">
+          <CardHeader>
+            <CardTitle>Basic Info</CardTitle>
+            <CardDescription>
+              Configure source display name and description.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            <div className="grid gap-3">
+              <Label htmlFor="name">Name</Label>
+              <Input id="name" placeholder="Name" {...form.register("name")} />
+              <ErrorMessage>{form.formState.errors.name?.message?.toString()}</ErrorMessage>
+            </div>
+            <div className="grid gap-3">
+              <Label htmlFor="description">Description</Label>
+              <Textarea
+                id="description"
+                placeholder="Description"
+                rows={3}
+                {...form.register("description")}
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="gap-4 bg-muted/30">
+          <CardHeader>
+            <CardTitle>Script Config</CardTitle>
+            <CardDescription>
+              Unified form powered by gather script catalog.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid gap-2">
+                <Label>Category</Label>
+                <Input value={expectedCategory} disabled />
+              </div>
+              <div className="grid gap-2">
+                <Label>Platform</Label>
+                <ControlledSelect
+                  value={selectedPlatform || null}
+                  onValueChange={(value) => {
+                    setSelectedPlatform(value ?? "");
+                    if (!value) return;
+                    const available = (catalog?.items ?? []).filter(
+                      (item) => normalizePlatform(item.platform) === normalizePlatform(value)
+                    );
+                    if (available.length > 0) {
+                      setSelectedIntentType(available[0]?.intent || "search");
+                    }
+                  }}
+                  placeholder={loadingCatalog ? "Loading..." : "Select platform"}
+                >
+                  {platformOptions.map((platform) => (
+                    <SelectItem key={platform} value={platform}>
+                      {platform}
+                    </SelectItem>
+                  ))}
+                </ControlledSelect>
+              </div>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid gap-2">
+                <Label>Intent</Label>
+                <ControlledSelect
+                  value={selectedIntentType || null}
+                  onValueChange={(value) => setSelectedIntentType(value ?? "search")}
+                  placeholder="Select intent"
+                >
+                  {intentOptions.map((intent) => (
+                    <SelectItem key={intent} value={intent}>
+                      {intent}
+                    </SelectItem>
+                  ))}
+                </ControlledSelect>
+              </div>
+
+              <div className="grid gap-2">
+                <Label>Network Policy</Label>
+                <ControlledSelect
+                  value={networkPolicy}
+                  onValueChange={(value) =>
+                    setNetworkPolicy((value as NetworkPolicy | null) ?? "DEFAULT")
+                  }
+                  placeholder="Select network policy"
+                >
+                  <SelectItem value="DEFAULT">DEFAULT</SelectItem>
+                  <SelectItem value="TOR_SOCKS5H">TOR_SOCKS5H</SelectItem>
+                </ControlledSelect>
+              </div>
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="intent-args">Intent Args (JSON)</Label>
+              <Textarea
+                id="intent-args"
+                rows={8}
+                value={intentArgsText}
+                onChange={(event) => setIntentArgsText(event.target.value)}
+                placeholder='{"query": "..."}'
+              />
+              <p className="text-xs text-muted-foreground">
+                For stream/darknet, provide url/urls in args. For retrieval, provide query/objective.
+              </p>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="grid gap-2">
+                <Label>Active</Label>
+                <ControlledSelect
+                  value={form.watch("active") ? "true" : "false"}
+                  onValueChange={(value) => form.setValue("active", value === "true")}
+                >
+                  <SelectItem value="true">true</SelectItem>
+                  <SelectItem value="false">false</SelectItem>
+                </ControlledSelect>
+              </div>
+
+              <div className="grid gap-2">
+                <Label>Rate Limit</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  max={600}
+                  value={form.watch("rateLimit") ?? 10}
+                  onChange={(event) =>
+                    form.setValue("rateLimit", Number(event.target.value || 10))
+                  }
+                />
+              </div>
+
+              <div className="grid gap-2">
+                <Label>Proxy</Label>
+                <ControlledSelect
+                  value={form.watch("proxyId") ?? null}
+                  onValueChange={(value) => form.setValue("proxyId", value)}
+                  placeholder="None"
+                >
+                  {proxies.map((proxy) => (
+                    <SelectItem key={proxy.id} value={proxy.id}>
+                      {proxy.name}
+                    </SelectItem>
+                  ))}
+                </ControlledSelect>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </SettingEditDialog>
   );
