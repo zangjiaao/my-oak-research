@@ -455,6 +455,7 @@ const SourceDialog = ({
   });
 
   const expectedCategory = inferCategoryFromSourceType(effectiveType);
+  const watchedValues = form.watch();
 
   const platformOptions = useMemo(() => {
     const items = catalog?.items ?? [];
@@ -486,6 +487,66 @@ const SourceDialog = ({
     if (intents.size === 0) intents.add("search");
     return Array.from(intents).sort((a, b) => a.localeCompare(b));
   }, [catalog?.items, selectedPlatform]);
+
+  const intentArgsParseError = useMemo(() => {
+    const raw = intentArgsText.trim();
+    if (!raw) return null;
+    try {
+      JSON.parse(raw);
+      return null;
+    } catch {
+      return "Intent args must be valid JSON to generate request preview.";
+    }
+  }, [intentArgsText]);
+
+  const sourceApiPreview = useMemo(() => {
+    if (intentArgsParseError) return null;
+    const built = buildPayloadFromUnified({
+      effectiveType,
+      values: watchedValues,
+      platform: selectedPlatform,
+      intentType: selectedIntentType,
+      intentArgsText,
+      networkPolicy,
+    });
+    if ("error" in built) return { error: built.error } as const;
+    return built.payload;
+  }, [
+    effectiveType,
+    watchedValues,
+    selectedPlatform,
+    selectedIntentType,
+    intentArgsText,
+    networkPolicy,
+    intentArgsParseError,
+  ]);
+
+  const gatherRequestPreview = useMemo(() => {
+    if (effectiveType !== "SOCIAL_MEDIA") return null;
+    const normalizedPlatform = normalizePlatform(selectedPlatform);
+    if (!normalizedPlatform || intentArgsParseError) return null;
+    return {
+      sourceId: currentSource?.id ?? "__SOURCE_ID__",
+      platform: normalizedPlatform.toLowerCase(),
+      keywords: [],
+      driver: {
+        name: "playwright",
+        networkPolicy,
+        script: {
+          type: selectedIntentType || "search",
+          args: parseArgsText(intentArgsText),
+        },
+      },
+    };
+  }, [
+    effectiveType,
+    selectedPlatform,
+    intentArgsParseError,
+    currentSource?.id,
+    networkPolicy,
+    selectedIntentType,
+    intentArgsText,
+  ]);
 
   const onSubmit = (values: SourceFormValues) => {
     if (!values.name.trim()) {
@@ -754,22 +815,35 @@ const SourceDialog = ({
           <CardHeader>
             <CardTitle>Preview</CardTitle>
             <CardDescription>
-              Review the final source settings before saving.
+              Review request payloads before saving.
             </CardDescription>
           </CardHeader>
-          <CardContent className="grid gap-2 text-sm">
-            <div>
-              <span className="text-muted-foreground">Type:</span> {effectiveType}
+          <CardContent className="grid gap-4">
+            <div className="grid gap-2">
+              <p className="text-xs font-medium text-muted-foreground">Source API Payload</p>
+              {intentArgsParseError ? (
+                <div className="rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-xs text-destructive">
+                  {intentArgsParseError}
+                </div>
+              ) : sourceApiPreview && "error" in sourceApiPreview ? (
+                <div className="rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-xs text-destructive">
+                  {sourceApiPreview.error}
+                </div>
+              ) : (
+                <pre className="max-h-64 overflow-auto rounded-md bg-background p-3 text-xs leading-5">
+                  {JSON.stringify(sourceApiPreview ?? {}, null, 2)}
+                </pre>
+              )}
             </div>
-            <div>
-              <span className="text-muted-foreground">Platform:</span> {selectedPlatform || "—"}
-            </div>
-            <div>
-              <span className="text-muted-foreground">Intent:</span> {selectedIntentType || "—"}
-            </div>
-            <div>
-              <span className="text-muted-foreground">Network:</span> {networkPolicy}
-            </div>
+
+            {gatherRequestPreview ? (
+              <div className="grid gap-2">
+                <p className="text-xs font-medium text-muted-foreground">Gather Request Payload</p>
+                <pre className="max-h-64 overflow-auto rounded-md bg-background p-3 text-xs leading-5">
+                  {JSON.stringify(gatherRequestPreview, null, 2)}
+                </pre>
+              </div>
+            ) : null}
           </CardContent>
         </Card>
       </div>
