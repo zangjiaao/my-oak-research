@@ -1,42 +1,10 @@
 import type { Source, SearchEngineSourceConfig, SocialMediaSourceConfig } from "@/app/generated/prisma";
+import { classifyCategoryByPlatform } from "@/lib/source-capabilities";
 
 export type SourceCategory = "STREAM" | "INTERACTIVE" | "RETRIEVAL";
 export type SourceNetworkPolicy = "DEFAULT" | "TOR_SOCKS5H";
 
 const DARKNET_PROVIDER_KEYWORDS = ["darkwebgo", "darksearch", "onion"];
-const PLATFORM_CATEGORY_OVERRIDES: Record<string, SourceCategory> = {
-  BBC: "STREAM",
-  REUTERS: "STREAM",
-  X: "INTERACTIVE",
-  TWITTER: "INTERACTIVE",
-  XIAOHONGSHU: "INTERACTIVE",
-  REDDIT: "INTERACTIVE",
-  WEIBO: "INTERACTIVE",
-  DOUYIN: "INTERACTIVE",
-  TIKTOK: "INTERACTIVE",
-  YOUTUBE: "INTERACTIVE",
-  TELEGRAM: "INTERACTIVE",
-  INSTAGRAM: "INTERACTIVE",
-  FACEBOOK: "INTERACTIVE",
-  WHATSAPP: "INTERACTIVE",
-  GOOGLE: "RETRIEVAL",
-  BING: "RETRIEVAL",
-  BAIDU: "RETRIEVAL",
-  DUCKDUCKGO: "RETRIEVAL",
-  TAVILY: "RETRIEVAL",
-  PARALLEL: "RETRIEVAL",
-  ANSPIRE: "RETRIEVAL",
-  DARKWEBGO: "RETRIEVAL",
-  DARKSEARCH: "RETRIEVAL",
-};
-
-export function classifyCategoryByPlatform(
-  platform: string | null | undefined
-): SourceCategory | null {
-  const normalized = String(platform ?? "").trim().toUpperCase();
-  if (!normalized) return null;
-  return PLATFORM_CATEGORY_OVERRIDES[normalized] ?? null;
-}
 
 function asRecord(value: unknown): Record<string, unknown> {
   if (value && typeof value === "object" && !Array.isArray(value)) {

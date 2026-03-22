@@ -1,7 +1,16 @@
-import type { SourceCategory } from "@/lib/source-taxonomy";
-import { classifyCategoryByPlatform } from "@/lib/source-taxonomy";
+export type SourceCategory = "STREAM" | "INTERACTIVE" | "RETRIEVAL";
 
 export type SourceExecutionEngine = "gather_playwright" | "worker_api";
+
+type PlatformMeta = {
+  category: SourceCategory;
+  region?: "domestic" | "foreign";
+  auth?: {
+    required: boolean;
+    kind?: string;
+    description?: string;
+  };
+};
 
 export type SourceCapabilityIntent = {
   key: string;
@@ -42,130 +51,131 @@ type GatherCatalogItem = {
   };
 };
 
-const DOMESTIC_PLATFORMS = new Set(["XIAOHONGSHU", "DOUYIN", "WEIBO"]);
-const AUTH_REQUIRED_PLATFORMS = new Set([
-  "X",
-  "XIAOHONGSHU",
-  "DOUYIN",
-  "TIKTOK",
-  "WEIBO",
-  "WHATSAPP",
-  "INSTAGRAM",
-  "FACEBOOK",
-]);
+type WorkerApiPlatformConfig = {
+  platform: string;
+  driver?: string;
+  tags?: string[];
+  auth?: {
+    required: boolean;
+    kind?: string;
+    description?: string;
+  };
+  intents?: Array<{
+    intent: string;
+    mode?: string;
+    sampleArgs?: Record<string, unknown>;
+  }>;
+};
 
-const WORKER_API_CAPABILITIES: SourceCapability[] = [
-  {
-    platform: "PARALLEL",
-    category: "RETRIEVAL",
-    execution: { engine: "worker_api", driver: "http" },
-    tags: ["foreign"],
-    authRequirement: {
-      required: true,
-      kind: "parallel-api-key",
-      description: "Parallel API credential",
-    },
-    intents: [
-      {
-        key: "parallel.search.worker_api",
-        intent: "search",
-        mode: "api",
-        sample: {
-          intentType: "search",
-          intentArgs: { query: "" },
-        },
-      },
-    ],
+const PLATFORM_META: Record<string, PlatformMeta> = {
+  BBC: { category: "STREAM", region: "foreign", auth: { required: false } },
+  REUTERS: { category: "STREAM", region: "foreign", auth: { required: false } },
+
+  X: {
+    category: "INTERACTIVE",
+    region: "foreign",
+    auth: { required: true, kind: "x-cookie", description: "X auth credential" },
   },
-  {
-    platform: "TAVILY",
+  TWITTER: {
+    category: "INTERACTIVE",
+    region: "foreign",
+    auth: { required: true, kind: "x-cookie", description: "X auth credential" },
+  },
+  XIAOHONGSHU: {
+    category: "INTERACTIVE",
+    region: "domestic",
+    auth: {
+      required: true,
+      kind: "xiaohongshu-cookie",
+      description: "Xiaohongshu auth credential",
+    },
+  },
+  REDDIT: { category: "INTERACTIVE", region: "foreign", auth: { required: false } },
+  WEIBO: {
+    category: "INTERACTIVE",
+    region: "domestic",
+    auth: { required: true, kind: "weibo-cookie", description: "Weibo auth credential" },
+  },
+  DOUYIN: {
+    category: "INTERACTIVE",
+    region: "domestic",
+    auth: { required: true, kind: "douyin-cookie", description: "Douyin auth credential" },
+  },
+  TIKTOK: {
+    category: "INTERACTIVE",
+    region: "foreign",
+    auth: { required: true, kind: "tiktok-cookie", description: "TikTok auth credential" },
+  },
+  YOUTUBE: { category: "INTERACTIVE", region: "foreign", auth: { required: false } },
+  TELEGRAM: { category: "INTERACTIVE", region: "foreign", auth: { required: false } },
+  INSTAGRAM: {
+    category: "INTERACTIVE",
+    region: "foreign",
+    auth: {
+      required: true,
+      kind: "instagram-cookie",
+      description: "Instagram auth credential",
+    },
+  },
+  FACEBOOK: {
+    category: "INTERACTIVE",
+    region: "foreign",
+    auth: {
+      required: true,
+      kind: "facebook-cookie",
+      description: "Facebook auth credential",
+    },
+  },
+  WHATSAPP: {
+    category: "INTERACTIVE",
+    region: "foreign",
+    auth: {
+      required: true,
+      kind: "whatsapp-profile",
+      description: "WhatsApp auth credential",
+    },
+  },
+
+  GOOGLE: { category: "RETRIEVAL", region: "foreign", auth: { required: false } },
+  BING: { category: "RETRIEVAL", region: "foreign", auth: { required: false } },
+  BAIDU: { category: "RETRIEVAL", region: "domestic", auth: { required: false } },
+  DUCKDUCKGO: { category: "RETRIEVAL", region: "foreign", auth: { required: false } },
+  TAVILY: {
     category: "RETRIEVAL",
-    execution: { engine: "worker_api", driver: "http" },
-    tags: ["foreign"],
-    authRequirement: {
+    region: "foreign",
+    auth: {
       required: true,
       kind: "tavily-api-key",
       description: "Tavily API credential",
     },
-    intents: [
-      {
-        key: "tavily.search.worker_api",
-        intent: "search",
-        mode: "api",
-        sample: {
-          intentType: "search",
-          intentArgs: { query: "" },
-        },
-      },
-    ],
   },
-  {
-    platform: "ANSPIRE",
+  PARALLEL: {
     category: "RETRIEVAL",
-    execution: { engine: "worker_api", driver: "http" },
-    tags: ["domestic"],
-    authRequirement: {
-      required: false,
+    region: "foreign",
+    auth: {
+      required: true,
+      kind: "parallel-api-key",
+      description: "Parallel API credential",
     },
-    intents: [
-      {
-        key: "anspire.search.worker_api",
-        intent: "search",
-        mode: "api",
-        sample: {
-          intentType: "search",
-          intentArgs: { query: "" },
-        },
-      },
-    ],
   },
-  {
-    platform: "GOOGLE",
-    category: "RETRIEVAL",
-    execution: { engine: "worker_api", driver: "http" },
-    tags: ["foreign"],
-    authRequirement: {
-      required: false,
-    },
-    intents: [
-      {
-        key: "google.search.worker_api",
-        intent: "search",
-        mode: "api",
-        sample: {
-          intentType: "search",
-          intentArgs: { query: "" },
-        },
-      },
-    ],
-  },
-  {
-    platform: "DARKWEBGO",
-    category: "RETRIEVAL",
-    execution: { engine: "worker_api", driver: "http" },
-    tags: ["darknet", "tor"],
-    authRequirement: {
-      required: false,
-    },
-    intents: [
-      {
-        key: "darkwebgo.search.worker_api",
-        intent: "search",
-        mode: "api",
-        sample: {
-          intentType: "search",
-          intentArgs: { query: "" },
-        },
-      },
-    ],
-  },
+  ANSPIRE: { category: "RETRIEVAL", region: "domestic", auth: { required: false } },
+  DARKWEBGO: { category: "RETRIEVAL", region: "foreign", auth: { required: false } },
+  DARKSEARCH: { category: "RETRIEVAL", region: "foreign", auth: { required: false } },
+};
+
+const WORKER_API_PLATFORM_CONFIGS: WorkerApiPlatformConfig[] = [
+  { platform: "PARALLEL" },
+  { platform: "TAVILY" },
+  { platform: "ANSPIRE" },
+  { platform: "GOOGLE" },
+  { platform: "DARKWEBGO", tags: ["darknet", "tor"] },
 ];
 
 function normalizePlatform(value: unknown): string {
   return String(value ?? "").trim().toUpperCase();
 }
 
-export function getCredentialKindForPlatform(platform: string): string {
+function normalizeAuthKind(platform: string): string {
   const normalized = platform.trim().toLowerCase();
   if (!normalized) return "unknown-cookie";
   if (normalized === "x" || normalized === "twitter") return "x-cookie";
@@ -173,14 +183,49 @@ export function getCredentialKindForPlatform(platform: string): string {
   return `${normalized}-cookie`;
 }
 
+export function resolvePlatformMeta(platform: string | null | undefined): PlatformMeta | null {
+  const normalized = normalizePlatform(platform);
+  if (!normalized) return null;
+  return PLATFORM_META[normalized] ?? null;
+}
+
+export function classifyCategoryByPlatform(
+  platform: string | null | undefined
+): SourceCategory | null {
+  return resolvePlatformMeta(platform)?.category ?? null;
+}
+
+export function getCredentialKindForPlatform(platform: string): string {
+  const meta = resolvePlatformMeta(platform);
+  if (meta?.auth?.kind && meta.auth.kind.trim()) {
+    return meta.auth.kind;
+  }
+  return normalizeAuthKind(platform);
+}
+
 export function requiresAuthForPlatform(platform: string): boolean {
-  return AUTH_REQUIRED_PLATFORMS.has(normalizePlatform(platform));
+  return resolvePlatformMeta(platform)?.auth?.required ?? false;
 }
 
 export function getRegionTag(platform: string): "domestic" | "foreign" {
-  return DOMESTIC_PLATFORMS.has(normalizePlatform(platform))
-    ? "domestic"
-    : "foreign";
+  return resolvePlatformMeta(platform)?.region ?? "foreign";
+}
+
+function buildAuthRequirement(platform: string): {
+  required: boolean;
+  kind?: string;
+  description?: string;
+} {
+  const meta = resolvePlatformMeta(platform);
+  if (!meta?.auth || !meta.auth.required) {
+    return { required: false };
+  }
+  return {
+    required: true,
+    kind: meta.auth.kind ?? getCredentialKindForPlatform(platform),
+    description:
+      meta.auth.description ?? `${normalizePlatform(platform)} auth credential`,
+  };
 }
 
 export function buildGatherCapabilities(items: GatherCatalogItem[]): SourceCapability[] {
@@ -210,13 +255,7 @@ export function buildGatherCapabilities(items: GatherCatalogItem[]): SourceCapab
         driver: "playwright",
       },
       tags: [getRegionTag(platform)],
-      authRequirement: requiresAuthForPlatform(platform)
-        ? {
-            required: true,
-            kind: getCredentialKindForPlatform(platform),
-            description: `${platform} auth credential`,
-          }
-        : { required: false },
+      authRequirement: buildAuthRequirement(platform),
       intents: [
         {
           key: item.key,
@@ -238,6 +277,35 @@ export function buildGatherCapabilities(items: GatherCatalogItem[]): SourceCapab
 }
 
 export function buildWorkerApiCapabilities(): SourceCapability[] {
-  return WORKER_API_CAPABILITIES.map((item) => ({ ...item, intents: [...item.intents] }));
-}
+  return WORKER_API_PLATFORM_CONFIGS.map((config): SourceCapability => {
+    const platform = normalizePlatform(config.platform);
+    const category = classifyCategoryByPlatform(platform) ?? "RETRIEVAL";
+    const tags = config.tags?.length
+      ? [...config.tags]
+      : [getRegionTag(platform)];
+    const intents =
+      config.intents && config.intents.length > 0
+        ? config.intents
+        : [{ intent: "search", mode: "api", sampleArgs: { query: "" } }];
 
+    return {
+      platform,
+      category,
+      execution: {
+        engine: "worker_api",
+        driver: config.driver ?? "http",
+      },
+      tags,
+      authRequirement: config.auth ?? buildAuthRequirement(platform),
+      intents: intents.map((intent) => ({
+        key: `${platform.toLowerCase()}.${intent.intent}.worker_api`,
+        intent: intent.intent,
+        mode: intent.mode ?? "api",
+        sample: {
+          intentType: intent.intent,
+          intentArgs: intent.sampleArgs ?? {},
+        },
+      })),
+    };
+  }).sort((a, b) => a.platform.localeCompare(b.platform));
+}
