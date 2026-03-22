@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Check, ChevronDown, ChevronsUpDown, Loader2 } from "lucide-react";
+import { Check, ChevronDown, ChevronsUpDown, Loader2, Minus, Plus } from "lucide-react";
 
 import { SettingEditDialog } from "@/components/layout";
 import { Label } from "@/components/ui/label";
@@ -90,6 +90,8 @@ type ScriptArgEntry = {
   key: string;
   value: string;
 };
+
+const EMPTY_ARG_ENTRY: ScriptArgEntry = { key: "", value: "" };
 
 const PLATFORM_CATEGORY_MAP: Record<string, SourceCategory> = {
   BBC: "STREAM",
@@ -533,7 +535,10 @@ const SourceDialog = ({
   const [selectedPlatform, setSelectedPlatform] = useState(initialScriptState.platform);
   const [selectedIntentType, setSelectedIntentType] = useState(initialScriptState.intentType);
   const [scriptArgEntries, setScriptArgEntries] = useState<ScriptArgEntry[]>(
-    toScriptArgEntries(initialScriptState.scriptArgs)
+    (() => {
+      const entries = toScriptArgEntries(initialScriptState.scriptArgs);
+      return entries.length > 0 ? entries : [EMPTY_ARG_ENTRY];
+    })()
   );
   const [poolEnabled, setPoolEnabled] = useState(initialScriptState.poolEnabled);
   const [poolIdleTimeoutMs, setPoolIdleTimeoutMs] = useState(initialScriptState.poolIdleTimeoutMs);
@@ -553,7 +558,10 @@ const SourceDialog = ({
     if (!open) return;
     setSelectedPlatform(initialScriptState.platform);
     setSelectedIntentType(initialScriptState.intentType);
-    setScriptArgEntries(toScriptArgEntries(initialScriptState.scriptArgs));
+    setScriptArgEntries(() => {
+      const entries = toScriptArgEntries(initialScriptState.scriptArgs);
+      return entries.length > 0 ? entries : [EMPTY_ARG_ENTRY];
+    });
     setPoolEnabled(initialScriptState.poolEnabled);
     setPoolIdleTimeoutMs(initialScriptState.poolIdleTimeoutMs);
     setHeadless(initialScriptState.headless);
@@ -1106,7 +1114,10 @@ const SourceDialog = ({
                 </ControlledSelect>
                 <div className="grid gap-2">
                   {scriptArgEntries.map((entry, index) => (
-                    <div key={`${entry.key}-${index}`} className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
+                    <div
+                      key={`${entry.key}-${index}`}
+                      className="grid grid-cols-[1fr_1fr_auto_auto] gap-2"
+                    >
                       <Input
                         placeholder="key"
                         value={entry.key}
@@ -1132,25 +1143,35 @@ const SourceDialog = ({
                       <Button
                         type="button"
                         variant="outline"
+                        size="icon"
+                        aria-label="Add arg row"
                         onClick={() =>
-                          setScriptArgEntries((prev) =>
-                            prev.filter((_, itemIndex) => itemIndex !== index)
-                          )
+                          setScriptArgEntries((prev) => {
+                            const next = [...prev];
+                            next.splice(index + 1, 0, { ...EMPTY_ARG_ENTRY });
+                            return next;
+                          })
                         }
                       >
-                        Remove
+                        <Plus className="size-4" />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        aria-label="Remove arg row"
+                        disabled={scriptArgEntries.length <= 1}
+                        onClick={() =>
+                          setScriptArgEntries((prev) => {
+                            if (prev.length <= 1) return prev;
+                            return prev.filter((_, itemIndex) => itemIndex !== index);
+                          })
+                        }
+                      >
+                        <Minus className="size-4" />
                       </Button>
                     </div>
                   ))}
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() =>
-                      setScriptArgEntries((prev) => [...prev, { key: "", value: "" }])
-                    }
-                  >
-                    Add Arg
-                  </Button>
                 </div>
               </CardContent>
             </Card>
