@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -547,6 +547,7 @@ const SourceDialog = ({
   const [authStatus, setAuthStatus] = useState<string | null>(null);
   const [platformPopoverOpen, setPlatformPopoverOpen] = useState(false);
   const [platformSearch, setPlatformSearch] = useState("");
+  const popoverContainerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -912,7 +913,7 @@ const SourceDialog = ({
       }
       onSubmit={form.handleSubmit(onSubmit)}
     >
-      <div className="grid gap-4">
+      <div ref={popoverContainerRef} className="grid gap-4">
         <Card className="gap-4 bg-muted/30">
           <CardHeader>
             <CardTitle>Basic Info</CardTitle>
@@ -969,7 +970,10 @@ const SourceDialog = ({
                     <ChevronsUpDown className="size-4 opacity-50" />
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-[var(--radix-popover-trigger-width)] max-w-[calc(100vw-2rem)] p-0">
+                <PopoverContent
+                  container={popoverContainerRef.current}
+                  className="w-[var(--radix-popover-trigger-width)] max-w-[calc(100vw-2rem)] p-0"
+                >
                   <Command>
                     <CommandInput
                       placeholder="Search platform..."
