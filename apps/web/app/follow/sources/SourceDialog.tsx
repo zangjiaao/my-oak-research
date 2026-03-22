@@ -27,6 +27,7 @@ import {
   CommandGroup,
   CommandInput,
   CommandItem,
+  CommandList,
 } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Switch } from "@/components/ui/switch";
@@ -1062,35 +1063,37 @@ const SourceDialog = ({
                       value={platformSearch}
                       onValueChange={setPlatformSearch}
                     />
-                    <CommandEmpty>No platform found.</CommandEmpty>
-                    <CommandGroup>
-                      {filteredPlatformOptions.map((platform) => (
-                        <CommandItem
-                          key={platform}
-                          value={platform}
-                          className="max-w-full"
-                          onSelect={() => {
-                            setSelectedPlatform(platform);
-                            const available =
-                              capabilityByPlatform.get(normalizePlatform(platform))
-                                ?.intents ?? [];
-                            if (available.length > 0) {
-                              setSelectedIntentType(available[0]?.intent ?? "search");
-                            }
-                            setPlatformPopoverOpen(false);
-                          }}
-                        >
-                          <Check
-                            className={cn(
-                              "mr-2 size-4",
-                              platform === selectedPlatform ? "opacity-100" : "opacity-0"
-                            )}
-                          />
-                          <span className="mr-2 truncate">{platform}</span>
-                          <Badge variant="outline">{getPlatformRegion(platform)}</Badge>
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
+                    <CommandList>
+                      <CommandEmpty>No platform found.</CommandEmpty>
+                      <CommandGroup>
+                        {filteredPlatformOptions.map((platform) => (
+                          <CommandItem
+                            key={platform}
+                            value={platform}
+                            className="max-w-full"
+                            onSelect={() => {
+                              setSelectedPlatform(platform);
+                              const available =
+                                capabilityByPlatform.get(normalizePlatform(platform))
+                                  ?.intents ?? [];
+                              if (available.length > 0) {
+                                setSelectedIntentType(available[0]?.intent ?? "search");
+                              }
+                              setPlatformPopoverOpen(false);
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 size-4",
+                                platform === selectedPlatform ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            <span className="mr-2 truncate">{platform}</span>
+                            <Badge variant="outline">{getPlatformRegion(platform)}</Badge>
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
                   </Command>
                 </PopoverContent>
               </Popover>
