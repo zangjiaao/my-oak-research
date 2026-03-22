@@ -243,10 +243,15 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
   const getAuthOptions = (kind: string) =>
     credentials.filter((credential) => credential.kind === kind);
 
+  const getCredentialById = (credentialId: string | null | undefined) => {
+    if (!credentialId) return null;
+    return credentials.find((credential) => credential.id === credentialId) ?? null;
+  };
+
   const getEffectiveCredentialId = (template: BatchTemplate, kind: string) => {
     const options = getAuthOptions(kind);
     const selected = state[template.key]?.credentialRefs?.[kind];
-    if (selected && options.some((item) => item.id === selected)) {
+    if (selected && getCredentialById(selected)) {
       return selected;
     }
     return options[0]?.id ?? null;
@@ -379,7 +384,7 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
       if (!requirement.required) continue;
       const selected = state[template.key]?.credentialRefs?.[requirement.kind];
       const total = credentials.filter((item) => item.kind === requirement.kind).length;
-      if (!selected && total <= 0) {
+      if (!getCredentialById(selected) && total <= 0) {
         missing.push(`credential:${requirement.kind}`);
       }
     }
@@ -599,11 +604,21 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
                     selectedTemplates.map((template) => {
                       const config = getCurrentConfig(template);
                       const requiredAuth = getRequiredAuth(template);
-                      const authOptions = requiredAuth
-                        ? getAuthOptions(requiredAuth.kind)
-                        : [];
+                      const authOptions = requiredAuth ? getAuthOptions(requiredAuth.kind) : [];
+                      const selectedCredentialRef = requiredAuth
+                        ? state[template.key]?.credentialRefs?.[requiredAuth.kind] ?? null
+                        : null;
+                      const selectedCredential = requiredAuth
+                        ? getCredentialById(selectedCredentialRef)
+                        : null;
+                      const mergedAuthOptions =
+                        selectedCredential &&
+                        !authOptions.some((item) => item.id === selectedCredential.id)
+                          ? [selectedCredential, ...authOptions]
+                          : authOptions;
                       const effectiveCredentialId =
-                        requiredAuth && authOptions.length > 0
+                        requiredAuth &&
+                        (mergedAuthOptions.length > 0 || Boolean(selectedCredentialRef))
                           ? getEffectiveCredentialId(template, requiredAuth.kind)
                           : null;
                       const authBusy = authBusyMap[template.key] ?? false;
@@ -630,7 +645,7 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
                                   )
                                 }
                               />
-                              {authOptions.length > 0 ? (
+                              {mergedAuthOptions.length > 0 ? (
                                 <div className="grid gap-2 sm:grid-cols-[1fr_auto_auto]">
                                   <ControlledSelect
                                     value={effectiveCredentialId}
@@ -643,7 +658,7 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
                                     }
                                     placeholder="Select credential"
                                   >
-                                    {authOptions.map((credential) => (
+                                    {mergedAuthOptions.map((credential) => (
                                       <SelectItem key={credential.id} value={credential.id}>
                                         {credential.name}
                                       </SelectItem>
