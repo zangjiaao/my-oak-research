@@ -67,8 +67,6 @@ type WorkerApiPlatformConfig = {
   }>;
 };
 
-const GATHER_FALLBACK_PLATFORMS = ["DOUYIN", "TIKTOK"] as const;
-
 const PLATFORM_META: Record<string, PlatformMeta> = {
   BBC: { category: "STREAM", region: "foreign", auth: { required: false } },
   REUTERS: {
@@ -324,32 +322,6 @@ export function buildGatherCapabilities(items: GatherCatalogItem[]): SourceCapab
 
   for (const capability of grouped.values()) {
     capability.intents.sort((a, b) => a.intent.localeCompare(b.intent));
-  }
-
-  for (const platform of GATHER_FALLBACK_PLATFORMS) {
-    if (grouped.has(platform)) continue;
-    const category = classifyCategoryByPlatform(platform) ?? "INTERACTIVE";
-    grouped.set(platform, {
-      platform,
-      category,
-      execution: {
-        engine: "gather_playwright",
-        driver: "playwright",
-      },
-      tags: [getRegionTag(platform)],
-      authRequirement: buildAuthRequirement(platform),
-      intents: [
-        {
-          key: `${platform.toLowerCase()}.search.intercept`,
-          intent: "search",
-          mode: "intercept",
-          sample: {
-            intentType: "search",
-            intentArgs: { query: "" },
-          },
-        },
-      ],
-    });
   }
 
   return Array.from(grouped.values()).sort((a, b) =>
