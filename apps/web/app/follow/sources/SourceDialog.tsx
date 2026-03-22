@@ -863,10 +863,11 @@ const SourceDialog = ({
   };
 
   const handleCredentialFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
+    const input = event.currentTarget;
+    const file = input.files?.[0];
     if (!file) return;
     await handleUploadAuthFile(file);
-    event.currentTarget.value = "";
+    input.value = "";
   };
 
   const sourceApiPreview = useMemo(() => {
