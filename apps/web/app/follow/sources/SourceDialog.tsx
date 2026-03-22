@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useQuery } from "@tanstack/react-query";
-import { z } from "zod";
 import { toast } from "sonner";
 
 import { SettingEditDialog } from "@/components/layout";
@@ -127,6 +126,7 @@ function stringifyIntentArgs(value: unknown): string {
 }
 
 function getInitialScriptState(source?: SourceWithRelations): {
+  category: SourceCategory;
   platform: string;
   intentType: string;
   intentArgsText: string;
@@ -134,6 +134,7 @@ function getInitialScriptState(source?: SourceWithRelations): {
 } {
   if (!source) {
     return {
+      category: "INTERACTIVE",
       platform: "",
       intentType: "search",
       intentArgsText: "{}",
@@ -153,6 +154,7 @@ function getInitialScriptState(source?: SourceWithRelations): {
         : {};
 
     return {
+      category: inferCategoryFromPlatform(source.social.platform ?? ""),
       platform: source.social.platform ?? "",
       intentType:
         typeof intent.type === "string" && intent.type.trim() ? intent.type : "search",
@@ -170,6 +172,7 @@ function getInitialScriptState(source?: SourceWithRelations): {
         ? (source.search.options as Record<string, unknown>)
         : {};
     return {
+      category: inferCategoryFromPlatform(String(options.provider ?? source.search.platform ?? "")),
       platform: String(options.provider ?? source.search.platform ?? ""),
       intentType: "search",
       intentArgsText: stringifyIntentArgs({ query: source.search.objective ?? "" }),
@@ -182,6 +185,7 @@ function getInitialScriptState(source?: SourceWithRelations): {
 
   if (source.type === "WEB" && "web" in source && source.web) {
     return {
+      category: "STREAM",
       platform: "BBC",
       intentType: "crawl",
       intentArgsText: stringifyIntentArgs({ url: source.web.url ?? [] }),
@@ -191,6 +195,7 @@ function getInitialScriptState(source?: SourceWithRelations): {
 
   if (source.type === "DARKNET" && "darknet" in source && source.darknet) {
     return {
+      category: "RETRIEVAL",
       platform: "DARKWEBGO",
       intentType: "search",
       intentArgsText: stringifyIntentArgs({ url: source.darknet.url ?? [] }),
@@ -199,6 +204,7 @@ function getInitialScriptState(source?: SourceWithRelations): {
   }
 
   return {
+    category: "INTERACTIVE",
     platform: "",
     intentType: "search",
     intentArgsText: "{}",
@@ -368,6 +374,9 @@ const SourceDialog = ({
 
   const initialScriptState = useMemo(() => getInitialScriptState(currentSource), [currentSource]);
 
+  const [selectedCategory, setSelectedCategory] = useState<SourceCategory>(
+    initialScriptState.category
+  );
   const [selectedPlatform, setSelectedPlatform] = useState(initialScriptState.platform);
   const [selectedIntentType, setSelectedIntentType] = useState(initialScriptState.intentType);
   const [intentArgsText, setIntentArgsText] = useState(initialScriptState.intentArgsText);
@@ -375,6 +384,7 @@ const SourceDialog = ({
 
   useEffect(() => {
     if (!open) return;
+    setSelectedCategory(initialScriptState.category);
     setSelectedPlatform(initialScriptState.platform);
     setSelectedIntentType(initialScriptState.intentType);
     setIntentArgsText(initialScriptState.intentArgsText);
@@ -436,11 +446,11 @@ const SourceDialog = ({
     for (const item of items) {
       const platform = normalizePlatform(item.platform);
       if (!platform) continue;
-      if (inferCategoryFromPlatform(platform) !== expectedCategory) continue;
+      if (inferCategoryFromPlatform(platform) !== selectedCategory) continue;
       grouped.add(platform);
     }
     return Array.from(grouped).sort((a, b) => a.localeCompare(b));
-  }, [catalog?.items, expectedCategory]);
+  }, [catalog?.items, selectedCategory]);
 
   const intentOptions = useMemo(() => {
     const platform = normalizePlatform(selectedPlatform);
@@ -496,7 +506,7 @@ const SourceDialog = ({
       return;
     }
 
-    mutation.mutate(built.payload as z.infer<any>);
+    mutation.mutate(built.payload as any);
   };
 
   return (
@@ -548,16 +558,28 @@ const SourceDialog = ({
 
         <Card className="gap-4 bg-muted/30">
           <CardHeader>
-            <CardTitle>Script Config</CardTitle>
+            <CardTitle>Platform Selection</CardTitle>
             <CardDescription>
-              Unified form powered by gather script catalog.
+              Select category first, then pick a platform from that category.
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4">
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="grid gap-2">
                 <Label>Category</Label>
-                <Input value={expectedCategory} disabled />
+                <ControlledSelect
+                  value={selectedCategory}
+                  onValueChange={(value) => {
+                    const next = (value as SourceCategory | null) ?? expectedCategory;
+                    setSelectedCategory(next);
+                    setSelectedPlatform("");
+                  }}
+                  placeholder="Select category"
+                >
+                  <SelectItem value="STREAM">STREAM</SelectItem>
+                  <SelectItem value="INTERACTIVE">INTERACTIVE</SelectItem>
+                  <SelectItem value="RETRIEVAL">RETRIEVAL</SelectItem>
+                </ControlledSelect>
               </div>
               <div className="grid gap-2">
                 <Label>Platform</Label>
@@ -583,7 +605,17 @@ const SourceDialog = ({
                 </ControlledSelect>
               </div>
             </div>
+          </CardContent>
+        </Card>
 
+        <Card className="gap-4 bg-muted/30">
+          <CardHeader>
+            <CardTitle>Platform Config</CardTitle>
+            <CardDescription>
+              Configure intent, network policy, and execution parameters.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4">
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="grid gap-2">
                 <Label>Intent</Label>
@@ -668,6 +700,32 @@ const SourceDialog = ({
                   ))}
                 </ControlledSelect>
               </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="gap-4 bg-muted/30">
+          <CardHeader>
+            <CardTitle>Preview</CardTitle>
+            <CardDescription>
+              Review the final source settings before saving.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-2 text-sm">
+            <div>
+              <span className="text-muted-foreground">Type:</span> {effectiveType}
+            </div>
+            <div>
+              <span className="text-muted-foreground">Category:</span> {selectedCategory}
+            </div>
+            <div>
+              <span className="text-muted-foreground">Platform:</span> {selectedPlatform || "—"}
+            </div>
+            <div>
+              <span className="text-muted-foreground">Intent:</span> {selectedIntentType || "—"}
+            </div>
+            <div>
+              <span className="text-muted-foreground">Network:</span> {networkPolicy}
             </div>
           </CardContent>
         </Card>
