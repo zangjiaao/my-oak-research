@@ -374,9 +374,6 @@ const SourceDialog = ({
 
   const initialScriptState = useMemo(() => getInitialScriptState(currentSource), [currentSource]);
 
-  const [selectedCategory, setSelectedCategory] = useState<SourceCategory>(
-    initialScriptState.category
-  );
   const [selectedPlatform, setSelectedPlatform] = useState(initialScriptState.platform);
   const [selectedIntentType, setSelectedIntentType] = useState(initialScriptState.intentType);
   const [intentArgsText, setIntentArgsText] = useState(initialScriptState.intentArgsText);
@@ -384,7 +381,6 @@ const SourceDialog = ({
 
   useEffect(() => {
     if (!open) return;
-    setSelectedCategory(initialScriptState.category);
     setSelectedPlatform(initialScriptState.platform);
     setSelectedIntentType(initialScriptState.intentType);
     setIntentArgsText(initialScriptState.intentArgsText);
@@ -446,11 +442,11 @@ const SourceDialog = ({
     for (const item of items) {
       const platform = normalizePlatform(item.platform);
       if (!platform) continue;
-      if (inferCategoryFromPlatform(platform) !== selectedCategory) continue;
+      if (inferCategoryFromPlatform(platform) !== expectedCategory) continue;
       grouped.add(platform);
     }
     return Array.from(grouped).sort((a, b) => a.localeCompare(b));
-  }, [catalog?.items, selectedCategory]);
+  }, [catalog?.items, expectedCategory]);
 
   const intentOptions = useMemo(() => {
     const platform = normalizePlatform(selectedPlatform);
@@ -560,26 +556,14 @@ const SourceDialog = ({
           <CardHeader>
             <CardTitle>Platform Selection</CardTitle>
             <CardDescription>
-              Select category first, then pick a platform from that category.
+              Category follows current source tab. Pick a platform in this category.
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4">
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="grid gap-2">
                 <Label>Category</Label>
-                <ControlledSelect
-                  value={selectedCategory}
-                  onValueChange={(value) => {
-                    const next = (value as SourceCategory | null) ?? expectedCategory;
-                    setSelectedCategory(next);
-                    setSelectedPlatform("");
-                  }}
-                  placeholder="Select category"
-                >
-                  <SelectItem value="STREAM">STREAM</SelectItem>
-                  <SelectItem value="INTERACTIVE">INTERACTIVE</SelectItem>
-                  <SelectItem value="RETRIEVAL">RETRIEVAL</SelectItem>
-                </ControlledSelect>
+                <Input value={expectedCategory} disabled />
               </div>
               <div className="grid gap-2">
                 <Label>Platform</Label>
@@ -716,7 +700,7 @@ const SourceDialog = ({
               <span className="text-muted-foreground">Type:</span> {effectiveType}
             </div>
             <div>
-              <span className="text-muted-foreground">Category:</span> {selectedCategory}
+              <span className="text-muted-foreground">Category:</span> {expectedCategory}
             </div>
             <div>
               <span className="text-muted-foreground">Platform:</span> {selectedPlatform || "—"}
