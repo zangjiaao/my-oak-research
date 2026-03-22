@@ -34,6 +34,10 @@ type GatherCatalogItem = {
   };
 };
 
+type WorkerCapabilitiesResponse = {
+  items?: SourceCapability[];
+};
+
 function mergeCapabilities(input: {
   gather: SourceCapability[];
   worker: SourceCapability[];
@@ -74,9 +78,26 @@ export async function GET(req: Request) {
       gatherItems = [];
     }
 
+    const workerUrl = process.env.WORKER_SERVICE_URL || "http://localhost:8100";
+    let workerItems: SourceCapability[] = [];
+    try {
+      const response = await fetch(`${workerUrl}/v1/source-capabilities`, {
+        cache: "no-store",
+        headers: { Accept: "application/json" },
+      });
+      if (response.ok) {
+        const payload = (await response.json()) as WorkerCapabilitiesResponse;
+        workerItems = Array.isArray(payload?.items) ? payload.items : [];
+      } else {
+        workerItems = buildWorkerApiCapabilities();
+      }
+    } catch {
+      workerItems = buildWorkerApiCapabilities();
+    }
+
     const all = mergeCapabilities({
       gather: buildGatherCapabilities(gatherItems),
-      worker: buildWorkerApiCapabilities(),
+      worker: workerItems,
     });
     const platform = parsed.data.platform?.toUpperCase();
 

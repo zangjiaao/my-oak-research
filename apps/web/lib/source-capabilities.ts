@@ -229,8 +229,6 @@ const WORKER_API_PLATFORM_CONFIGS: WorkerApiPlatformConfig[] = [
   { platform: "PARALLEL" },
   { platform: "TAVILY" },
   { platform: "ANSPIRE" },
-  { platform: "GOOGLE" },
-  { platform: "DARKWEBGO", tags: ["darknet", "tor"] },
 ];
 
 function normalizePlatform(value: unknown): string {
