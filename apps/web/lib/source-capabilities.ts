@@ -69,7 +69,11 @@ type WorkerApiPlatformConfig = {
 
 const PLATFORM_META: Record<string, PlatformMeta> = {
   BBC: { category: "STREAM", region: "foreign", auth: { required: false } },
-  REUTERS: { category: "STREAM", region: "foreign", auth: { required: false } },
+  REUTERS: {
+    category: "STREAM",
+    region: "foreign",
+    auth: { required: true, kind: "reuters-cookie", description: "Reuters auth credential" },
+  },
 
   X: {
     category: "INTERACTIVE",
@@ -86,11 +90,24 @@ const PLATFORM_META: Record<string, PlatformMeta> = {
     region: "domestic",
     auth: {
       required: true,
-      kind: "xiaohongshu-cookie",
+      kind: "xhs-cookie",
       description: "Xiaohongshu auth credential",
     },
   },
-  REDDIT: { category: "INTERACTIVE", region: "foreign", auth: { required: false } },
+  XHS: {
+    category: "INTERACTIVE",
+    region: "domestic",
+    auth: {
+      required: true,
+      kind: "xhs-cookie",
+      description: "Xiaohongshu auth credential",
+    },
+  },
+  REDDIT: {
+    category: "INTERACTIVE",
+    region: "foreign",
+    auth: { required: true, kind: "reddit-cookie", description: "Reddit auth credential" },
+  },
   WEIBO: {
     category: "INTERACTIVE",
     region: "domestic",
@@ -106,8 +123,20 @@ const PLATFORM_META: Record<string, PlatformMeta> = {
     region: "foreign",
     auth: { required: true, kind: "tiktok-cookie", description: "TikTok auth credential" },
   },
-  YOUTUBE: { category: "INTERACTIVE", region: "foreign", auth: { required: false } },
-  TELEGRAM: { category: "INTERACTIVE", region: "foreign", auth: { required: false } },
+  YOUTUBE: {
+    category: "INTERACTIVE",
+    region: "foreign",
+    auth: { required: true, kind: "youtube-cookie", description: "YouTube auth credential" },
+  },
+  TELEGRAM: {
+    category: "INTERACTIVE",
+    region: "foreign",
+    auth: {
+      required: true,
+      kind: "telegram-cookie",
+      description: "Telegram auth credential (cookie + localStorage)",
+    },
+  },
   INSTAGRAM: {
     category: "INTERACTIVE",
     region: "foreign",
@@ -135,8 +164,32 @@ const PLATFORM_META: Record<string, PlatformMeta> = {
       description: "WhatsApp auth credential",
     },
   },
+  LINKEDIN: {
+    category: "INTERACTIVE",
+    region: "foreign",
+    auth: { required: true, kind: "linkedin-cookie", description: "LinkedIn auth credential" },
+  },
+  ZHIHU: {
+    category: "INTERACTIVE",
+    region: "domestic",
+    auth: { required: true, kind: "zhihu-cookie", description: "Zhihu auth credential" },
+  },
+  BILIBILI: {
+    category: "INTERACTIVE",
+    region: "domestic",
+    auth: { required: true, kind: "bilibili-cookie", description: "Bilibili auth credential" },
+  },
+  CNBLOGS: {
+    category: "RETRIEVAL",
+    region: "domestic",
+    auth: { required: true, kind: "cnblogs-cookie", description: "CNBlogs auth credential" },
+  },
 
-  GOOGLE: { category: "RETRIEVAL", region: "foreign", auth: { required: false } },
+  GOOGLE: {
+    category: "RETRIEVAL",
+    region: "foreign",
+    auth: { required: true, kind: "google-cookie", description: "Google auth credential" },
+  },
   BING: { category: "RETRIEVAL", region: "foreign", auth: { required: false } },
   BAIDU: { category: "RETRIEVAL", region: "domestic", auth: { required: false } },
   DUCKDUCKGO: { category: "RETRIEVAL", region: "foreign", auth: { required: false } },
