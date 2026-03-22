@@ -291,7 +291,7 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent
-          className="flex h-[92vh] w-[min(96vw,1240px)] max-w-none flex-col overflow-hidden p-0"
+          className="flex h-[92vh] w-[96vw] max-w-[96vw] flex-col overflow-hidden p-0 sm:w-[94vw] sm:max-w-[1240px]"
           showCloseButton
         >
           <DialogHeader className="border-b px-6 pt-6 pb-4">
