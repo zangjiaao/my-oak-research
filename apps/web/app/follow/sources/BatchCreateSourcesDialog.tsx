@@ -290,7 +290,10 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-h-[92vh] w-[96vw] max-w-6xl p-0" showCloseButton>
+        <DialogContent
+          className="flex h-[92vh] w-[min(96vw,1240px)] max-w-none flex-col overflow-hidden p-0"
+          showCloseButton
+        >
           <DialogHeader className="border-b px-6 pt-6 pb-4">
             <DialogTitle>批量创建源</DialogTitle>
             <DialogDescription>
@@ -298,9 +301,9 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="grid h-[70vh] grid-cols-12 gap-0">
-            <div className="col-span-5 border-r">
-              <ScrollArea className="h-full px-4 py-4">
+          <div className="grid min-h-0 flex-1 grid-cols-1 xl:grid-cols-[380px_minmax(0,1fr)]">
+            <div className="min-h-0 border-b xl:border-r xl:border-b-0">
+              <ScrollArea className="h-[34vh] px-4 py-4 xl:h-full">
                 <div className="space-y-5">
                   {templateQuery.isLoading ? (
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -329,15 +332,19 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
                                     }
                                   />
                                   <div className="min-w-0 flex-1 space-y-2">
-                                    <div className="flex flex-wrap items-center gap-2">
-                                      <div className="text-sm font-medium">{template.title}</div>
+                                    <div className="flex flex-wrap items-start gap-2">
+                                      <div className="min-w-0 text-sm font-medium break-words">
+                                        {template.title}
+                                      </div>
                                       <Badge variant="outline">{template.driver}</Badge>
                                       <Badge variant="outline">{template.intent.type}</Badge>
                                       {template.exists ? <Badge>EXISTS</Badge> : null}
                                     </div>
-                                    <div className="text-xs text-muted-foreground">{template.description}</div>
+                                    <div className="text-xs text-muted-foreground break-words">
+                                      {template.description}
+                                    </div>
                                     {(localMissing.length > 0 || serverInvalid.length > 0) && enabled ? (
-                                      <div className="text-xs text-red-600">
+                                      <div className="text-xs text-red-600 break-words">
                                         Missing: {Array.from(new Set([...localMissing, ...serverInvalid])).join(", ")}
                                       </div>
                                     ) : null}
@@ -354,12 +361,12 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
               </ScrollArea>
             </div>
 
-            <div className="col-span-7">
+            <div className="min-h-0 min-w-0">
               <ScrollArea className="h-full px-6 py-4">
                 <div className="space-y-5">
                   <div className="space-y-3 rounded-md border p-4">
                     <div className="text-sm font-semibold">默认参数</div>
-                    <div className="grid grid-cols-3 gap-3">
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                       <div className="space-y-1">
                         <Label>Active</Label>
                         <select
@@ -422,10 +429,10 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
                     selectedTemplates.map((template) => {
                       const config = getCurrentConfig(template);
                       return (
-                        <div key={template.key} className="space-y-3 rounded-md border p-4">
+                        <div key={template.key} className="space-y-4 rounded-md border p-4">
                           <div className="text-sm font-semibold">{template.title}</div>
 
-                          <div className="grid grid-cols-2 gap-3">
+                          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                             <div className="space-y-1">
                               <Label>Name</Label>
                               <Input
@@ -476,7 +483,7 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
                           {template.credentialRequirements.map((requirement) => {
                             const options = credentials.filter((item) => item.kind === requirement.kind);
                             return (
-                              <div key={requirement.kind} className="space-y-1">
+                              <div key={requirement.kind} className="space-y-1.5">
                                 <Label>{requirement.description}</Label>
                                 <select
                                   className="h-9 w-full rounded-md border bg-background px-2 text-sm"
@@ -521,7 +528,7 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
             </div>
           </div>
 
-          <DialogFooter className="border-t px-6 py-4">
+          <DialogFooter className="border-t px-6 py-4 sm:justify-between">
             <Button variant="outline" onClick={() => setOpen(false)}>
               关闭
             </Button>
