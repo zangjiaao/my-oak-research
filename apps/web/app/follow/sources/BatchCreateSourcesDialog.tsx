@@ -1,7 +1,7 @@
 "use client";
 
 import { type ChangeEvent, useMemo, useRef, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2, Minus, Plus, PlusIcon } from "lucide-react";
 import { toast } from "sonner";
 
@@ -168,6 +168,9 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
   const [result, setResult] = useState<BatchCreateResponse | null>(null);
   const [authBusyMap, setAuthBusyMap] = useState<Record<string, boolean>>({});
   const [authStatusMap, setAuthStatusMap] = useState<Record<string, string | null>>({});
+  const [platformCredentialRefs, setPlatformCredentialRefs] = useState<
+    Record<string, string | null>
+  >({});
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   const queryClient = useQueryClient();
@@ -190,6 +193,32 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
   const groupedTemplates = useMemo(() => groupedByCategory(templates), [templates]);
 
   const selectedTemplates = templates.filter((item) => state[item.key]?.enabled);
+  const selectedTemplatesByPlatform = useMemo(
+    () => groupedByPlatform(selectedTemplates),
+    [selectedTemplates]
+  );
+  const selectedPlatforms = useMemo(
+    () => Object.keys(selectedTemplatesByPlatform),
+    [selectedTemplatesByPlatform]
+  );
+
+  const platformCredentialQueries = useQueries({
+    queries: selectedPlatforms.map((platform) => ({
+      queryKey: ["credentials", "platform", platform],
+      queryFn: () =>
+        apiFetcher(
+          `/api/follow/credentials?platform=${encodeURIComponent(platform.toLowerCase())}`
+        ) as Promise<{ credentials: Credential[] }>,
+      enabled: open,
+    })),
+  });
+  const credentialsByPlatform = useMemo(() => {
+    const output: Record<string, Credential[]> = {};
+    selectedPlatforms.forEach((platform, index) => {
+      output[platform] = platformCredentialQueries[index]?.data?.credentials ?? [];
+    });
+    return output;
+  }, [platformCredentialQueries, selectedPlatforms]);
 
   const getCurrentConfig = (template: BatchTemplate) => ({
     ...template.defaultConfig,
@@ -221,39 +250,41 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
     });
   };
 
-  const handleCredentialRefChange = (key: string, kind: string, value: string) => {
-    setState((prev) => {
-      const current = prev[key] ?? { enabled: true, config: {}, credentialRefs: {} };
-      return {
-        ...prev,
-        [key]: {
-          ...current,
-          credentialRefs: {
-            ...(current.credentialRefs ?? {}),
-            [kind]: value || null,
-          },
-        },
-      };
-    });
-  };
-
   const getRequiredAuth = (template: BatchTemplate) =>
     template.credentialRequirements.find((requirement) => requirement.required) ?? null;
 
-  const getAuthOptions = (kind: string) =>
-    credentials.filter((credential) => credential.kind === kind);
+  const getPlatformRequiredAuth = (platformItems: BatchTemplate[]) =>
+    platformItems
+      .flatMap((item) => item.credentialRequirements)
+      .find((requirement) => requirement.required) ?? null;
 
   const getCredentialById = (credentialId: string | null | undefined) => {
     if (!credentialId) return null;
     return credentials.find((credential) => credential.id === credentialId) ?? null;
   };
 
-  const getEffectiveCredentialId = (template: BatchTemplate, kind: string) => {
-    const options = getAuthOptions(kind);
-    const selected = state[template.key]?.credentialRefs?.[kind];
-    if (selected && getCredentialById(selected)) {
-      return selected;
+  const getAuthOptions = (platform: string, kind: string) => {
+    const byPlatform = credentialsByPlatform[platform] ?? [];
+    if (byPlatform.length > 0) return byPlatform;
+    return credentials.filter((credential) => credential.kind === kind);
+  };
+
+  const getEffectiveCredentialId = (
+    platform: string,
+    kind: string,
+    templateKey?: string
+  ) => {
+    const selectedPlatformId = platformCredentialRefs[platform];
+    if (selectedPlatformId && getCredentialById(selectedPlatformId)) {
+      return selectedPlatformId;
     }
+    if (templateKey) {
+      const selectedTemplateId = state[templateKey]?.credentialRefs?.[kind];
+      if (selectedTemplateId && getCredentialById(selectedTemplateId)) {
+        return selectedTemplateId;
+      }
+    }
+    const options = getAuthOptions(platform, kind);
     return options[0]?.id ?? null;
   };
 
@@ -265,23 +296,23 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
     setAuthStatusMap((prev) => ({ ...prev, [key]: value }));
   };
 
-  const handleVerifyAuth = async (template: BatchTemplate, kind: string) => {
-    const credentialId = getEffectiveCredentialId(template, kind);
+  const handleVerifyAuth = async (platform: string, kind: string) => {
+    const credentialId = getEffectiveCredentialId(platform, kind);
     if (!credentialId) {
       toast.error("Please upload or select a credential first.");
       return;
     }
 
-    setAuthBusy(template.key, true);
-    setAuthStatus(template.key, null);
+    setAuthBusy(platform, true);
+    setAuthStatus(platform, null);
     try {
       const result = await apiFetcher(
         `/api/follow/sources/auth/${encodeURIComponent(
-          template.platform.toLowerCase()
+          platform.toLowerCase()
         )}/cookie?verify=true&credentialId=${encodeURIComponent(credentialId)}`
       );
       const message = String(result?.message ?? "Verification completed.");
-      setAuthStatus(template.key, message);
+      setAuthStatus(platform, message);
       if (result?.authenticated) {
         toast.success(message);
       } else {
@@ -289,14 +320,14 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : "Auth verification failed.";
-      setAuthStatus(template.key, message);
+      setAuthStatus(platform, message);
       toast.error(message);
     } finally {
-      setAuthBusy(template.key, false);
+      setAuthBusy(platform, false);
     }
   };
 
-  const handleUploadAuthFile = async (template: BatchTemplate, kind: string, file: File) => {
+  const handleUploadAuthFile = async (platform: string, kind: string, file: File) => {
     let authData: Record<string, unknown>;
     try {
       authData = JSON.parse(await file.text()) as Record<string, unknown>;
@@ -305,11 +336,11 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
       return;
     }
 
-    setAuthBusy(template.key, true);
-    setAuthStatus(template.key, null);
+    setAuthBusy(platform, true);
+    setAuthStatus(platform, null);
     try {
       const result = await apiFetcher(
-        `/api/follow/sources/auth/${encodeURIComponent(template.platform.toLowerCase())}/cookie`,
+        `/api/follow/sources/auth/${encodeURIComponent(platform.toLowerCase())}/cookie`,
         {
           method: "POST",
           body: JSON.stringify({ authData }),
@@ -317,56 +348,58 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
       );
       const uploadedId = typeof result?.credentialId === "string" ? result.credentialId : null;
       if (uploadedId) {
-        handleCredentialRefChange(template.key, kind, uploadedId);
+        setPlatformCredentialRefs((prev) => ({ ...prev, [platform]: uploadedId }));
       }
       const message = String(result?.message ?? "Auth uploaded and verified.");
-      setAuthStatus(template.key, message);
+      setAuthStatus(platform, message);
       toast.success(message);
       await credentialQuery.refetch();
+      await Promise.all(platformCredentialQueries.map((query) => query.refetch()));
     } catch (error) {
       const message = error instanceof Error ? error.message : "Auth upload failed.";
-      setAuthStatus(template.key, message);
+      setAuthStatus(platform, message);
       toast.error(message);
     } finally {
-      setAuthBusy(template.key, false);
+      setAuthBusy(platform, false);
     }
   };
 
-  const handleRemoveCredential = async (template: BatchTemplate, kind: string) => {
-    const credentialId = getEffectiveCredentialId(template, kind);
+  const handleRemoveCredential = async (platform: string, kind: string) => {
+    const credentialId = getEffectiveCredentialId(platform, kind);
     if (!credentialId) {
       toast.error("Please select a credential first.");
       return;
     }
 
-    setAuthBusy(template.key, true);
-    setAuthStatus(template.key, null);
+    setAuthBusy(platform, true);
+    setAuthStatus(platform, null);
     try {
       await apiFetcher(`/api/follow/credentials/${encodeURIComponent(credentialId)}`, {
         method: "DELETE",
       });
-      handleCredentialRefChange(template.key, kind, "");
+      setPlatformCredentialRefs((prev) => ({ ...prev, [platform]: null }));
       await credentialQuery.refetch();
-      setAuthStatus(template.key, "Credential removed.");
+      await Promise.all(platformCredentialQueries.map((query) => query.refetch()));
+      setAuthStatus(platform, "Credential removed.");
       toast.success("Credential removed.");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Credential removal failed.";
-      setAuthStatus(template.key, message);
+      setAuthStatus(platform, message);
       toast.error(message);
     } finally {
-      setAuthBusy(template.key, false);
+      setAuthBusy(platform, false);
     }
   };
 
   const handleCredentialFileChange = async (
-    template: BatchTemplate,
+    platform: string,
     kind: string,
     event: ChangeEvent<HTMLInputElement>
   ) => {
     const input = event.currentTarget;
     const file = input.files?.[0];
     if (!file) return;
-    await handleUploadAuthFile(template, kind, file);
+    await handleUploadAuthFile(platform, kind, file);
     input.value = "";
   };
 
@@ -382,8 +415,12 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
 
     for (const requirement of template.credentialRequirements) {
       if (!requirement.required) continue;
-      const selected = state[template.key]?.credentialRefs?.[requirement.kind];
-      const total = credentials.filter((item) => item.kind === requirement.kind).length;
+      const selected = getEffectiveCredentialId(
+        template.platform,
+        requirement.kind,
+        template.key
+      );
+      const total = getAuthOptions(template.platform, requirement.kind).length;
       if (!getCredentialById(selected) && total <= 0) {
         missing.push(`credential:${requirement.kind}`);
       }
@@ -427,8 +464,9 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
               const requiredAuth = getRequiredAuth(template);
               if (requiredAuth && !refs[requiredAuth.kind]) {
                 const effectiveCredentialId = getEffectiveCredentialId(
-                  template,
-                  requiredAuth.kind
+                  template.platform,
+                  requiredAuth.kind,
+                  template.key
                 );
                 if (effectiveCredentialId) {
                   refs[requiredAuth.kind] = effectiveCredentialId;
@@ -601,45 +639,43 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
                       请选择左侧模板项后填写配置。
                     </div>
                   ) : (
-                    selectedTemplates.map((template) => {
-                      const config = getCurrentConfig(template);
-                      const requiredAuth = getRequiredAuth(template);
-                      const authOptions = requiredAuth ? getAuthOptions(requiredAuth.kind) : [];
-                      const selectedCredentialRef = requiredAuth
-                        ? state[template.key]?.credentialRefs?.[requiredAuth.kind] ?? null
-                        : null;
+                    Object.entries(selectedTemplatesByPlatform).map(([platform, platformItems]) => {
+                      const requiredAuth = getPlatformRequiredAuth(platformItems);
+                      const authOptions = requiredAuth
+                        ? getAuthOptions(platform, requiredAuth.kind)
+                        : [];
                       const selectedCredential = requiredAuth
-                        ? getCredentialById(selectedCredentialRef)
+                        ? getCredentialById(platformCredentialRefs[platform])
                         : null;
                       const mergedAuthOptions =
                         selectedCredential &&
                         !authOptions.some((item) => item.id === selectedCredential.id)
                           ? [selectedCredential, ...authOptions]
                           : authOptions;
-                      const effectiveCredentialId =
-                        requiredAuth &&
-                        (mergedAuthOptions.length > 0 || Boolean(selectedCredentialRef))
-                          ? getEffectiveCredentialId(template, requiredAuth.kind)
-                          : null;
-                      const authBusy = authBusyMap[template.key] ?? false;
+                      const effectiveCredentialId = requiredAuth
+                        ? getEffectiveCredentialId(platform, requiredAuth.kind)
+                        : null;
+                      const authBusy = authBusyMap[platform] ?? false;
                       return (
-                        <div key={template.key} className="space-y-4 rounded-md border p-4">
-                          <div className="text-sm font-semibold">{template.title}</div>
-                          <div className="text-xs text-muted-foreground">{template.description}</div>
+                        <div key={platform} className="space-y-4 rounded-md border p-4">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="text-sm font-semibold">{platform}</div>
+                            <Badge variant="outline">{platformItems.length} intents</Badge>
+                          </div>
 
                           {requiredAuth ? (
                             <div className="space-y-2 rounded-md border bg-background/70 p-3">
                               <div className="text-sm font-medium">Auth</div>
                               <input
                                 ref={(node) => {
-                                  fileInputRefs.current[template.key] = node;
+                                  fileInputRefs.current[platform] = node;
                                 }}
                                 type="file"
                                 accept="application/json,.json"
                                 className="hidden"
                                 onChange={(event) =>
                                   handleCredentialFileChange(
-                                    template,
+                                    platform,
                                     requiredAuth.kind,
                                     event
                                   )
@@ -650,11 +686,10 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
                                   <ControlledSelect
                                     value={effectiveCredentialId}
                                     onValueChange={(value) =>
-                                      handleCredentialRefChange(
-                                        template.key,
-                                        requiredAuth.kind,
-                                        value ?? ""
-                                      )
+                                      setPlatformCredentialRefs((prev) => ({
+                                        ...prev,
+                                        [platform]: value ?? null,
+                                      }))
                                     }
                                     placeholder="Select credential"
                                   >
@@ -668,9 +703,7 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
                                     type="button"
                                     variant="outline"
                                     disabled={authBusy || !effectiveCredentialId}
-                                    onClick={() =>
-                                      handleVerifyAuth(template, requiredAuth.kind)
-                                    }
+                                    onClick={() => handleVerifyAuth(platform, requiredAuth.kind)}
                                   >
                                     {authBusy ? (
                                       <Loader2 className="size-4 animate-spin" />
@@ -682,9 +715,7 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
                                     type="button"
                                     variant="outline"
                                     disabled={authBusy || !effectiveCredentialId}
-                                    onClick={() =>
-                                      handleRemoveCredential(template, requiredAuth.kind)
-                                    }
+                                    onClick={() => handleRemoveCredential(platform, requiredAuth.kind)}
                                   >
                                     Remove
                                   </Button>
@@ -695,7 +726,7 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
                                     type="button"
                                     variant="outline"
                                     className="justify-start"
-                                    onClick={() => fileInputRefs.current[template.key]?.click()}
+                                    onClick={() => fileInputRefs.current[platform]?.click()}
                                     disabled={authBusy}
                                   >
                                     上传...
@@ -703,130 +734,137 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
                                   <Button
                                     type="button"
                                     variant="outline"
-                                    disabled={authBusy}
-                                    onClick={() =>
-                                      handleVerifyAuth(template, requiredAuth.kind)
-                                    }
+                                    disabled={authBusy || !effectiveCredentialId}
+                                    onClick={() => handleVerifyAuth(platform, requiredAuth.kind)}
                                   >
                                     Verify
                                   </Button>
                                 </div>
                               )}
-                              {authStatusMap[template.key] ? (
+                              {authStatusMap[platform] ? (
                                 <p className="text-xs text-muted-foreground">
-                                  {authStatusMap[template.key]}
+                                  {authStatusMap[platform]}
                                 </p>
                               ) : null}
                             </div>
                           ) : null}
 
-                          <div className="space-y-2">
-                            <Label>Script Args</Label>
-                            <div className="grid gap-2">
-                              {toScriptArgEntries(getByPath(config, "intent.args")).map(
-                                (entry, index, list) => (
-                                  <div
-                                    key={`${template.key}-arg-${index}`}
-                                    className="grid grid-cols-[1fr_1fr_auto_auto] gap-2"
-                                  >
-                                    <Input
-                                      placeholder="key"
-                                      value={entry.key}
-                                      onChange={(event) => {
-                                        const next = toScriptArgEntries(
-                                          getByPath(getCurrentConfig(template), "intent.args")
-                                        );
-                                        next[index] = {
-                                          ...next[index],
-                                          key: event.target.value,
-                                        };
-                                        handleConfigChange(
-                                          template.key,
-                                          "intent.args",
-                                          toScriptArgs(next)
-                                        );
-                                      }}
-                                    />
-                                    <Input
-                                      placeholder="value"
-                                      value={entry.value}
-                                      onChange={(event) => {
-                                        const next = toScriptArgEntries(
-                                          getByPath(getCurrentConfig(template), "intent.args")
-                                        );
-                                        next[index] = {
-                                          ...next[index],
-                                          value: event.target.value,
-                                        };
-                                        handleConfigChange(
-                                          template.key,
-                                          "intent.args",
-                                          toScriptArgs(next)
-                                        );
-                                      }}
-                                    />
-                                    <Button
-                                      type="button"
-                                      variant="outline"
-                                      size="icon"
-                                      aria-label="Add arg row"
-                                      onClick={() => {
-                                        const next = toScriptArgEntries(
-                                          getByPath(getCurrentConfig(template), "intent.args")
-                                        );
-                                        next.splice(index + 1, 0, { ...EMPTY_ARG_ENTRY });
-                                        handleConfigChange(
-                                          template.key,
-                                          "intent.args",
-                                          toScriptArgs(next)
-                                        );
-                                      }}
-                                    >
-                                      <Plus className="size-4" />
-                                    </Button>
-                                    <Button
-                                      type="button"
-                                      variant="outline"
-                                      size="icon"
-                                      aria-label="Remove arg row"
-                                      disabled={list.length <= 1}
-                                      onClick={() => {
-                                        if (list.length <= 1) return;
-                                        const next = toScriptArgEntries(
-                                          getByPath(getCurrentConfig(template), "intent.args")
-                                        ).filter((_, itemIndex) => itemIndex !== index);
-                                        handleConfigChange(
-                                          template.key,
-                                          "intent.args",
-                                          toScriptArgs(next)
-                                        );
-                                      }}
-                                    >
-                                      <Minus className="size-4" />
-                                    </Button>
+                          <div className="space-y-3">
+                            {platformItems.map((template) => {
+                              const config = getCurrentConfig(template);
+                              return (
+                                <div key={template.key} className="space-y-3 rounded-md border p-3">
+                                  <div className="text-sm font-medium">{template.intent.type}</div>
+                                  <div className="space-y-2">
+                                    <Label>Script Args</Label>
+                                    <div className="grid gap-2">
+                                      {toScriptArgEntries(getByPath(config, "intent.args")).map(
+                                        (entry, index, list) => (
+                                          <div
+                                            key={`${template.key}-arg-${index}`}
+                                            className="grid grid-cols-[1fr_1fr_auto_auto] gap-2"
+                                          >
+                                            <Input
+                                              placeholder="key"
+                                              value={entry.key}
+                                              onChange={(event) => {
+                                                const next = toScriptArgEntries(
+                                                  getByPath(getCurrentConfig(template), "intent.args")
+                                                );
+                                                next[index] = {
+                                                  ...next[index],
+                                                  key: event.target.value,
+                                                };
+                                                handleConfigChange(
+                                                  template.key,
+                                                  "intent.args",
+                                                  toScriptArgs(next)
+                                                );
+                                              }}
+                                            />
+                                            <Input
+                                              placeholder="value"
+                                              value={entry.value}
+                                              onChange={(event) => {
+                                                const next = toScriptArgEntries(
+                                                  getByPath(getCurrentConfig(template), "intent.args")
+                                                );
+                                                next[index] = {
+                                                  ...next[index],
+                                                  value: event.target.value,
+                                                };
+                                                handleConfigChange(
+                                                  template.key,
+                                                  "intent.args",
+                                                  toScriptArgs(next)
+                                                );
+                                              }}
+                                            />
+                                            <Button
+                                              type="button"
+                                              variant="outline"
+                                              size="icon"
+                                              aria-label="Add arg row"
+                                              onClick={() => {
+                                                const next = toScriptArgEntries(
+                                                  getByPath(getCurrentConfig(template), "intent.args")
+                                                );
+                                                next.splice(index + 1, 0, { ...EMPTY_ARG_ENTRY });
+                                                handleConfigChange(
+                                                  template.key,
+                                                  "intent.args",
+                                                  toScriptArgs(next)
+                                                );
+                                              }}
+                                            >
+                                              <Plus className="size-4" />
+                                            </Button>
+                                            <Button
+                                              type="button"
+                                              variant="outline"
+                                              size="icon"
+                                              aria-label="Remove arg row"
+                                              disabled={list.length <= 1}
+                                              onClick={() => {
+                                                if (list.length <= 1) return;
+                                                const next = toScriptArgEntries(
+                                                  getByPath(getCurrentConfig(template), "intent.args")
+                                                ).filter((_, itemIndex) => itemIndex !== index);
+                                                handleConfigChange(
+                                                  template.key,
+                                                  "intent.args",
+                                                  toScriptArgs(next)
+                                                );
+                                              }}
+                                            >
+                                              <Minus className="size-4" />
+                                            </Button>
+                                          </div>
+                                        )
+                                      )}
+                                    </div>
                                   </div>
-                                )
-                              )}
-                            </div>
-                          </div>
 
-                          <div className="space-y-1.5">
-                            <Label>Network</Label>
-                            <ControlledSelect
-                              value={String((config.proxyId as string | undefined) ?? "") || null}
-                              onValueChange={(value) =>
-                                handleConfigChange(template.key, "proxyId", value)
-                              }
-                              placeholder="No proxy"
-                            >
-                              {proxies.map((proxy) => (
-                                <SelectItem key={proxy.id} value={proxy.id}>
-                                  {proxy.name}
-                                </SelectItem>
-                              ))}
-                            </ControlledSelect>
+                                  <div className="space-y-1.5">
+                                    <Label>Network</Label>
+                                    <ControlledSelect
+                                      value={String((config.proxyId as string | undefined) ?? "") || null}
+                                      onValueChange={(value) =>
+                                        handleConfigChange(template.key, "proxyId", value)
+                                      }
+                                      placeholder="No proxy"
+                                    >
+                                      {proxies.map((proxy) => (
+                                        <SelectItem key={proxy.id} value={proxy.id}>
+                                          {proxy.name}
+                                        </SelectItem>
+                                      ))}
+                                    </ControlledSelect>
+                                  </div>
+                                </div>
+                              );
+                            })}
                           </div>
-
                         </div>
                       );
                     })
