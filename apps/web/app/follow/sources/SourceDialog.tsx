@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { type ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -120,6 +120,16 @@ const SEARCH_PLATFORM_MAP: Record<string, "PARALLEL" | "TAVILY" | "ANSPIRE" | "C
 };
 
 const DOMESTIC_PLATFORMS = new Set(["XIAOHONGSHU", "DOUYIN", "WEIBO"]);
+const AUTH_REQUIRED_PLATFORMS = new Set([
+  "X",
+  "XIAOHONGSHU",
+  "DOUYIN",
+  "TIKTOK",
+  "WEIBO",
+  "WHATSAPP",
+  "INSTAGRAM",
+  "FACEBOOK",
+]);
 
 function normalizePlatform(value?: string | null): string {
   return String(value ?? "").trim().toUpperCase();
@@ -137,6 +147,10 @@ function inferCategoryFromPlatform(platform: string): SourceCategory {
 
 function getPlatformRegion(platform: string): "国内" | "国外" {
   return DOMESTIC_PLATFORMS.has(normalizePlatform(platform)) ? "国内" : "国外";
+}
+
+function requiresPlatformAuth(platform: string): boolean {
+  return AUTH_REQUIRED_PLATFORMS.has(normalizePlatform(platform));
 }
 
 function splitToUrls(value: unknown): string[] {
@@ -546,8 +560,7 @@ const SourceDialog = ({
   const [stateFile, setStateFile] = useState(initialScriptState.stateFile);
   const [filterMinChars, setFilterMinChars] = useState(initialScriptState.filterMinChars);
   const [advancedOpen, setAdvancedOpen] = useState(false);
-  const [credentialName, setCredentialName] = useState("");
-  const [authUploadText, setAuthUploadText] = useState("");
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [authBusy, setAuthBusy] = useState(false);
   const [authStatus, setAuthStatus] = useState<string | null>(null);
   const [platformPopoverOpen, setPlatformPopoverOpen] = useState(false);
@@ -568,8 +581,6 @@ const SourceDialog = ({
     setStateFile(initialScriptState.stateFile);
     setFilterMinChars(initialScriptState.filterMinChars);
     setAdvancedOpen(false);
-    setCredentialName("");
-    setAuthUploadText("");
     setAuthStatus(null);
   }, [open, initialScriptState]);
 
@@ -719,10 +730,35 @@ const SourceDialog = ({
   });
 
   const credentials = credentialData?.credentials ?? [];
+  const authRequired = useMemo(
+    () => requiresPlatformAuth(selectedPlatform),
+    [selectedPlatform]
+  );
+  const hasUploadedAuth = credentials.length > 0;
+  const selectedCredentialId = form.watch("credentialId");
+  const effectiveCredentialId =
+    selectedCredentialId && credentials.some((credential) => credential.id === selectedCredentialId)
+      ? selectedCredentialId
+      : credentials[0]?.id ?? null;
+
+  useEffect(() => {
+    if (!authRequired && selectedCredentialId) {
+      form.setValue("credentialId", null);
+      return;
+    }
+    if (!authRequired || !hasUploadedAuth) return;
+    if (!selectedCredentialId || !credentials.some((credential) => credential.id === selectedCredentialId)) {
+      form.setValue("credentialId", credentials[0]?.id ?? null);
+    }
+  }, [authRequired, hasUploadedAuth, selectedCredentialId, credentials, form]);
 
   const handleVerifyAuth = async () => {
     if (!selectedPlatform) {
       toast.error("Please select a platform first.");
+      return;
+    }
+    if (!effectiveCredentialId) {
+      toast.error("Please upload or select a credential first.");
       return;
     }
     setAuthBusy(true);
@@ -731,7 +767,7 @@ const SourceDialog = ({
       const result = await apiFetcher(
         `/api/follow/sources/auth/${encodeURIComponent(
           normalizePlatform(selectedPlatform).toLowerCase()
-        )}/cookie?verify=true`
+        )}/cookie?verify=true&credentialId=${encodeURIComponent(effectiveCredentialId)}`
       );
       const message = String(result?.message ?? "Verification completed.");
       setAuthStatus(message);
@@ -749,20 +785,21 @@ const SourceDialog = ({
     }
   };
 
-  const handleUploadAuth = async () => {
+  const handleUploadAuthFile = async (file: File) => {
     if (!selectedPlatform) {
       toast.error("Please select a platform first.");
       return;
     }
-    if (!authUploadText.trim()) {
-      toast.error("Please paste auth JSON first.");
+    if (!file) {
+      toast.error("Please select a credential file first.");
       return;
     }
     let authData: Record<string, unknown>;
     try {
-      authData = JSON.parse(authUploadText);
+      const fileText = await file.text();
+      authData = JSON.parse(fileText);
     } catch {
-      toast.error("Auth JSON is invalid.");
+      toast.error("Credential file is not valid JSON.");
       return;
     }
 
@@ -778,7 +815,6 @@ const SourceDialog = ({
           body: JSON.stringify({
             authData,
             sourceId: currentSource?.id,
-            ...(credentialName.trim() ? { name: credentialName.trim() } : {}),
           }),
         }
       );
@@ -796,6 +832,41 @@ const SourceDialog = ({
     } finally {
       setAuthBusy(false);
     }
+  };
+
+  const handleRemoveCredential = async () => {
+    if (!effectiveCredentialId) {
+      toast.error("Please select a credential first.");
+      return;
+    }
+    setAuthBusy(true);
+    setAuthStatus(null);
+    try {
+      await apiFetcher(`/api/follow/credentials/${encodeURIComponent(effectiveCredentialId)}`, {
+        method: "DELETE",
+      });
+      form.setValue("credentialId", null);
+      await refetchCredentials();
+      setAuthStatus("Credential removed.");
+      toast.success("Credential removed.");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Credential removal failed.";
+      setAuthStatus(message);
+      toast.error(message);
+    } finally {
+      setAuthBusy(false);
+    }
+  };
+
+  const handleOpenUploadDialog = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleCredentialFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    await handleUploadAuthFile(file);
+    event.currentTarget.value = "";
   };
 
   const sourceApiPreview = useMemo(() => {
@@ -1053,47 +1124,74 @@ const SourceDialog = ({
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4">
-            <Card className="gap-3 border bg-background/70">
-              <CardHeader className="pb-0">
-                <CardTitle className="text-base">Auth</CardTitle>
-                <CardDescription>Upload and verify platform credential.</CardDescription>
-              </CardHeader>
-              <CardContent className="grid gap-3">
-                <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
-                  <ControlledSelect
-                    value={form.watch("credentialId") ?? null}
-                    onValueChange={(value) => form.setValue("credentialId", value)}
-                    placeholder={loadingCredentials ? "Loading credentials..." : "Select credential"}
-                  >
-                    {credentials.map((credential) => (
-                      <SelectItem key={credential.id} value={credential.id}>
-                        {credential.name}
-                      </SelectItem>
-                    ))}
-                  </ControlledSelect>
-                  <Button type="button" variant="outline" onClick={handleVerifyAuth} disabled={authBusy}>
-                    {authBusy ? <Loader2 className="size-4 animate-spin" /> : "Verify"}
-                  </Button>
-                </div>
-                <Input
-                  value={credentialName}
-                  onChange={(event) => setCredentialName(event.target.value)}
-                  placeholder="Credential name (optional)"
-                />
-                <Textarea
-                  rows={4}
-                  value={authUploadText}
-                  onChange={(event) => setAuthUploadText(event.target.value)}
-                  placeholder='{"cookies": [...], "origins": [...]}'
-                />
-                <Button type="button" variant="secondary" onClick={handleUploadAuth} disabled={authBusy}>
-                  {authBusy ? <Loader2 className="size-4 animate-spin" /> : "Upload & Verify"}
-                </Button>
-                {authStatus ? (
-                  <p className="text-xs text-muted-foreground">{authStatus}</p>
-                ) : null}
-              </CardContent>
-            </Card>
+            {authRequired ? (
+              <Card className="gap-3 border bg-background/70">
+                <CardHeader className="pb-0">
+                  <CardTitle className="text-base">Auth</CardTitle>
+                  <CardDescription>Upload and verify platform credential.</CardDescription>
+                </CardHeader>
+                <CardContent className="grid gap-3">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="application/json,.json"
+                    className="hidden"
+                    onChange={handleCredentialFileChange}
+                  />
+
+                  {hasUploadedAuth ? (
+                    <div className="grid gap-2 sm:grid-cols-[1fr_auto_auto]">
+                      <ControlledSelect
+                        value={effectiveCredentialId}
+                        onValueChange={(value) => form.setValue("credentialId", value)}
+                        placeholder={loadingCredentials ? "Loading credentials..." : "Select credential"}
+                      >
+                        {credentials.map((credential) => (
+                          <SelectItem key={credential.id} value={credential.id}>
+                            {credential.name}
+                          </SelectItem>
+                        ))}
+                      </ControlledSelect>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={handleVerifyAuth}
+                        disabled={authBusy || !effectiveCredentialId}
+                      >
+                        {authBusy ? <Loader2 className="size-4 animate-spin" /> : "Verify"}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={handleRemoveCredential}
+                        disabled={authBusy || !effectiveCredentialId}
+                      >
+                        Remove
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="justify-start"
+                        onClick={handleOpenUploadDialog}
+                        disabled={authBusy}
+                      >
+                        上传...
+                      </Button>
+                      <Button type="button" variant="outline" onClick={handleVerifyAuth}>
+                        Verify
+                      </Button>
+                    </div>
+                  )}
+
+                  {authStatus ? (
+                    <p className="text-xs text-muted-foreground">{authStatus}</p>
+                  ) : null}
+                </CardContent>
+              </Card>
+            ) : null}
 
             <Card className="gap-3 border bg-background/70">
               <CardHeader className="pb-0">
