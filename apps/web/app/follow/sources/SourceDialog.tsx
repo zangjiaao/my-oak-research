@@ -118,10 +118,6 @@ const SEARCH_PLATFORM_MAP: Record<string, "PARALLEL" | "TAVILY" | "ANSPIRE" | "C
   TAVILY: "TAVILY",
   ANSPIRE: "ANSPIRE",
 };
-const STREAM_DEFAULT_URLS: Record<string, string[]> = {
-  BBC: ["https://www.bbc.com"],
-  REUTERS: ["https://www.reuters.com"],
-};
 
 const DOMESTIC_PLATFORMS = new Set(["XIAOHONGSHU", "DOUYIN", "WEIBO"]);
 const AUTH_REQUIRED_PLATFORMS = new Set([
@@ -418,20 +414,12 @@ function buildPayloadFromUnified(input: {
     const urls = splitToUrls(
       intentArgs.url ?? intentArgs.urls ?? intentArgs.targetUrl ?? intentArgs.site
     );
-    const normalizedPlatform = normalizePlatform(platform);
-    const resolvedUrls =
-      urls.length > 0 ? urls : (STREAM_DEFAULT_URLS[normalizedPlatform] ?? []);
-    if (urls.length === 0) {
-      if (resolvedUrls.length === 0) {
-        return { error: "Stream source requires at least one URL in intent args (url/urls/targetUrl)." };
-      }
-    }
     return {
       payload: {
         ...base,
         type: "WEB" as const,
         web: {
-          url: resolvedUrls,
+          url: urls,
           crawlerEngine: "FETCH" as const,
           render: false,
           robotsRespect: true,

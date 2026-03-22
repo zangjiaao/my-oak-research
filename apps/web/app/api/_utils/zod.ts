@@ -215,7 +215,7 @@ function parseJson(val: unknown) {
 }
 
 export const WebConfigInput = z.object({
-  url: delimitedStringArray({ itemMin: 1, itemMax: 1024, totalMax: 50, minItems: 1 }),
+  url: delimitedStringArray({ itemMin: 1, itemMax: 1024, totalMax: 50, minItems: 0 }),
   headers: z.preprocess((val) => parseJson(val), z.record(z.string(), z.string()).optional().nullable()),
   crawlerEngine: CrawlerEngineEnum.optional().default("FETCH"),
   crawlerConfig: z.preprocess((val) => parseJson(val), z.any().optional().nullable()),
