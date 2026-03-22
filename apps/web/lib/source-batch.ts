@@ -3,6 +3,10 @@ import { createHash } from "node:crypto";
 import { Prisma, SourceType } from "@/app/generated/prisma";
 import { type KnownSocialPlatform } from "@/lib/social-driver-support";
 import type { SourceCategory, SourceNetworkPolicy } from "@/lib/source-taxonomy";
+import {
+  getCredentialKindForPlatform,
+  requiresAuthForPlatform,
+} from "@/lib/source-capabilities";
 
 type JsonObject = Record<string, unknown>;
 
@@ -65,25 +69,6 @@ const REQUIRED_SOCIAL_ARGS: Record<KnownSocialPlatform, string[]> = {
   FACEBOOK: ["query"],
 };
 
-const CREDENTIAL_REQUIRED_SOCIAL = new Set<KnownSocialPlatform>([
-  "X",
-  "XIAOHONGSHU",
-  "DOUYIN",
-  "TIKTOK",
-  "WEIBO",
-  "WHATSAPP",
-  "INSTAGRAM",
-  "FACEBOOK",
-]);
-
-function credentialKindForPlatform(platform: string): string {
-  const normalized = platform.trim().toLowerCase();
-  if (!normalized) return "unknown-cookie";
-  if (normalized === "x" || normalized === "twitter") return "x-cookie";
-  if (normalized === "whatsapp") return "whatsapp-profile";
-  return `${normalized}-cookie`;
-}
-
 function buildSocialTemplates(): BatchTemplate[] {
   const templates: BatchTemplate[] = [];
 
@@ -107,10 +92,10 @@ function buildSocialTemplates(): BatchTemplate[] {
         keywordStrategy: "AUTO",
       },
       requiredFields: requiredArgs.map((field) => `intent.args.${field}`),
-      credentialRequirements: CREDENTIAL_REQUIRED_SOCIAL.has(platform)
+      credentialRequirements: requiresAuthForPlatform(platform)
         ? [
             {
-              kind: credentialKindForPlatform(platform),
+              kind: getCredentialKindForPlatform(platform),
               required: true,
               description: `${platform} auth credential`,
             },

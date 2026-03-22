@@ -30,6 +30,14 @@ const PLATFORM_CATEGORY_OVERRIDES: Record<string, SourceCategory> = {
   DARKSEARCH: "RETRIEVAL",
 };
 
+export function classifyCategoryByPlatform(
+  platform: string | null | undefined
+): SourceCategory | null {
+  const normalized = String(platform ?? "").trim().toUpperCase();
+  if (!normalized) return null;
+  return PLATFORM_CATEGORY_OVERRIDES[normalized] ?? null;
+}
+
 function asRecord(value: unknown): Record<string, unknown> {
   if (value && typeof value === "object" && !Array.isArray(value)) {
     return value as Record<string, unknown>;
@@ -49,13 +57,13 @@ export function classifySourceCategory(source: {
   social?: Pick<SocialMediaSourceConfig, "platform"> | null;
   searchPlatform?: string | null;
 }): SourceCategory {
-  const socialPlatform = String(source.social?.platform ?? "").trim().toUpperCase();
-  if (socialPlatform && PLATFORM_CATEGORY_OVERRIDES[socialPlatform]) {
-    return PLATFORM_CATEGORY_OVERRIDES[socialPlatform];
+  const socialCategory = classifyCategoryByPlatform(source.social?.platform);
+  if (socialCategory) {
+    return socialCategory;
   }
-  const searchPlatform = String(source.searchPlatform ?? "").trim().toUpperCase();
-  if (searchPlatform && PLATFORM_CATEGORY_OVERRIDES[searchPlatform]) {
-    return PLATFORM_CATEGORY_OVERRIDES[searchPlatform];
+  const searchCategory = classifyCategoryByPlatform(source.searchPlatform);
+  if (searchCategory) {
+    return searchCategory;
   }
 
   if (source.type === "SOCIAL_MEDIA") return "INTERACTIVE";

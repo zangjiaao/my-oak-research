@@ -41,6 +41,7 @@ import type { Proxy } from "@/app/generated/prisma";
 import { SourceType } from "@/app/generated/prisma";
 import { SourceWithRelations } from "@/lib/types";
 import { useSourceMutation } from "@/hooks/useSourceMutation";
+import { type SourceCapability, getRegionTag } from "@/lib/source-capabilities";
 import { cn } from "@/lib/utils";
 
 type SourceFormValues = {
@@ -52,19 +53,8 @@ type SourceFormValues = {
   credentialId?: string | null;
 };
 
-type GatherCatalogItem = {
-  key: string;
-  platform: string;
-  intent: string;
-  mode: string;
-  sample?: {
-    intentType?: string;
-    intentArgs?: Record<string, unknown>;
-  };
-};
-
-type GatherCatalogResponse = {
-  items: GatherCatalogItem[];
+type SourceCapabilityResponse = {
+  items: SourceCapability[];
 };
 
 type SourceCategory = "STREAM" | "INTERACTIVE" | "RETRIEVAL";
@@ -93,43 +83,11 @@ type ScriptArgEntry = {
 
 const EMPTY_ARG_ENTRY: ScriptArgEntry = { key: "", value: "" };
 
-const PLATFORM_CATEGORY_MAP: Record<string, SourceCategory> = {
-  BBC: "STREAM",
-  REUTERS: "STREAM",
-  X: "INTERACTIVE",
-  XIAOHONGSHU: "INTERACTIVE",
-  REDDIT: "INTERACTIVE",
-  TELEGRAM: "INTERACTIVE",
-  INSTAGRAM: "INTERACTIVE",
-  FACEBOOK: "INTERACTIVE",
-  DOUYIN: "INTERACTIVE",
-  TIKTOK: "INTERACTIVE",
-  WEIBO: "INTERACTIVE",
-  WHATSAPP: "INTERACTIVE",
-  PARALLEL: "RETRIEVAL",
-  TAVILY: "RETRIEVAL",
-  GOOGLE: "RETRIEVAL",
-  DARKWEBGO: "RETRIEVAL",
-  DARKSEARCH: "RETRIEVAL",
-};
-
 const SEARCH_PLATFORM_MAP: Record<string, "PARALLEL" | "TAVILY" | "ANSPIRE" | "CUSTOM"> = {
   PARALLEL: "PARALLEL",
   TAVILY: "TAVILY",
   ANSPIRE: "ANSPIRE",
 };
-
-const DOMESTIC_PLATFORMS = new Set(["XIAOHONGSHU", "DOUYIN", "WEIBO"]);
-const AUTH_REQUIRED_PLATFORMS = new Set([
-  "X",
-  "XIAOHONGSHU",
-  "DOUYIN",
-  "TIKTOK",
-  "WEIBO",
-  "WHATSAPP",
-  "INSTAGRAM",
-  "FACEBOOK",
-]);
 
 function normalizePlatform(value?: string | null): string {
   return String(value ?? "").trim().toUpperCase();
@@ -141,16 +99,8 @@ function inferCategoryFromSourceType(type: SourceType): SourceCategory {
   return "RETRIEVAL";
 }
 
-function inferCategoryFromPlatform(platform: string): SourceCategory {
-  return PLATFORM_CATEGORY_MAP[normalizePlatform(platform)] ?? "RETRIEVAL";
-}
-
 function getPlatformRegion(platform: string): "国内" | "国外" {
-  return DOMESTIC_PLATFORMS.has(normalizePlatform(platform)) ? "国内" : "国外";
-}
-
-function requiresPlatformAuth(platform: string): boolean {
-  return AUTH_REQUIRED_PLATFORMS.has(normalizePlatform(platform));
+  return getRegionTag(platform) === "domestic" ? "国内" : "国外";
 }
 
 function splitToUrls(value: unknown): string[] {
@@ -310,7 +260,7 @@ function getInitialScriptState(source?: SourceWithRelations): {
         : {};
 
     return {
-      category: inferCategoryFromPlatform(source.social.platform ?? ""),
+      category: "INTERACTIVE",
       platform: source.social.platform ?? "",
       intentType:
         (typeof script.type === "string" && script.type.trim()) ||
@@ -335,7 +285,7 @@ function getInitialScriptState(source?: SourceWithRelations): {
         ? (source.search.options as Record<string, unknown>)
         : {};
     return {
-      category: inferCategoryFromPlatform(String(options.provider ?? source.search.platform ?? "")),
+      category: "RETRIEVAL",
       platform: String(options.provider ?? source.search.platform ?? ""),
       intentType: "search",
       scriptArgs: { query: source.search.objective ?? "" },
@@ -597,11 +547,38 @@ const SourceDialog = ({
     return () => scrollParent!.removeEventListener("scroll", close);
   }, [platformPopoverOpen]);
 
-  const { data: catalog, isLoading: loadingCatalog } = useQuery<GatherCatalogResponse>({
-    queryKey: ["gather-script-catalog"],
-    queryFn: () => apiFetcher("/api/follow/gather-scripts/catalog"),
-    enabled: open,
-  });
+  const { data: capabilityData, isLoading: loadingCapabilities } =
+    useQuery<SourceCapabilityResponse>({
+      queryKey: ["source-capabilities"],
+      queryFn: () => apiFetcher("/api/follow/source-capabilities"),
+      enabled: open,
+    });
+
+  const capabilities = capabilityData?.items ?? [];
+  const capabilityByPlatform = useMemo(
+    () =>
+      new Map(
+        capabilities.map((item) => [normalizePlatform(item.platform), item] as const)
+      ),
+    [capabilities]
+  );
+  const selectedCapability = useMemo(
+    () => capabilityByPlatform.get(normalizePlatform(selectedPlatform)) ?? null,
+    [capabilityByPlatform, selectedPlatform]
+  );
+
+  const selectedCapabilityEngine = selectedCapability?.execution.engine ?? null;
+
+  const gatherPlatforms = useMemo(
+    () =>
+      new Set(
+        capabilities
+          .filter((item) => item.execution.engine === "gather_playwright")
+          .map((item) => normalizePlatform(item.platform))
+          .filter(Boolean)
+      ),
+    [capabilities]
+  );
 
   const form = useForm<SourceFormValues>({
     defaultValues: {
@@ -627,23 +604,24 @@ const SourceDialog = ({
   }, [open, currentSource, form]);
 
   const expectedCategory = inferCategoryFromSourceType(effectiveType);
-  const gatherPlatforms = useMemo(
-    () =>
-      new Set(
-        (catalog?.items ?? [])
-          .map((item) => normalizePlatform(item.platform))
-          .filter(Boolean)
-      ),
-    [catalog?.items]
-  );
   const normalizedSelectedPlatform = normalizePlatform(selectedPlatform);
   const targetType: SourceType = useMemo(() => {
     if (currentSource?.type) return currentSource.type;
+    if (selectedCapabilityEngine === "worker_api") {
+      return expectedCategory === "RETRIEVAL" ? "SEARCH_ENGINE" : effectiveType;
+    }
     if (normalizedSelectedPlatform && gatherPlatforms.has(normalizedSelectedPlatform)) {
       return "SOCIAL_MEDIA";
     }
     return effectiveType;
-  }, [currentSource?.type, normalizedSelectedPlatform, gatherPlatforms, effectiveType]);
+  }, [
+    currentSource?.type,
+    selectedCapabilityEngine,
+    expectedCategory,
+    effectiveType,
+    normalizedSelectedPlatform,
+    gatherPlatforms,
+  ]);
 
   const mutation = useSourceMutation({
     sourceId: currentSource?.id,
@@ -671,16 +649,12 @@ const SourceDialog = ({
   );
 
   const platformOptions = useMemo(() => {
-    const items = catalog?.items ?? [];
-    const grouped = new Set<string>();
-    for (const item of items) {
-      const platform = normalizePlatform(item.platform);
-      if (!platform) continue;
-      if (inferCategoryFromPlatform(platform) !== expectedCategory) continue;
-      grouped.add(platform);
-    }
-    return Array.from(grouped).sort((a, b) => a.localeCompare(b));
-  }, [catalog?.items, expectedCategory]);
+    return capabilities
+      .filter((item) => item.category === expectedCategory)
+      .map((item) => normalizePlatform(item.platform))
+      .filter(Boolean)
+      .sort((a, b) => a.localeCompare(b));
+  }, [capabilities, expectedCategory]);
 
   const filteredPlatformOptions = useMemo(() => {
     const keyword = platformSearch.trim().toLowerCase();
@@ -691,26 +665,22 @@ const SourceDialog = ({
   }, [platformOptions, platformSearch]);
 
   const intentOptions = useMemo(() => {
-    const platform = normalizePlatform(selectedPlatform);
     const intents = new Set<string>();
-    for (const item of catalog?.items ?? []) {
-      if (normalizePlatform(item.platform) !== platform) continue;
+    for (const item of selectedCapability?.intents ?? []) {
       if (item.intent) intents.add(item.intent);
     }
     if (intents.size === 0) intents.add("search");
     return Array.from(intents).sort((a, b) => a.localeCompare(b));
-  }, [catalog?.items, selectedPlatform]);
+  }, [selectedCapability?.intents]);
 
   const selectedCatalogItem = useMemo(() => {
-    const platform = normalizePlatform(selectedPlatform);
-    if (!platform || !selectedIntentType) return null;
+    if (!selectedIntentType) return null;
     return (
-      (catalog?.items ?? []).find(
-        (item) =>
-          normalizePlatform(item.platform) === platform && item.intent === selectedIntentType
+      (selectedCapability?.intents ?? []).find(
+        (item) => item.intent === selectedIntentType
       ) ?? null
     );
-  }, [catalog?.items, selectedPlatform, selectedIntentType]);
+  }, [selectedCapability?.intents, selectedIntentType]);
 
   useEffect(() => {
     const sampleArgs = selectedCatalogItem?.sample?.intentArgs ?? {};
@@ -745,10 +715,7 @@ const SourceDialog = ({
   });
 
   const credentials = credentialData?.credentials ?? [];
-  const authRequired = useMemo(
-    () => requiresPlatformAuth(selectedPlatform),
-    [selectedPlatform]
-  );
+  const authRequired = !!selectedCapability?.authRequirement.required;
   const hasUploadedAuth = credentials.length > 0;
   const selectedCredentialId = form.watch("credentialId");
   const effectiveCredentialId =
@@ -962,12 +929,12 @@ const SourceDialog = ({
       toast.error("Name is required.");
       return;
     }
-    if (loadingCatalog) {
-      toast.error("Scripts catalog is loading, please retry.");
+    if (loadingCapabilities) {
+      toast.error("Source capabilities are loading, please retry.");
       return;
     }
-    if (!catalog || !Array.isArray(catalog.items) || catalog.items.length === 0) {
-      toast.error("Scripts catalog unavailable. Please retry later.");
+    if (!capabilities.length) {
+      toast.error("Source capabilities unavailable. Please retry later.");
       return;
     }
     if (!selectedPlatform) {
@@ -1072,7 +1039,7 @@ const SourceDialog = ({
                           <span className="truncate">{selectedPlatform}</span>
                           <Badge variant="outline">{getPlatformRegion(selectedPlatform)}</Badge>
                         </>
-                      ) : loadingCatalog ? (
+                      ) : loadingCapabilities ? (
                         <span className="text-muted-foreground">Loading...</span>
                       ) : (
                         <span className="text-muted-foreground">Select platform</span>
@@ -1104,12 +1071,11 @@ const SourceDialog = ({
                           className="max-w-full"
                           onSelect={() => {
                             setSelectedPlatform(platform);
-                            const available = (catalog?.items ?? []).filter(
-                              (item) =>
-                                normalizePlatform(item.platform) === normalizePlatform(platform)
-                            );
+                            const available =
+                              capabilityByPlatform.get(normalizePlatform(platform))
+                                ?.intents ?? [];
                             if (available.length > 0) {
-                              setSelectedIntentType(available[0]?.intent || "search");
+                              setSelectedIntentType(available[0]?.intent ?? "search");
                             }
                             setPlatformPopoverOpen(false);
                           }}

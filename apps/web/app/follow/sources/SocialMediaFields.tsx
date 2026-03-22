@@ -136,6 +136,11 @@ type GatherScriptCatalogItem = {
   };
 };
 
+type SourceCapabilityItem = {
+  platform: string;
+  intents: GatherScriptCatalogItem[];
+};
+
 type PlatformIntentStats = {
   intents: number;
 };
@@ -461,20 +466,22 @@ export const SocialMediaFields = ({
     const fetchPlatformPresetStats = async () => {
       try {
         const response = await fetch(
-          "/api/follow/gather-scripts/catalog",
+          "/api/follow/source-capabilities?executionEngine=gather_playwright",
           { signal: controller.signal }
         );
         if (!response.ok) return;
         const data = await response.json();
-        const platforms = Array.isArray(data?.platforms)
-          ? (data.platforms as Array<{ platform: string; intents: string[] }>)
+        const capabilityItems = Array.isArray(data?.items)
+          ? (data.items as SourceCapabilityItem[])
           : [];
 
         const stats: Record<string, PlatformIntentStats> = {};
-        for (const item of platforms) {
+        for (const item of capabilityItems) {
           const platform = item.platform?.toUpperCase?.() ?? "";
           if (!platform) continue;
-          stats[platform] = { intents: Array.isArray(item.intents) ? item.intents.length : 0 };
+          stats[platform] = {
+            intents: Array.isArray(item.intents) ? item.intents.length : 0,
+          };
         }
 
         setPlatformPresetStats(stats);
@@ -526,16 +533,17 @@ export const SocialMediaFields = ({
       setLoadingCatalog(true);
       try {
         const response = await fetch(
-          `/api/follow/gather-scripts/catalog?platform=${encodeURIComponent(
+          `/api/follow/source-capabilities?executionEngine=gather_playwright&platform=${encodeURIComponent(
             socialPlatform
           )}`,
           { signal: controller.signal }
         );
         if (!response.ok) return;
         const data = await response.json();
-        const items = Array.isArray(data?.items)
-          ? (data.items as GatherScriptCatalogItem[])
-          : [];
+        const capabilityItem = Array.isArray(data?.items)
+          ? ((data.items as SourceCapabilityItem[])[0] ?? null)
+          : null;
+        const items = capabilityItem?.intents ?? [];
         const nextOptions: IntentOption[] = items
           .map((item) => ({
             id: `${item.platform}:${item.intent}:${item.key}`,
