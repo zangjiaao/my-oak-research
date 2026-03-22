@@ -2,11 +2,13 @@
 
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, PlusIcon } from "lucide-react";
+import { Loader2, Minus, Plus, PlusIcon } from "lucide-react";
 import { toast } from "sonner";
 
+import type { Proxy } from "@/app/generated/prisma";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { ControlledSelect } from "@/components/ui/controlled-select";
 import {
   Dialog,
   DialogContent,
@@ -17,7 +19,6 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
@@ -68,6 +69,12 @@ type ItemFormState = {
 };
 
 const SELECT_NONE = "__none__";
+const EMPTY_ARG_ENTRY = { key: "", value: "" };
+
+type ScriptArgEntry = {
+  key: string;
+  value: string;
+};
 
 function isEmptyValue(value: unknown): boolean {
   if (value === null || value === undefined) return true;
@@ -108,12 +115,22 @@ function setByPath(input: Record<string, unknown>, path: string, value: unknown)
   return output;
 }
 
-function labelFromPath(path: string): string {
-  return path
-    .split(".")
-    .slice(-1)[0]
-    .replace(/([A-Z])/g, " $1")
-    .replace(/^./, (char) => char.toUpperCase());
+function toScriptArgEntries(value: unknown): ScriptArgEntry[] {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return [{ ...EMPTY_ARG_ENTRY }];
+  }
+  const entries = Object.entries(value as Record<string, unknown>).map(([key, raw]) => ({
+    key,
+    value: typeof raw === "string" ? raw : JSON.stringify(raw),
+  }));
+  return entries.length > 0 ? entries : [{ ...EMPTY_ARG_ENTRY }];
+}
+
+function toScriptArgs(entries: ScriptArgEntry[]): Record<string, string> {
+  const pairs = entries
+    .map((entry) => ({ key: entry.key.trim(), value: entry.value.trim() }))
+    .filter((entry) => entry.key.length > 0);
+  return Object.fromEntries(pairs.map((entry) => [entry.key, entry.value]));
 }
 
 function groupedByCategory(templates: BatchTemplate[]) {
@@ -139,7 +156,7 @@ function groupedByPlatform(templates: BatchTemplate[]) {
   }, {});
 }
 
-const BatchCreateSourcesDialog = () => {
+const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
   const [open, setOpen] = useState(false);
   const [state, setState] = useState<Record<string, ItemFormState>>({});
   const [defaults, setDefaults] = useState<{
@@ -443,49 +460,111 @@ const BatchCreateSourcesDialog = () => {
                           <div className="text-sm font-semibold">{template.title}</div>
                           <div className="text-xs text-muted-foreground">{template.description}</div>
 
-                          {template.requiredFields.map((field) => {
-                            const currentValue = getByPath(config, field);
-                            const isUrl = field.toLowerCase().includes("url");
-                            return (
-                              <div key={field} className="space-y-1">
-                                <Label>{labelFromPath(field)}</Label>
-                                {isUrl ? (
-                                  <Textarea
-                                    rows={2}
-                                    placeholder="One URL per line"
-                                    value={String(currentValue ?? "")}
-                                    onChange={(event) =>
-                                      handleConfigChange(template.key, field, event.target.value)
-                                    }
-                                  />
-                                ) : (
-                                  <Input
-                                    value={String(currentValue ?? "")}
-                                    onChange={(event) =>
-                                      handleConfigChange(template.key, field, event.target.value)
-                                    }
-                                  />
-                                )}
-                              </div>
-                            );
-                          })}
+                          <div className="space-y-2">
+                            <Label>Script Args</Label>
+                            <div className="grid gap-2">
+                              {toScriptArgEntries(getByPath(config, "intent.args")).map(
+                                (entry, index, list) => (
+                                  <div
+                                    key={`${template.key}-arg-${index}`}
+                                    className="grid grid-cols-[1fr_1fr_auto_auto] gap-2"
+                                  >
+                                    <Input
+                                      placeholder="key"
+                                      value={entry.key}
+                                      onChange={(event) => {
+                                        const next = toScriptArgEntries(
+                                          getByPath(getCurrentConfig(template), "intent.args")
+                                        );
+                                        next[index] = {
+                                          ...next[index],
+                                          key: event.target.value,
+                                        };
+                                        handleConfigChange(
+                                          template.key,
+                                          "intent.args",
+                                          toScriptArgs(next)
+                                        );
+                                      }}
+                                    />
+                                    <Input
+                                      placeholder="value"
+                                      value={entry.value}
+                                      onChange={(event) => {
+                                        const next = toScriptArgEntries(
+                                          getByPath(getCurrentConfig(template), "intent.args")
+                                        );
+                                        next[index] = {
+                                          ...next[index],
+                                          value: event.target.value,
+                                        };
+                                        handleConfigChange(
+                                          template.key,
+                                          "intent.args",
+                                          toScriptArgs(next)
+                                        );
+                                      }}
+                                    />
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="icon"
+                                      aria-label="Add arg row"
+                                      onClick={() => {
+                                        const next = toScriptArgEntries(
+                                          getByPath(getCurrentConfig(template), "intent.args")
+                                        );
+                                        next.splice(index + 1, 0, { ...EMPTY_ARG_ENTRY });
+                                        handleConfigChange(
+                                          template.key,
+                                          "intent.args",
+                                          toScriptArgs(next)
+                                        );
+                                      }}
+                                    >
+                                      <Plus className="size-4" />
+                                    </Button>
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="icon"
+                                      aria-label="Remove arg row"
+                                      disabled={list.length <= 1}
+                                      onClick={() => {
+                                        if (list.length <= 1) return;
+                                        const next = toScriptArgEntries(
+                                          getByPath(getCurrentConfig(template), "intent.args")
+                                        ).filter((_, itemIndex) => itemIndex !== index);
+                                        handleConfigChange(
+                                          template.key,
+                                          "intent.args",
+                                          toScriptArgs(next)
+                                        );
+                                      }}
+                                    >
+                                      <Minus className="size-4" />
+                                    </Button>
+                                  </div>
+                                )
+                              )}
+                            </div>
+                          </div>
 
                           <div className="space-y-1.5">
                             <Label>Network</Label>
-                            <Select
-                              value={String((config.networkPolicy as string | undefined) ?? template.networkPolicy)}
+                            <ControlledSelect
+                              value={String((config.proxyId as string | undefined) ?? "") || null}
                               onValueChange={(value) =>
-                                handleConfigChange(template.key, "networkPolicy", value)
+                                handleConfigChange(template.key, "proxyId", value)
                               }
+                              placeholder="No proxy"
                             >
-                              <SelectTrigger className="w-full">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="DEFAULT">DEFAULT</SelectItem>
-                                <SelectItem value="TOR_SOCKS5H">TOR_SOCKS5H</SelectItem>
-                              </SelectContent>
-                            </Select>
+                              {proxies.map((proxy) => (
+                                <SelectItem key={proxy.id} value={proxy.id}>
+                                  {proxy.name}
+                                </SelectItem>
+                              ))}
+                            </ControlledSelect>
                           </div>
 
                           {template.credentialRequirements.map((requirement) => {

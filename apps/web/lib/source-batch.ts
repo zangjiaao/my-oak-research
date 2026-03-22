@@ -453,6 +453,10 @@ export function buildSourceCreateData(input: {
 }) {
   const { template, config, defaults, credentialRefs, identity } = input;
 
+  const resolvedProxyId =
+    typeof config.proxyId === "string" && config.proxyId.trim()
+      ? config.proxyId.trim()
+      : null;
   const resolvedCredentialId = resolveCredentialId(template, config, credentialRefs);
 
   const base = {
@@ -461,7 +465,7 @@ export function buildSourceCreateData(input: {
     type: template.type,
     active: defaults?.active ?? true,
     rateLimit: null,
-    proxyId: null,
+    proxyId: resolvedProxyId,
     credentialId: resolvedCredentialId,
   };
 
@@ -477,7 +481,7 @@ export function buildSourceCreateData(input: {
         parseRules: withJsonNull(config.parseRules ?? null),
         robotsRespect:
           typeof config.robotsRespect === "boolean" ? config.robotsRespect : true,
-        proxyId: null,
+        proxyId: resolvedProxyId,
       },
     };
   }
@@ -515,6 +519,7 @@ export function buildSourceCreateData(input: {
       ...(asRecord(config.options)),
       tags: template.tags,
       networkPolicy: effectiveNetworkPolicy,
+      proxyId: resolvedProxyId,
       executionMode: "worker-dispatch",
     };
     return {
@@ -569,7 +574,7 @@ export function buildSourceCreateData(input: {
       platform: template.platform,
       config: toPrismaJsonObject(socialConfig),
       credentialId: resolvedCredentialId,
-      proxyId: null,
+      proxyId: resolvedProxyId,
       keywordStrategy:
         typeof config.keywordStrategy === "string"
           ? config.keywordStrategy
