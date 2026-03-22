@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Check, ChevronsUpDown } from "lucide-react";
+import { Check, ChevronDown, ChevronsUpDown, Loader2 } from "lucide-react";
 
 import { SettingEditDialog } from "@/components/layout";
 import { Label } from "@/components/ui/label";
@@ -29,6 +29,12 @@ import {
   CommandItem,
 } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Switch } from "@/components/ui/switch";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { ErrorMessage } from "@/components/business";
 import { apiFetcher } from "@/lib/fetcher";
 import type { Proxy } from "@/app/generated/prisma";
@@ -69,10 +75,20 @@ type DriverConfigInput = {
   headless: boolean;
   stateFile: string;
   filterMinChars: number;
-  proxyHost: string;
-  proxyPort: string;
-  proxyUsername: string;
-  proxyPassword: string;
+  proxy?: Proxy | null;
+};
+
+type CredentialListResponse = {
+  credentials: Array<{
+    id: string;
+    name: string;
+    kind: string;
+  }>;
+};
+
+type ScriptArgEntry = {
+  key: string;
+  value: string;
 };
 
 const PLATFORM_CATEGORY_MAP: Record<string, SourceCategory> = {
@@ -121,20 +137,6 @@ function getPlatformRegion(platform: string): "国内" | "国外" {
   return DOMESTIC_PLATFORMS.has(normalizePlatform(platform)) ? "国内" : "国外";
 }
 
-function parseArgsText(argsText: string): Record<string, unknown> {
-  const raw = argsText.trim();
-  if (!raw) return {};
-  try {
-    const parsed = JSON.parse(raw);
-    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-      return parsed as Record<string, unknown>;
-    }
-    return {};
-  } catch {
-    return {};
-  }
-}
-
 function splitToUrls(value: unknown): string[] {
   if (Array.isArray(value)) {
     return value.map((item) => String(item).trim()).filter(Boolean);
@@ -147,38 +149,78 @@ function splitToUrls(value: unknown): string[] {
     .filter(Boolean);
 }
 
-function stringifyIntentArgs(value: unknown): string {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
-    return "{}";
-  }
-  return JSON.stringify(value, null, 2);
-}
-
 function parseNumber(value: unknown, fallback: number): number {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
+function parseProxyUrl(proxyUrl: string): {
+  host: string;
+  port: number;
+  username?: string;
+  password?: string;
+} | null {
+  const raw = proxyUrl.trim();
+  if (!raw) return null;
+  try {
+    const parsed = new URL(raw);
+    return {
+      host: parsed.hostname,
+      port: parsed.port ? Number(parsed.port) : 8080,
+      username: parsed.username || undefined,
+      password: parsed.password || undefined,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function toScriptArgEntries(value: unknown): ScriptArgEntry[] {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return [];
+  return Object.entries(value as Record<string, unknown>).map(([key, fieldValue]) => ({
+    key,
+    value:
+      fieldValue == null
+        ? ""
+        : typeof fieldValue === "string"
+          ? fieldValue
+          : JSON.stringify(fieldValue),
+  }));
+}
+
+function parseScriptArgValue(raw: string): unknown {
+  const trimmed = raw.trim();
+  if (!trimmed) return "";
+  if (trimmed === "true") return true;
+  if (trimmed === "false") return false;
+  if (/^-?\d+(\.\d+)?$/.test(trimmed)) return Number(trimmed);
+  if ((trimmed.startsWith("{") && trimmed.endsWith("}")) || (trimmed.startsWith("[") && trimmed.endsWith("]"))) {
+    try {
+      return JSON.parse(trimmed);
+    } catch {
+      return raw;
+    }
+  }
+  return raw;
+}
+
+function entriesToScriptArgs(entries: ScriptArgEntry[]): Record<string, unknown> {
+  const output: Record<string, unknown> = {};
+  for (const entry of entries) {
+    const key = entry.key.trim();
+    if (!key) continue;
+    output[key] = parseScriptArgValue(entry.value);
+  }
+  return output;
+}
+
 function buildDriverConfig(input: {
   intentType: string;
-  intentArgsText: string;
+  intentArgs: Record<string, unknown>;
   config: DriverConfigInput;
 }) {
-  const { intentType, intentArgsText, config } = input;
-  const proxyPort = Number(config.proxyPort);
-  const hasProxy =
-    !!config.proxyHost.trim() ||
-    Number.isFinite(proxyPort) ||
-    !!config.proxyUsername.trim() ||
-    !!config.proxyPassword;
-  const proxy = hasProxy
-    ? {
-        host: config.proxyHost.trim() || "localhost",
-        port: Number.isFinite(proxyPort) ? proxyPort : 8080,
-        username: config.proxyUsername.trim() || undefined,
-        password: config.proxyPassword || undefined,
-      }
-    : null;
+  const { intentType, intentArgs, config } = input;
+  const proxy = config.proxy?.url ? parseProxyUrl(config.proxy.url) : null;
   return {
     poolEnabled: config.poolEnabled,
     poolIdleTimeoutMs: parseNumber(config.poolIdleTimeoutMs, 120000),
@@ -186,7 +228,7 @@ function buildDriverConfig(input: {
     stateFile: config.stateFile.trim() || undefined,
     script: {
       type: intentType || "search",
-      args: parseArgsText(intentArgsText),
+      args: intentArgs,
     },
     filter: {
       minChars: parseNumber(config.filterMinChars, 8),
@@ -205,32 +247,24 @@ function getInitialScriptState(source?: SourceWithRelations): {
   category: SourceCategory;
   platform: string;
   intentType: string;
-  intentArgsText: string;
+  scriptArgs: Record<string, unknown>;
   poolEnabled: boolean;
   poolIdleTimeoutMs: number;
   headless: boolean;
   stateFile: string;
   filterMinChars: number;
-  proxyHost: string;
-  proxyPort: string;
-  proxyUsername: string;
-  proxyPassword: string;
 } {
   if (!source) {
     return {
       category: "INTERACTIVE",
       platform: "",
       intentType: "search",
-      intentArgsText: "{}",
+      scriptArgs: {},
       poolEnabled: true,
       poolIdleTimeoutMs: 120000,
       headless: false,
       stateFile: ".auth/x_auth.json",
       filterMinChars: 8,
-      proxyHost: "",
-      proxyPort: "",
-      proxyUsername: "",
-      proxyPassword: "",
     };
   }
 
@@ -252,14 +286,6 @@ function getInitialScriptState(source?: SourceWithRelations): {
       driver.filter && typeof driver.filter === "object" && !Array.isArray(driver.filter)
         ? (driver.filter as Record<string, unknown>)
         : {};
-    const network =
-      driver.network && typeof driver.network === "object" && !Array.isArray(driver.network)
-        ? (driver.network as Record<string, unknown>)
-        : {};
-    const proxy =
-      network.proxy && typeof network.proxy === "object" && !Array.isArray(network.proxy)
-        ? (network.proxy as Record<string, unknown>)
-        : {};
     const intentArgs =
       script.args && typeof script.args === "object" && !Array.isArray(script.args)
         ? (script.args as Record<string, unknown>)
@@ -275,7 +301,7 @@ function getInitialScriptState(source?: SourceWithRelations): {
         (typeof intent.type === "string" && intent.type.trim())
           ? String(script.type ?? intent.type)
           : "search",
-      intentArgsText: stringifyIntentArgs(intentArgs),
+      scriptArgs: intentArgs,
       poolEnabled: typeof driver.poolEnabled === "boolean" ? driver.poolEnabled : true,
       poolIdleTimeoutMs: parseNumber(driver.poolIdleTimeoutMs, 120000),
       headless: typeof driver.headless === "boolean" ? driver.headless : false,
@@ -284,13 +310,6 @@ function getInitialScriptState(source?: SourceWithRelations): {
           ? driver.stateFile
           : ".auth/x_auth.json",
       filterMinChars: parseNumber(filter.minChars, 8),
-      proxyHost: typeof proxy.host === "string" ? proxy.host : "",
-      proxyPort:
-        typeof proxy.port === "number" && Number.isFinite(proxy.port)
-          ? String(proxy.port)
-          : "",
-      proxyUsername: typeof proxy.username === "string" ? proxy.username : "",
-      proxyPassword: typeof proxy.password === "string" ? proxy.password : "",
     };
   }
 
@@ -303,16 +322,12 @@ function getInitialScriptState(source?: SourceWithRelations): {
       category: inferCategoryFromPlatform(String(options.provider ?? source.search.platform ?? "")),
       platform: String(options.provider ?? source.search.platform ?? ""),
       intentType: "search",
-      intentArgsText: stringifyIntentArgs({ query: source.search.objective ?? "" }),
+      scriptArgs: { query: source.search.objective ?? "" },
       poolEnabled: true,
       poolIdleTimeoutMs: 120000,
       headless: false,
       stateFile: "",
       filterMinChars: 8,
-      proxyHost: "",
-      proxyPort: "",
-      proxyUsername: "",
-      proxyPassword: "",
     };
   }
 
@@ -321,16 +336,12 @@ function getInitialScriptState(source?: SourceWithRelations): {
       category: "STREAM",
       platform: "BBC",
       intentType: "crawl",
-      intentArgsText: stringifyIntentArgs({ url: source.web.url ?? [] }),
+      scriptArgs: { url: source.web.url ?? [] },
       poolEnabled: true,
       poolIdleTimeoutMs: 120000,
       headless: false,
       stateFile: "",
       filterMinChars: 8,
-      proxyHost: "",
-      proxyPort: "",
-      proxyUsername: "",
-      proxyPassword: "",
     };
   }
 
@@ -339,16 +350,12 @@ function getInitialScriptState(source?: SourceWithRelations): {
       category: "RETRIEVAL",
       platform: "DARKWEBGO",
       intentType: "search",
-      intentArgsText: stringifyIntentArgs({ url: source.darknet.url ?? [] }),
+      scriptArgs: { url: source.darknet.url ?? [] },
       poolEnabled: true,
       poolIdleTimeoutMs: 120000,
       headless: false,
       stateFile: "",
       filterMinChars: 8,
-      proxyHost: "",
-      proxyPort: "",
-      proxyUsername: "",
-      proxyPassword: "",
     };
   }
 
@@ -356,16 +363,12 @@ function getInitialScriptState(source?: SourceWithRelations): {
     category: "INTERACTIVE",
     platform: "",
     intentType: "search",
-    intentArgsText: "{}",
+    scriptArgs: {},
     poolEnabled: true,
     poolIdleTimeoutMs: 120000,
     headless: false,
     stateFile: ".auth/x_auth.json",
     filterMinChars: 8,
-    proxyHost: "",
-    proxyPort: "",
-    proxyUsername: "",
-    proxyPassword: "",
   };
 }
 
@@ -374,12 +377,12 @@ function buildPayloadFromUnified(input: {
   values: SourceFormValues;
   platform: string;
   intentType: string;
-  intentArgsText: string;
+  scriptArgs: Record<string, unknown>;
   driverConfig: DriverConfigInput;
 }) {
-  const { effectiveType, values, platform, intentType, intentArgsText, driverConfig } = input;
-  const intentArgs = parseArgsText(intentArgsText);
-  const driver = buildDriverConfig({ intentType, intentArgsText, config: driverConfig });
+  const { effectiveType, values, platform, intentType, scriptArgs, driverConfig } = input;
+  const intentArgs = scriptArgs;
+  const driver = buildDriverConfig({ intentType, intentArgs, config: driverConfig });
 
   const base = {
     name: values.name.trim(),
@@ -529,16 +532,19 @@ const SourceDialog = ({
 
   const [selectedPlatform, setSelectedPlatform] = useState(initialScriptState.platform);
   const [selectedIntentType, setSelectedIntentType] = useState(initialScriptState.intentType);
-  const [intentArgsText, setIntentArgsText] = useState(initialScriptState.intentArgsText);
+  const [scriptArgEntries, setScriptArgEntries] = useState<ScriptArgEntry[]>(
+    toScriptArgEntries(initialScriptState.scriptArgs)
+  );
   const [poolEnabled, setPoolEnabled] = useState(initialScriptState.poolEnabled);
   const [poolIdleTimeoutMs, setPoolIdleTimeoutMs] = useState(initialScriptState.poolIdleTimeoutMs);
   const [headless, setHeadless] = useState(initialScriptState.headless);
   const [stateFile, setStateFile] = useState(initialScriptState.stateFile);
   const [filterMinChars, setFilterMinChars] = useState(initialScriptState.filterMinChars);
-  const [proxyHost, setProxyHost] = useState(initialScriptState.proxyHost);
-  const [proxyPort, setProxyPort] = useState(initialScriptState.proxyPort);
-  const [proxyUsername, setProxyUsername] = useState(initialScriptState.proxyUsername);
-  const [proxyPassword, setProxyPassword] = useState(initialScriptState.proxyPassword);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [credentialName, setCredentialName] = useState("");
+  const [authUploadText, setAuthUploadText] = useState("");
+  const [authBusy, setAuthBusy] = useState(false);
+  const [authStatus, setAuthStatus] = useState<string | null>(null);
   const [platformPopoverOpen, setPlatformPopoverOpen] = useState(false);
   const [platformSearch, setPlatformSearch] = useState("");
 
@@ -546,16 +552,16 @@ const SourceDialog = ({
     if (!open) return;
     setSelectedPlatform(initialScriptState.platform);
     setSelectedIntentType(initialScriptState.intentType);
-    setIntentArgsText(initialScriptState.intentArgsText);
+    setScriptArgEntries(toScriptArgEntries(initialScriptState.scriptArgs));
     setPoolEnabled(initialScriptState.poolEnabled);
     setPoolIdleTimeoutMs(initialScriptState.poolIdleTimeoutMs);
     setHeadless(initialScriptState.headless);
     setStateFile(initialScriptState.stateFile);
     setFilterMinChars(initialScriptState.filterMinChars);
-    setProxyHost(initialScriptState.proxyHost);
-    setProxyPort(initialScriptState.proxyPort);
-    setProxyUsername(initialScriptState.proxyUsername);
-    setProxyPassword(initialScriptState.proxyPassword);
+    setAdvancedOpen(false);
+    setCredentialName("");
+    setAuthUploadText("");
+    setAuthStatus(null);
   }, [open, initialScriptState]);
 
   const { data: catalog, isLoading: loadingCatalog } = useQuery<GatherCatalogResponse>({
@@ -607,6 +613,11 @@ const SourceDialog = ({
 
   const expectedCategory = inferCategoryFromSourceType(effectiveType);
   const watchedValues = form.watch();
+  const watchedProxyId = form.watch("proxyId");
+  const selectedProxy = useMemo(
+    () => proxies.find((proxy) => proxy.id === watchedProxyId) ?? null,
+    [proxies, watchedProxyId]
+  );
 
   const platformOptions = useMemo(() => {
     const items = catalog?.items ?? [];
@@ -639,35 +650,143 @@ const SourceDialog = ({
     return Array.from(intents).sort((a, b) => a.localeCompare(b));
   }, [catalog?.items, selectedPlatform]);
 
-  const intentArgsParseError = useMemo(() => {
-    const raw = intentArgsText.trim();
-    if (!raw) return null;
-    try {
-      JSON.parse(raw);
-      return null;
-    } catch {
-      return "Intent args must be valid JSON to generate request preview.";
+  const selectedCatalogItem = useMemo(() => {
+    const platform = normalizePlatform(selectedPlatform);
+    if (!platform || !selectedIntentType) return null;
+    return (
+      (catalog?.items ?? []).find(
+        (item) =>
+          normalizePlatform(item.platform) === platform && item.intent === selectedIntentType
+      ) ?? null
+    );
+  }, [catalog?.items, selectedPlatform, selectedIntentType]);
+
+  useEffect(() => {
+    const sampleArgs = selectedCatalogItem?.sample?.intentArgs ?? {};
+    const sampleEntries = toScriptArgEntries(sampleArgs);
+    if (sampleEntries.length === 0) return;
+    setScriptArgEntries((prev) => {
+      if (prev.length === 0) return sampleEntries;
+      const existingKeys = new Set(prev.map((entry) => entry.key.trim()).filter(Boolean));
+      const missing = sampleEntries.filter((entry) => !existingKeys.has(entry.key.trim()));
+      if (missing.length === 0) return prev;
+      return [...prev, ...missing.map((entry) => ({ ...entry, value: "" }))];
+    });
+  }, [selectedCatalogItem]);
+
+  const scriptArgs = useMemo(() => entriesToScriptArgs(scriptArgEntries), [scriptArgEntries]);
+
+  const {
+    data: credentialData,
+    isLoading: loadingCredentials,
+    refetch: refetchCredentials,
+  } = useQuery<CredentialListResponse>({
+    queryKey: ["source-credentials", normalizePlatform(selectedPlatform)],
+    queryFn: () =>
+      apiFetcher(
+        selectedPlatform
+          ? `/api/follow/credentials?platform=${encodeURIComponent(
+              normalizePlatform(selectedPlatform).toLowerCase()
+            )}`
+          : "/api/follow/credentials"
+      ),
+    enabled: open,
+  });
+
+  const credentials = credentialData?.credentials ?? [];
+
+  const handleVerifyAuth = async () => {
+    if (!selectedPlatform) {
+      toast.error("Please select a platform first.");
+      return;
     }
-  }, [intentArgsText]);
+    setAuthBusy(true);
+    setAuthStatus(null);
+    try {
+      const result = await apiFetcher(
+        `/api/follow/sources/auth/${encodeURIComponent(
+          normalizePlatform(selectedPlatform).toLowerCase()
+        )}/cookie?verify=true`
+      );
+      const message = String(result?.message ?? "Verification completed.");
+      setAuthStatus(message);
+      if (result?.authenticated) {
+        toast.success(message);
+      } else {
+        toast.error(message);
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Auth verification failed.";
+      setAuthStatus(message);
+      toast.error(message);
+    } finally {
+      setAuthBusy(false);
+    }
+  };
+
+  const handleUploadAuth = async () => {
+    if (!selectedPlatform) {
+      toast.error("Please select a platform first.");
+      return;
+    }
+    if (!authUploadText.trim()) {
+      toast.error("Please paste auth JSON first.");
+      return;
+    }
+    let authData: Record<string, unknown>;
+    try {
+      authData = JSON.parse(authUploadText);
+    } catch {
+      toast.error("Auth JSON is invalid.");
+      return;
+    }
+
+    setAuthBusy(true);
+    setAuthStatus(null);
+    try {
+      const result = await apiFetcher(
+        `/api/follow/sources/auth/${encodeURIComponent(
+          normalizePlatform(selectedPlatform).toLowerCase()
+        )}/cookie`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            authData,
+            sourceId: currentSource?.id,
+            ...(credentialName.trim() ? { name: credentialName.trim() } : {}),
+          }),
+        }
+      );
+      if (result?.credentialId) {
+        form.setValue("credentialId", String(result.credentialId));
+      }
+      const message = String(result?.message ?? "Auth uploaded and verified.");
+      setAuthStatus(message);
+      toast.success(message);
+      await refetchCredentials();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Auth upload failed.";
+      setAuthStatus(message);
+      toast.error(message);
+    } finally {
+      setAuthBusy(false);
+    }
+  };
 
   const sourceApiPreview = useMemo(() => {
-    if (intentArgsParseError) return null;
     const built = buildPayloadFromUnified({
       effectiveType,
       values: watchedValues,
       platform: selectedPlatform,
       intentType: selectedIntentType,
-      intentArgsText,
+      scriptArgs,
       driverConfig: {
         poolEnabled,
         poolIdleTimeoutMs,
         headless,
         stateFile,
         filterMinChars,
-        proxyHost,
-        proxyPort,
-        proxyUsername,
-        proxyPassword,
+        proxy: selectedProxy,
       },
     });
     if ("error" in built) return { error: built.error } as const;
@@ -677,17 +796,13 @@ const SourceDialog = ({
     watchedValues,
     selectedPlatform,
     selectedIntentType,
-    intentArgsText,
+    scriptArgs,
     poolEnabled,
     poolIdleTimeoutMs,
     headless,
     stateFile,
     filterMinChars,
-    proxyHost,
-    proxyPort,
-    proxyUsername,
-    proxyPassword,
-    intentArgsParseError,
+    selectedProxy,
   ]);
 
   const sourceApiPreviewError =
@@ -698,43 +813,36 @@ const SourceDialog = ({
   const gatherRequestPreview = useMemo(() => {
     if (effectiveType !== "SOCIAL_MEDIA") return null;
     const normalizedPlatform = normalizePlatform(selectedPlatform);
-    if (!normalizedPlatform || intentArgsParseError) return null;
+    if (!normalizedPlatform) return null;
     return {
       sourceId: currentSource?.id ?? "__SOURCE_ID__",
       platform: normalizedPlatform.toLowerCase(),
       keywords: [],
       driver: buildDriverConfig({
         intentType: selectedIntentType,
-        intentArgsText,
+        intentArgs: scriptArgs,
         config: {
           poolEnabled,
           poolIdleTimeoutMs,
           headless,
           stateFile,
           filterMinChars,
-          proxyHost,
-          proxyPort,
-          proxyUsername,
-          proxyPassword,
+          proxy: selectedProxy,
         },
       }),
     };
   }, [
     effectiveType,
     selectedPlatform,
-    intentArgsParseError,
     currentSource?.id,
     selectedIntentType,
-    intentArgsText,
+    scriptArgs,
     poolEnabled,
     poolIdleTimeoutMs,
     headless,
     stateFile,
     filterMinChars,
-    proxyHost,
-    proxyPort,
-    proxyUsername,
-    proxyPassword,
+    selectedProxy,
   ]);
 
   const onSubmit = (values: SourceFormValues) => {
@@ -759,29 +867,19 @@ const SourceDialog = ({
       return;
     }
 
-    try {
-      JSON.parse(intentArgsText || "{}");
-    } catch {
-      toast.error("Intent args must be valid JSON.");
-      return;
-    }
-
     const built = buildPayloadFromUnified({
       effectiveType,
       values,
       platform: selectedPlatform,
       intentType: selectedIntentType,
-      intentArgsText,
+      scriptArgs,
       driverConfig: {
         poolEnabled,
         poolIdleTimeoutMs,
         headless,
         stateFile,
         filterMinChars,
-        proxyHost,
-        proxyPort,
-        proxyUsername,
-        proxyPassword,
+        proxy: selectedProxy,
       },
     });
 
@@ -918,17 +1016,62 @@ const SourceDialog = ({
           <CardHeader>
             <CardTitle>Platform Config</CardTitle>
             <CardDescription>
-              Configure driver runtime, script args, and proxy settings.
+              Configure auth, script, network, and advanced runtime settings.
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4">
-            <div className="grid gap-3 sm:grid-cols-3">
-              <div className="grid gap-2">
-                <Label>Script Type</Label>
+            <Card className="gap-3 border bg-background/70">
+              <CardHeader className="pb-0">
+                <CardTitle className="text-base">Auth</CardTitle>
+                <CardDescription>Upload and verify platform credential.</CardDescription>
+              </CardHeader>
+              <CardContent className="grid gap-3">
+                <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
+                  <ControlledSelect
+                    value={form.watch("credentialId") ?? null}
+                    onValueChange={(value) => form.setValue("credentialId", value)}
+                    placeholder={loadingCredentials ? "Loading credentials..." : "Select credential"}
+                  >
+                    {credentials.map((credential) => (
+                      <SelectItem key={credential.id} value={credential.id}>
+                        {credential.name}
+                      </SelectItem>
+                    ))}
+                  </ControlledSelect>
+                  <Button type="button" variant="outline" onClick={handleVerifyAuth} disabled={authBusy}>
+                    {authBusy ? <Loader2 className="size-4 animate-spin" /> : "Verify"}
+                  </Button>
+                </div>
+                <Input
+                  value={credentialName}
+                  onChange={(event) => setCredentialName(event.target.value)}
+                  placeholder="Credential name (optional)"
+                />
+                <Textarea
+                  rows={4}
+                  value={authUploadText}
+                  onChange={(event) => setAuthUploadText(event.target.value)}
+                  placeholder='{"cookies": [...], "origins": [...]}'
+                />
+                <Button type="button" variant="secondary" onClick={handleUploadAuth} disabled={authBusy}>
+                  {authBusy ? <Loader2 className="size-4 animate-spin" /> : "Upload & Verify"}
+                </Button>
+                {authStatus ? (
+                  <p className="text-xs text-muted-foreground">{authStatus}</p>
+                ) : null}
+              </CardContent>
+            </Card>
+
+            <Card className="gap-3 border bg-background/70">
+              <CardHeader className="pb-0">
+                <CardTitle className="text-base">Script</CardTitle>
+                <CardDescription>Choose script and configure args by key:value.</CardDescription>
+              </CardHeader>
+              <CardContent className="grid gap-3">
                 <ControlledSelect
                   value={selectedIntentType || null}
                   onValueChange={(value) => setSelectedIntentType(value ?? "search")}
-                  placeholder="Select intent"
+                  placeholder="Select script type"
                 >
                   {intentOptions.map((intent) => (
                     <SelectItem key={intent} value={intent}>
@@ -936,137 +1079,167 @@ const SourceDialog = ({
                     </SelectItem>
                   ))}
                 </ControlledSelect>
-              </div>
+                <div className="grid gap-2">
+                  {scriptArgEntries.map((entry, index) => (
+                    <div key={`${entry.key}-${index}`} className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
+                      <Input
+                        placeholder="key"
+                        value={entry.key}
+                        onChange={(event) =>
+                          setScriptArgEntries((prev) =>
+                            prev.map((item, itemIndex) =>
+                              itemIndex === index ? { ...item, key: event.target.value } : item
+                            )
+                          )
+                        }
+                      />
+                      <Input
+                        placeholder="value"
+                        value={entry.value}
+                        onChange={(event) =>
+                          setScriptArgEntries((prev) =>
+                            prev.map((item, itemIndex) =>
+                              itemIndex === index ? { ...item, value: event.target.value } : item
+                            )
+                          )
+                        }
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() =>
+                          setScriptArgEntries((prev) =>
+                            prev.filter((_, itemIndex) => itemIndex !== index)
+                          )
+                        }
+                      >
+                        Remove
+                      </Button>
+                    </div>
+                  ))}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() =>
+                      setScriptArgEntries((prev) => [...prev, { key: "", value: "" }])
+                    }
+                  >
+                    Add Arg
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
 
-              <div className="grid gap-2">
-                <Label>Pool Enabled</Label>
+            <Card className="gap-3 border bg-background/70">
+              <CardHeader className="pb-0">
+                <CardTitle className="text-base">Network</CardTitle>
+                <CardDescription>Select a proxy from proxy tab settings.</CardDescription>
+              </CardHeader>
+              <CardContent className="grid gap-3">
                 <ControlledSelect
-                  value={poolEnabled ? "true" : "false"}
-                  onValueChange={(value) => setPoolEnabled(value === "true")}
+                  value={form.watch("proxyId") ?? null}
+                  onValueChange={(value) => form.setValue("proxyId", value)}
+                  placeholder="No proxy"
                 >
-                  <SelectItem value="true">true</SelectItem>
-                  <SelectItem value="false">false</SelectItem>
+                  {proxies.map((proxy) => (
+                    <SelectItem key={proxy.id} value={proxy.id}>
+                      {proxy.name}
+                    </SelectItem>
+                  ))}
                 </ControlledSelect>
-              </div>
+              </CardContent>
+            </Card>
 
-              <div className="grid gap-2">
-                <Label>Headless</Label>
-                <ControlledSelect
-                  value={headless ? "true" : "false"}
-                  onValueChange={(value) => setHeadless(value === "true")}
-                >
-                  <SelectItem value="true">true</SelectItem>
-                  <SelectItem value="false">false</SelectItem>
-                </ControlledSelect>
-              </div>
-            </div>
+            <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>
+              <Card className="gap-3 border bg-background/70">
+                <CardHeader className="pb-0">
+                  <CollapsibleTrigger asChild>
+                    <Button type="button" variant="ghost" className="h-auto justify-between p-0">
+                      <span className="text-base font-semibold">Advanced</span>
+                      <ChevronDown className={cn("size-4 transition", advancedOpen ? "rotate-180" : "")} />
+                    </Button>
+                  </CollapsibleTrigger>
+                  <CardDescription>Headless, pool, and filter settings.</CardDescription>
+                </CardHeader>
+                <CollapsibleContent>
+                  <CardContent className="grid gap-4">
+                    <div className="flex items-center justify-between rounded-md border p-3">
+                      <Label htmlFor="headless-switch">Headless</Label>
+                      <Switch id="headless-switch" checked={headless} onCheckedChange={setHeadless} />
+                    </div>
 
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="grid gap-2">
-                <Label>Pool Idle Timeout (ms)</Label>
-                <Input
-                  type="number"
-                  min={1000}
-                  step={1000}
-                  value={poolIdleTimeoutMs}
-                  onChange={(event) =>
-                    setPoolIdleTimeoutMs(parseNumber(event.target.value, 120000))
-                  }
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label>State File</Label>
-                <Input
-                  value={stateFile}
-                  onChange={(event) => setStateFile(event.target.value)}
-                  placeholder=".auth/x_auth.json"
-                />
-              </div>
-            </div>
+                    <div className="grid gap-3 rounded-md border p-3">
+                      <p className="text-sm font-medium">Pool</p>
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="pool-switch">Pool Enable</Label>
+                        <Switch id="pool-switch" checked={poolEnabled} onCheckedChange={setPoolEnabled} />
+                      </div>
+                      <div className="grid gap-2">
+                        <Label>Idle Time (ms)</Label>
+                        <Input
+                          type="number"
+                          min={1000}
+                          step={1000}
+                          value={poolIdleTimeoutMs}
+                          onChange={(event) =>
+                            setPoolIdleTimeoutMs(parseNumber(event.target.value, 120000))
+                          }
+                        />
+                      </div>
+                    </div>
 
-            <div className="grid gap-2">
-              <Label htmlFor="intent-args">Script Args (JSON)</Label>
-              <Textarea
-                id="intent-args"
-                rows={8}
-                value={intentArgsText}
-                onChange={(event) => setIntentArgsText(event.target.value)}
-                placeholder='{"query": "..."}'
-              />
-            </div>
+                    <div className="grid gap-3 rounded-md border p-3">
+                      <p className="text-sm font-medium">Filter</p>
+                      <div className="grid gap-2">
+                        <Label>Min Chars</Label>
+                        <Input
+                          type="number"
+                          min={0}
+                          value={filterMinChars}
+                          onChange={(event) =>
+                            setFilterMinChars(parseNumber(event.target.value, 8))
+                          }
+                        />
+                      </div>
+                    </div>
 
-            <div className="grid gap-3 sm:grid-cols-3">
-              <div className="grid gap-2">
-                <Label>Filter Min Chars</Label>
-                <Input
-                  type="number"
-                  min={0}
-                  value={filterMinChars}
-                  onChange={(event) =>
-                    setFilterMinChars(parseNumber(event.target.value, 8))
-                  }
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label>Active</Label>
-                <ControlledSelect
-                  value={form.watch("active") ? "true" : "false"}
-                  onValueChange={(value) => form.setValue("active", value === "true")}
-                >
-                  <SelectItem value="true">true</SelectItem>
-                  <SelectItem value="false">false</SelectItem>
-                </ControlledSelect>
-              </div>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="grid gap-2">
+                        <Label>Active</Label>
+                        <ControlledSelect
+                          value={form.watch("active") ? "true" : "false"}
+                          onValueChange={(value) => form.setValue("active", value === "true")}
+                        >
+                          <SelectItem value="true">true</SelectItem>
+                          <SelectItem value="false">false</SelectItem>
+                        </ControlledSelect>
+                      </div>
+                      <div className="grid gap-2">
+                        <Label>Rate Limit</Label>
+                        <Input
+                          type="number"
+                          min={1}
+                          max={600}
+                          value={form.watch("rateLimit") ?? 10}
+                          onChange={(event) =>
+                            form.setValue("rateLimit", Number(event.target.value || 10))
+                          }
+                        />
+                      </div>
+                    </div>
 
-              <div className="grid gap-2">
-                <Label>Rate Limit</Label>
-                <Input
-                  type="number"
-                  min={1}
-                  max={600}
-                  value={form.watch("rateLimit") ?? 10}
-                  onChange={(event) =>
-                    form.setValue("rateLimit", Number(event.target.value || 10))
-                  }
-                />
-              </div>
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="grid gap-2">
-                <Label>Proxy Host</Label>
-                <Input
-                  value={proxyHost}
-                  onChange={(event) => setProxyHost(event.target.value)}
-                  placeholder="proxy.example.com"
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label>Proxy Port</Label>
-                <Input
-                  value={proxyPort}
-                  onChange={(event) => setProxyPort(event.target.value)}
-                  placeholder="8080"
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label>Proxy Username</Label>
-                <Input
-                  value={proxyUsername}
-                  onChange={(event) => setProxyUsername(event.target.value)}
-                  placeholder="proxyuser"
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label>Proxy Password</Label>
-                <Input
-                  type="password"
-                  value={proxyPassword}
-                  onChange={(event) => setProxyPassword(event.target.value)}
-                  placeholder="password"
-                />
-              </div>
-            </div>
+                    <div className="grid gap-2">
+                      <Label>State File</Label>
+                      <Input
+                        value={stateFile}
+                        onChange={(event) => setStateFile(event.target.value)}
+                        placeholder=".auth/x_auth.json"
+                      />
+                    </div>
+                  </CardContent>
+                </CollapsibleContent>
+              </Card>
+            </Collapsible>
           </CardContent>
         </Card>
 
@@ -1080,11 +1253,7 @@ const SourceDialog = ({
           <CardContent className="grid gap-4">
             <div className="grid gap-2">
               <p className="text-xs font-medium text-muted-foreground">Source API Payload</p>
-              {intentArgsParseError ? (
-                <div className="rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-xs text-destructive">
-                  {intentArgsParseError}
-                </div>
-              ) : sourceApiPreviewError ? (
+              {sourceApiPreviewError ? (
                 <div
                   className={cn(
                     "rounded-md px-3 py-2 text-xs",
