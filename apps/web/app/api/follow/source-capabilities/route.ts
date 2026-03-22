@@ -25,6 +25,8 @@ type GatherCatalogItem = {
   };
   meta?: {
     category?: string;
+    title?: string;
+    description?: string;
     auth?: {
       required?: boolean;
       kind?: string;

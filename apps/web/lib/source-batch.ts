@@ -55,6 +55,8 @@ type GatherCatalogItem = {
   };
   meta?: {
     category?: string;
+    title?: string;
+    description?: string;
     auth?: {
       required?: boolean;
       kind?: string;
@@ -100,9 +102,10 @@ function inferTemplateType(capability: SourceCapability): SourceType {
 }
 
 function inferRequiredIntentFields(args: Record<string, unknown>): string[] {
-  return Object.keys(args)
+  const fields = Object.keys(args)
     .filter((key) => REQUIRED_INTENT_ARGS.has(key.trim().toLowerCase()))
     .map((key) => `intent.args.${key}`);
+  return fields;
 }
 
 function buildCredentialRequirements(
@@ -133,6 +136,14 @@ function buildTemplateFromCapabilityIntent(
       ? (intent.sample.intentArgs as Record<string, unknown>)
       : {};
   const templateType = inferTemplateType(capability);
+  const intentType = intent.sample?.intentType ?? intent.intent;
+  const title = intent.title?.trim()
+    ? intent.title.trim()
+    : `${capability.platform} ${intent.intent}`;
+  const description = intent.description?.trim()
+    ? intent.description.trim()
+    : `Collect ${capability.platform} (${intent.intent}) via ${capability.execution.engine}.`;
+  const requiredFields = inferRequiredIntentFields(args);
 
   if (templateType === "SEARCH_ENGINE") {
     return {
@@ -144,20 +155,21 @@ function buildTemplateFromCapabilityIntent(
       networkPolicy: inferNetworkPolicy(capability.tags),
       tags: capability.tags,
       intent: {
-        type: intent.sample?.intentType ?? intent.intent,
+        type: intentType,
         args,
       },
-      title: `${capability.platform} Search`,
-      description: `Search via ${capability.platform} worker API capability.`,
+      title,
+      description,
       defaultConfig: {
-        platform: capability.platform,
-        engine: "CUSTOM",
-        objective: "",
-        apiEndpoint: null,
+        intent: {
+          type: intentType,
+          args,
+        },
+        networkPolicy: inferNetworkPolicy(capability.tags),
         options: { provider: capability.platform.toLowerCase() },
-        keywordStrategy: "AUTO",
       },
-      requiredFields: ["objective"],
+      requiredFields:
+        requiredFields.length > 0 ? requiredFields : ["intent.args.query"],
       credentialRequirements: buildCredentialRequirements(capability),
     };
   }
@@ -171,20 +183,21 @@ function buildTemplateFromCapabilityIntent(
     networkPolicy: inferNetworkPolicy(capability.tags),
     tags: capability.tags,
     intent: {
-      type: intent.sample?.intentType ?? intent.intent,
+      type: intentType,
       args,
     },
-    title: `${capability.platform} ${intent.intent}`,
-    description: `Collect ${capability.platform} (${intent.intent}) via gather capability.`,
+    title,
+    description,
     defaultConfig: {
       intent: {
-        type: intent.sample?.intentType ?? intent.intent,
+        type: intentType,
         args,
       },
+      networkPolicy: inferNetworkPolicy(capability.tags),
       driver: capability.execution.driver,
       keywordStrategy: "AUTO",
     },
-    requiredFields: inferRequiredIntentFields(args),
+    requiredFields,
     credentialRequirements: buildCredentialRequirements(capability),
   };
 }
@@ -434,42 +447,21 @@ export function buildSourceCreateData(input: {
   config: Record<string, unknown>;
   defaults?: {
     active?: boolean;
-    rateLimit?: number;
-    proxyId?: string | null;
   };
   credentialRefs?: Record<string, string | null | undefined>;
   identity: BatchIdentity;
 }) {
   const { template, config, defaults, credentialRefs, identity } = input;
 
-  const resolvedProxyId =
-    typeof config.proxyId === "string"
-      ? config.proxyId || null
-      : defaults?.proxyId ?? null;
-
   const resolvedCredentialId = resolveCredentialId(template, config, credentialRefs);
 
-  const displayName =
-    typeof config.name === "string" && config.name.trim()
-      ? config.name.trim()
-      : `${template.title} (${identity.intentArgsHash.slice(0, 6)})`;
-
-  const description =
-    typeof config.description === "string" && config.description.trim()
-      ? config.description.trim()
-      : template.description;
-  const descriptionWithTags =
-    template.tags.length > 0
-      ? `${description} [tags:${template.tags.join(",")}]`
-      : description;
-
   const base = {
-    name: displayName,
-    description: descriptionWithTags,
+    name: `${template.title} (${identity.intentArgsHash.slice(0, 6)})`,
+    description: template.description,
     type: template.type,
     active: defaults?.active ?? true,
-    rateLimit: defaults?.rateLimit ?? 10,
-    proxyId: resolvedProxyId,
+    rateLimit: null,
+    proxyId: null,
     credentialId: resolvedCredentialId,
   };
 
@@ -485,7 +477,7 @@ export function buildSourceCreateData(input: {
         parseRules: withJsonNull(config.parseRules ?? null),
         robotsRespect:
           typeof config.robotsRespect === "boolean" ? config.robotsRespect : true,
-        proxyId: resolvedProxyId,
+        proxyId: null,
       },
     };
   }
@@ -498,7 +490,7 @@ export function buildSourceCreateData(input: {
         headers: withJsonNull(config.headers ?? null),
         crawlerEngine:
           typeof config.crawlerEngine === "string" ? config.crawlerEngine : "FETCH",
-        proxyId: typeof resolvedProxyId === "string" ? resolvedProxyId : "",
+        proxyId: "",
         render: Boolean(config.render),
         parseRules: withJsonNull(config.parseRules ?? null),
       },
@@ -506,10 +498,23 @@ export function buildSourceCreateData(input: {
   }
 
   if (template.type === "SEARCH_ENGINE") {
+    const rawIntent = asRecord(config.intent);
+    const intentArgs = asRecord(rawIntent.args);
+    const query =
+      typeof intentArgs.query === "string" && intentArgs.query.trim()
+        ? intentArgs.query.trim()
+        : typeof intentArgs.keyword === "string" && intentArgs.keyword.trim()
+          ? intentArgs.keyword.trim()
+          : "";
+    const effectiveNetworkPolicy =
+      typeof config.networkPolicy === "string" &&
+      (config.networkPolicy === "DEFAULT" || config.networkPolicy === "TOR_SOCKS5H")
+        ? config.networkPolicy
+        : template.networkPolicy;
     const optionObject = {
       ...(asRecord(config.options)),
       tags: template.tags,
-      networkPolicy: template.networkPolicy,
+      networkPolicy: effectiveNetworkPolicy,
       executionMode: "worker-dispatch",
     };
     return {
@@ -517,7 +522,7 @@ export function buildSourceCreateData(input: {
       search: {
         platform: template.platform,
         engine: typeof config.engine === "string" ? config.engine : "CUSTOM",
-        objective: typeof config.objective === "string" ? config.objective.trim() : "",
+        objective: query,
         apiEndpoint:
           typeof config.apiEndpoint === "string" && config.apiEndpoint.trim()
             ? config.apiEndpoint.trim()
@@ -540,20 +545,22 @@ export function buildSourceCreateData(input: {
         : template.intent.type,
     args: asRecord(rawIntent.args),
   };
+  const effectiveNetworkPolicy =
+    typeof config.networkPolicy === "string" &&
+    (config.networkPolicy === "DEFAULT" || config.networkPolicy === "TOR_SOCKS5H")
+      ? config.networkPolicy
+      : template.networkPolicy;
 
   const socialConfig = {
     ...config,
     driver: "playwright",
     intent,
     tags: template.tags,
-    networkPolicy: template.networkPolicy,
+    networkPolicy: effectiveNetworkPolicy,
     executionMode: "worker-dispatch",
   };
 
-  delete (socialConfig as JsonObject).name;
-  delete (socialConfig as JsonObject).description;
   delete (socialConfig as JsonObject).credentialId;
-  delete (socialConfig as JsonObject).proxyId;
 
   return {
     ...base,
@@ -561,7 +568,7 @@ export function buildSourceCreateData(input: {
       platform: template.platform,
       config: toPrismaJsonObject(socialConfig),
       credentialId: resolvedCredentialId,
-      proxyId: resolvedProxyId,
+      proxyId: null,
       keywordStrategy:
         typeof config.keywordStrategy === "string"
           ? config.keywordStrategy
@@ -582,6 +589,8 @@ export function sourceIdentityFromSource(source: {
   darknet?: { sourceId: string } | null;
   search?: {
     platform: string;
+    objective?: string | null;
+    options?: unknown;
     sourceId: string;
   } | null;
   social?: {
@@ -617,7 +626,10 @@ export function sourceIdentityFromSource(source: {
       platform: source.search.platform,
       driver,
       intentType: "search",
-      intentArgsHash: computeIntentArgsHash({}),
+      intentArgsHash: computeIntentArgsHash({
+        query:
+          typeof source.search.objective === "string" ? source.search.objective : "",
+      }),
     };
   }
 

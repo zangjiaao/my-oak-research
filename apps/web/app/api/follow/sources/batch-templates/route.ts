@@ -23,7 +23,7 @@ export async function GET() {
           type: true,
           web: { select: { sourceId: true } },
           darknet: { select: { sourceId: true } },
-          search: { select: { sourceId: true, platform: true } },
+          search: { select: { sourceId: true, platform: true, objective: true, options: true } },
           social: { select: { sourceId: true, platform: true, config: true } },
         },
       }),

@@ -16,6 +16,8 @@ export type SourceCapabilityIntent = {
   key: string;
   intent: string;
   mode: string;
+  title?: string;
+  description?: string;
   sample?: {
     intentType?: string;
     intentArgs?: Record<string, unknown>;
@@ -51,6 +53,8 @@ type GatherCatalogItem = {
   };
   meta?: {
     category?: string;
+    title?: string;
+    description?: string;
     auth?: {
       required?: boolean;
       kind?: string;
@@ -72,6 +76,8 @@ type WorkerApiPlatformConfig = {
   intents?: Array<{
     intent: string;
     mode?: string;
+    title?: string;
+    description?: string;
     sampleArgs?: Record<string, unknown>;
   }>;
 };
@@ -321,6 +327,12 @@ export function buildGatherCapabilities(items: GatherCatalogItem[]): SourceCapab
         key: item.key,
         intent: item.intent,
         mode: item.mode,
+        title:
+          typeof item.meta?.title === "string" ? item.meta.title : undefined,
+        description:
+          typeof item.meta?.description === "string"
+            ? item.meta.description
+            : undefined,
         sample: item.sample,
       });
       continue;
@@ -367,6 +379,12 @@ export function buildGatherCapabilities(items: GatherCatalogItem[]): SourceCapab
           key: item.key,
           intent: item.intent,
           mode: item.mode,
+          title:
+            typeof item.meta?.title === "string" ? item.meta.title : undefined,
+          description:
+            typeof item.meta?.description === "string"
+              ? item.meta.description
+              : undefined,
           sample: item.sample,
         },
       ],
@@ -407,6 +425,8 @@ export function buildWorkerApiCapabilities(): SourceCapability[] {
         key: `${platform.toLowerCase()}.${intent.intent}.worker_api`,
         intent: intent.intent,
         mode: intent.mode ?? "api",
+        title: intent.title,
+        description: intent.description,
         sample: {
           intentType: intent.intent,
           intentArgs: intent.sampleArgs ?? {},

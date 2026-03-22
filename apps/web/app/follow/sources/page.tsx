@@ -7,11 +7,8 @@ import SocialMediaSettingCard from "./SocialMediaSettingCard";
 import SearchEngineSettingCard from "./SearchEngineSettingCard";
 import ProxySettingCard from "./ProxySettingCard";
 import BatchCreateSourcesDialog from "./BatchCreateSourcesDialog";
-import { useFollow } from "@/hooks/useFollow";
 
 const Sources = () => {
-  const { proxies } = useFollow();
-
   return (
     <div>
       <Tabs defaultValue="web-sites" className="space-y-2">
@@ -22,7 +19,7 @@ const Sources = () => {
             <TabsTrigger value="search-engines">Retrieval</TabsTrigger>
             <TabsTrigger value="proxy">Proxy</TabsTrigger>
           </TabsList>
-          <BatchCreateSourcesDialog proxies={proxies} />
+          <BatchCreateSourcesDialog />
         </div>
         <TabsContent value="web-sites">
           <WebSiteSettingCard />

@@ -27,8 +27,6 @@ const BatchCreateSchema = z.object({
   defaults: z
     .object({
       active: z.boolean().optional(),
-      rateLimit: z.number().int().min(1).max(600).optional(),
-      proxyId: z.string().cuid().nullable().optional(),
     })
     .optional(),
 });
@@ -122,7 +120,7 @@ export async function POST(req: Request) {
           type: true,
           web: { select: { sourceId: true } },
           darknet: { select: { sourceId: true } },
-          search: { select: { sourceId: true, platform: true } },
+          search: { select: { sourceId: true, platform: true, objective: true, options: true } },
           social: { select: { sourceId: true, platform: true, config: true } },
         },
       }),

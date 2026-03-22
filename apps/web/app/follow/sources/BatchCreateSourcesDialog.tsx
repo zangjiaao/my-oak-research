@@ -29,7 +29,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { apiFetcher } from "@/lib/fetcher";
-import type { Proxy } from "@/app/generated/prisma";
 
 type BatchTemplate = {
   key: string;
@@ -140,17 +139,13 @@ function groupedByPlatform(templates: BatchTemplate[]) {
   }, {});
 }
 
-const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
+const BatchCreateSourcesDialog = () => {
   const [open, setOpen] = useState(false);
   const [state, setState] = useState<Record<string, ItemFormState>>({});
   const [defaults, setDefaults] = useState<{
     active: boolean;
-    rateLimit: number;
-    proxyId: string | null;
   }>({
     active: true,
-    rateLimit: 10,
-    proxyId: null,
   });
   const [submitting, setSubmitting] = useState(false);
   const [invalidMap, setInvalidMap] = useState<Record<string, string[]>>({});
@@ -409,7 +404,7 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
                 <div className="space-y-5">
                   <div className="space-y-3 rounded-md border p-4">
                     <div className="text-sm font-semibold">默认参数</div>
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                       <div className="space-y-1">
                         <Label>Active</Label>
                         <Select
@@ -430,44 +425,8 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
                           </SelectContent>
                         </Select>
                       </div>
-                      <div className="space-y-1">
-                        <Label>Rate Limit</Label>
-                        <Input
-                          type="number"
-                          min={1}
-                          max={600}
-                          value={defaults.rateLimit}
-                          onChange={(event) =>
-                            setDefaults((prev) => ({
-                              ...prev,
-                              rateLimit: Number(event.target.value || 10),
-                            }))
-                          }
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <Label>Proxy</Label>
-                        <Select
-                          value={defaults.proxyId ?? SELECT_NONE}
-                          onValueChange={(value) =>
-                            setDefaults((prev) => ({
-                              ...prev,
-                              proxyId: value === SELECT_NONE ? null : value,
-                            }))
-                          }
-                        >
-                          <SelectTrigger className="w-full">
-                            <SelectValue placeholder="None" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value={SELECT_NONE}>None</SelectItem>
-                          {proxies.map((proxy) => (
-                            <SelectItem key={proxy.id} value={proxy.id}>
-                              {proxy.name}
-                            </SelectItem>
-                          ))}
-                          </SelectContent>
-                        </Select>
+                      <div className="text-xs text-muted-foreground sm:col-span-2">
+                        Active=false 的源会创建成功，但不会显示在 Query 里。
                       </div>
                     </div>
                   </div>
@@ -482,31 +441,11 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
                       return (
                         <div key={template.key} className="space-y-4 rounded-md border p-4">
                           <div className="text-sm font-semibold">{template.title}</div>
-
-                          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                            <div className="space-y-1">
-                              <Label>Name</Label>
-                              <Input
-                                value={String((config.name as string | undefined) ?? "")}
-                                onChange={(event) =>
-                                  handleConfigChange(template.key, "name", event.target.value)
-                                }
-                              />
-                            </div>
-                            <div className="space-y-1">
-                              <Label>Description</Label>
-                              <Input
-                                value={String((config.description as string | undefined) ?? "")}
-                                onChange={(event) =>
-                                  handleConfigChange(template.key, "description", event.target.value)
-                                }
-                              />
-                            </div>
-                          </div>
+                          <div className="text-xs text-muted-foreground">{template.description}</div>
 
                           {template.requiredFields.map((field) => {
                             const currentValue = getByPath(config, field);
-                            const isUrl = field === "url";
+                            const isUrl = field.toLowerCase().includes("url");
                             return (
                               <div key={field} className="space-y-1">
                                 <Label>{labelFromPath(field)}</Label>
@@ -530,6 +469,24 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
                               </div>
                             );
                           })}
+
+                          <div className="space-y-1.5">
+                            <Label>Network</Label>
+                            <Select
+                              value={String((config.networkPolicy as string | undefined) ?? template.networkPolicy)}
+                              onValueChange={(value) =>
+                                handleConfigChange(template.key, "networkPolicy", value)
+                              }
+                            >
+                              <SelectTrigger className="w-full">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="DEFAULT">DEFAULT</SelectItem>
+                                <SelectItem value="TOR_SOCKS5H">TOR_SOCKS5H</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
 
                           {template.credentialRequirements.map((requirement) => {
                             const options = credentials.filter((item) => item.kind === requirement.kind);

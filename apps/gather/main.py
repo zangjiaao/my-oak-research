@@ -359,6 +359,12 @@ def _extract_script_meta(sample_payload: dict[str, Any]) -> dict[str, Any]:
     category = _normalize_script_category(sample_payload.get("category"))
     if category:
         meta["category"] = category
+    title = sample_payload.get("title")
+    if isinstance(title, str) and title.strip():
+        meta["title"] = title.strip()
+    description = sample_payload.get("description")
+    if isinstance(description, str) and description.strip():
+        meta["description"] = description.strip()
 
     auth_raw = sample_payload.get("auth")
     auth_obj = auth_raw if isinstance(auth_raw, dict) else {}

@@ -6,6 +6,8 @@ export type SourceCapabilityIntent = {
   key: string;
   intent: string;
   mode: string;
+  title?: string;
+  description?: string;
   sample?: {
     intentType?: string;
     intentArgs?: Record<string, unknown>;
@@ -33,6 +35,8 @@ function buildWorkerApiCapability(input: {
   platform: string;
   tags: string[];
   auth: { required: boolean; kind?: string; description?: string };
+  title: string;
+  description: string;
 }): SourceCapability {
   const platform = input.platform.toUpperCase().trim();
   return {
@@ -49,6 +53,8 @@ function buildWorkerApiCapability(input: {
         key: `${platform.toLowerCase()}.search.worker_api`,
         intent: "search",
         mode: "api",
+        title: input.title,
+        description: input.description,
         sample: {
           intentType: "search",
           intentArgs: { query: "" },
@@ -63,6 +69,8 @@ export function buildWorkerSourceCapabilities(): SourceCapability[] {
     buildWorkerApiCapability({
       platform: "PARALLEL",
       tags: ["foreign"],
+      title: "Parallel Search",
+      description: "Parallel API search",
       auth: {
         required: true,
         kind: "parallel-api-key",
@@ -72,6 +80,8 @@ export function buildWorkerSourceCapabilities(): SourceCapability[] {
     buildWorkerApiCapability({
       platform: "TAVILY",
       tags: ["foreign"],
+      title: "Tavily Search",
+      description: "Tavily API search",
       auth: {
         required: true,
         kind: "tavily-api-key",
@@ -81,6 +91,8 @@ export function buildWorkerSourceCapabilities(): SourceCapability[] {
     buildWorkerApiCapability({
       platform: "ANSPIRE",
       tags: ["domestic"],
+      title: "Anspire Search",
+      description: "Anspire API search",
       auth: {
         required: false,
       },
