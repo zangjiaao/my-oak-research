@@ -388,11 +388,12 @@ def _build_scripts_catalog() -> dict[str, Any]:
     platform_map: dict[str, set[str]] = {}
 
     for spec in _SCRIPT_REGISTRY.list_specs():
-        script_file = spec.runtime_path if spec.runtime_path.exists() else spec.source_path
+        runtime_file = spec.runtime_path if spec.runtime_path.exists() else spec.source_path
+        sample_file = spec.source_path if spec.source_path.exists() else runtime_file
         sample_payload: dict[str, Any] = {}
 
         try:
-            script_content = script_file.read_text(encoding="utf-8")
+            script_content = sample_file.read_text(encoding="utf-8")
             sample_payload = _parse_script_sample_payload(script_content)
         except Exception:
             sample_payload = {}
@@ -411,7 +412,7 @@ def _build_scripts_catalog() -> dict[str, Any]:
             "platform": spec.platform.upper(),
             "intent": spec.intent,
             "mode": spec.mode,
-            "runtimePath": str(script_file),
+            "runtimePath": str(runtime_file),
             "sample": {
                 "intentType": sample_payload.get("intent.type", spec.intent),
                 "intentArgs": sample_intent,
