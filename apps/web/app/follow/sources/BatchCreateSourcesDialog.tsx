@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { type ChangeEvent, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2, Minus, Plus, PlusIcon } from "lucide-react";
 import { toast } from "sonner";
@@ -68,7 +68,6 @@ type ItemFormState = {
   credentialRefs?: Record<string, string | null>;
 };
 
-const SELECT_NONE = "__none__";
 const EMPTY_ARG_ENTRY = { key: "", value: "" };
 
 type ScriptArgEntry = {
@@ -167,6 +166,9 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
   const [submitting, setSubmitting] = useState(false);
   const [invalidMap, setInvalidMap] = useState<Record<string, string[]>>({});
   const [result, setResult] = useState<BatchCreateResponse | null>(null);
+  const [authBusyMap, setAuthBusyMap] = useState<Record<string, boolean>>({});
+  const [authStatusMap, setAuthStatusMap] = useState<Record<string, string | null>>({});
+  const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   const queryClient = useQueryClient();
 
@@ -235,6 +237,134 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
     });
   };
 
+  const getRequiredAuth = (template: BatchTemplate) =>
+    template.credentialRequirements.find((requirement) => requirement.required) ?? null;
+
+  const getAuthOptions = (kind: string) =>
+    credentials.filter((credential) => credential.kind === kind);
+
+  const getEffectiveCredentialId = (template: BatchTemplate, kind: string) => {
+    const options = getAuthOptions(kind);
+    const selected = state[template.key]?.credentialRefs?.[kind];
+    if (selected && options.some((item) => item.id === selected)) {
+      return selected;
+    }
+    return options[0]?.id ?? null;
+  };
+
+  const setAuthBusy = (key: string, value: boolean) => {
+    setAuthBusyMap((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const setAuthStatus = (key: string, value: string | null) => {
+    setAuthStatusMap((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const handleVerifyAuth = async (template: BatchTemplate, kind: string) => {
+    const credentialId = getEffectiveCredentialId(template, kind);
+    if (!credentialId) {
+      toast.error("Please upload or select a credential first.");
+      return;
+    }
+
+    setAuthBusy(template.key, true);
+    setAuthStatus(template.key, null);
+    try {
+      const result = await apiFetcher(
+        `/api/follow/sources/auth/${encodeURIComponent(
+          template.platform.toLowerCase()
+        )}/cookie?verify=true&credentialId=${encodeURIComponent(credentialId)}`
+      );
+      const message = String(result?.message ?? "Verification completed.");
+      setAuthStatus(template.key, message);
+      if (result?.authenticated) {
+        toast.success(message);
+      } else {
+        toast.error(message);
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Auth verification failed.";
+      setAuthStatus(template.key, message);
+      toast.error(message);
+    } finally {
+      setAuthBusy(template.key, false);
+    }
+  };
+
+  const handleUploadAuthFile = async (template: BatchTemplate, kind: string, file: File) => {
+    let authData: Record<string, unknown>;
+    try {
+      authData = JSON.parse(await file.text()) as Record<string, unknown>;
+    } catch {
+      toast.error("Credential file is not valid JSON.");
+      return;
+    }
+
+    setAuthBusy(template.key, true);
+    setAuthStatus(template.key, null);
+    try {
+      const result = await apiFetcher(
+        `/api/follow/sources/auth/${encodeURIComponent(template.platform.toLowerCase())}/cookie`,
+        {
+          method: "POST",
+          body: JSON.stringify({ authData }),
+        }
+      );
+      const uploadedId = typeof result?.credentialId === "string" ? result.credentialId : null;
+      if (uploadedId) {
+        handleCredentialRefChange(template.key, kind, uploadedId);
+      }
+      const message = String(result?.message ?? "Auth uploaded and verified.");
+      setAuthStatus(template.key, message);
+      toast.success(message);
+      await credentialQuery.refetch();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Auth upload failed.";
+      setAuthStatus(template.key, message);
+      toast.error(message);
+    } finally {
+      setAuthBusy(template.key, false);
+    }
+  };
+
+  const handleRemoveCredential = async (template: BatchTemplate, kind: string) => {
+    const credentialId = getEffectiveCredentialId(template, kind);
+    if (!credentialId) {
+      toast.error("Please select a credential first.");
+      return;
+    }
+
+    setAuthBusy(template.key, true);
+    setAuthStatus(template.key, null);
+    try {
+      await apiFetcher(`/api/follow/credentials/${encodeURIComponent(credentialId)}`, {
+        method: "DELETE",
+      });
+      handleCredentialRefChange(template.key, kind, "");
+      await credentialQuery.refetch();
+      setAuthStatus(template.key, "Credential removed.");
+      toast.success("Credential removed.");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Credential removal failed.";
+      setAuthStatus(template.key, message);
+      toast.error(message);
+    } finally {
+      setAuthBusy(template.key, false);
+    }
+  };
+
+  const handleCredentialFileChange = async (
+    template: BatchTemplate,
+    kind: string,
+    event: ChangeEvent<HTMLInputElement>
+  ) => {
+    const input = event.currentTarget;
+    const file = input.files?.[0];
+    if (!file) return;
+    await handleUploadAuthFile(template, kind, file);
+    input.value = "";
+  };
+
   const getLocalMissing = (template: BatchTemplate): string[] => {
     const missing: string[] = [];
     const config = getCurrentConfig(template);
@@ -287,7 +417,20 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
             key: template.key,
             enabled: Boolean(state[template.key]?.enabled),
             config: getCurrentConfig(template),
-            credentialRefs: state[template.key]?.credentialRefs,
+            credentialRefs: (() => {
+              const refs = { ...(state[template.key]?.credentialRefs ?? {}) };
+              const requiredAuth = getRequiredAuth(template);
+              if (requiredAuth && !refs[requiredAuth.kind]) {
+                const effectiveCredentialId = getEffectiveCredentialId(
+                  template,
+                  requiredAuth.kind
+                );
+                if (effectiveCredentialId) {
+                  refs[requiredAuth.kind] = effectiveCredentialId;
+                }
+              }
+              return refs;
+            })(),
           })),
           defaults,
         }),
@@ -455,10 +598,112 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
                   ) : (
                     selectedTemplates.map((template) => {
                       const config = getCurrentConfig(template);
+                      const requiredAuth = getRequiredAuth(template);
+                      const authOptions = requiredAuth
+                        ? getAuthOptions(requiredAuth.kind)
+                        : [];
+                      const effectiveCredentialId =
+                        requiredAuth && authOptions.length > 0
+                          ? getEffectiveCredentialId(template, requiredAuth.kind)
+                          : null;
+                      const authBusy = authBusyMap[template.key] ?? false;
                       return (
                         <div key={template.key} className="space-y-4 rounded-md border p-4">
                           <div className="text-sm font-semibold">{template.title}</div>
                           <div className="text-xs text-muted-foreground">{template.description}</div>
+
+                          {requiredAuth ? (
+                            <div className="space-y-2 rounded-md border bg-background/70 p-3">
+                              <div className="text-sm font-medium">Auth</div>
+                              <input
+                                ref={(node) => {
+                                  fileInputRefs.current[template.key] = node;
+                                }}
+                                type="file"
+                                accept="application/json,.json"
+                                className="hidden"
+                                onChange={(event) =>
+                                  handleCredentialFileChange(
+                                    template,
+                                    requiredAuth.kind,
+                                    event
+                                  )
+                                }
+                              />
+                              {authOptions.length > 0 ? (
+                                <div className="grid gap-2 sm:grid-cols-[1fr_auto_auto]">
+                                  <ControlledSelect
+                                    value={effectiveCredentialId}
+                                    onValueChange={(value) =>
+                                      handleCredentialRefChange(
+                                        template.key,
+                                        requiredAuth.kind,
+                                        value ?? ""
+                                      )
+                                    }
+                                    placeholder="Select credential"
+                                  >
+                                    {authOptions.map((credential) => (
+                                      <SelectItem key={credential.id} value={credential.id}>
+                                        {credential.name}
+                                      </SelectItem>
+                                    ))}
+                                  </ControlledSelect>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    disabled={authBusy || !effectiveCredentialId}
+                                    onClick={() =>
+                                      handleVerifyAuth(template, requiredAuth.kind)
+                                    }
+                                  >
+                                    {authBusy ? (
+                                      <Loader2 className="size-4 animate-spin" />
+                                    ) : (
+                                      "Verify"
+                                    )}
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    disabled={authBusy || !effectiveCredentialId}
+                                    onClick={() =>
+                                      handleRemoveCredential(template, requiredAuth.kind)
+                                    }
+                                  >
+                                    Remove
+                                  </Button>
+                                </div>
+                              ) : (
+                                <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    className="justify-start"
+                                    onClick={() => fileInputRefs.current[template.key]?.click()}
+                                    disabled={authBusy}
+                                  >
+                                    上传...
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    disabled={authBusy}
+                                    onClick={() =>
+                                      handleVerifyAuth(template, requiredAuth.kind)
+                                    }
+                                  >
+                                    Verify
+                                  </Button>
+                                </div>
+                              )}
+                              {authStatusMap[template.key] ? (
+                                <p className="text-xs text-muted-foreground">
+                                  {authStatusMap[template.key]}
+                                </p>
+                              ) : null}
+                            </div>
+                          ) : null}
 
                           <div className="space-y-2">
                             <Label>Script Args</Label>
@@ -567,39 +812,6 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
                             </ControlledSelect>
                           </div>
 
-                          {template.credentialRequirements.map((requirement) => {
-                            const options = credentials.filter((item) => item.kind === requirement.kind);
-                            return (
-                              <div key={requirement.kind} className="space-y-1.5">
-                                <Label>{requirement.description}</Label>
-                                <Select
-                                  value={
-                                    state[template.key]?.credentialRefs?.[requirement.kind] ??
-                                    SELECT_NONE
-                                  }
-                                  onValueChange={(value) =>
-                                    handleCredentialRefChange(
-                                      template.key,
-                                      requirement.kind,
-                                      value === SELECT_NONE ? "" : value
-                                    )
-                                  }
-                                >
-                                  <SelectTrigger className="w-full">
-                                    <SelectValue placeholder="Select credential" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value={SELECT_NONE}>Select credential</SelectItem>
-                                  {options.map((item) => (
-                                    <SelectItem key={item.id} value={item.id}>
-                                      {item.name}
-                                    </SelectItem>
-                                  ))}
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                            );
-                          })}
                         </div>
                       );
                     })
