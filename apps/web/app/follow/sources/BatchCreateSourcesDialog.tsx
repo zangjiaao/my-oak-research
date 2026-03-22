@@ -171,6 +171,11 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
   const [platformCredentialRefs, setPlatformCredentialRefs] = useState<
     Record<string, string | null>
   >({});
+  const [platformProxyRefs, setPlatformProxyRefs] = useState<Record<string, string | null>>({});
+  const [categoryFilter, setCategoryFilter] = useState<
+    "ALL" | BatchTemplate["category"]
+  >("ALL");
+  const [platformFilter, setPlatformFilter] = useState<string>("ALL");
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   const queryClient = useQueryClient();
@@ -190,7 +195,26 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
   const templates = templateQuery.data?.items ?? [];
   const credentials = credentialQuery.data?.credentials ?? [];
 
-  const groupedTemplates = useMemo(() => groupedByCategory(templates), [templates]);
+  const platformOptions = useMemo(
+    () =>
+      Array.from(new Set(templates.map((item) => item.platform)))
+        .filter(Boolean)
+        .sort((a, b) => a.localeCompare(b)),
+    [templates]
+  );
+  const filteredTemplates = useMemo(
+    () =>
+      templates.filter((item) => {
+        if (categoryFilter !== "ALL" && item.category !== categoryFilter) return false;
+        if (platformFilter !== "ALL" && item.platform !== platformFilter) return false;
+        return true;
+      }),
+    [templates, categoryFilter, platformFilter]
+  );
+  const filteredGroupedTemplates = useMemo(
+    () => groupedByCategory(filteredTemplates),
+    [filteredTemplates]
+  );
 
   const selectedTemplates = templates.filter((item) => state[item.key]?.enabled);
   const selectedTemplatesByPlatform = useMemo(
@@ -224,6 +248,17 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
     ...template.defaultConfig,
     ...(state[template.key]?.config ?? {}),
   });
+
+  const getPlatformProxyId = (platform: string, platformItems: BatchTemplate[]) => {
+    const selected = platformProxyRefs[platform];
+    if (selected !== undefined) return selected;
+    for (const template of platformItems) {
+      const current = getCurrentConfig(template);
+      const proxyId = typeof current.proxyId === "string" ? current.proxyId : null;
+      if (proxyId) return proxyId;
+    }
+    return null;
+  };
 
   const handleToggle = (template: BatchTemplate, enabled: boolean) => {
     setState((prev) => ({
@@ -458,7 +493,13 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
           items: templates.map((template) => ({
             key: template.key,
             enabled: Boolean(state[template.key]?.enabled),
-            config: getCurrentConfig(template),
+            config: {
+              ...getCurrentConfig(template),
+              proxyId:
+                platformProxyRefs[template.platform] !== undefined
+                  ? platformProxyRefs[template.platform]
+                  : (getCurrentConfig(template).proxyId as string | null | undefined) ?? null,
+            },
             credentialRefs: (() => {
               const refs = { ...(state[template.key]?.credentialRefs ?? {}) };
               const requiredAuth = getRequiredAuth(template);
@@ -530,13 +571,55 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
             <div className="min-h-0 border-b xl:border-r xl:border-b-0">
               <ScrollArea className="h-[34vh] px-4 py-4 xl:h-full">
                 <div className="space-y-5">
+                  <div className="grid gap-2 rounded-md border p-3">
+                    <div className="space-y-1">
+                      <Label>Source Type</Label>
+                      <Select
+                        value={categoryFilter}
+                        onValueChange={(value) =>
+                          setCategoryFilter(value as "ALL" | BatchTemplate["category"])
+                        }
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="ALL">ALL</SelectItem>
+                          <SelectItem value="STREAM">STREAM</SelectItem>
+                          <SelectItem value="INTERACTIVE">INTERACTIVE</SelectItem>
+                          <SelectItem value="RETRIEVAL">RETRIEVAL</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label>Platform</Label>
+                      <Select value={platformFilter} onValueChange={setPlatformFilter}>
+                        <SelectTrigger className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="ALL">ALL</SelectItem>
+                          {platformOptions.map((platform) => (
+                            <SelectItem key={platform} value={platform}>
+                              {platform}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
                   {templateQuery.isLoading ? (
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <Loader2 className="size-4 animate-spin" />
                       Loading templates...
                     </div>
+                  ) : Object.keys(filteredGroupedTemplates).length === 0 ? (
+                    <div className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
+                      No templates match current filters.
+                    </div>
                   ) : (
-                    Object.entries(groupedTemplates).map(([category, items]) => (
+                    Object.entries(filteredGroupedTemplates).map(([category, items]) => (
                       <div key={category} className="space-y-2">
                         <div className="text-sm font-semibold">
                           {categoryLabel(category as BatchTemplate["category"])}
@@ -656,6 +739,7 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
                         ? getEffectiveCredentialId(platform, requiredAuth.kind)
                         : null;
                       const authBusy = authBusyMap[platform] ?? false;
+                      const platformProxyId = getPlatformProxyId(platform, platformItems);
                       return (
                         <div key={platform} className="space-y-4 rounded-md border p-4">
                           <div className="flex items-center justify-between gap-2">
@@ -748,6 +832,26 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
                               ) : null}
                             </div>
                           ) : null}
+
+                          <div className="space-y-1.5 rounded-md border bg-background/70 p-3">
+                            <Label>Network</Label>
+                            <ControlledSelect
+                              value={platformProxyId}
+                              onValueChange={(value) =>
+                                setPlatformProxyRefs((prev) => ({
+                                  ...prev,
+                                  [platform]: value ?? null,
+                                }))
+                              }
+                              placeholder="No proxy"
+                            >
+                              {proxies.map((proxy) => (
+                                <SelectItem key={proxy.id} value={proxy.id}>
+                                  {proxy.name}
+                                </SelectItem>
+                              ))}
+                            </ControlledSelect>
+                          </div>
 
                           <div className="space-y-3">
                             {platformItems.map((template) => {
@@ -845,22 +949,6 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
                                     </div>
                                   </div>
 
-                                  <div className="space-y-1.5">
-                                    <Label>Network</Label>
-                                    <ControlledSelect
-                                      value={String((config.proxyId as string | undefined) ?? "") || null}
-                                      onValueChange={(value) =>
-                                        handleConfigChange(template.key, "proxyId", value)
-                                      }
-                                      placeholder="No proxy"
-                                    >
-                                      {proxies.map((proxy) => (
-                                        <SelectItem key={proxy.id} value={proxy.id}>
-                                          {proxy.name}
-                                        </SelectItem>
-                                      ))}
-                                    </ControlledSelect>
-                                  </div>
                                 </div>
                               );
                             })}
