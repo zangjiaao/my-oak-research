@@ -972,6 +972,10 @@ const SourceDialog = ({
                 </PopoverTrigger>
                 <PopoverContent
                   container={popoverContainerRef.current}
+                  side="bottom"
+                  align="start"
+                  collisionPadding={8}
+                  collisionBoundary={popoverContainerRef.current ?? undefined}
                   className="w-[var(--radix-popover-trigger-width)] max-w-[calc(100vw-2rem)] p-0"
                 >
                   <Command>
