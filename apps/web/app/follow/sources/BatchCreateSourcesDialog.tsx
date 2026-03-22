@@ -1,6 +1,6 @@
 "use client";
 
-import { type ChangeEvent, useMemo, useRef, useState } from "react";
+import { type ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2, Minus, Plus, PlusIcon } from "lucide-react";
 import { toast } from "sonner";
@@ -197,10 +197,18 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
 
   const platformOptions = useMemo(
     () =>
-      Array.from(new Set(templates.map((item) => item.platform)))
+      Array.from(
+        new Set(
+          templates
+            .filter((item) =>
+              categoryFilter === "ALL" ? true : item.category === categoryFilter
+            )
+            .map((item) => item.platform)
+        )
+      )
         .filter(Boolean)
         .sort((a, b) => a.localeCompare(b)),
-    [templates]
+    [templates, categoryFilter]
   );
   const filteredTemplates = useMemo(
     () =>
@@ -211,6 +219,12 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
       }),
     [templates, categoryFilter, platformFilter]
   );
+
+  useEffect(() => {
+    if (platformFilter === "ALL") return;
+    if (platformOptions.includes(platformFilter)) return;
+    setPlatformFilter("ALL");
+  }, [platformFilter, platformOptions]);
   const filteredGroupedTemplates = useMemo(
     () => groupedByCategory(filteredTemplates),
     [filteredTemplates]
