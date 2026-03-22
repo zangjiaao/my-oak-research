@@ -556,38 +556,32 @@ const SourceDialog = ({
           <CardHeader>
             <CardTitle>Platform Selection</CardTitle>
             <CardDescription>
-              Category follows current source tab. Pick a platform in this category.
+              Pick a platform from current source tab category.
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4">
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="grid gap-2">
-                <Label>Category</Label>
-                <Input value={expectedCategory} disabled />
-              </div>
-              <div className="grid gap-2">
-                <Label>Platform</Label>
-                <ControlledSelect
-                  value={selectedPlatform || null}
-                  onValueChange={(value) => {
-                    setSelectedPlatform(value ?? "");
-                    if (!value) return;
-                    const available = (catalog?.items ?? []).filter(
-                      (item) => normalizePlatform(item.platform) === normalizePlatform(value)
-                    );
-                    if (available.length > 0) {
-                      setSelectedIntentType(available[0]?.intent || "search");
-                    }
-                  }}
-                  placeholder={loadingCatalog ? "Loading..." : "Select platform"}
-                >
-                  {platformOptions.map((platform) => (
-                    <SelectItem key={platform} value={platform}>
-                      {platform}
-                    </SelectItem>
-                  ))}
-                </ControlledSelect>
-              </div>
+            <div className="grid gap-2">
+              <Label>Platform</Label>
+              <ControlledSelect
+                value={selectedPlatform || null}
+                onValueChange={(value) => {
+                  setSelectedPlatform(value ?? "");
+                  if (!value) return;
+                  const available = (catalog?.items ?? []).filter(
+                    (item) => normalizePlatform(item.platform) === normalizePlatform(value)
+                  );
+                  if (available.length > 0) {
+                    setSelectedIntentType(available[0]?.intent || "search");
+                  }
+                }}
+                placeholder={loadingCatalog ? "Loading..." : "Select platform"}
+              >
+                {platformOptions.map((platform) => (
+                  <SelectItem key={platform} value={platform}>
+                    {platform}
+                  </SelectItem>
+                ))}
+              </ControlledSelect>
             </div>
           </CardContent>
         </Card>
@@ -698,9 +692,6 @@ const SourceDialog = ({
           <CardContent className="grid gap-2 text-sm">
             <div>
               <span className="text-muted-foreground">Type:</span> {effectiveType}
-            </div>
-            <div>
-              <span className="text-muted-foreground">Category:</span> {expectedCategory}
             </div>
             <div>
               <span className="text-muted-foreground">Platform:</span> {selectedPlatform || "—"}
