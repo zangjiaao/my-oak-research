@@ -14,18 +14,18 @@ const Sources = () => {
   const { proxies } = useFollow();
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-end">
-        <BatchCreateSourcesDialog proxies={proxies} />
-      </div>
+    <div>
       <Tabs defaultValue="web-sites" className="space-y-2">
-        <TabsList>
-          <TabsTrigger value="web-sites">Web Sites</TabsTrigger>
-          <TabsTrigger value="social-media">Social Media</TabsTrigger>
-          <TabsTrigger value="darknet">Darknet</TabsTrigger>
-          <TabsTrigger value="search-engines">Search Engines</TabsTrigger>
-          <TabsTrigger value="proxy">Proxy</TabsTrigger>
-        </TabsList>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <TabsList className="max-w-full flex-wrap">
+            <TabsTrigger value="web-sites">Web Sites</TabsTrigger>
+            <TabsTrigger value="social-media">Social Media</TabsTrigger>
+            <TabsTrigger value="darknet">Darknet</TabsTrigger>
+            <TabsTrigger value="search-engines">Search Engines</TabsTrigger>
+            <TabsTrigger value="proxy">Proxy</TabsTrigger>
+          </TabsList>
+          <BatchCreateSourcesDialog proxies={proxies} />
+        </div>
         <TabsContent value="web-sites">
           <WebSiteSettingCard />
         </TabsContent>
