@@ -62,7 +62,18 @@ type GatherCatalogResponse = {
 };
 
 type SourceCategory = "STREAM" | "INTERACTIVE" | "RETRIEVAL";
-type NetworkPolicy = "DEFAULT" | "TOR_SOCKS5H";
+
+type DriverConfigInput = {
+  poolEnabled: boolean;
+  poolIdleTimeoutMs: number;
+  headless: boolean;
+  stateFile: string;
+  filterMinChars: number;
+  proxyHost: string;
+  proxyPort: string;
+  proxyUsername: string;
+  proxyPassword: string;
+};
 
 const PLATFORM_CATEGORY_MAP: Record<string, SourceCategory> = {
   BBC: "STREAM",
@@ -143,12 +154,67 @@ function stringifyIntentArgs(value: unknown): string {
   return JSON.stringify(value, null, 2);
 }
 
+function parseNumber(value: unknown, fallback: number): number {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function buildDriverConfig(input: {
+  intentType: string;
+  intentArgsText: string;
+  config: DriverConfigInput;
+}) {
+  const { intentType, intentArgsText, config } = input;
+  const proxyPort = Number(config.proxyPort);
+  const hasProxy =
+    !!config.proxyHost.trim() ||
+    Number.isFinite(proxyPort) ||
+    !!config.proxyUsername.trim() ||
+    !!config.proxyPassword;
+  const proxy = hasProxy
+    ? {
+        host: config.proxyHost.trim() || "localhost",
+        port: Number.isFinite(proxyPort) ? proxyPort : 8080,
+        username: config.proxyUsername.trim() || undefined,
+        password: config.proxyPassword || undefined,
+      }
+    : null;
+  return {
+    poolEnabled: config.poolEnabled,
+    poolIdleTimeoutMs: parseNumber(config.poolIdleTimeoutMs, 120000),
+    headless: config.headless,
+    stateFile: config.stateFile.trim() || undefined,
+    script: {
+      type: intentType || "search",
+      args: parseArgsText(intentArgsText),
+    },
+    filter: {
+      minChars: parseNumber(config.filterMinChars, 8),
+    },
+    ...(proxy
+      ? {
+          network: {
+            proxy,
+          },
+        }
+      : {}),
+  };
+}
+
 function getInitialScriptState(source?: SourceWithRelations): {
   category: SourceCategory;
   platform: string;
   intentType: string;
   intentArgsText: string;
-  networkPolicy: NetworkPolicy;
+  poolEnabled: boolean;
+  poolIdleTimeoutMs: number;
+  headless: boolean;
+  stateFile: string;
+  filterMinChars: number;
+  proxyHost: string;
+  proxyPort: string;
+  proxyUsername: string;
+  proxyPassword: string;
 } {
   if (!source) {
     return {
@@ -156,31 +222,75 @@ function getInitialScriptState(source?: SourceWithRelations): {
       platform: "",
       intentType: "search",
       intentArgsText: "{}",
-      networkPolicy: "DEFAULT" as NetworkPolicy,
+      poolEnabled: true,
+      poolIdleTimeoutMs: 120000,
+      headless: false,
+      stateFile: ".auth/x_auth.json",
+      filterMinChars: 8,
+      proxyHost: "",
+      proxyPort: "",
+      proxyUsername: "",
+      proxyPassword: "",
     };
   }
 
   if (source.type === "SOCIAL_MEDIA" && "social" in source && source.social) {
     const config = (source.social.config as Record<string, unknown>) ?? {};
+    const driver =
+      config.driver && typeof config.driver === "object" && !Array.isArray(config.driver)
+        ? (config.driver as Record<string, unknown>)
+        : {};
+    const script =
+      driver.script && typeof driver.script === "object" && !Array.isArray(driver.script)
+        ? (driver.script as Record<string, unknown>)
+        : {};
     const intent =
       config.intent && typeof config.intent === "object" && !Array.isArray(config.intent)
         ? (config.intent as Record<string, unknown>)
         : {};
+    const filter =
+      driver.filter && typeof driver.filter === "object" && !Array.isArray(driver.filter)
+        ? (driver.filter as Record<string, unknown>)
+        : {};
+    const network =
+      driver.network && typeof driver.network === "object" && !Array.isArray(driver.network)
+        ? (driver.network as Record<string, unknown>)
+        : {};
+    const proxy =
+      network.proxy && typeof network.proxy === "object" && !Array.isArray(network.proxy)
+        ? (network.proxy as Record<string, unknown>)
+        : {};
     const intentArgs =
-      intent.args && typeof intent.args === "object" && !Array.isArray(intent.args)
-        ? (intent.args as Record<string, unknown>)
+      script.args && typeof script.args === "object" && !Array.isArray(script.args)
+        ? (script.args as Record<string, unknown>)
+        : intent.args && typeof intent.args === "object" && !Array.isArray(intent.args)
+          ? (intent.args as Record<string, unknown>)
         : {};
 
     return {
       category: inferCategoryFromPlatform(source.social.platform ?? ""),
       platform: source.social.platform ?? "",
       intentType:
-        typeof intent.type === "string" && intent.type.trim() ? intent.type : "search",
+        (typeof script.type === "string" && script.type.trim()) ||
+        (typeof intent.type === "string" && intent.type.trim())
+          ? String(script.type ?? intent.type)
+          : "search",
       intentArgsText: stringifyIntentArgs(intentArgs),
-      networkPolicy:
-        typeof config.networkPolicy === "string" && config.networkPolicy === "TOR_SOCKS5H"
-          ? "TOR_SOCKS5H"
-          : "DEFAULT",
+      poolEnabled: typeof driver.poolEnabled === "boolean" ? driver.poolEnabled : true,
+      poolIdleTimeoutMs: parseNumber(driver.poolIdleTimeoutMs, 120000),
+      headless: typeof driver.headless === "boolean" ? driver.headless : false,
+      stateFile:
+        typeof driver.stateFile === "string" && driver.stateFile.trim()
+          ? driver.stateFile
+          : ".auth/x_auth.json",
+      filterMinChars: parseNumber(filter.minChars, 8),
+      proxyHost: typeof proxy.host === "string" ? proxy.host : "",
+      proxyPort:
+        typeof proxy.port === "number" && Number.isFinite(proxy.port)
+          ? String(proxy.port)
+          : "",
+      proxyUsername: typeof proxy.username === "string" ? proxy.username : "",
+      proxyPassword: typeof proxy.password === "string" ? proxy.password : "",
     };
   }
 
@@ -194,10 +304,15 @@ function getInitialScriptState(source?: SourceWithRelations): {
       platform: String(options.provider ?? source.search.platform ?? ""),
       intentType: "search",
       intentArgsText: stringifyIntentArgs({ query: source.search.objective ?? "" }),
-      networkPolicy:
-        typeof options.networkPolicy === "string" && options.networkPolicy === "TOR_SOCKS5H"
-          ? "TOR_SOCKS5H"
-          : "DEFAULT",
+      poolEnabled: true,
+      poolIdleTimeoutMs: 120000,
+      headless: false,
+      stateFile: "",
+      filterMinChars: 8,
+      proxyHost: "",
+      proxyPort: "",
+      proxyUsername: "",
+      proxyPassword: "",
     };
   }
 
@@ -207,7 +322,15 @@ function getInitialScriptState(source?: SourceWithRelations): {
       platform: "BBC",
       intentType: "crawl",
       intentArgsText: stringifyIntentArgs({ url: source.web.url ?? [] }),
-      networkPolicy: "DEFAULT" as NetworkPolicy,
+      poolEnabled: true,
+      poolIdleTimeoutMs: 120000,
+      headless: false,
+      stateFile: "",
+      filterMinChars: 8,
+      proxyHost: "",
+      proxyPort: "",
+      proxyUsername: "",
+      proxyPassword: "",
     };
   }
 
@@ -217,7 +340,15 @@ function getInitialScriptState(source?: SourceWithRelations): {
       platform: "DARKWEBGO",
       intentType: "search",
       intentArgsText: stringifyIntentArgs({ url: source.darknet.url ?? [] }),
-      networkPolicy: "TOR_SOCKS5H" as NetworkPolicy,
+      poolEnabled: true,
+      poolIdleTimeoutMs: 120000,
+      headless: false,
+      stateFile: "",
+      filterMinChars: 8,
+      proxyHost: "",
+      proxyPort: "",
+      proxyUsername: "",
+      proxyPassword: "",
     };
   }
 
@@ -226,7 +357,15 @@ function getInitialScriptState(source?: SourceWithRelations): {
     platform: "",
     intentType: "search",
     intentArgsText: "{}",
-    networkPolicy: "DEFAULT" as NetworkPolicy,
+    poolEnabled: true,
+    poolIdleTimeoutMs: 120000,
+    headless: false,
+    stateFile: ".auth/x_auth.json",
+    filterMinChars: 8,
+    proxyHost: "",
+    proxyPort: "",
+    proxyUsername: "",
+    proxyPassword: "",
   };
 }
 
@@ -236,10 +375,11 @@ function buildPayloadFromUnified(input: {
   platform: string;
   intentType: string;
   intentArgsText: string;
-  networkPolicy: NetworkPolicy;
+  driverConfig: DriverConfigInput;
 }) {
-  const { effectiveType, values, platform, intentType, intentArgsText, networkPolicy } = input;
+  const { effectiveType, values, platform, intentType, intentArgsText, driverConfig } = input;
   const intentArgs = parseArgsText(intentArgsText);
+  const driver = buildDriverConfig({ intentType, intentArgsText, config: driverConfig });
 
   const base = {
     name: values.name.trim(),
@@ -299,7 +439,7 @@ function buildPayloadFromUnified(input: {
             provider: provider || "CUSTOM",
             intentType,
             intentArgs,
-            networkPolicy,
+            driver,
           },
           credentialId: values.credentialId ?? null,
           keywordStrategy: "AUTO" as const,
@@ -347,12 +487,7 @@ function buildPayloadFromUnified(input: {
       social: {
         platform: normalizedPlatform,
         config: {
-          driver: "playwright",
-          intent: {
-            type: intentType || "search",
-            args: intentArgs,
-          },
-          networkPolicy,
+          driver,
         },
         credentialId: values.credentialId ?? null,
         proxyId: values.proxyId ?? null,
@@ -395,7 +530,15 @@ const SourceDialog = ({
   const [selectedPlatform, setSelectedPlatform] = useState(initialScriptState.platform);
   const [selectedIntentType, setSelectedIntentType] = useState(initialScriptState.intentType);
   const [intentArgsText, setIntentArgsText] = useState(initialScriptState.intentArgsText);
-  const [networkPolicy, setNetworkPolicy] = useState<NetworkPolicy>(initialScriptState.networkPolicy);
+  const [poolEnabled, setPoolEnabled] = useState(initialScriptState.poolEnabled);
+  const [poolIdleTimeoutMs, setPoolIdleTimeoutMs] = useState(initialScriptState.poolIdleTimeoutMs);
+  const [headless, setHeadless] = useState(initialScriptState.headless);
+  const [stateFile, setStateFile] = useState(initialScriptState.stateFile);
+  const [filterMinChars, setFilterMinChars] = useState(initialScriptState.filterMinChars);
+  const [proxyHost, setProxyHost] = useState(initialScriptState.proxyHost);
+  const [proxyPort, setProxyPort] = useState(initialScriptState.proxyPort);
+  const [proxyUsername, setProxyUsername] = useState(initialScriptState.proxyUsername);
+  const [proxyPassword, setProxyPassword] = useState(initialScriptState.proxyPassword);
   const [platformPopoverOpen, setPlatformPopoverOpen] = useState(false);
   const [platformSearch, setPlatformSearch] = useState("");
 
@@ -404,7 +547,15 @@ const SourceDialog = ({
     setSelectedPlatform(initialScriptState.platform);
     setSelectedIntentType(initialScriptState.intentType);
     setIntentArgsText(initialScriptState.intentArgsText);
-    setNetworkPolicy(initialScriptState.networkPolicy);
+    setPoolEnabled(initialScriptState.poolEnabled);
+    setPoolIdleTimeoutMs(initialScriptState.poolIdleTimeoutMs);
+    setHeadless(initialScriptState.headless);
+    setStateFile(initialScriptState.stateFile);
+    setFilterMinChars(initialScriptState.filterMinChars);
+    setProxyHost(initialScriptState.proxyHost);
+    setProxyPort(initialScriptState.proxyPort);
+    setProxyUsername(initialScriptState.proxyUsername);
+    setProxyPassword(initialScriptState.proxyPassword);
   }, [open, initialScriptState]);
 
   const { data: catalog, isLoading: loadingCatalog } = useQuery<GatherCatalogResponse>({
@@ -507,7 +658,17 @@ const SourceDialog = ({
       platform: selectedPlatform,
       intentType: selectedIntentType,
       intentArgsText,
-      networkPolicy,
+      driverConfig: {
+        poolEnabled,
+        poolIdleTimeoutMs,
+        headless,
+        stateFile,
+        filterMinChars,
+        proxyHost,
+        proxyPort,
+        proxyUsername,
+        proxyPassword,
+      },
     });
     if ("error" in built) return { error: built.error } as const;
     return built.payload;
@@ -517,7 +678,15 @@ const SourceDialog = ({
     selectedPlatform,
     selectedIntentType,
     intentArgsText,
-    networkPolicy,
+    poolEnabled,
+    poolIdleTimeoutMs,
+    headless,
+    stateFile,
+    filterMinChars,
+    proxyHost,
+    proxyPort,
+    proxyUsername,
+    proxyPassword,
     intentArgsParseError,
   ]);
 
@@ -534,23 +703,38 @@ const SourceDialog = ({
       sourceId: currentSource?.id ?? "__SOURCE_ID__",
       platform: normalizedPlatform.toLowerCase(),
       keywords: [],
-      driver: {
-        name: "playwright",
-        networkPolicy,
-        script: {
-          type: selectedIntentType || "search",
-          args: parseArgsText(intentArgsText),
+      driver: buildDriverConfig({
+        intentType: selectedIntentType,
+        intentArgsText,
+        config: {
+          poolEnabled,
+          poolIdleTimeoutMs,
+          headless,
+          stateFile,
+          filterMinChars,
+          proxyHost,
+          proxyPort,
+          proxyUsername,
+          proxyPassword,
         },
-      },
+      }),
     };
   }, [
     effectiveType,
     selectedPlatform,
     intentArgsParseError,
     currentSource?.id,
-    networkPolicy,
     selectedIntentType,
     intentArgsText,
+    poolEnabled,
+    poolIdleTimeoutMs,
+    headless,
+    stateFile,
+    filterMinChars,
+    proxyHost,
+    proxyPort,
+    proxyUsername,
+    proxyPassword,
   ]);
 
   const onSubmit = (values: SourceFormValues) => {
@@ -588,7 +772,17 @@ const SourceDialog = ({
       platform: selectedPlatform,
       intentType: selectedIntentType,
       intentArgsText,
-      networkPolicy,
+      driverConfig: {
+        poolEnabled,
+        poolIdleTimeoutMs,
+        headless,
+        stateFile,
+        filterMinChars,
+        proxyHost,
+        proxyPort,
+        proxyUsername,
+        proxyPassword,
+      },
     });
 
     if ("error" in built) {
@@ -724,13 +918,13 @@ const SourceDialog = ({
           <CardHeader>
             <CardTitle>Platform Config</CardTitle>
             <CardDescription>
-              Configure intent, network policy, and execution parameters.
+              Configure driver runtime, script args, and proxy settings.
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4">
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-3 sm:grid-cols-3">
               <div className="grid gap-2">
-                <Label>Intent</Label>
+                <Label>Script Type</Label>
                 <ControlledSelect
                   value={selectedIntentType || null}
                   onValueChange={(value) => setSelectedIntentType(value ?? "search")}
@@ -745,22 +939,53 @@ const SourceDialog = ({
               </div>
 
               <div className="grid gap-2">
-                <Label>Network Policy</Label>
+                <Label>Pool Enabled</Label>
                 <ControlledSelect
-                  value={networkPolicy}
-                  onValueChange={(value) =>
-                    setNetworkPolicy((value as NetworkPolicy | null) ?? "DEFAULT")
-                  }
-                  placeholder="Select network policy"
+                  value={poolEnabled ? "true" : "false"}
+                  onValueChange={(value) => setPoolEnabled(value === "true")}
                 >
-                  <SelectItem value="DEFAULT">DEFAULT</SelectItem>
-                  <SelectItem value="TOR_SOCKS5H">TOR_SOCKS5H</SelectItem>
+                  <SelectItem value="true">true</SelectItem>
+                  <SelectItem value="false">false</SelectItem>
+                </ControlledSelect>
+              </div>
+
+              <div className="grid gap-2">
+                <Label>Headless</Label>
+                <ControlledSelect
+                  value={headless ? "true" : "false"}
+                  onValueChange={(value) => setHeadless(value === "true")}
+                >
+                  <SelectItem value="true">true</SelectItem>
+                  <SelectItem value="false">false</SelectItem>
                 </ControlledSelect>
               </div>
             </div>
 
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid gap-2">
+                <Label>Pool Idle Timeout (ms)</Label>
+                <Input
+                  type="number"
+                  min={1000}
+                  step={1000}
+                  value={poolIdleTimeoutMs}
+                  onChange={(event) =>
+                    setPoolIdleTimeoutMs(parseNumber(event.target.value, 120000))
+                  }
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label>State File</Label>
+                <Input
+                  value={stateFile}
+                  onChange={(event) => setStateFile(event.target.value)}
+                  placeholder=".auth/x_auth.json"
+                />
+              </div>
+            </div>
+
             <div className="grid gap-2">
-              <Label htmlFor="intent-args">Intent Args (JSON)</Label>
+              <Label htmlFor="intent-args">Script Args (JSON)</Label>
               <Textarea
                 id="intent-args"
                 rows={8}
@@ -768,12 +993,20 @@ const SourceDialog = ({
                 onChange={(event) => setIntentArgsText(event.target.value)}
                 placeholder='{"query": "..."}'
               />
-              <p className="text-xs text-muted-foreground">
-                For stream/darknet, provide url/urls in args. For retrieval, provide query/objective.
-              </p>
             </div>
 
             <div className="grid gap-3 sm:grid-cols-3">
+              <div className="grid gap-2">
+                <Label>Filter Min Chars</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={filterMinChars}
+                  onChange={(event) =>
+                    setFilterMinChars(parseNumber(event.target.value, 8))
+                  }
+                />
+              </div>
               <div className="grid gap-2">
                 <Label>Active</Label>
                 <ControlledSelect
@@ -797,20 +1030,41 @@ const SourceDialog = ({
                   }
                 />
               </div>
+            </div>
 
+            <div className="grid gap-3 sm:grid-cols-2">
               <div className="grid gap-2">
-                <Label>Proxy</Label>
-                <ControlledSelect
-                  value={form.watch("proxyId") ?? null}
-                  onValueChange={(value) => form.setValue("proxyId", value)}
-                  placeholder="None"
-                >
-                  {proxies.map((proxy) => (
-                    <SelectItem key={proxy.id} value={proxy.id}>
-                      {proxy.name}
-                    </SelectItem>
-                  ))}
-                </ControlledSelect>
+                <Label>Proxy Host</Label>
+                <Input
+                  value={proxyHost}
+                  onChange={(event) => setProxyHost(event.target.value)}
+                  placeholder="proxy.example.com"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label>Proxy Port</Label>
+                <Input
+                  value={proxyPort}
+                  onChange={(event) => setProxyPort(event.target.value)}
+                  placeholder="8080"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label>Proxy Username</Label>
+                <Input
+                  value={proxyUsername}
+                  onChange={(event) => setProxyUsername(event.target.value)}
+                  placeholder="proxyuser"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label>Proxy Password</Label>
+                <Input
+                  type="password"
+                  value={proxyPassword}
+                  onChange={(event) => setProxyPassword(event.target.value)}
+                  placeholder="password"
+                />
               </div>
             </div>
           </CardContent>
