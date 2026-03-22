@@ -2,6 +2,11 @@
 // intent.type: user_posts
 // intent.args: {"uid":"1654184992","page":1,"feature":0,"limit":20}
 // output.field: {"id":"posts.id","text":"posts.text","url":"posts.url","created_at":"posts.created_at"}
+// category: "INTERACTIVE"
+// auth.required: true
+// auth.kind: "weibo-cookie"
+// auth.description: "weibo auth credential"
+// tags: ["domestic"]
 
 async () => {
   const uid = String(__WEIBO_UID_JSON__ || "").trim();

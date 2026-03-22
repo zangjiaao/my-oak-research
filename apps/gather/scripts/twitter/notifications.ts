@@ -2,6 +2,11 @@
 // intent.type: notifications
 // intent.args: {"limit":20}
 // output.field: {"id":"notifications.id","action":"notifications.action","text":"notifications.text","author":"notifications.author","url":"notifications.url"}
+// category: "INTERACTIVE"
+// auth.required: true
+// auth.kind: "twitter-cookie"
+// auth.description: "twitter auth credential"
+// tags: ["foreign"]
 
 async () => {
   const limit = Number(__COUNT__) || 20;

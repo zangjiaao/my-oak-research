@@ -2,6 +2,11 @@
 // intent.type: search
 // intent.args: {"query":"AI","limit":10}
 // output.field: {"title":"results.title","snippet":"results.snippet","source":"results.source","time":"results.time","url":"results.url"}
+// category: "STREAM"
+// auth.required: false
+// auth.kind: "toutiao-cookie"
+// auth.description: "toutiao auth credential"
+// tags: ["domestic"]
 
 async () => {
   const query = String(__QUERY_JSON__ || "").trim();

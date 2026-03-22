@@ -2,6 +2,11 @@
 // intent.type: search
 // intent.args: {"query":"openai","limit":10}
 // output.field: {"title":"results.title","url":"results.url","author":"results.author","voteup_count":"results.voteup_count"}
+// category: "INTERACTIVE"
+// auth.required: true
+// auth.kind: "zhihu-cookie"
+// auth.description: "zhihu auth credential"
+// tags: ["domestic"]
 
 async () => {
   const keyword = String(__KEYWORD_JSON__ || "").trim();

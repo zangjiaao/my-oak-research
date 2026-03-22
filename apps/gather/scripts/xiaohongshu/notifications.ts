@@ -2,6 +2,11 @@
 // intent.type: notifications
 // intent.args: {"type":"mentions","limit":20}
 // output.field: {"user":"messages.user","action":"messages.action","content":"messages.content","time":"messages.time"}
+// category: "INTERACTIVE"
+// auth.required: true
+// auth.kind: "xiaohongshu-cookie"
+// auth.description: "xiaohongshu auth credential"
+// tags: ["domestic"]
 
 async () => {
   const category = String(__NOTIFICATION_TYPE_JSON__ || "mentions").trim() || "mentions";

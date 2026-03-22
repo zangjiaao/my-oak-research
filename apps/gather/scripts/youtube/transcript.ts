@@ -2,6 +2,11 @@
 // intent.type: transcript
 // intent.args: {"url":"https://www.youtube.com/watch?v=dQw4w9WgXcQ","lang":"en","mode":"grouped"}
 // output.field: {"timestamp":"rows.timestamp","speaker":"rows.speaker","text":"rows.text"}
+// category: "INTERACTIVE"
+// auth.required: true
+// auth.kind: "youtube-cookie"
+// auth.description: "youtube auth credential"
+// tags: ["foreign"]
 
 async () => {
   const parseVideoId = (input) => {

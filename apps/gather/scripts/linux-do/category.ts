@@ -2,6 +2,11 @@
 // intent.type: category
 // intent.args: {"slug":"general","id":1,"limit":20}
 // output.field: {"rank":"topics.rank","title":"topics.title","replies":"topics.replies","views":"topics.views","likes":"topics.likes"}
+// category: "INTERACTIVE"
+// auth.required: false
+// auth.kind: "linux-do-cookie"
+// auth.description: "linux-do auth credential"
+// tags: ["domestic"]
 
 async () => {
   const slug = String(__SLUG_JSON__ || "").trim();

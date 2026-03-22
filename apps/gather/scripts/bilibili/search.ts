@@ -2,6 +2,11 @@
 // intent.type: search
 // intent.args: {"query":"openai","limit":20,"page":1,"order":"totalrank"}
 // output.field: {"bvid":"videos.bvid","title":"videos.title","author":"videos.author","url":"videos.url"}
+// category: "INTERACTIVE"
+// auth.required: true
+// auth.kind: "bilibili-cookie"
+// auth.description: "bilibili auth credential"
+// tags: ["domestic"]
 
 async () => {
   const keyword = String(__KEYWORD_JSON__ || "").trim();

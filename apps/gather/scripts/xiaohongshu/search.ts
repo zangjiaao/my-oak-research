@@ -2,6 +2,11 @@
 // intent.type: search
 // intent.args: {"query":"ai","limit":20}
 // output.field: {"id":"notes.id","title":"notes.title","author":"notes.author","likes":"notes.likes","url":"notes.url"}
+// category: "INTERACTIVE"
+// auth.required: true
+// auth.kind: "xiaohongshu-cookie"
+// auth.description: "xiaohongshu auth credential"
+// tags: ["domestic"]
 
 async () => {
   const query = String(__QUERY_JSON__ || "").trim();

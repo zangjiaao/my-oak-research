@@ -2,6 +2,11 @@
 // intent.type: feed
 // intent.args: {"limit":15}
 // output.field: {"id":"statuses.id","text":"statuses.text","screen_name":"statuses.user.screen_name","url":"statuses.url","created_at":"statuses.created_at"}
+// category: "INTERACTIVE"
+// auth.required: true
+// auth.kind: "weibo-cookie"
+// auth.description: "weibo auth credential"
+// tags: ["domestic"]
 
 async () => {
   const app = (document.querySelector("#app") as any)?.__vue_app__;

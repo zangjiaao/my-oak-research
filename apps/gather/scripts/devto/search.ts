@@ -2,6 +2,11 @@
 // intent.type: search
 // intent.args: {"query":"rust programming","limit":10}
 // output.field: {"title":"articles.title","url":"articles.url","author":"articles.author","published_at":"articles.published_at"}
+// category: "RETRIEVAL"
+// auth.required: false
+// auth.kind: "devto-cookie"
+// auth.description: "devto auth credential"
+// tags: ["foreign"]
 
 async () => {
   const query = String(__QUERY_JSON__ || "").trim();

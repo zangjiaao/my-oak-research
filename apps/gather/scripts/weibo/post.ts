@@ -2,6 +2,11 @@
 // intent.type: post
 // intent.args: {"id":"QvqcCrCyL"}
 // output.field: {"id":"id","text":"text","screen_name":"user.screen_name","comments_count":"comments_count","url":"url"}
+// category: "INTERACTIVE"
+// auth.required: true
+// auth.kind: "weibo-cookie"
+// auth.description: "weibo auth credential"
+// tags: ["domestic"]
 
 async () => {
   const postId = String(__WEIBO_ID_JSON__ || "").trim();

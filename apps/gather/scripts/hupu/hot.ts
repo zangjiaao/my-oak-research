@@ -2,6 +2,11 @@
 // intent.type: hot
 // intent.args: {"limit":20}
 // output.field: {"rank":"items.rank","title":"items.title","url":"items.url","lights":"items.lights","replies":"items.replies"}
+// category: "STREAM"
+// auth.required: false
+// auth.kind: "hupu-cookie"
+// auth.description: "hupu auth credential"
+// tags: ["domestic"]
 
 async () => {
   const count = Math.max(1, Math.min(__COUNT__, 100));

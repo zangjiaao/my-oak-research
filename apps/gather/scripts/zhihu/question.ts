@@ -2,6 +2,11 @@
 // intent.type: question
 // intent.args: {"id":"34816524","limit":5}
 // output.field: {"title":"title","answer_count":"answer_count","author":"answers.author","content":"answers.content"}
+// category: "INTERACTIVE"
+// auth.required: true
+// auth.kind: "zhihu-cookie"
+// auth.description: "zhihu auth credential"
+// tags: ["domestic"]
 
 async () => {
   const questionId = String(__QUESTION_ID_JSON__ || "").trim();

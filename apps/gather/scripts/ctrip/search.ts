@@ -2,6 +2,11 @@
 // intent.type: search
 // intent.args: {"query":"三亚"}
 // output.field: {"source":"source","count":"count","results":"results"}
+// category: "RETRIEVAL"
+// auth.required: false
+// auth.kind: "ctrip-cookie"
+// auth.description: "ctrip auth credential"
+// tags: ["domestic"]
 
 async () => {
   const query = String(__QUERY_JSON__ || "").trim();

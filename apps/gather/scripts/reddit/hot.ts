@@ -2,6 +2,11 @@
 // intent.type: hot
 // intent.args: {"subreddit":"programming","limit":20}
 // output.field: {"id":"posts.id","title":"posts.title","author":"posts.author","subreddit":"posts.subreddit","score":"posts.score","comments":"posts.comments","url":"posts.url"}
+// category: "INTERACTIVE"
+// auth.required: true
+// auth.kind: "reddit-cookie"
+// auth.description: "reddit auth credential"
+// tags: ["foreign"]
 
 async () => {
   const rawSubreddit = (__SUBREDDIT_JSON__ || "").trim();

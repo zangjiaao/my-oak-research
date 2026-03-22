@@ -2,6 +2,11 @@
 // intent.type: top
 // intent.args: {"limit":20}
 // output.field: {"rank":"items.rank","title":"items.title","score":"items.score","author":"items.author","comments":"items.comments","url":"items.url"}
+// category: "STREAM"
+// auth.required: false
+// auth.kind: "hackernews-cookie"
+// auth.description: "hackernews auth credential"
+// tags: ["foreign"]
 
 async () => {
   const limit = Math.max(1, Math.min(__LIMIT__, 100));

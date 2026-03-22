@@ -2,6 +2,11 @@
 // intent.type: hot
 // intent.args: {"limit":20}
 // output.field: {"rank":"items.rank","title":"items.title","hot_value":"items.hot_value","url":"items.url"}
+// category: "STREAM"
+// auth.required: false
+// auth.kind: "toutiao-cookie"
+// auth.description: "toutiao auth credential"
+// tags: ["domestic"]
 
 async () => {
   const count = Math.max(1, Math.min(__COUNT__, 50));

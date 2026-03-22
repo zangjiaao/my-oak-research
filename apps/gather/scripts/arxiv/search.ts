@@ -2,6 +2,11 @@
 // intent.type: search
 // intent.args: {"query":"large language model","limit":10}
 // output.field: {"id":"papers.id","title":"papers.title","authors":"papers.authors","url":"papers.url"}
+// category: "RETRIEVAL"
+// auth.required: false
+// auth.kind: "arxiv-cookie"
+// auth.description: "arxiv auth credential"
+// tags: ["foreign"]
 
 async () => {
   const query = String(__QUERY_JSON__ || "").trim();
