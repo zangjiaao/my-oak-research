@@ -969,7 +969,7 @@ const SourceDialog = ({
                     <ChevronsUpDown className="size-4 opacity-50" />
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
+                <PopoverContent className="w-[var(--radix-popover-trigger-width)] max-w-[calc(100vw-2rem)] p-0">
                   <Command>
                     <CommandInput
                       placeholder="Search platform..."
@@ -982,6 +982,7 @@ const SourceDialog = ({
                         <CommandItem
                           key={platform}
                           value={platform}
+                          className="max-w-full"
                           onSelect={() => {
                             setSelectedPlatform(platform);
                             const available = (catalog?.items ?? []).filter(
@@ -1000,7 +1001,7 @@ const SourceDialog = ({
                               platform === selectedPlatform ? "opacity-100" : "opacity-0"
                             )}
                           />
-                          <span className="mr-2">{platform}</span>
+                          <span className="mr-2 truncate">{platform}</span>
                           <Badge variant="outline">{getPlatformRegion(platform)}</Badge>
                         </CommandItem>
                       ))}
