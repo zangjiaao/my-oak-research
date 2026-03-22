@@ -7,10 +7,17 @@ import SocialMediaSettingCard from "./SocialMediaSettingCard";
 import DarknetSettingCard from "./DarknetSettingCard";
 import SearchEngineSettingCard from "./SearchEngineSettingCard";
 import ProxySettingCard from "./ProxySettingCard";
+import BatchCreateSourcesDialog from "./BatchCreateSourcesDialog";
+import { useFollow } from "@/hooks/useFollow";
 
 const Sources = () => {
+  const { proxies } = useFollow();
+
   return (
-    <div>
+    <div className="space-y-3">
+      <div className="flex items-center justify-end">
+        <BatchCreateSourcesDialog proxies={proxies} />
+      </div>
       <Tabs defaultValue="web-sites" className="space-y-2">
         <TabsList>
           <TabsTrigger value="web-sites">Web Sites</TabsTrigger>
