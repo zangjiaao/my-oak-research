@@ -2,6 +2,11 @@
 // intent.type: search
 // intent.args: {"query":"openai","limit":20}
 // output.field: {"id":"tweets.id","text":"tweets.text","author":"tweets.author","url":"tweets.url","created_at":"tweets.created_at"}
+// category: "INTERACTIVE"
+// auth.required: true
+// auth.kind: "twitter-cookie"
+// auth.description: "twitter auth credential"
+// tags: ["foreign"]
 
 async () => {
   const CAPTURE_KEY = "SearchTimeline";

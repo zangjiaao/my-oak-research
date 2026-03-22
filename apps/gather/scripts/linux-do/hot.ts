@@ -2,6 +2,11 @@
 // intent.type: hot
 // intent.args: {"period":"weekly","limit":20}
 // output.field: {"rank":"topics.rank","title":"topics.title","replies":"topics.replies","views":"topics.views","likes":"topics.likes","category":"topics.category"}
+// category: "INTERACTIVE"
+// auth.required: false
+// auth.kind: "linux-do-cookie"
+// auth.description: "linux-do auth credential"
+// tags: ["domestic"]
 
 async () => {
   const period = String(__PERIOD_JSON__ || "weekly").trim() || "weekly";

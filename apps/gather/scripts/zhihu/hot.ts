@@ -2,6 +2,11 @@
 // intent.type: hot
 // intent.args: {"limit":20}
 // output.field: {"rank":"items.rank","title":"items.title","heat":"items.heat","url":"items.url"}
+// category: "INTERACTIVE"
+// auth.required: true
+// auth.kind: "zhihu-cookie"
+// auth.description: "zhihu auth credential"
+// tags: ["domestic"]
 
 async () => {
   const count = Math.max(1, Math.min(__COUNT__, 50));

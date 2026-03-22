@@ -2,6 +2,11 @@
 // intent.type: ranking
 // intent.args: {"category":0,"limit":20}
 // output.field: {"rank":"videos.rank","bvid":"videos.bvid","title":"videos.title","url":"videos.url"}
+// category: "INTERACTIVE"
+// auth.required: true
+// auth.kind: "bilibili-cookie"
+// auth.description: "bilibili auth credential"
+// tags: ["domestic"]
 
 async () => {
   const count = Math.max(1, Math.min(__COUNT__, 100));

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { PencilIcon, TrashIcon } from "lucide-react";
-import { SocialMediaSourceConfig, Source, Proxy } from "@/app/generated/prisma";
+import { Source, Proxy } from "@/app/generated/prisma";
 import {
   DataTable,
   DataTableColumn,
@@ -11,25 +11,25 @@ import {
 } from "@/components/common";
 import SourceDialog from "./SourceDialog";
 import SourceDeleteAlert from "./SourceDeleteAlert";
+import { SourceWithRelations } from "@/lib/types";
 
 interface Props {
-  sources: (Source & { social: SocialMediaSourceConfig } & {
+  sources: (SourceWithRelations & {
     proxy?: Proxy | null;
   })[];
   proxies: Proxy[];
 }
 
-type SocialMediaSource = Source & {
-  social: SocialMediaSourceConfig;
+type InteractiveSource = SourceWithRelations & Source & {
   proxy?: Proxy | null;
 };
 
 const SocialMediaSources = ({ sources, proxies }: Props) => {
   const [editingSource, setEditingSource] = useState<
-    SocialMediaSource | undefined
+    InteractiveSource | undefined
   >();
 
-  const handleEdit = (source: SocialMediaSource) => {
+  const handleEdit = (source: InteractiveSource) => {
     setEditingSource(source);
   };
 
@@ -37,7 +37,7 @@ const SocialMediaSources = ({ sources, proxies }: Props) => {
     setEditingSource(undefined);
   };
 
-  const columns: DataTableColumn<SocialMediaSource>[] = [
+  const columns: DataTableColumn<InteractiveSource>[] = [
     {
       key: "name",
       label: "Name",
@@ -51,7 +51,10 @@ const SocialMediaSources = ({ sources, proxies }: Props) => {
     {
       key: "platform",
       label: "Type",
-      render: (source) => source.social.platform,
+      render: (source) =>
+        ("social" in source ? source.social?.platform : null) ??
+        ("search" in source ? source.search?.platform : null) ??
+        ("web" in source ? "WEB" : "-"),
     },
     {
       key: "proxy",
@@ -60,7 +63,7 @@ const SocialMediaSources = ({ sources, proxies }: Props) => {
     },
   ];
 
-  const actions: DataTableAction<SocialMediaSource>[] = [
+  const actions: DataTableAction<InteractiveSource>[] = [
     {
       type: "edit",
       render: (source) => (
@@ -95,7 +98,7 @@ const SocialMediaSources = ({ sources, proxies }: Props) => {
         onOpenChange={(open) => !open && handleCloseDialog()}
       />
       <DataTable
-        data={sources as SocialMediaSource[]}
+        data={sources as InteractiveSource[]}
         columns={columns}
         actions={actions}
         emptyMessage="No social media sources found. Add your first social media source to get started."

@@ -9,15 +9,9 @@ import SourceDialog from "./SourceDialog";
 import SocialMediaSources from "./SocialMediaSources";
 import { useFollow } from "@/hooks/useFollow";
 import { Skeleton } from "@/components/ui/skeleton";
-import { SocialMediaSource, SourceWithRelations } from "@/lib/types";
+import { SourceWithRelations } from "@/lib/types";
+import { classifySourceCategory } from "@/lib/source-taxonomy";
 import type { Proxy } from "@/app/generated/prisma";
-
-const isSocialMediaSource = (
-  source: SourceWithRelations
-): source is SocialMediaSource =>
-  source.type === "SOCIAL_MEDIA" &&
-  "social" in source &&
-  Boolean(source.social);
 
 const SocialMediaSettingCard = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -29,25 +23,34 @@ const SocialMediaSettingCard = () => {
   if (error) {
     return (
       <SettingCard
-        title="Manage Social Media"
-        description="Error loading social media sources. Please try again."
+        title="Interactive Sources"
+        description="Error loading interactive sources. Please try again."
         count={0}
-        countLabel="social media"
+        countLabel="sources"
       />
     );
   }
 
-  const socialMediaSources = (sources?.filter(isSocialMediaSource) ??
-    []) as SocialMediaSource[];
+  const socialMediaSources =
+    sources?.filter((source) =>
+      classifySourceCategory({
+        type: source.type,
+        social: "social" in source ? source.social : null,
+        search: "search" in source ? source.search : null,
+        searchPlatform: "search" in source ? source.search?.platform : null,
+      }) === "INTERACTIVE"
+    ) ?? [];
 
   const filteredSources = socialMediaSources.filter(
     (source) =>
       source.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       source.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      source.social?.platform?.toLowerCase().includes(searchQuery.toLowerCase())
+      ("social" in source ? source.social?.platform : "")
+        ?.toLowerCase()
+        .includes(searchQuery.toLowerCase())
   );
 
-  const dataForTable: Array<SocialMediaSource & { proxy: Proxy | null }> =
+  const dataForTable: Array<SourceWithRelations & { proxy: Proxy | null }> =
     filteredSources.map((source) => ({
       ...source,
       proxy: source.proxy ?? null,
@@ -58,7 +61,7 @@ const SocialMediaSettingCard = () => {
       <div className="relative flex-1">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
-          placeholder="Search social media..."
+          placeholder="Search items..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="pl-9"
@@ -70,9 +73,8 @@ const SocialMediaSettingCard = () => {
         open={isDialogOpen}
         onOpenChange={setDialogOpen}
         triggerButton={
-          <Button onClick={() => setDialogOpen(true)}>
+          <Button onClick={() => setDialogOpen(true)} aria-label="Add source">
             <PlusIcon className="size-4" />
-            Add Social Media
           </Button>
         }
       />
@@ -81,10 +83,10 @@ const SocialMediaSettingCard = () => {
 
   return (
     <SettingCard
-      title="Manage Social Media"
-      description="You can manage information sources from the social media here."
+      title="Interactive Sources"
+      description="Configure interactive category sources."
       count={filteredSources.length}
-      countLabel="social media"
+      countLabel="sources"
       filterComponent={filterComponent}
     >
       {isLoading ? (

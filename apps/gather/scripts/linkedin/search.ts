@@ -2,6 +2,11 @@
 // intent.type: search
 // intent.args: {"query":"software engineer","location":"San Francisco Bay Area","limit":10}
 // output.field: {"rank":"jobs.rank","title":"jobs.title","company":"jobs.company","location":"jobs.location","listed":"jobs.listed","salary":"jobs.salary","url":"jobs.url"}
+// category: "INTERACTIVE"
+// auth.required: true
+// auth.kind: "linkedin-cookie"
+// auth.description: "linkedin auth credential"
+// tags: ["foreign"]
 
 async () => {
   const EXPERIENCE_LEVELS = {

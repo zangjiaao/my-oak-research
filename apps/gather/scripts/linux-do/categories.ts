@@ -2,6 +2,11 @@
 // intent.type: categories
 // intent.args: {"limit":20}
 // output.field: {"name":"categories.name","slug":"categories.slug","id":"categories.id","topics":"categories.topics","description":"categories.description"}
+// category: "INTERACTIVE"
+// auth.required: false
+// auth.kind: "linux-do-cookie"
+// auth.description: "linux-do auth credential"
+// tags: ["domestic"]
 
 async () => {
   const response = await fetch("/categories.json", { credentials: "include" });

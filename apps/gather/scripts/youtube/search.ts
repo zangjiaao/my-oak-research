@@ -2,6 +2,11 @@
 // intent.type: search
 // intent.args: {"query":"openai","limit":20}
 // output.field: {"rank":"videos.rank","title":"videos.title","channel":"videos.channel","views":"videos.views","duration":"videos.duration","url":"videos.url"}
+// category: "INTERACTIVE"
+// auth.required: true
+// auth.kind: "youtube-cookie"
+// auth.description: "youtube auth credential"
+// tags: ["foreign"]
 
 async () => {
   const query = String(__QUERY_JSON__ || "").trim();

@@ -2,6 +2,11 @@
 // intent.type: search
 // intent.args: {"query":"python","page":1}
 // output.field: {"title":"results.title","url":"results.url","author":"results.author","description":"results.description"}
+// category: "RETRIEVAL"
+// auth.required: false
+// auth.kind: "csdn-cookie"
+// auth.description: "csdn auth credential"
+// tags: ["domestic"]
 
 async () => {
   const query = String(__QUERY_JSON__ || "").trim();

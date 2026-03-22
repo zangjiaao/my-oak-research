@@ -2,6 +2,11 @@
 // intent.type: news
 // intent.args: {"limit":20}
 // output.field: {"rank":"items.rank","title":"items.title","description":"items.description","url":"items.url"}
+// category: "STREAM"
+// auth.required: false
+// auth.kind: "bbc-cookie"
+// auth.description: "bbc auth credential"
+// tags: ["foreign"]
 
 async () => {
   const decodeEntities = (value) =>

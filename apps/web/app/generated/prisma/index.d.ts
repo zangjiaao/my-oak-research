@@ -39,6 +39,11 @@ export type Credential = $Result.DefaultSelection<Prisma.$CredentialPayload>
  */
 export type Source = $Result.DefaultSelection<Prisma.$SourcePayload>
 /**
+ * Model SourceIdentity
+ * 
+ */
+export type SourceIdentity = $Result.DefaultSelection<Prisma.$SourceIdentityPayload>
+/**
  * Model BbPreset
  * 
  */
@@ -520,6 +525,16 @@ export class PrismaClient<
     * ```
     */
   get source(): Prisma.SourceDelegate<ExtArgs, ClientOptions>;
+
+  /**
+   * `prisma.sourceIdentity`: Exposes CRUD operations for the **SourceIdentity** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more SourceIdentities
+    * const sourceIdentities = await prisma.sourceIdentity.findMany()
+    * ```
+    */
+  get sourceIdentity(): Prisma.SourceIdentityDelegate<ExtArgs, ClientOptions>;
 
   /**
    * `prisma.bbPreset`: Exposes CRUD operations for the **BbPreset** model.
@@ -1189,6 +1204,7 @@ export namespace Prisma {
     Proxy: 'Proxy',
     Credential: 'Credential',
     Source: 'Source',
+    SourceIdentity: 'SourceIdentity',
     BbPreset: 'BbPreset',
     SourcePresetBinding: 'SourcePresetBinding',
     BbPresetSyncLog: 'BbPresetSyncLog',
@@ -1227,7 +1243,7 @@ export namespace Prisma {
       omit: GlobalOmitOptions
     }
     meta: {
-      modelProps: "category" | "keyword" | "proxy" | "credential" | "source" | "bbPreset" | "sourcePresetBinding" | "bbPresetSyncLog" | "webSourceConfig" | "darknetSourceConfig" | "searchEngineSourceConfig" | "socialMediaSourceConfig" | "query" | "queryRun" | "taskEvent" | "content" | "contentKeyword" | "contentSubjectMatch" | "contentEntity" | "favorite" | "reportTemplate" | "report" | "chatSession" | "chatMessage" | "reportMaterial" | "knowledge" | "knowledgeFile" | "knowledgeChunk"
+      modelProps: "category" | "keyword" | "proxy" | "credential" | "source" | "sourceIdentity" | "bbPreset" | "sourcePresetBinding" | "bbPresetSyncLog" | "webSourceConfig" | "darknetSourceConfig" | "searchEngineSourceConfig" | "socialMediaSourceConfig" | "query" | "queryRun" | "taskEvent" | "content" | "contentKeyword" | "contentSubjectMatch" | "contentEntity" | "favorite" | "reportTemplate" | "report" | "chatSession" | "chatMessage" | "reportMaterial" | "knowledge" | "knowledgeFile" | "knowledgeChunk"
       txIsolationLevel: Prisma.TransactionIsolationLevel
     }
     model: {
@@ -1598,6 +1614,80 @@ export namespace Prisma {
           count: {
             args: Prisma.SourceCountArgs<ExtArgs>
             result: $Utils.Optional<SourceCountAggregateOutputType> | number
+          }
+        }
+      }
+      SourceIdentity: {
+        payload: Prisma.$SourceIdentityPayload<ExtArgs>
+        fields: Prisma.SourceIdentityFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.SourceIdentityFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$SourceIdentityPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.SourceIdentityFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$SourceIdentityPayload>
+          }
+          findFirst: {
+            args: Prisma.SourceIdentityFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$SourceIdentityPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.SourceIdentityFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$SourceIdentityPayload>
+          }
+          findMany: {
+            args: Prisma.SourceIdentityFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$SourceIdentityPayload>[]
+          }
+          create: {
+            args: Prisma.SourceIdentityCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$SourceIdentityPayload>
+          }
+          createMany: {
+            args: Prisma.SourceIdentityCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.SourceIdentityCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$SourceIdentityPayload>[]
+          }
+          delete: {
+            args: Prisma.SourceIdentityDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$SourceIdentityPayload>
+          }
+          update: {
+            args: Prisma.SourceIdentityUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$SourceIdentityPayload>
+          }
+          deleteMany: {
+            args: Prisma.SourceIdentityDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.SourceIdentityUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateManyAndReturn: {
+            args: Prisma.SourceIdentityUpdateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$SourceIdentityPayload>[]
+          }
+          upsert: {
+            args: Prisma.SourceIdentityUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$SourceIdentityPayload>
+          }
+          aggregate: {
+            args: Prisma.SourceIdentityAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateSourceIdentity>
+          }
+          groupBy: {
+            args: Prisma.SourceIdentityGroupByArgs<ExtArgs>
+            result: $Utils.Optional<SourceIdentityGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.SourceIdentityCountArgs<ExtArgs>
+            result: $Utils.Optional<SourceIdentityCountAggregateOutputType> | number
           }
         }
       }
@@ -3400,6 +3490,7 @@ export namespace Prisma {
     proxy?: ProxyOmit
     credential?: CredentialOmit
     source?: SourceOmit
+    sourceIdentity?: SourceIdentityOmit
     bbPreset?: BbPresetOmit
     sourcePresetBinding?: SourcePresetBindingOmit
     bbPresetSyncLog?: BbPresetSyncLogOmit
@@ -8949,6 +9040,7 @@ export namespace Prisma {
     darknet?: boolean | Source$darknetArgs<ExtArgs>
     search?: boolean | Source$searchArgs<ExtArgs>
     social?: boolean | Source$socialArgs<ExtArgs>
+    identity?: boolean | Source$identityArgs<ExtArgs>
     presetBindings?: boolean | Source$presetBindingsArgs<ExtArgs>
     queries?: boolean | Source$queriesArgs<ExtArgs>
     _count?: boolean | SourceCountOutputTypeDefaultArgs<ExtArgs>
@@ -9011,6 +9103,7 @@ export namespace Prisma {
     darknet?: boolean | Source$darknetArgs<ExtArgs>
     search?: boolean | Source$searchArgs<ExtArgs>
     social?: boolean | Source$socialArgs<ExtArgs>
+    identity?: boolean | Source$identityArgs<ExtArgs>
     presetBindings?: boolean | Source$presetBindingsArgs<ExtArgs>
     queries?: boolean | Source$queriesArgs<ExtArgs>
     _count?: boolean | SourceCountOutputTypeDefaultArgs<ExtArgs>
@@ -9033,6 +9126,7 @@ export namespace Prisma {
       darknet: Prisma.$DarknetSourceConfigPayload<ExtArgs> | null
       search: Prisma.$SearchEngineSourceConfigPayload<ExtArgs> | null
       social: Prisma.$SocialMediaSourceConfigPayload<ExtArgs> | null
+      identity: Prisma.$SourceIdentityPayload<ExtArgs> | null
       presetBindings: Prisma.$SourcePresetBindingPayload<ExtArgs>[]
       queries: Prisma.$QueryPayload<ExtArgs>[]
     }
@@ -9449,6 +9543,7 @@ export namespace Prisma {
     darknet<T extends Source$darknetArgs<ExtArgs> = {}>(args?: Subset<T, Source$darknetArgs<ExtArgs>>): Prisma__DarknetSourceConfigClient<$Result.GetResult<Prisma.$DarknetSourceConfigPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
     search<T extends Source$searchArgs<ExtArgs> = {}>(args?: Subset<T, Source$searchArgs<ExtArgs>>): Prisma__SearchEngineSourceConfigClient<$Result.GetResult<Prisma.$SearchEngineSourceConfigPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
     social<T extends Source$socialArgs<ExtArgs> = {}>(args?: Subset<T, Source$socialArgs<ExtArgs>>): Prisma__SocialMediaSourceConfigClient<$Result.GetResult<Prisma.$SocialMediaSourceConfigPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+    identity<T extends Source$identityArgs<ExtArgs> = {}>(args?: Subset<T, Source$identityArgs<ExtArgs>>): Prisma__SourceIdentityClient<$Result.GetResult<Prisma.$SourceIdentityPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
     presetBindings<T extends Source$presetBindingsArgs<ExtArgs> = {}>(args?: Subset<T, Source$presetBindingsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SourcePresetBindingPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     queries<T extends Source$queriesArgs<ExtArgs> = {}>(args?: Subset<T, Source$queriesArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$QueryPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     /**
@@ -10002,6 +10097,25 @@ export namespace Prisma {
   }
 
   /**
+   * Source.identity
+   */
+  export type Source$identityArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SourceIdentity
+     */
+    select?: SourceIdentitySelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the SourceIdentity
+     */
+    omit?: SourceIdentityOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: SourceIdentityInclude<ExtArgs> | null
+    where?: SourceIdentityWhereInput
+  }
+
+  /**
    * Source.presetBindings
    */
   export type Source$presetBindingsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
@@ -10065,6 +10179,1116 @@ export namespace Prisma {
      * Choose, which related nodes to fetch as well
      */
     include?: SourceInclude<ExtArgs> | null
+  }
+
+
+  /**
+   * Model SourceIdentity
+   */
+
+  export type AggregateSourceIdentity = {
+    _count: SourceIdentityCountAggregateOutputType | null
+    _min: SourceIdentityMinAggregateOutputType | null
+    _max: SourceIdentityMaxAggregateOutputType | null
+  }
+
+  export type SourceIdentityMinAggregateOutputType = {
+    id: string | null
+    sourceId: string | null
+    type: $Enums.SourceType | null
+    platform: string | null
+    driver: string | null
+    intentType: string | null
+    intentArgsHash: string | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type SourceIdentityMaxAggregateOutputType = {
+    id: string | null
+    sourceId: string | null
+    type: $Enums.SourceType | null
+    platform: string | null
+    driver: string | null
+    intentType: string | null
+    intentArgsHash: string | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type SourceIdentityCountAggregateOutputType = {
+    id: number
+    sourceId: number
+    type: number
+    platform: number
+    driver: number
+    intentType: number
+    intentArgsHash: number
+    createdAt: number
+    updatedAt: number
+    _all: number
+  }
+
+
+  export type SourceIdentityMinAggregateInputType = {
+    id?: true
+    sourceId?: true
+    type?: true
+    platform?: true
+    driver?: true
+    intentType?: true
+    intentArgsHash?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type SourceIdentityMaxAggregateInputType = {
+    id?: true
+    sourceId?: true
+    type?: true
+    platform?: true
+    driver?: true
+    intentType?: true
+    intentArgsHash?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type SourceIdentityCountAggregateInputType = {
+    id?: true
+    sourceId?: true
+    type?: true
+    platform?: true
+    driver?: true
+    intentType?: true
+    intentArgsHash?: true
+    createdAt?: true
+    updatedAt?: true
+    _all?: true
+  }
+
+  export type SourceIdentityAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which SourceIdentity to aggregate.
+     */
+    where?: SourceIdentityWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of SourceIdentities to fetch.
+     */
+    orderBy?: SourceIdentityOrderByWithRelationInput | SourceIdentityOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: SourceIdentityWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` SourceIdentities from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` SourceIdentities.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned SourceIdentities
+    **/
+    _count?: true | SourceIdentityCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: SourceIdentityMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: SourceIdentityMaxAggregateInputType
+  }
+
+  export type GetSourceIdentityAggregateType<T extends SourceIdentityAggregateArgs> = {
+        [P in keyof T & keyof AggregateSourceIdentity]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateSourceIdentity[P]>
+      : GetScalarType<T[P], AggregateSourceIdentity[P]>
+  }
+
+
+
+
+  export type SourceIdentityGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: SourceIdentityWhereInput
+    orderBy?: SourceIdentityOrderByWithAggregationInput | SourceIdentityOrderByWithAggregationInput[]
+    by: SourceIdentityScalarFieldEnum[] | SourceIdentityScalarFieldEnum
+    having?: SourceIdentityScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: SourceIdentityCountAggregateInputType | true
+    _min?: SourceIdentityMinAggregateInputType
+    _max?: SourceIdentityMaxAggregateInputType
+  }
+
+  export type SourceIdentityGroupByOutputType = {
+    id: string
+    sourceId: string
+    type: $Enums.SourceType
+    platform: string
+    driver: string
+    intentType: string
+    intentArgsHash: string
+    createdAt: Date
+    updatedAt: Date
+    _count: SourceIdentityCountAggregateOutputType | null
+    _min: SourceIdentityMinAggregateOutputType | null
+    _max: SourceIdentityMaxAggregateOutputType | null
+  }
+
+  type GetSourceIdentityGroupByPayload<T extends SourceIdentityGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<SourceIdentityGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof SourceIdentityGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], SourceIdentityGroupByOutputType[P]>
+            : GetScalarType<T[P], SourceIdentityGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type SourceIdentitySelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    sourceId?: boolean
+    type?: boolean
+    platform?: boolean
+    driver?: boolean
+    intentType?: boolean
+    intentArgsHash?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    source?: boolean | SourceDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["sourceIdentity"]>
+
+  export type SourceIdentitySelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    sourceId?: boolean
+    type?: boolean
+    platform?: boolean
+    driver?: boolean
+    intentType?: boolean
+    intentArgsHash?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    source?: boolean | SourceDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["sourceIdentity"]>
+
+  export type SourceIdentitySelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    sourceId?: boolean
+    type?: boolean
+    platform?: boolean
+    driver?: boolean
+    intentType?: boolean
+    intentArgsHash?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    source?: boolean | SourceDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["sourceIdentity"]>
+
+  export type SourceIdentitySelectScalar = {
+    id?: boolean
+    sourceId?: boolean
+    type?: boolean
+    platform?: boolean
+    driver?: boolean
+    intentType?: boolean
+    intentArgsHash?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }
+
+  export type SourceIdentityOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "sourceId" | "type" | "platform" | "driver" | "intentType" | "intentArgsHash" | "createdAt" | "updatedAt", ExtArgs["result"]["sourceIdentity"]>
+  export type SourceIdentityInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    source?: boolean | SourceDefaultArgs<ExtArgs>
+  }
+  export type SourceIdentityIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    source?: boolean | SourceDefaultArgs<ExtArgs>
+  }
+  export type SourceIdentityIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    source?: boolean | SourceDefaultArgs<ExtArgs>
+  }
+
+  export type $SourceIdentityPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "SourceIdentity"
+    objects: {
+      source: Prisma.$SourcePayload<ExtArgs>
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      sourceId: string
+      type: $Enums.SourceType
+      platform: string
+      driver: string
+      intentType: string
+      intentArgsHash: string
+      createdAt: Date
+      updatedAt: Date
+    }, ExtArgs["result"]["sourceIdentity"]>
+    composites: {}
+  }
+
+  type SourceIdentityGetPayload<S extends boolean | null | undefined | SourceIdentityDefaultArgs> = $Result.GetResult<Prisma.$SourceIdentityPayload, S>
+
+  type SourceIdentityCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
+    Omit<SourceIdentityFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+      select?: SourceIdentityCountAggregateInputType | true
+    }
+
+  export interface SourceIdentityDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['SourceIdentity'], meta: { name: 'SourceIdentity' } }
+    /**
+     * Find zero or one SourceIdentity that matches the filter.
+     * @param {SourceIdentityFindUniqueArgs} args - Arguments to find a SourceIdentity
+     * @example
+     * // Get one SourceIdentity
+     * const sourceIdentity = await prisma.sourceIdentity.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends SourceIdentityFindUniqueArgs>(args: SelectSubset<T, SourceIdentityFindUniqueArgs<ExtArgs>>): Prisma__SourceIdentityClient<$Result.GetResult<Prisma.$SourceIdentityPayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find one SourceIdentity that matches the filter or throw an error with `error.code='P2025'`
+     * if no matches were found.
+     * @param {SourceIdentityFindUniqueOrThrowArgs} args - Arguments to find a SourceIdentity
+     * @example
+     * // Get one SourceIdentity
+     * const sourceIdentity = await prisma.sourceIdentity.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends SourceIdentityFindUniqueOrThrowArgs>(args: SelectSubset<T, SourceIdentityFindUniqueOrThrowArgs<ExtArgs>>): Prisma__SourceIdentityClient<$Result.GetResult<Prisma.$SourceIdentityPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first SourceIdentity that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {SourceIdentityFindFirstArgs} args - Arguments to find a SourceIdentity
+     * @example
+     * // Get one SourceIdentity
+     * const sourceIdentity = await prisma.sourceIdentity.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends SourceIdentityFindFirstArgs>(args?: SelectSubset<T, SourceIdentityFindFirstArgs<ExtArgs>>): Prisma__SourceIdentityClient<$Result.GetResult<Prisma.$SourceIdentityPayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first SourceIdentity that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {SourceIdentityFindFirstOrThrowArgs} args - Arguments to find a SourceIdentity
+     * @example
+     * // Get one SourceIdentity
+     * const sourceIdentity = await prisma.sourceIdentity.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends SourceIdentityFindFirstOrThrowArgs>(args?: SelectSubset<T, SourceIdentityFindFirstOrThrowArgs<ExtArgs>>): Prisma__SourceIdentityClient<$Result.GetResult<Prisma.$SourceIdentityPayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find zero or more SourceIdentities that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {SourceIdentityFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all SourceIdentities
+     * const sourceIdentities = await prisma.sourceIdentity.findMany()
+     * 
+     * // Get first 10 SourceIdentities
+     * const sourceIdentities = await prisma.sourceIdentity.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const sourceIdentityWithIdOnly = await prisma.sourceIdentity.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends SourceIdentityFindManyArgs>(args?: SelectSubset<T, SourceIdentityFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SourceIdentityPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+
+    /**
+     * Create a SourceIdentity.
+     * @param {SourceIdentityCreateArgs} args - Arguments to create a SourceIdentity.
+     * @example
+     * // Create one SourceIdentity
+     * const SourceIdentity = await prisma.sourceIdentity.create({
+     *   data: {
+     *     // ... data to create a SourceIdentity
+     *   }
+     * })
+     * 
+     */
+    create<T extends SourceIdentityCreateArgs>(args: SelectSubset<T, SourceIdentityCreateArgs<ExtArgs>>): Prisma__SourceIdentityClient<$Result.GetResult<Prisma.$SourceIdentityPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Create many SourceIdentities.
+     * @param {SourceIdentityCreateManyArgs} args - Arguments to create many SourceIdentities.
+     * @example
+     * // Create many SourceIdentities
+     * const sourceIdentity = await prisma.sourceIdentity.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends SourceIdentityCreateManyArgs>(args?: SelectSubset<T, SourceIdentityCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many SourceIdentities and returns the data saved in the database.
+     * @param {SourceIdentityCreateManyAndReturnArgs} args - Arguments to create many SourceIdentities.
+     * @example
+     * // Create many SourceIdentities
+     * const sourceIdentity = await prisma.sourceIdentity.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many SourceIdentities and only return the `id`
+     * const sourceIdentityWithIdOnly = await prisma.sourceIdentity.createManyAndReturn({
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends SourceIdentityCreateManyAndReturnArgs>(args?: SelectSubset<T, SourceIdentityCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SourceIdentityPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Delete a SourceIdentity.
+     * @param {SourceIdentityDeleteArgs} args - Arguments to delete one SourceIdentity.
+     * @example
+     * // Delete one SourceIdentity
+     * const SourceIdentity = await prisma.sourceIdentity.delete({
+     *   where: {
+     *     // ... filter to delete one SourceIdentity
+     *   }
+     * })
+     * 
+     */
+    delete<T extends SourceIdentityDeleteArgs>(args: SelectSubset<T, SourceIdentityDeleteArgs<ExtArgs>>): Prisma__SourceIdentityClient<$Result.GetResult<Prisma.$SourceIdentityPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Update one SourceIdentity.
+     * @param {SourceIdentityUpdateArgs} args - Arguments to update one SourceIdentity.
+     * @example
+     * // Update one SourceIdentity
+     * const sourceIdentity = await prisma.sourceIdentity.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends SourceIdentityUpdateArgs>(args: SelectSubset<T, SourceIdentityUpdateArgs<ExtArgs>>): Prisma__SourceIdentityClient<$Result.GetResult<Prisma.$SourceIdentityPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Delete zero or more SourceIdentities.
+     * @param {SourceIdentityDeleteManyArgs} args - Arguments to filter SourceIdentities to delete.
+     * @example
+     * // Delete a few SourceIdentities
+     * const { count } = await prisma.sourceIdentity.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends SourceIdentityDeleteManyArgs>(args?: SelectSubset<T, SourceIdentityDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more SourceIdentities.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {SourceIdentityUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many SourceIdentities
+     * const sourceIdentity = await prisma.sourceIdentity.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends SourceIdentityUpdateManyArgs>(args: SelectSubset<T, SourceIdentityUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more SourceIdentities and returns the data updated in the database.
+     * @param {SourceIdentityUpdateManyAndReturnArgs} args - Arguments to update many SourceIdentities.
+     * @example
+     * // Update many SourceIdentities
+     * const sourceIdentity = await prisma.sourceIdentity.updateManyAndReturn({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Update zero or more SourceIdentities and only return the `id`
+     * const sourceIdentityWithIdOnly = await prisma.sourceIdentity.updateManyAndReturn({
+     *   select: { id: true },
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    updateManyAndReturn<T extends SourceIdentityUpdateManyAndReturnArgs>(args: SelectSubset<T, SourceIdentityUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SourceIdentityPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Create or update one SourceIdentity.
+     * @param {SourceIdentityUpsertArgs} args - Arguments to update or create a SourceIdentity.
+     * @example
+     * // Update or create a SourceIdentity
+     * const sourceIdentity = await prisma.sourceIdentity.upsert({
+     *   create: {
+     *     // ... data to create a SourceIdentity
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the SourceIdentity we want to update
+     *   }
+     * })
+     */
+    upsert<T extends SourceIdentityUpsertArgs>(args: SelectSubset<T, SourceIdentityUpsertArgs<ExtArgs>>): Prisma__SourceIdentityClient<$Result.GetResult<Prisma.$SourceIdentityPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+
+    /**
+     * Count the number of SourceIdentities.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {SourceIdentityCountArgs} args - Arguments to filter SourceIdentities to count.
+     * @example
+     * // Count the number of SourceIdentities
+     * const count = await prisma.sourceIdentity.count({
+     *   where: {
+     *     // ... the filter for the SourceIdentities we want to count
+     *   }
+     * })
+    **/
+    count<T extends SourceIdentityCountArgs>(
+      args?: Subset<T, SourceIdentityCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], SourceIdentityCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a SourceIdentity.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {SourceIdentityAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends SourceIdentityAggregateArgs>(args: Subset<T, SourceIdentityAggregateArgs>): Prisma.PrismaPromise<GetSourceIdentityAggregateType<T>>
+
+    /**
+     * Group by SourceIdentity.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {SourceIdentityGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends SourceIdentityGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: SourceIdentityGroupByArgs['orderBy'] }
+        : { orderBy?: SourceIdentityGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, SourceIdentityGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetSourceIdentityGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the SourceIdentity model
+   */
+  readonly fields: SourceIdentityFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for SourceIdentity.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__SourceIdentityClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    source<T extends SourceDefaultArgs<ExtArgs> = {}>(args?: Subset<T, SourceDefaultArgs<ExtArgs>>): Prisma__SourceClient<$Result.GetResult<Prisma.$SourcePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the SourceIdentity model
+   */
+  interface SourceIdentityFieldRefs {
+    readonly id: FieldRef<"SourceIdentity", 'String'>
+    readonly sourceId: FieldRef<"SourceIdentity", 'String'>
+    readonly type: FieldRef<"SourceIdentity", 'SourceType'>
+    readonly platform: FieldRef<"SourceIdentity", 'String'>
+    readonly driver: FieldRef<"SourceIdentity", 'String'>
+    readonly intentType: FieldRef<"SourceIdentity", 'String'>
+    readonly intentArgsHash: FieldRef<"SourceIdentity", 'String'>
+    readonly createdAt: FieldRef<"SourceIdentity", 'DateTime'>
+    readonly updatedAt: FieldRef<"SourceIdentity", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * SourceIdentity findUnique
+   */
+  export type SourceIdentityFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SourceIdentity
+     */
+    select?: SourceIdentitySelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the SourceIdentity
+     */
+    omit?: SourceIdentityOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: SourceIdentityInclude<ExtArgs> | null
+    /**
+     * Filter, which SourceIdentity to fetch.
+     */
+    where: SourceIdentityWhereUniqueInput
+  }
+
+  /**
+   * SourceIdentity findUniqueOrThrow
+   */
+  export type SourceIdentityFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SourceIdentity
+     */
+    select?: SourceIdentitySelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the SourceIdentity
+     */
+    omit?: SourceIdentityOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: SourceIdentityInclude<ExtArgs> | null
+    /**
+     * Filter, which SourceIdentity to fetch.
+     */
+    where: SourceIdentityWhereUniqueInput
+  }
+
+  /**
+   * SourceIdentity findFirst
+   */
+  export type SourceIdentityFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SourceIdentity
+     */
+    select?: SourceIdentitySelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the SourceIdentity
+     */
+    omit?: SourceIdentityOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: SourceIdentityInclude<ExtArgs> | null
+    /**
+     * Filter, which SourceIdentity to fetch.
+     */
+    where?: SourceIdentityWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of SourceIdentities to fetch.
+     */
+    orderBy?: SourceIdentityOrderByWithRelationInput | SourceIdentityOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for SourceIdentities.
+     */
+    cursor?: SourceIdentityWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` SourceIdentities from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` SourceIdentities.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of SourceIdentities.
+     */
+    distinct?: SourceIdentityScalarFieldEnum | SourceIdentityScalarFieldEnum[]
+  }
+
+  /**
+   * SourceIdentity findFirstOrThrow
+   */
+  export type SourceIdentityFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SourceIdentity
+     */
+    select?: SourceIdentitySelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the SourceIdentity
+     */
+    omit?: SourceIdentityOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: SourceIdentityInclude<ExtArgs> | null
+    /**
+     * Filter, which SourceIdentity to fetch.
+     */
+    where?: SourceIdentityWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of SourceIdentities to fetch.
+     */
+    orderBy?: SourceIdentityOrderByWithRelationInput | SourceIdentityOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for SourceIdentities.
+     */
+    cursor?: SourceIdentityWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` SourceIdentities from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` SourceIdentities.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of SourceIdentities.
+     */
+    distinct?: SourceIdentityScalarFieldEnum | SourceIdentityScalarFieldEnum[]
+  }
+
+  /**
+   * SourceIdentity findMany
+   */
+  export type SourceIdentityFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SourceIdentity
+     */
+    select?: SourceIdentitySelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the SourceIdentity
+     */
+    omit?: SourceIdentityOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: SourceIdentityInclude<ExtArgs> | null
+    /**
+     * Filter, which SourceIdentities to fetch.
+     */
+    where?: SourceIdentityWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of SourceIdentities to fetch.
+     */
+    orderBy?: SourceIdentityOrderByWithRelationInput | SourceIdentityOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing SourceIdentities.
+     */
+    cursor?: SourceIdentityWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` SourceIdentities from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` SourceIdentities.
+     */
+    skip?: number
+    distinct?: SourceIdentityScalarFieldEnum | SourceIdentityScalarFieldEnum[]
+  }
+
+  /**
+   * SourceIdentity create
+   */
+  export type SourceIdentityCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SourceIdentity
+     */
+    select?: SourceIdentitySelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the SourceIdentity
+     */
+    omit?: SourceIdentityOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: SourceIdentityInclude<ExtArgs> | null
+    /**
+     * The data needed to create a SourceIdentity.
+     */
+    data: XOR<SourceIdentityCreateInput, SourceIdentityUncheckedCreateInput>
+  }
+
+  /**
+   * SourceIdentity createMany
+   */
+  export type SourceIdentityCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many SourceIdentities.
+     */
+    data: SourceIdentityCreateManyInput | SourceIdentityCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * SourceIdentity createManyAndReturn
+   */
+  export type SourceIdentityCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SourceIdentity
+     */
+    select?: SourceIdentitySelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the SourceIdentity
+     */
+    omit?: SourceIdentityOmit<ExtArgs> | null
+    /**
+     * The data used to create many SourceIdentities.
+     */
+    data: SourceIdentityCreateManyInput | SourceIdentityCreateManyInput[]
+    skipDuplicates?: boolean
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: SourceIdentityIncludeCreateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * SourceIdentity update
+   */
+  export type SourceIdentityUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SourceIdentity
+     */
+    select?: SourceIdentitySelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the SourceIdentity
+     */
+    omit?: SourceIdentityOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: SourceIdentityInclude<ExtArgs> | null
+    /**
+     * The data needed to update a SourceIdentity.
+     */
+    data: XOR<SourceIdentityUpdateInput, SourceIdentityUncheckedUpdateInput>
+    /**
+     * Choose, which SourceIdentity to update.
+     */
+    where: SourceIdentityWhereUniqueInput
+  }
+
+  /**
+   * SourceIdentity updateMany
+   */
+  export type SourceIdentityUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update SourceIdentities.
+     */
+    data: XOR<SourceIdentityUpdateManyMutationInput, SourceIdentityUncheckedUpdateManyInput>
+    /**
+     * Filter which SourceIdentities to update
+     */
+    where?: SourceIdentityWhereInput
+    /**
+     * Limit how many SourceIdentities to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * SourceIdentity updateManyAndReturn
+   */
+  export type SourceIdentityUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SourceIdentity
+     */
+    select?: SourceIdentitySelectUpdateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the SourceIdentity
+     */
+    omit?: SourceIdentityOmit<ExtArgs> | null
+    /**
+     * The data used to update SourceIdentities.
+     */
+    data: XOR<SourceIdentityUpdateManyMutationInput, SourceIdentityUncheckedUpdateManyInput>
+    /**
+     * Filter which SourceIdentities to update
+     */
+    where?: SourceIdentityWhereInput
+    /**
+     * Limit how many SourceIdentities to update.
+     */
+    limit?: number
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: SourceIdentityIncludeUpdateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * SourceIdentity upsert
+   */
+  export type SourceIdentityUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SourceIdentity
+     */
+    select?: SourceIdentitySelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the SourceIdentity
+     */
+    omit?: SourceIdentityOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: SourceIdentityInclude<ExtArgs> | null
+    /**
+     * The filter to search for the SourceIdentity to update in case it exists.
+     */
+    where: SourceIdentityWhereUniqueInput
+    /**
+     * In case the SourceIdentity found by the `where` argument doesn't exist, create a new SourceIdentity with this data.
+     */
+    create: XOR<SourceIdentityCreateInput, SourceIdentityUncheckedCreateInput>
+    /**
+     * In case the SourceIdentity was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<SourceIdentityUpdateInput, SourceIdentityUncheckedUpdateInput>
+  }
+
+  /**
+   * SourceIdentity delete
+   */
+  export type SourceIdentityDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SourceIdentity
+     */
+    select?: SourceIdentitySelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the SourceIdentity
+     */
+    omit?: SourceIdentityOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: SourceIdentityInclude<ExtArgs> | null
+    /**
+     * Filter which SourceIdentity to delete.
+     */
+    where: SourceIdentityWhereUniqueInput
+  }
+
+  /**
+   * SourceIdentity deleteMany
+   */
+  export type SourceIdentityDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which SourceIdentities to delete
+     */
+    where?: SourceIdentityWhereInput
+    /**
+     * Limit how many SourceIdentities to delete.
+     */
+    limit?: number
+  }
+
+  /**
+   * SourceIdentity without action
+   */
+  export type SourceIdentityDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SourceIdentity
+     */
+    select?: SourceIdentitySelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the SourceIdentity
+     */
+    omit?: SourceIdentityOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: SourceIdentityInclude<ExtArgs> | null
   }
 
 
@@ -36131,6 +37355,21 @@ export namespace Prisma {
   export type SourceScalarFieldEnum = (typeof SourceScalarFieldEnum)[keyof typeof SourceScalarFieldEnum]
 
 
+  export const SourceIdentityScalarFieldEnum: {
+    id: 'id',
+    sourceId: 'sourceId',
+    type: 'type',
+    platform: 'platform',
+    driver: 'driver',
+    intentType: 'intentType',
+    intentArgsHash: 'intentArgsHash',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt'
+  };
+
+  export type SourceIdentityScalarFieldEnum = (typeof SourceIdentityScalarFieldEnum)[keyof typeof SourceIdentityScalarFieldEnum]
+
+
   export const BbPresetScalarFieldEnum: {
     id: 'id',
     key: 'key',
@@ -37112,6 +38351,7 @@ export namespace Prisma {
     darknet?: XOR<DarknetSourceConfigNullableScalarRelationFilter, DarknetSourceConfigWhereInput> | null
     search?: XOR<SearchEngineSourceConfigNullableScalarRelationFilter, SearchEngineSourceConfigWhereInput> | null
     social?: XOR<SocialMediaSourceConfigNullableScalarRelationFilter, SocialMediaSourceConfigWhereInput> | null
+    identity?: XOR<SourceIdentityNullableScalarRelationFilter, SourceIdentityWhereInput> | null
     presetBindings?: SourcePresetBindingListRelationFilter
     queries?: QueryListRelationFilter
   }
@@ -37135,6 +38375,7 @@ export namespace Prisma {
     darknet?: DarknetSourceConfigOrderByWithRelationInput
     search?: SearchEngineSourceConfigOrderByWithRelationInput
     social?: SocialMediaSourceConfigOrderByWithRelationInput
+    identity?: SourceIdentityOrderByWithRelationInput
     presetBindings?: SourcePresetBindingOrderByRelationAggregateInput
     queries?: QueryOrderByRelationAggregateInput
   }
@@ -37161,6 +38402,7 @@ export namespace Prisma {
     darknet?: XOR<DarknetSourceConfigNullableScalarRelationFilter, DarknetSourceConfigWhereInput> | null
     search?: XOR<SearchEngineSourceConfigNullableScalarRelationFilter, SearchEngineSourceConfigWhereInput> | null
     social?: XOR<SocialMediaSourceConfigNullableScalarRelationFilter, SocialMediaSourceConfigWhereInput> | null
+    identity?: XOR<SourceIdentityNullableScalarRelationFilter, SourceIdentityWhereInput> | null
     presetBindings?: SourcePresetBindingListRelationFilter
     queries?: QueryListRelationFilter
   }, "id" | "name">
@@ -37201,6 +38443,82 @@ export namespace Prisma {
     credentialId?: StringNullableWithAggregatesFilter<"Source"> | string | null
     createdAt?: DateTimeWithAggregatesFilter<"Source"> | Date | string
     updatedAt?: DateTimeWithAggregatesFilter<"Source"> | Date | string
+  }
+
+  export type SourceIdentityWhereInput = {
+    AND?: SourceIdentityWhereInput | SourceIdentityWhereInput[]
+    OR?: SourceIdentityWhereInput[]
+    NOT?: SourceIdentityWhereInput | SourceIdentityWhereInput[]
+    id?: StringFilter<"SourceIdentity"> | string
+    sourceId?: StringFilter<"SourceIdentity"> | string
+    type?: EnumSourceTypeFilter<"SourceIdentity"> | $Enums.SourceType
+    platform?: StringFilter<"SourceIdentity"> | string
+    driver?: StringFilter<"SourceIdentity"> | string
+    intentType?: StringFilter<"SourceIdentity"> | string
+    intentArgsHash?: StringFilter<"SourceIdentity"> | string
+    createdAt?: DateTimeFilter<"SourceIdentity"> | Date | string
+    updatedAt?: DateTimeFilter<"SourceIdentity"> | Date | string
+    source?: XOR<SourceScalarRelationFilter, SourceWhereInput>
+  }
+
+  export type SourceIdentityOrderByWithRelationInput = {
+    id?: SortOrder
+    sourceId?: SortOrder
+    type?: SortOrder
+    platform?: SortOrder
+    driver?: SortOrder
+    intentType?: SortOrder
+    intentArgsHash?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    source?: SourceOrderByWithRelationInput
+  }
+
+  export type SourceIdentityWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    sourceId?: string
+    type_platform_driver_intentType_intentArgsHash?: SourceIdentityTypePlatformDriverIntentTypeIntentArgsHashCompoundUniqueInput
+    AND?: SourceIdentityWhereInput | SourceIdentityWhereInput[]
+    OR?: SourceIdentityWhereInput[]
+    NOT?: SourceIdentityWhereInput | SourceIdentityWhereInput[]
+    type?: EnumSourceTypeFilter<"SourceIdentity"> | $Enums.SourceType
+    platform?: StringFilter<"SourceIdentity"> | string
+    driver?: StringFilter<"SourceIdentity"> | string
+    intentType?: StringFilter<"SourceIdentity"> | string
+    intentArgsHash?: StringFilter<"SourceIdentity"> | string
+    createdAt?: DateTimeFilter<"SourceIdentity"> | Date | string
+    updatedAt?: DateTimeFilter<"SourceIdentity"> | Date | string
+    source?: XOR<SourceScalarRelationFilter, SourceWhereInput>
+  }, "id" | "sourceId" | "type_platform_driver_intentType_intentArgsHash">
+
+  export type SourceIdentityOrderByWithAggregationInput = {
+    id?: SortOrder
+    sourceId?: SortOrder
+    type?: SortOrder
+    platform?: SortOrder
+    driver?: SortOrder
+    intentType?: SortOrder
+    intentArgsHash?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    _count?: SourceIdentityCountOrderByAggregateInput
+    _max?: SourceIdentityMaxOrderByAggregateInput
+    _min?: SourceIdentityMinOrderByAggregateInput
+  }
+
+  export type SourceIdentityScalarWhereWithAggregatesInput = {
+    AND?: SourceIdentityScalarWhereWithAggregatesInput | SourceIdentityScalarWhereWithAggregatesInput[]
+    OR?: SourceIdentityScalarWhereWithAggregatesInput[]
+    NOT?: SourceIdentityScalarWhereWithAggregatesInput | SourceIdentityScalarWhereWithAggregatesInput[]
+    id?: StringWithAggregatesFilter<"SourceIdentity"> | string
+    sourceId?: StringWithAggregatesFilter<"SourceIdentity"> | string
+    type?: EnumSourceTypeWithAggregatesFilter<"SourceIdentity"> | $Enums.SourceType
+    platform?: StringWithAggregatesFilter<"SourceIdentity"> | string
+    driver?: StringWithAggregatesFilter<"SourceIdentity"> | string
+    intentType?: StringWithAggregatesFilter<"SourceIdentity"> | string
+    intentArgsHash?: StringWithAggregatesFilter<"SourceIdentity"> | string
+    createdAt?: DateTimeWithAggregatesFilter<"SourceIdentity"> | Date | string
+    updatedAt?: DateTimeWithAggregatesFilter<"SourceIdentity"> | Date | string
   }
 
   export type BbPresetWhereInput = {
@@ -39293,6 +40611,7 @@ export namespace Prisma {
     darknet?: DarknetSourceConfigCreateNestedOneWithoutSourceInput
     search?: SearchEngineSourceConfigCreateNestedOneWithoutSourceInput
     social?: SocialMediaSourceConfigCreateNestedOneWithoutSourceInput
+    identity?: SourceIdentityCreateNestedOneWithoutSourceInput
     presetBindings?: SourcePresetBindingCreateNestedManyWithoutSourceInput
     queries?: QueryCreateNestedManyWithoutSourcesInput
   }
@@ -39314,6 +40633,7 @@ export namespace Prisma {
     darknet?: DarknetSourceConfigUncheckedCreateNestedOneWithoutSourceInput
     search?: SearchEngineSourceConfigUncheckedCreateNestedOneWithoutSourceInput
     social?: SocialMediaSourceConfigUncheckedCreateNestedOneWithoutSourceInput
+    identity?: SourceIdentityUncheckedCreateNestedOneWithoutSourceInput
     presetBindings?: SourcePresetBindingUncheckedCreateNestedManyWithoutSourceInput
     queries?: QueryUncheckedCreateNestedManyWithoutSourcesInput
   }
@@ -39335,6 +40655,7 @@ export namespace Prisma {
     darknet?: DarknetSourceConfigUpdateOneWithoutSourceNestedInput
     search?: SearchEngineSourceConfigUpdateOneWithoutSourceNestedInput
     social?: SocialMediaSourceConfigUpdateOneWithoutSourceNestedInput
+    identity?: SourceIdentityUpdateOneWithoutSourceNestedInput
     presetBindings?: SourcePresetBindingUpdateManyWithoutSourceNestedInput
     queries?: QueryUpdateManyWithoutSourcesNestedInput
   }
@@ -39356,6 +40677,7 @@ export namespace Prisma {
     darknet?: DarknetSourceConfigUncheckedUpdateOneWithoutSourceNestedInput
     search?: SearchEngineSourceConfigUncheckedUpdateOneWithoutSourceNestedInput
     social?: SocialMediaSourceConfigUncheckedUpdateOneWithoutSourceNestedInput
+    identity?: SourceIdentityUncheckedUpdateOneWithoutSourceNestedInput
     presetBindings?: SourcePresetBindingUncheckedUpdateManyWithoutSourceNestedInput
     queries?: QueryUncheckedUpdateManyWithoutSourcesNestedInput
   }
@@ -39399,6 +40721,89 @@ export namespace Prisma {
     lastStatus?: NullableStringFieldUpdateOperationsInput | string | null
     proxyId?: NullableStringFieldUpdateOperationsInput | string | null
     credentialId?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type SourceIdentityCreateInput = {
+    id?: string
+    type: $Enums.SourceType
+    platform: string
+    driver: string
+    intentType: string
+    intentArgsHash: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    source: SourceCreateNestedOneWithoutIdentityInput
+  }
+
+  export type SourceIdentityUncheckedCreateInput = {
+    id?: string
+    sourceId: string
+    type: $Enums.SourceType
+    platform: string
+    driver: string
+    intentType: string
+    intentArgsHash: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type SourceIdentityUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    type?: EnumSourceTypeFieldUpdateOperationsInput | $Enums.SourceType
+    platform?: StringFieldUpdateOperationsInput | string
+    driver?: StringFieldUpdateOperationsInput | string
+    intentType?: StringFieldUpdateOperationsInput | string
+    intentArgsHash?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    source?: SourceUpdateOneRequiredWithoutIdentityNestedInput
+  }
+
+  export type SourceIdentityUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    sourceId?: StringFieldUpdateOperationsInput | string
+    type?: EnumSourceTypeFieldUpdateOperationsInput | $Enums.SourceType
+    platform?: StringFieldUpdateOperationsInput | string
+    driver?: StringFieldUpdateOperationsInput | string
+    intentType?: StringFieldUpdateOperationsInput | string
+    intentArgsHash?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type SourceIdentityCreateManyInput = {
+    id?: string
+    sourceId: string
+    type: $Enums.SourceType
+    platform: string
+    driver: string
+    intentType: string
+    intentArgsHash: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type SourceIdentityUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    type?: EnumSourceTypeFieldUpdateOperationsInput | $Enums.SourceType
+    platform?: StringFieldUpdateOperationsInput | string
+    driver?: StringFieldUpdateOperationsInput | string
+    intentType?: StringFieldUpdateOperationsInput | string
+    intentArgsHash?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type SourceIdentityUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    sourceId?: StringFieldUpdateOperationsInput | string
+    type?: EnumSourceTypeFieldUpdateOperationsInput | $Enums.SourceType
+    platform?: StringFieldUpdateOperationsInput | string
+    driver?: StringFieldUpdateOperationsInput | string
+    intentType?: StringFieldUpdateOperationsInput | string
+    intentArgsHash?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -41731,6 +43136,11 @@ export namespace Prisma {
     isNot?: SocialMediaSourceConfigWhereInput | null
   }
 
+  export type SourceIdentityNullableScalarRelationFilter = {
+    is?: SourceIdentityWhereInput | null
+    isNot?: SourceIdentityWhereInput | null
+  }
+
   export type SourcePresetBindingListRelationFilter = {
     every?: SourcePresetBindingWhereInput
     some?: SourcePresetBindingWhereInput
@@ -41834,6 +43244,55 @@ export namespace Prisma {
     _max?: NestedDateTimeNullableFilter<$PrismaModel>
   }
 
+  export type SourceScalarRelationFilter = {
+    is?: SourceWhereInput
+    isNot?: SourceWhereInput
+  }
+
+  export type SourceIdentityTypePlatformDriverIntentTypeIntentArgsHashCompoundUniqueInput = {
+    type: $Enums.SourceType
+    platform: string
+    driver: string
+    intentType: string
+    intentArgsHash: string
+  }
+
+  export type SourceIdentityCountOrderByAggregateInput = {
+    id?: SortOrder
+    sourceId?: SortOrder
+    type?: SortOrder
+    platform?: SortOrder
+    driver?: SortOrder
+    intentType?: SortOrder
+    intentArgsHash?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type SourceIdentityMaxOrderByAggregateInput = {
+    id?: SortOrder
+    sourceId?: SortOrder
+    type?: SortOrder
+    platform?: SortOrder
+    driver?: SortOrder
+    intentType?: SortOrder
+    intentArgsHash?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type SourceIdentityMinOrderByAggregateInput = {
+    id?: SortOrder
+    sourceId?: SortOrder
+    type?: SortOrder
+    platform?: SortOrder
+    driver?: SortOrder
+    intentType?: SortOrder
+    intentArgsHash?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
   export type EnumBbPresetStatusFilter<$PrismaModel = never> = {
     equals?: $Enums.BbPresetStatus | EnumBbPresetStatusFieldRefInput<$PrismaModel>
     in?: $Enums.BbPresetStatus[] | ListEnumBbPresetStatusFieldRefInput<$PrismaModel>
@@ -41904,11 +43363,6 @@ export namespace Prisma {
     _count?: NestedIntFilter<$PrismaModel>
     _min?: NestedEnumBbPresetStatusFilter<$PrismaModel>
     _max?: NestedEnumBbPresetStatusFilter<$PrismaModel>
-  }
-
-  export type SourceScalarRelationFilter = {
-    is?: SourceWhereInput
-    isNot?: SourceWhereInput
   }
 
   export type BbPresetScalarRelationFilter = {
@@ -43679,6 +45133,12 @@ export namespace Prisma {
     connect?: SocialMediaSourceConfigWhereUniqueInput
   }
 
+  export type SourceIdentityCreateNestedOneWithoutSourceInput = {
+    create?: XOR<SourceIdentityCreateWithoutSourceInput, SourceIdentityUncheckedCreateWithoutSourceInput>
+    connectOrCreate?: SourceIdentityCreateOrConnectWithoutSourceInput
+    connect?: SourceIdentityWhereUniqueInput
+  }
+
   export type SourcePresetBindingCreateNestedManyWithoutSourceInput = {
     create?: XOR<SourcePresetBindingCreateWithoutSourceInput, SourcePresetBindingUncheckedCreateWithoutSourceInput> | SourcePresetBindingCreateWithoutSourceInput[] | SourcePresetBindingUncheckedCreateWithoutSourceInput[]
     connectOrCreate?: SourcePresetBindingCreateOrConnectWithoutSourceInput | SourcePresetBindingCreateOrConnectWithoutSourceInput[]
@@ -43714,6 +45174,12 @@ export namespace Prisma {
     create?: XOR<SocialMediaSourceConfigCreateWithoutSourceInput, SocialMediaSourceConfigUncheckedCreateWithoutSourceInput>
     connectOrCreate?: SocialMediaSourceConfigCreateOrConnectWithoutSourceInput
     connect?: SocialMediaSourceConfigWhereUniqueInput
+  }
+
+  export type SourceIdentityUncheckedCreateNestedOneWithoutSourceInput = {
+    create?: XOR<SourceIdentityCreateWithoutSourceInput, SourceIdentityUncheckedCreateWithoutSourceInput>
+    connectOrCreate?: SourceIdentityCreateOrConnectWithoutSourceInput
+    connect?: SourceIdentityWhereUniqueInput
   }
 
   export type SourcePresetBindingUncheckedCreateNestedManyWithoutSourceInput = {
@@ -43805,6 +45271,16 @@ export namespace Prisma {
     update?: XOR<XOR<SocialMediaSourceConfigUpdateToOneWithWhereWithoutSourceInput, SocialMediaSourceConfigUpdateWithoutSourceInput>, SocialMediaSourceConfigUncheckedUpdateWithoutSourceInput>
   }
 
+  export type SourceIdentityUpdateOneWithoutSourceNestedInput = {
+    create?: XOR<SourceIdentityCreateWithoutSourceInput, SourceIdentityUncheckedCreateWithoutSourceInput>
+    connectOrCreate?: SourceIdentityCreateOrConnectWithoutSourceInput
+    upsert?: SourceIdentityUpsertWithoutSourceInput
+    disconnect?: SourceIdentityWhereInput | boolean
+    delete?: SourceIdentityWhereInput | boolean
+    connect?: SourceIdentityWhereUniqueInput
+    update?: XOR<XOR<SourceIdentityUpdateToOneWithWhereWithoutSourceInput, SourceIdentityUpdateWithoutSourceInput>, SourceIdentityUncheckedUpdateWithoutSourceInput>
+  }
+
   export type SourcePresetBindingUpdateManyWithoutSourceNestedInput = {
     create?: XOR<SourcePresetBindingCreateWithoutSourceInput, SourcePresetBindingUncheckedCreateWithoutSourceInput> | SourcePresetBindingCreateWithoutSourceInput[] | SourcePresetBindingUncheckedCreateWithoutSourceInput[]
     connectOrCreate?: SourcePresetBindingCreateOrConnectWithoutSourceInput | SourcePresetBindingCreateOrConnectWithoutSourceInput[]
@@ -43872,6 +45348,16 @@ export namespace Prisma {
     update?: XOR<XOR<SocialMediaSourceConfigUpdateToOneWithWhereWithoutSourceInput, SocialMediaSourceConfigUpdateWithoutSourceInput>, SocialMediaSourceConfigUncheckedUpdateWithoutSourceInput>
   }
 
+  export type SourceIdentityUncheckedUpdateOneWithoutSourceNestedInput = {
+    create?: XOR<SourceIdentityCreateWithoutSourceInput, SourceIdentityUncheckedCreateWithoutSourceInput>
+    connectOrCreate?: SourceIdentityCreateOrConnectWithoutSourceInput
+    upsert?: SourceIdentityUpsertWithoutSourceInput
+    disconnect?: SourceIdentityWhereInput | boolean
+    delete?: SourceIdentityWhereInput | boolean
+    connect?: SourceIdentityWhereUniqueInput
+    update?: XOR<XOR<SourceIdentityUpdateToOneWithWhereWithoutSourceInput, SourceIdentityUpdateWithoutSourceInput>, SourceIdentityUncheckedUpdateWithoutSourceInput>
+  }
+
   export type SourcePresetBindingUncheckedUpdateManyWithoutSourceNestedInput = {
     create?: XOR<SourcePresetBindingCreateWithoutSourceInput, SourcePresetBindingUncheckedCreateWithoutSourceInput> | SourcePresetBindingCreateWithoutSourceInput[] | SourcePresetBindingUncheckedCreateWithoutSourceInput[]
     connectOrCreate?: SourcePresetBindingCreateOrConnectWithoutSourceInput | SourcePresetBindingCreateOrConnectWithoutSourceInput[]
@@ -43897,6 +45383,20 @@ export namespace Prisma {
     update?: QueryUpdateWithWhereUniqueWithoutSourcesInput | QueryUpdateWithWhereUniqueWithoutSourcesInput[]
     updateMany?: QueryUpdateManyWithWhereWithoutSourcesInput | QueryUpdateManyWithWhereWithoutSourcesInput[]
     deleteMany?: QueryScalarWhereInput | QueryScalarWhereInput[]
+  }
+
+  export type SourceCreateNestedOneWithoutIdentityInput = {
+    create?: XOR<SourceCreateWithoutIdentityInput, SourceUncheckedCreateWithoutIdentityInput>
+    connectOrCreate?: SourceCreateOrConnectWithoutIdentityInput
+    connect?: SourceWhereUniqueInput
+  }
+
+  export type SourceUpdateOneRequiredWithoutIdentityNestedInput = {
+    create?: XOR<SourceCreateWithoutIdentityInput, SourceUncheckedCreateWithoutIdentityInput>
+    connectOrCreate?: SourceCreateOrConnectWithoutIdentityInput
+    upsert?: SourceUpsertWithoutIdentityInput
+    connect?: SourceWhereUniqueInput
+    update?: XOR<XOR<SourceUpdateToOneWithWhereWithoutIdentityInput, SourceUpdateWithoutIdentityInput>, SourceUncheckedUpdateWithoutIdentityInput>
   }
 
   export type SourcePresetBindingCreateNestedManyWithoutPresetInput = {
@@ -45875,6 +47375,7 @@ export namespace Prisma {
     darknet?: DarknetSourceConfigCreateNestedOneWithoutSourceInput
     search?: SearchEngineSourceConfigCreateNestedOneWithoutSourceInput
     social?: SocialMediaSourceConfigCreateNestedOneWithoutSourceInput
+    identity?: SourceIdentityCreateNestedOneWithoutSourceInput
     presetBindings?: SourcePresetBindingCreateNestedManyWithoutSourceInput
     queries?: QueryCreateNestedManyWithoutSourcesInput
   }
@@ -45895,6 +47396,7 @@ export namespace Prisma {
     darknet?: DarknetSourceConfigUncheckedCreateNestedOneWithoutSourceInput
     search?: SearchEngineSourceConfigUncheckedCreateNestedOneWithoutSourceInput
     social?: SocialMediaSourceConfigUncheckedCreateNestedOneWithoutSourceInput
+    identity?: SourceIdentityUncheckedCreateNestedOneWithoutSourceInput
     presetBindings?: SourcePresetBindingUncheckedCreateNestedManyWithoutSourceInput
     queries?: QueryUncheckedCreateNestedManyWithoutSourcesInput
   }
@@ -46148,6 +47650,7 @@ export namespace Prisma {
     darknet?: DarknetSourceConfigCreateNestedOneWithoutSourceInput
     search?: SearchEngineSourceConfigCreateNestedOneWithoutSourceInput
     social?: SocialMediaSourceConfigCreateNestedOneWithoutSourceInput
+    identity?: SourceIdentityCreateNestedOneWithoutSourceInput
     presetBindings?: SourcePresetBindingCreateNestedManyWithoutSourceInput
     queries?: QueryCreateNestedManyWithoutSourcesInput
   }
@@ -46168,6 +47671,7 @@ export namespace Prisma {
     darknet?: DarknetSourceConfigUncheckedCreateNestedOneWithoutSourceInput
     search?: SearchEngineSourceConfigUncheckedCreateNestedOneWithoutSourceInput
     social?: SocialMediaSourceConfigUncheckedCreateNestedOneWithoutSourceInput
+    identity?: SourceIdentityUncheckedCreateNestedOneWithoutSourceInput
     presetBindings?: SourcePresetBindingUncheckedCreateNestedManyWithoutSourceInput
     queries?: QueryUncheckedCreateNestedManyWithoutSourcesInput
   }
@@ -46478,6 +47982,33 @@ export namespace Prisma {
     create: XOR<SocialMediaSourceConfigCreateWithoutSourceInput, SocialMediaSourceConfigUncheckedCreateWithoutSourceInput>
   }
 
+  export type SourceIdentityCreateWithoutSourceInput = {
+    id?: string
+    type: $Enums.SourceType
+    platform: string
+    driver: string
+    intentType: string
+    intentArgsHash: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type SourceIdentityUncheckedCreateWithoutSourceInput = {
+    id?: string
+    type: $Enums.SourceType
+    platform: string
+    driver: string
+    intentType: string
+    intentArgsHash: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type SourceIdentityCreateOrConnectWithoutSourceInput = {
+    where: SourceIdentityWhereUniqueInput
+    create: XOR<SourceIdentityCreateWithoutSourceInput, SourceIdentityUncheckedCreateWithoutSourceInput>
+  }
+
   export type SourcePresetBindingCreateWithoutSourceInput = {
     id?: string
     args: JsonNullValueInput | InputJsonValue
@@ -46743,6 +48274,39 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
+  export type SourceIdentityUpsertWithoutSourceInput = {
+    update: XOR<SourceIdentityUpdateWithoutSourceInput, SourceIdentityUncheckedUpdateWithoutSourceInput>
+    create: XOR<SourceIdentityCreateWithoutSourceInput, SourceIdentityUncheckedCreateWithoutSourceInput>
+    where?: SourceIdentityWhereInput
+  }
+
+  export type SourceIdentityUpdateToOneWithWhereWithoutSourceInput = {
+    where?: SourceIdentityWhereInput
+    data: XOR<SourceIdentityUpdateWithoutSourceInput, SourceIdentityUncheckedUpdateWithoutSourceInput>
+  }
+
+  export type SourceIdentityUpdateWithoutSourceInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    type?: EnumSourceTypeFieldUpdateOperationsInput | $Enums.SourceType
+    platform?: StringFieldUpdateOperationsInput | string
+    driver?: StringFieldUpdateOperationsInput | string
+    intentType?: StringFieldUpdateOperationsInput | string
+    intentArgsHash?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type SourceIdentityUncheckedUpdateWithoutSourceInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    type?: EnumSourceTypeFieldUpdateOperationsInput | $Enums.SourceType
+    platform?: StringFieldUpdateOperationsInput | string
+    driver?: StringFieldUpdateOperationsInput | string
+    intentType?: StringFieldUpdateOperationsInput | string
+    intentArgsHash?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
   export type SourcePresetBindingUpsertWithWhereUniqueWithoutSourceInput = {
     where: SourcePresetBindingWhereUniqueInput
     update: XOR<SourcePresetBindingUpdateWithoutSourceInput, SourcePresetBindingUncheckedUpdateWithoutSourceInput>
@@ -46786,6 +48350,106 @@ export namespace Prisma {
   export type QueryUpdateManyWithWhereWithoutSourcesInput = {
     where: QueryScalarWhereInput
     data: XOR<QueryUpdateManyMutationInput, QueryUncheckedUpdateManyWithoutSourcesInput>
+  }
+
+  export type SourceCreateWithoutIdentityInput = {
+    id?: string
+    name: string
+    description?: string | null
+    type: $Enums.SourceType
+    active?: boolean
+    rateLimit?: number | null
+    lastFetchedAt?: Date | string | null
+    lastStatus?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    proxy?: ProxyCreateNestedOneWithoutSourcesInput
+    credential?: CredentialCreateNestedOneWithoutSourcesInput
+    web?: WebSourceConfigCreateNestedOneWithoutSourceInput
+    darknet?: DarknetSourceConfigCreateNestedOneWithoutSourceInput
+    search?: SearchEngineSourceConfigCreateNestedOneWithoutSourceInput
+    social?: SocialMediaSourceConfigCreateNestedOneWithoutSourceInput
+    presetBindings?: SourcePresetBindingCreateNestedManyWithoutSourceInput
+    queries?: QueryCreateNestedManyWithoutSourcesInput
+  }
+
+  export type SourceUncheckedCreateWithoutIdentityInput = {
+    id?: string
+    name: string
+    description?: string | null
+    type: $Enums.SourceType
+    active?: boolean
+    rateLimit?: number | null
+    lastFetchedAt?: Date | string | null
+    lastStatus?: string | null
+    proxyId?: string | null
+    credentialId?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    web?: WebSourceConfigUncheckedCreateNestedOneWithoutSourceInput
+    darknet?: DarknetSourceConfigUncheckedCreateNestedOneWithoutSourceInput
+    search?: SearchEngineSourceConfigUncheckedCreateNestedOneWithoutSourceInput
+    social?: SocialMediaSourceConfigUncheckedCreateNestedOneWithoutSourceInput
+    presetBindings?: SourcePresetBindingUncheckedCreateNestedManyWithoutSourceInput
+    queries?: QueryUncheckedCreateNestedManyWithoutSourcesInput
+  }
+
+  export type SourceCreateOrConnectWithoutIdentityInput = {
+    where: SourceWhereUniqueInput
+    create: XOR<SourceCreateWithoutIdentityInput, SourceUncheckedCreateWithoutIdentityInput>
+  }
+
+  export type SourceUpsertWithoutIdentityInput = {
+    update: XOR<SourceUpdateWithoutIdentityInput, SourceUncheckedUpdateWithoutIdentityInput>
+    create: XOR<SourceCreateWithoutIdentityInput, SourceUncheckedCreateWithoutIdentityInput>
+    where?: SourceWhereInput
+  }
+
+  export type SourceUpdateToOneWithWhereWithoutIdentityInput = {
+    where?: SourceWhereInput
+    data: XOR<SourceUpdateWithoutIdentityInput, SourceUncheckedUpdateWithoutIdentityInput>
+  }
+
+  export type SourceUpdateWithoutIdentityInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    type?: EnumSourceTypeFieldUpdateOperationsInput | $Enums.SourceType
+    active?: BoolFieldUpdateOperationsInput | boolean
+    rateLimit?: NullableIntFieldUpdateOperationsInput | number | null
+    lastFetchedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    lastStatus?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    proxy?: ProxyUpdateOneWithoutSourcesNestedInput
+    credential?: CredentialUpdateOneWithoutSourcesNestedInput
+    web?: WebSourceConfigUpdateOneWithoutSourceNestedInput
+    darknet?: DarknetSourceConfigUpdateOneWithoutSourceNestedInput
+    search?: SearchEngineSourceConfigUpdateOneWithoutSourceNestedInput
+    social?: SocialMediaSourceConfigUpdateOneWithoutSourceNestedInput
+    presetBindings?: SourcePresetBindingUpdateManyWithoutSourceNestedInput
+    queries?: QueryUpdateManyWithoutSourcesNestedInput
+  }
+
+  export type SourceUncheckedUpdateWithoutIdentityInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    type?: EnumSourceTypeFieldUpdateOperationsInput | $Enums.SourceType
+    active?: BoolFieldUpdateOperationsInput | boolean
+    rateLimit?: NullableIntFieldUpdateOperationsInput | number | null
+    lastFetchedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    lastStatus?: NullableStringFieldUpdateOperationsInput | string | null
+    proxyId?: NullableStringFieldUpdateOperationsInput | string | null
+    credentialId?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    web?: WebSourceConfigUncheckedUpdateOneWithoutSourceNestedInput
+    darknet?: DarknetSourceConfigUncheckedUpdateOneWithoutSourceNestedInput
+    search?: SearchEngineSourceConfigUncheckedUpdateOneWithoutSourceNestedInput
+    social?: SocialMediaSourceConfigUncheckedUpdateOneWithoutSourceNestedInput
+    presetBindings?: SourcePresetBindingUncheckedUpdateManyWithoutSourceNestedInput
+    queries?: QueryUncheckedUpdateManyWithoutSourcesNestedInput
   }
 
   export type SourcePresetBindingCreateWithoutPresetInput = {
@@ -46849,6 +48513,7 @@ export namespace Prisma {
     darknet?: DarknetSourceConfigCreateNestedOneWithoutSourceInput
     search?: SearchEngineSourceConfigCreateNestedOneWithoutSourceInput
     social?: SocialMediaSourceConfigCreateNestedOneWithoutSourceInput
+    identity?: SourceIdentityCreateNestedOneWithoutSourceInput
     queries?: QueryCreateNestedManyWithoutSourcesInput
   }
 
@@ -46869,6 +48534,7 @@ export namespace Prisma {
     darknet?: DarknetSourceConfigUncheckedCreateNestedOneWithoutSourceInput
     search?: SearchEngineSourceConfigUncheckedCreateNestedOneWithoutSourceInput
     social?: SocialMediaSourceConfigUncheckedCreateNestedOneWithoutSourceInput
+    identity?: SourceIdentityUncheckedCreateNestedOneWithoutSourceInput
     queries?: QueryUncheckedCreateNestedManyWithoutSourcesInput
   }
 
@@ -46946,6 +48612,7 @@ export namespace Prisma {
     darknet?: DarknetSourceConfigUpdateOneWithoutSourceNestedInput
     search?: SearchEngineSourceConfigUpdateOneWithoutSourceNestedInput
     social?: SocialMediaSourceConfigUpdateOneWithoutSourceNestedInput
+    identity?: SourceIdentityUpdateOneWithoutSourceNestedInput
     queries?: QueryUpdateManyWithoutSourcesNestedInput
   }
 
@@ -46966,6 +48633,7 @@ export namespace Prisma {
     darknet?: DarknetSourceConfigUncheckedUpdateOneWithoutSourceNestedInput
     search?: SearchEngineSourceConfigUncheckedUpdateOneWithoutSourceNestedInput
     social?: SocialMediaSourceConfigUncheckedUpdateOneWithoutSourceNestedInput
+    identity?: SourceIdentityUncheckedUpdateOneWithoutSourceNestedInput
     queries?: QueryUncheckedUpdateManyWithoutSourcesNestedInput
   }
 
@@ -47032,6 +48700,7 @@ export namespace Prisma {
     darknet?: DarknetSourceConfigCreateNestedOneWithoutSourceInput
     search?: SearchEngineSourceConfigCreateNestedOneWithoutSourceInput
     social?: SocialMediaSourceConfigCreateNestedOneWithoutSourceInput
+    identity?: SourceIdentityCreateNestedOneWithoutSourceInput
     presetBindings?: SourcePresetBindingCreateNestedManyWithoutSourceInput
     queries?: QueryCreateNestedManyWithoutSourcesInput
   }
@@ -47052,6 +48721,7 @@ export namespace Prisma {
     darknet?: DarknetSourceConfigUncheckedCreateNestedOneWithoutSourceInput
     search?: SearchEngineSourceConfigUncheckedCreateNestedOneWithoutSourceInput
     social?: SocialMediaSourceConfigUncheckedCreateNestedOneWithoutSourceInput
+    identity?: SourceIdentityUncheckedCreateNestedOneWithoutSourceInput
     presetBindings?: SourcePresetBindingUncheckedCreateNestedManyWithoutSourceInput
     queries?: QueryUncheckedCreateNestedManyWithoutSourcesInput
   }
@@ -47119,6 +48789,7 @@ export namespace Prisma {
     darknet?: DarknetSourceConfigUpdateOneWithoutSourceNestedInput
     search?: SearchEngineSourceConfigUpdateOneWithoutSourceNestedInput
     social?: SocialMediaSourceConfigUpdateOneWithoutSourceNestedInput
+    identity?: SourceIdentityUpdateOneWithoutSourceNestedInput
     presetBindings?: SourcePresetBindingUpdateManyWithoutSourceNestedInput
     queries?: QueryUpdateManyWithoutSourcesNestedInput
   }
@@ -47139,6 +48810,7 @@ export namespace Prisma {
     darknet?: DarknetSourceConfigUncheckedUpdateOneWithoutSourceNestedInput
     search?: SearchEngineSourceConfigUncheckedUpdateOneWithoutSourceNestedInput
     social?: SocialMediaSourceConfigUncheckedUpdateOneWithoutSourceNestedInput
+    identity?: SourceIdentityUncheckedUpdateOneWithoutSourceNestedInput
     presetBindings?: SourcePresetBindingUncheckedUpdateManyWithoutSourceNestedInput
     queries?: QueryUncheckedUpdateManyWithoutSourcesNestedInput
   }
@@ -47196,6 +48868,7 @@ export namespace Prisma {
     web?: WebSourceConfigCreateNestedOneWithoutSourceInput
     search?: SearchEngineSourceConfigCreateNestedOneWithoutSourceInput
     social?: SocialMediaSourceConfigCreateNestedOneWithoutSourceInput
+    identity?: SourceIdentityCreateNestedOneWithoutSourceInput
     presetBindings?: SourcePresetBindingCreateNestedManyWithoutSourceInput
     queries?: QueryCreateNestedManyWithoutSourcesInput
   }
@@ -47216,6 +48889,7 @@ export namespace Prisma {
     web?: WebSourceConfigUncheckedCreateNestedOneWithoutSourceInput
     search?: SearchEngineSourceConfigUncheckedCreateNestedOneWithoutSourceInput
     social?: SocialMediaSourceConfigUncheckedCreateNestedOneWithoutSourceInput
+    identity?: SourceIdentityUncheckedCreateNestedOneWithoutSourceInput
     presetBindings?: SourcePresetBindingUncheckedCreateNestedManyWithoutSourceInput
     queries?: QueryUncheckedCreateNestedManyWithoutSourcesInput
   }
@@ -47283,6 +48957,7 @@ export namespace Prisma {
     web?: WebSourceConfigUpdateOneWithoutSourceNestedInput
     search?: SearchEngineSourceConfigUpdateOneWithoutSourceNestedInput
     social?: SocialMediaSourceConfigUpdateOneWithoutSourceNestedInput
+    identity?: SourceIdentityUpdateOneWithoutSourceNestedInput
     presetBindings?: SourcePresetBindingUpdateManyWithoutSourceNestedInput
     queries?: QueryUpdateManyWithoutSourcesNestedInput
   }
@@ -47303,6 +48978,7 @@ export namespace Prisma {
     web?: WebSourceConfigUncheckedUpdateOneWithoutSourceNestedInput
     search?: SearchEngineSourceConfigUncheckedUpdateOneWithoutSourceNestedInput
     social?: SocialMediaSourceConfigUncheckedUpdateOneWithoutSourceNestedInput
+    identity?: SourceIdentityUncheckedUpdateOneWithoutSourceNestedInput
     presetBindings?: SourcePresetBindingUncheckedUpdateManyWithoutSourceNestedInput
     queries?: QueryUncheckedUpdateManyWithoutSourcesNestedInput
   }
@@ -47360,6 +49036,7 @@ export namespace Prisma {
     web?: WebSourceConfigCreateNestedOneWithoutSourceInput
     darknet?: DarknetSourceConfigCreateNestedOneWithoutSourceInput
     social?: SocialMediaSourceConfigCreateNestedOneWithoutSourceInput
+    identity?: SourceIdentityCreateNestedOneWithoutSourceInput
     presetBindings?: SourcePresetBindingCreateNestedManyWithoutSourceInput
     queries?: QueryCreateNestedManyWithoutSourcesInput
   }
@@ -47380,6 +49057,7 @@ export namespace Prisma {
     web?: WebSourceConfigUncheckedCreateNestedOneWithoutSourceInput
     darknet?: DarknetSourceConfigUncheckedCreateNestedOneWithoutSourceInput
     social?: SocialMediaSourceConfigUncheckedCreateNestedOneWithoutSourceInput
+    identity?: SourceIdentityUncheckedCreateNestedOneWithoutSourceInput
     presetBindings?: SourcePresetBindingUncheckedCreateNestedManyWithoutSourceInput
     queries?: QueryUncheckedCreateNestedManyWithoutSourcesInput
   }
@@ -47443,6 +49121,7 @@ export namespace Prisma {
     web?: WebSourceConfigUpdateOneWithoutSourceNestedInput
     darknet?: DarknetSourceConfigUpdateOneWithoutSourceNestedInput
     social?: SocialMediaSourceConfigUpdateOneWithoutSourceNestedInput
+    identity?: SourceIdentityUpdateOneWithoutSourceNestedInput
     presetBindings?: SourcePresetBindingUpdateManyWithoutSourceNestedInput
     queries?: QueryUpdateManyWithoutSourcesNestedInput
   }
@@ -47463,6 +49142,7 @@ export namespace Prisma {
     web?: WebSourceConfigUncheckedUpdateOneWithoutSourceNestedInput
     darknet?: DarknetSourceConfigUncheckedUpdateOneWithoutSourceNestedInput
     social?: SocialMediaSourceConfigUncheckedUpdateOneWithoutSourceNestedInput
+    identity?: SourceIdentityUncheckedUpdateOneWithoutSourceNestedInput
     presetBindings?: SourcePresetBindingUncheckedUpdateManyWithoutSourceNestedInput
     queries?: QueryUncheckedUpdateManyWithoutSourcesNestedInput
   }
@@ -47516,6 +49196,7 @@ export namespace Prisma {
     web?: WebSourceConfigCreateNestedOneWithoutSourceInput
     darknet?: DarknetSourceConfigCreateNestedOneWithoutSourceInput
     search?: SearchEngineSourceConfigCreateNestedOneWithoutSourceInput
+    identity?: SourceIdentityCreateNestedOneWithoutSourceInput
     presetBindings?: SourcePresetBindingCreateNestedManyWithoutSourceInput
     queries?: QueryCreateNestedManyWithoutSourcesInput
   }
@@ -47536,6 +49217,7 @@ export namespace Prisma {
     web?: WebSourceConfigUncheckedCreateNestedOneWithoutSourceInput
     darknet?: DarknetSourceConfigUncheckedCreateNestedOneWithoutSourceInput
     search?: SearchEngineSourceConfigUncheckedCreateNestedOneWithoutSourceInput
+    identity?: SourceIdentityUncheckedCreateNestedOneWithoutSourceInput
     presetBindings?: SourcePresetBindingUncheckedCreateNestedManyWithoutSourceInput
     queries?: QueryUncheckedCreateNestedManyWithoutSourcesInput
   }
@@ -47630,6 +49312,7 @@ export namespace Prisma {
     web?: WebSourceConfigUpdateOneWithoutSourceNestedInput
     darknet?: DarknetSourceConfigUpdateOneWithoutSourceNestedInput
     search?: SearchEngineSourceConfigUpdateOneWithoutSourceNestedInput
+    identity?: SourceIdentityUpdateOneWithoutSourceNestedInput
     presetBindings?: SourcePresetBindingUpdateManyWithoutSourceNestedInput
     queries?: QueryUpdateManyWithoutSourcesNestedInput
   }
@@ -47650,6 +49333,7 @@ export namespace Prisma {
     web?: WebSourceConfigUncheckedUpdateOneWithoutSourceNestedInput
     darknet?: DarknetSourceConfigUncheckedUpdateOneWithoutSourceNestedInput
     search?: SearchEngineSourceConfigUncheckedUpdateOneWithoutSourceNestedInput
+    identity?: SourceIdentityUncheckedUpdateOneWithoutSourceNestedInput
     presetBindings?: SourcePresetBindingUncheckedUpdateManyWithoutSourceNestedInput
     queries?: QueryUncheckedUpdateManyWithoutSourcesNestedInput
   }
@@ -47782,6 +49466,7 @@ export namespace Prisma {
     darknet?: DarknetSourceConfigCreateNestedOneWithoutSourceInput
     search?: SearchEngineSourceConfigCreateNestedOneWithoutSourceInput
     social?: SocialMediaSourceConfigCreateNestedOneWithoutSourceInput
+    identity?: SourceIdentityCreateNestedOneWithoutSourceInput
     presetBindings?: SourcePresetBindingCreateNestedManyWithoutSourceInput
   }
 
@@ -47802,6 +49487,7 @@ export namespace Prisma {
     darknet?: DarknetSourceConfigUncheckedCreateNestedOneWithoutSourceInput
     search?: SearchEngineSourceConfigUncheckedCreateNestedOneWithoutSourceInput
     social?: SocialMediaSourceConfigUncheckedCreateNestedOneWithoutSourceInput
+    identity?: SourceIdentityUncheckedCreateNestedOneWithoutSourceInput
     presetBindings?: SourcePresetBindingUncheckedCreateNestedManyWithoutSourceInput
   }
 
@@ -49905,6 +51591,7 @@ export namespace Prisma {
     darknet?: DarknetSourceConfigUpdateOneWithoutSourceNestedInput
     search?: SearchEngineSourceConfigUpdateOneWithoutSourceNestedInput
     social?: SocialMediaSourceConfigUpdateOneWithoutSourceNestedInput
+    identity?: SourceIdentityUpdateOneWithoutSourceNestedInput
     presetBindings?: SourcePresetBindingUpdateManyWithoutSourceNestedInput
     queries?: QueryUpdateManyWithoutSourcesNestedInput
   }
@@ -49925,6 +51612,7 @@ export namespace Prisma {
     darknet?: DarknetSourceConfigUncheckedUpdateOneWithoutSourceNestedInput
     search?: SearchEngineSourceConfigUncheckedUpdateOneWithoutSourceNestedInput
     social?: SocialMediaSourceConfigUncheckedUpdateOneWithoutSourceNestedInput
+    identity?: SourceIdentityUncheckedUpdateOneWithoutSourceNestedInput
     presetBindings?: SourcePresetBindingUncheckedUpdateManyWithoutSourceNestedInput
     queries?: QueryUncheckedUpdateManyWithoutSourcesNestedInput
   }
@@ -50094,6 +51782,7 @@ export namespace Prisma {
     darknet?: DarknetSourceConfigUpdateOneWithoutSourceNestedInput
     search?: SearchEngineSourceConfigUpdateOneWithoutSourceNestedInput
     social?: SocialMediaSourceConfigUpdateOneWithoutSourceNestedInput
+    identity?: SourceIdentityUpdateOneWithoutSourceNestedInput
     presetBindings?: SourcePresetBindingUpdateManyWithoutSourceNestedInput
     queries?: QueryUpdateManyWithoutSourcesNestedInput
   }
@@ -50114,6 +51803,7 @@ export namespace Prisma {
     darknet?: DarknetSourceConfigUncheckedUpdateOneWithoutSourceNestedInput
     search?: SearchEngineSourceConfigUncheckedUpdateOneWithoutSourceNestedInput
     social?: SocialMediaSourceConfigUncheckedUpdateOneWithoutSourceNestedInput
+    identity?: SourceIdentityUncheckedUpdateOneWithoutSourceNestedInput
     presetBindings?: SourcePresetBindingUncheckedUpdateManyWithoutSourceNestedInput
     queries?: QueryUncheckedUpdateManyWithoutSourcesNestedInput
   }
@@ -50391,6 +52081,7 @@ export namespace Prisma {
     darknet?: DarknetSourceConfigUpdateOneWithoutSourceNestedInput
     search?: SearchEngineSourceConfigUpdateOneWithoutSourceNestedInput
     social?: SocialMediaSourceConfigUpdateOneWithoutSourceNestedInput
+    identity?: SourceIdentityUpdateOneWithoutSourceNestedInput
     presetBindings?: SourcePresetBindingUpdateManyWithoutSourceNestedInput
   }
 
@@ -50411,6 +52102,7 @@ export namespace Prisma {
     darknet?: DarknetSourceConfigUncheckedUpdateOneWithoutSourceNestedInput
     search?: SearchEngineSourceConfigUncheckedUpdateOneWithoutSourceNestedInput
     social?: SocialMediaSourceConfigUncheckedUpdateOneWithoutSourceNestedInput
+    identity?: SourceIdentityUncheckedUpdateOneWithoutSourceNestedInput
     presetBindings?: SourcePresetBindingUncheckedUpdateManyWithoutSourceNestedInput
   }
 

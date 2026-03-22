@@ -2,6 +2,11 @@
 // intent.type: search
 // intent.args: {"query":"openai"}
 // output.field: {"title":"results.title","url":"results.url","snippet":"results.snippet"}
+// category: "RETRIEVAL"
+// auth.required: false
+// auth.kind: "duckduckgo-cookie"
+// auth.description: "duckduckgo auth credential"
+// tags: ["foreign"]
 
 async () => {
   const query = String(__QUERY_JSON__ || "").trim();

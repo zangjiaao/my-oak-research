@@ -2,6 +2,11 @@
 // intent.type: search
 // intent.args: {"query":"artificial intelligence","limit":10}
 // output.field: {"title":"results.title","url":"results.url","description":"results.description","date":"results.date"}
+// category: "STREAM"
+// auth.required: true
+// auth.kind: "reuters-cookie"
+// auth.description: "reuters auth credential"
+// tags: ["foreign"]
 
 async () => {
   const query = String(__QUERY_JSON__ || "").trim();

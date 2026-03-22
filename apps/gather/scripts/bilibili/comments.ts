@@ -2,6 +2,11 @@
 // intent.type: comments
 // intent.args: {"bvid":"BV1LGwHzrE4A","page":1,"limit":20,"sort":2}
 // output.field: {"user":"comments.user","content":"comments.content","like":"comments.like","time":"comments.time"}
+// category: "INTERACTIVE"
+// auth.required: true
+// auth.kind: "bilibili-cookie"
+// auth.description: "bilibili auth credential"
+// tags: ["domestic"]
 
 async () => {
   const bvid = String(__BVID_JSON__ || "").trim();

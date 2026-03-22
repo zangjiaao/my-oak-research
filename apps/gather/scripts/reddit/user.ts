@@ -2,6 +2,11 @@
 // intent.type: user
 // intent.args: {"username":"spez"}
 // output.field: {"username":"users.username","post_karma":"users.post_karma","comment_karma":"users.comment_karma","total_karma":"users.total_karma","created_at":"users.created_at"}
+// category: "INTERACTIVE"
+// auth.required: true
+// auth.kind: "reddit-cookie"
+// auth.description: "reddit auth credential"
+// tags: ["foreign"]
 
 async () => {
   const rawUsername = (__USERNAME_JSON__ || "").trim();

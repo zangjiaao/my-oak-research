@@ -2,6 +2,11 @@
 // intent.type: following
 // intent.args: {"username":"openai","limit":50}
 // output.field: {"screen_name":"users.screen_name","name":"users.name","bio":"users.bio","followers":"users.followers","url":"users.url"}
+// category: "INTERACTIVE"
+// auth.required: true
+// auth.kind: "twitter-cookie"
+// auth.description: "twitter auth credential"
+// tags: ["foreign"]
 
 async () => {
   const username = String(__USERNAME_JSON__ || '').replace(/^@/, '').trim();

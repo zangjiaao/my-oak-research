@@ -2,6 +2,11 @@
 // intent.type: topic
 // intent.args: {"id":12345,"limit":20}
 // output.field: {"author":"posts.author","content":"posts.content","likes":"posts.likes","created_at":"posts.created_at"}
+// category: "INTERACTIVE"
+// auth.required: false
+// auth.kind: "linux-do-cookie"
+// auth.description: "linux-do auth credential"
+// tags: ["domestic"]
 
 async () => {
   const topicId = __TOPIC_ID__;

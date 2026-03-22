@@ -356,22 +356,30 @@ export async function GET(
     const platformNormalized = platform.toLowerCase();
     const verifyPlatform = resolveVerifyPlatform(platformNormalized);
     const credentialKind = resolveCredentialKind(platformNormalized);
+    const { searchParams } = new URL(req.url);
+    const verify = searchParams.get("verify") === "true";
+    const credentialId = searchParams.get("credentialId");
 
-    const credential = await prisma.credential.findFirst({
-      where: { kind: credentialKind },
-      orderBy: { updatedAt: "desc" },
-    });
+    const credential = credentialId
+      ? await prisma.credential.findFirst({
+          where: {
+            id: credentialId,
+            kind: credentialKind,
+          },
+        })
+      : await prisma.credential.findFirst({
+          where: { kind: credentialKind },
+          orderBy: { updatedAt: "desc" },
+        });
 
     if (!credential) {
       return json({
         authenticated: false,
-        message: `No authentication found for ${platform}`,
+        message: credentialId
+          ? `Credential not found for ${platform}`
+          : `No authentication found for ${platform}`,
       });
     }
-
-    // Optionally verify if the credential is still valid
-    const { searchParams } = new URL(req.url);
-    const verify = searchParams.get("verify") === "true";
 
     if (verify) {
       const stateFile = extractStateFilePath(credential.data);

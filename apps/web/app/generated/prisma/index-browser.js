@@ -178,6 +178,18 @@ exports.Prisma.SourceScalarFieldEnum = {
   updatedAt: 'updatedAt'
 };
 
+exports.Prisma.SourceIdentityScalarFieldEnum = {
+  id: 'id',
+  sourceId: 'sourceId',
+  type: 'type',
+  platform: 'platform',
+  driver: 'driver',
+  intentType: 'intentType',
+  intentArgsHash: 'intentArgsHash',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
 exports.Prisma.BbPresetScalarFieldEnum = {
   id: 'id',
   key: 'key',
@@ -572,6 +584,7 @@ exports.Prisma.ModelName = {
   Proxy: 'Proxy',
   Credential: 'Credential',
   Source: 'Source',
+  SourceIdentity: 'SourceIdentity',
   BbPreset: 'BbPreset',
   SourcePresetBinding: 'SourcePresetBinding',
   BbPresetSyncLog: 'BbPresetSyncLog',

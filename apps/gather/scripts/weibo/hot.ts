@@ -2,6 +2,11 @@
 // intent.type: hot
 // intent.args: {"limit":30}
 // output.field: {"rank":"items.rank","word":"items.word","hot_value":"items.hot_value","url":"items.url"}
+// category: "INTERACTIVE"
+// auth.required: true
+// auth.kind: "weibo-cookie"
+// auth.description: "weibo auth credential"
+// tags: ["domestic"]
 
 async () => {
   const response = await fetch("/ajax/statuses/hot_band", { credentials: "include" });

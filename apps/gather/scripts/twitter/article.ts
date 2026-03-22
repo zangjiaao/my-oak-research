@@ -2,6 +2,11 @@
 // intent.type: article
 // intent.args: {"tweet_id":"1900000000000000000"}
 // output.field: {"id":"items.id","title":"items.title","content":"items.content","author":"items.author","url":"items.url"}
+// category: "INTERACTIVE"
+// auth.required: true
+// auth.kind: "twitter-cookie"
+// auth.description: "twitter auth credential"
+// tags: ["foreign"]
 
 async () => {
   const tweetId = String(__TWEET_ID_JSON__ || '').trim();

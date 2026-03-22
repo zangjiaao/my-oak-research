@@ -4,7 +4,8 @@ import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PlusIcon, Search } from "lucide-react";
-import { WebSource } from "@/lib/types";
+import { SourceWithRelations } from "@/lib/types";
+import { classifySourceCategory } from "@/lib/source-taxonomy";
 import { SettingCard } from "@/components/common";
 import SourceDialog from "./SourceDialog";
 import WebSites from "./WebSiteSources";
@@ -21,28 +22,43 @@ const WebSiteSettingCard = () => {
   if (error) {
     return (
       <SettingCard
-        title="Manage Web Sites"
-        description="Error loading web sites. Please try again."
+        title="Stream Sources"
+        description="Error loading stream sources. Please try again."
         count={0}
-        countLabel="websites"
+        countLabel="sources"
       />
     );
   }
 
   const webSources =
-    sources?.filter((s): s is WebSource => s.type === "WEB" && "web" in s) ||
-    [];
+    sources?.filter((source) =>
+      classifySourceCategory({
+        type: source.type,
+        social: "social" in source ? source.social : null,
+        search: "search" in source ? source.search : null,
+        searchPlatform: "search" in source ? source.search?.platform : null,
+      }) === "STREAM"
+    ) ?? [];
 
   const filteredSources = webSources.filter(
     (source) => {
       const normalizedQuery = searchQuery.toLowerCase();
-      const urlMatched = (source.web?.url ?? []).some((url) =>
-        url.toLowerCase().includes(normalizedQuery)
-      );
+      const urlMatched =
+        ("web" in source ? source.web?.url ?? [] : []).some((url) =>
+          url.toLowerCase().includes(normalizedQuery)
+        );
+      const platformMatched =
+        ("social" in source ? source.social?.platform ?? "" : "")
+          .toLowerCase()
+          .includes(normalizedQuery) ||
+        ("search" in source ? source.search?.platform ?? "" : "")
+          .toLowerCase()
+          .includes(normalizedQuery);
       return (
         source.name.toLowerCase().includes(normalizedQuery) ||
         source.description?.toLowerCase().includes(normalizedQuery) ||
-        urlMatched
+        urlMatched ||
+        platformMatched
       );
     }
   );
@@ -52,7 +68,7 @@ const WebSiteSettingCard = () => {
       <div className="relative flex-1">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
-          placeholder="Search web sites..."
+          placeholder="Search items..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="pl-9"
@@ -64,9 +80,8 @@ const WebSiteSettingCard = () => {
         open={isDialogOpen}
         onOpenChange={setDialogOpen}
         triggerButton={
-          <Button onClick={() => setDialogOpen(true)}>
+          <Button onClick={() => setDialogOpen(true)} aria-label="Add source">
             <PlusIcon className="size-4" />
-            Add Web Site
           </Button>
         }
       />
@@ -75,10 +90,10 @@ const WebSiteSettingCard = () => {
 
   return (
     <SettingCard
-      title="Manage Web Sites"
-      description="You can manage information sources from the web site here."
+      title="Stream Sources"
+      description="Configure stream category sources."
       count={filteredSources.length}
-      countLabel="websites"
+      countLabel="sources"
       filterComponent={filterComponent}
     >
       {isLoading ? (

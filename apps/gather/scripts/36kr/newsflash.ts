@@ -2,6 +2,11 @@
 // intent.type: newsflash
 // intent.args: {"limit":20}
 // output.field: {"title":"items.title","description":"items.description","timestamp":"items.timestamp","url":"items.url"}
+// category: "STREAM"
+// auth.required: false
+// auth.kind: "36kr-cookie"
+// auth.description: "36kr auth credential"
+// tags: ["domestic"]
 
 async () => {
   const count = Math.max(1, Math.min(__COUNT__, 50));

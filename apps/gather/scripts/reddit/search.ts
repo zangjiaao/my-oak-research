@@ -2,6 +2,11 @@
 // intent.type: search
 // intent.args: {"query":"openai","subreddit":"","sort":"relevance","time":"all","limit":20}
 // output.field: {"id":"posts.id","title":"posts.title","subreddit":"posts.subreddit","author":"posts.author","score":"posts.score","comments":"posts.comments","url":"posts.url"}
+// category: "INTERACTIVE"
+// auth.required: true
+// auth.kind: "reddit-cookie"
+// auth.description: "reddit auth credential"
+// tags: ["foreign"]
 
 async () => {
   const q = encodeURIComponent(__QUERY_JSON__ || "");

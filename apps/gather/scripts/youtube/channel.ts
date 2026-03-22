@@ -2,6 +2,11 @@
 // intent.type: channel
 // intent.args: {"id":"@programmingwithmosh","limit":10}
 // output.field: {"channelId":"channelId","name":"name","subscriberCount":"subscriberCount","recentVideoCount":"recentVideoCount","title":"recentVideos.title","url":"recentVideos.url"}
+// category: "INTERACTIVE"
+// auth.required: true
+// auth.kind: "youtube-cookie"
+// auth.description: "youtube auth credential"
+// tags: ["foreign"]
 
 async () => {
   const cfg = window.ytcfg?.data_ || {};

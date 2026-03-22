@@ -2,6 +2,11 @@
 // intent.type: feed
 // intent.args: {"type":"all","limit":20}
 // output.field: {"id":"items.id","author":"items.author","text":"items.text","url":"items.url"}
+// category: "INTERACTIVE"
+// auth.required: true
+// auth.kind: "bilibili-cookie"
+// auth.description: "bilibili auth credential"
+// tags: ["domestic"]
 
 async () => {
   const type = String(__TYPE_JSON__ || "all");

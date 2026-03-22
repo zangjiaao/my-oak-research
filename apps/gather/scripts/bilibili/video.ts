@@ -2,6 +2,11 @@
 // intent.type: video
 // intent.args: {"bvid":"BV1LGwHzrE4A"}
 // output.field: {"bvid":"bvid","title":"title","author":"author","view":"stat.view","url":"url"}
+// category: "INTERACTIVE"
+// auth.required: true
+// auth.kind: "bilibili-cookie"
+// auth.description: "bilibili auth credential"
+// tags: ["domestic"]
 
 async () => {
   const bvid = String(__BVID_JSON__ || "").trim();

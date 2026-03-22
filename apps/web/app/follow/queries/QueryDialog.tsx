@@ -16,6 +16,11 @@ import { ErrorMessage } from "@/components/business";
 import { Query, Keyword, Source } from "@/app/generated/prisma";
 import { useQueryMutation } from "@/hooks/useQueryMutation";
 import { MultiSelect } from "@/components/common/multi-select";
+import {
+  classifySourceCategory,
+  detectDarknetTag,
+  displayCategoryLabel,
+} from "@/lib/source-taxonomy";
 
 type QueryFormValues = z.output<typeof QueryCreateSchema>;
 
@@ -139,7 +144,12 @@ const QueryDialog = ({
     label: k.name,
     value: k.id,
   }));
-  const availableSources = sources.map((s) => ({ label: s.name, value: s.id }));
+  const availableSources = sources.map((s) => {
+    const category = classifySourceCategory({ type: s.type });
+    const darknet = detectDarknetTag({ type: s.type });
+    const prefix = `[${displayCategoryLabel(category)}${darknet ? "/Darknet" : ""}]`;
+    return { label: `${prefix} ${s.name}`, value: s.id };
+  });
 
   return (
     <SettingEditDialog

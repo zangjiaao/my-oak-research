@@ -2,6 +2,11 @@
 // intent.type: user
 // intent.args: {"id":"66f26918000000000101adf0","limit":20}
 // output.field: {"id":"notes.id","title":"notes.title","type":"notes.type","likes":"notes.likes","url":"notes.url"}
+// category: "INTERACTIVE"
+// auth.required: true
+// auth.kind: "xiaohongshu-cookie"
+// auth.description: "xiaohongshu auth credential"
+// tags: ["domestic"]
 
 async () => {
   const userId = String(__XHS_USER_ID_JSON__ || "").trim();

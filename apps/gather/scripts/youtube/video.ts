@@ -2,6 +2,11 @@
 // intent.type: video
 // intent.args: {"url":"https://www.youtube.com/watch?v=dQw4w9WgXcQ"}
 // output.field: {"title":"title","channel":"channel","views":"views","duration":"duration","publishDate":"publishDate","description":"description"}
+// category: "INTERACTIVE"
+// auth.required: true
+// auth.kind: "youtube-cookie"
+// auth.description: "youtube auth credential"
+// tags: ["foreign"]
 
 async () => {
   const parseVideoId = (input) => {

@@ -2,6 +2,11 @@
 // intent.type: me
 // intent.args: {}
 // output.field: {"mid":"mid","username":"username","level":"level","url":"url"}
+// category: "INTERACTIVE"
+// auth.required: true
+// auth.kind: "bilibili-cookie"
+// auth.description: "bilibili auth credential"
+// tags: ["domestic"]
 
 async () => {
   const response = await fetch("https://api.bilibili.com/x/web-interface/nav", { credentials: "include" });

@@ -2,6 +2,11 @@
 // intent.type: trending
 // intent.args: {"limit":20}
 // output.field: {"rank":"items.rank","keyword":"items.keyword","search_url":"items.search_url"}
+// category: "INTERACTIVE"
+// auth.required: true
+// auth.kind: "bilibili-cookie"
+// auth.description: "bilibili auth credential"
+// tags: ["domestic"]
 
 async () => {
   const count = Math.max(1, Math.min(__COUNT__, 50));

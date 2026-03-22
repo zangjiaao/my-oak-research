@@ -2,6 +2,11 @@
 // intent.type: search
 // intent.args: {"keyword":"playwright","limit":20}
 // output.field: {"rank":"topics.rank","title":"topics.title","views":"topics.views","likes":"topics.likes","replies":"topics.replies"}
+// category: "INTERACTIVE"
+// auth.required: false
+// auth.kind: "linux-do-cookie"
+// auth.description: "linux-do auth credential"
+// tags: ["domestic"]
 
 async () => {
   const keyword = String(__KEYWORD_JSON__ || "").trim();

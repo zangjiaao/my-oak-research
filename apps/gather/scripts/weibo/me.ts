@@ -2,6 +2,11 @@
 // intent.type: me
 // intent.args: {}
 // output.field: {"id":"id","screen_name":"screen_name","followers_count":"followers_count","profile_url":"profile_url"}
+// category: "INTERACTIVE"
+// auth.required: true
+// auth.kind: "weibo-cookie"
+// auth.description: "weibo auth credential"
+// tags: ["domestic"]
 
 async () => {
   const app = (document.querySelector("#app") as any)?.__vue_app__;

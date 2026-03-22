@@ -2,6 +2,11 @@
 // intent.type: user-comments
 // intent.args: {"username":"spez","limit":20}
 // output.field: {"id":"posts.id","subreddit":"posts.subreddit","score":"posts.score","body":"posts.body","url":"posts.url"}
+// category: "INTERACTIVE"
+// auth.required: true
+// auth.kind: "reddit-cookie"
+// auth.description: "reddit auth credential"
+// tags: ["foreign"]
 
 async () => {
   const rawUsername = (__USERNAME_JSON__ || "").trim();

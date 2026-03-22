@@ -14,14 +14,8 @@ import SourceDialog from "./SourceDialog";
 import SourceDeleteAlert from "./SourceDeleteAlert";
 import { useFollow } from "@/hooks/useFollow";
 import { Skeleton } from "@/components/ui/skeleton";
-import { SearchEngineSource, SourceWithRelations } from "@/lib/types";
-
-const isSearchEngineSource = (
-  source: SourceWithRelations
-): source is SearchEngineSource =>
-  source.type === "SEARCH_ENGINE" &&
-  "search" in source &&
-  Boolean(source.search);
+import { SourceWithRelations } from "@/lib/types";
+import { classifySourceCategory } from "@/lib/source-taxonomy";
 
 const SEARCH_PLATFORM_LABELS: Record<string, string> = {
   PARALLEL: "Parallel.ai",
@@ -30,17 +24,19 @@ const SEARCH_PLATFORM_LABELS: Record<string, string> = {
   CUSTOM: "Custom",
 };
 
+type RetrievalSource = SourceWithRelations;
+
 const SearchEngineSettingCard = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [isDialogOpen, setDialogOpen] = useState(false);
   const [editingSource, setEditingSource] = useState<
-    SearchEngineSource | undefined
+    RetrievalSource | undefined
   >(undefined);
 
   const { sources, proxies, sourcesQuery } = useFollow();
   const { isLoading, error } = sourcesQuery;
 
-  const handleEdit = (source: SearchEngineSource) => {
+  const handleEdit = (source: RetrievalSource) => {
     setEditingSource(source);
     setDialogOpen(true);
   };
@@ -53,26 +49,45 @@ const SearchEngineSettingCard = () => {
   if (error) {
     return (
       <SettingCard
-        title="Manage Search Engines"
-        description="Error loading search engines. Please try again."
+        title="Retrieval Sources"
+        description="Error loading retrieval sources. Please try again."
         count={0}
-        countLabel="search engines"
+        countLabel="sources"
       />
     );
   }
 
-  const searchEngineSources = sources?.filter(isSearchEngineSource) ?? [];
+  const searchEngineSources =
+    sources?.filter((source) =>
+      classifySourceCategory({
+        type: source.type,
+        social: "social" in source ? source.social : null,
+        search: "search" in source ? source.search : null,
+        searchPlatform: "search" in source ? source.search?.platform : null,
+      }) === "RETRIEVAL"
+    ) ?? [];
 
   const filteredSources = searchEngineSources.filter(
     (source) =>
       source.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       source.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (source.search as unknown as { objective?: string })?.objective
-        ?.toLowerCase()
+      (
+        ("search" in source
+          ? (source.search as unknown as { objective?: string })?.objective
+          : "") ?? ""
+      )
+        .toLowerCase()
+        .includes(searchQuery.toLowerCase()) ||
+      (
+        ("social" in source ? source.social?.platform : null) ??
+        ("search" in source ? source.search?.platform : null) ??
+        ""
+      )
+        .toLowerCase()
         .includes(searchQuery.toLowerCase())
   );
 
-  const columns: DataTableColumn<SearchEngineSource>[] = [
+  const columns: DataTableColumn<RetrievalSource>[] = [
     {
       key: "name",
       label: "Name",
@@ -83,9 +98,11 @@ const SearchEngineSettingCard = () => {
       label: "Platform",
       className: "max-w-xs",
       render: (source) => {
-        const platform = (
-          source.search as unknown as { platform?: string }
-        )?.platform;
+        const platform =
+          ("search" in source
+            ? (source.search as unknown as { platform?: string })?.platform
+            : null) ??
+          ("social" in source ? source.social?.platform : null);
         return (
           <span className="text-sm break-all whitespace-normal">
             {platform ? SEARCH_PLATFORM_LABELS[platform] ?? platform : "-"}
@@ -108,7 +125,7 @@ const SearchEngineSettingCard = () => {
     },
   ];
 
-  const actions: DataTableAction<SearchEngineSource>[] = [
+  const actions: DataTableAction<RetrievalSource>[] = [
     {
       type: "edit",
       render: (source) => (
@@ -138,25 +155,24 @@ const SearchEngineSettingCard = () => {
       <div className="relative flex-1">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
-          placeholder="Search search engines..."
+          placeholder="Search items..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="pl-9"
         />
       </div>
-      <Button onClick={handleAdd}>
+      <Button onClick={handleAdd} aria-label="Add source">
         <PlusIcon className="size-4" />
-        Add Search Engine
       </Button>
     </div>
   );
 
   return (
     <SettingCard
-      title="Manage Search Engines"
-      description="You can manage search engines here."
+      title="Retrieval Sources"
+      description="Configure retrieval category sources."
       count={filteredSources.length}
-      countLabel="search engines"
+      countLabel="sources"
       filterComponent={filterComponent}
     >
       <SourceDialog

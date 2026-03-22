@@ -2,6 +2,11 @@
 // intent.type: thread
 // intent.args: {"tweet_id":"1900000000000000000","limit":50}
 // output.field: {"id":"tweets.id","text":"tweets.text","author":"tweets.author","url":"tweets.url","created_at":"tweets.created_at"}
+// category: "INTERACTIVE"
+// auth.required: true
+// auth.kind: "twitter-cookie"
+// auth.description: "twitter auth credential"
+// tags: ["foreign"]
 
 async () => {
   const tweetId = String(__TWEET_ID_JSON__ || '').trim();
