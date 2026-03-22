@@ -2,7 +2,7 @@
 
 import { type ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Minus, Plus, PlusIcon } from "lucide-react";
+import { Loader2, Minus, Plus, PlusIcon, X } from "lucide-react";
 import { toast } from "sonner";
 
 import type { Proxy } from "@/app/generated/prisma";
@@ -871,7 +871,18 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
                               const config = getCurrentConfig(template);
                               return (
                                 <div key={template.key} className="space-y-3 rounded-md border p-3">
-                                  <div className="text-sm font-medium">{template.intent.type}</div>
+                                  <div className="flex items-center justify-between gap-2">
+                                    <div className="text-sm font-medium">{template.intent.type}</div>
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      aria-label={`Remove ${template.intent.type}`}
+                                      onClick={() => handleToggle(template, false)}
+                                    >
+                                      <X className="size-4" />
+                                    </Button>
+                                  </div>
                                   <div className="space-y-2">
                                     <Label>Script Args</Label>
                                     <div className="grid gap-2">
