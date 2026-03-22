@@ -4,7 +4,8 @@ import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PlusIcon, Search } from "lucide-react";
-import { WebSource } from "@/lib/types";
+import { SourceWithRelations } from "@/lib/types";
+import { classifySourceCategory } from "@/lib/source-taxonomy";
 import { SettingCard } from "@/components/common";
 import SourceDialog from "./SourceDialog";
 import WebSites from "./WebSiteSources";
@@ -30,19 +31,34 @@ const WebSiteSettingCard = () => {
   }
 
   const webSources =
-    sources?.filter((s): s is WebSource => s.type === "WEB" && "web" in s) ||
-    [];
+    sources?.filter((source) =>
+      classifySourceCategory({
+        type: source.type,
+        social: "social" in source ? source.social : null,
+        search: "search" in source ? source.search : null,
+        searchPlatform: "search" in source ? source.search?.platform : null,
+      }) === "STREAM"
+    ) ?? [];
 
   const filteredSources = webSources.filter(
     (source) => {
       const normalizedQuery = searchQuery.toLowerCase();
-      const urlMatched = (source.web?.url ?? []).some((url) =>
-        url.toLowerCase().includes(normalizedQuery)
-      );
+      const urlMatched =
+        ("web" in source ? source.web?.url ?? [] : []).some((url) =>
+          url.toLowerCase().includes(normalizedQuery)
+        );
+      const platformMatched =
+        ("social" in source ? source.social?.platform ?? "" : "")
+          .toLowerCase()
+          .includes(normalizedQuery) ||
+        ("search" in source ? source.search?.platform ?? "" : "")
+          .toLowerCase()
+          .includes(normalizedQuery);
       return (
         source.name.toLowerCase().includes(normalizedQuery) ||
         source.description?.toLowerCase().includes(normalizedQuery) ||
-        urlMatched
+        urlMatched ||
+        platformMatched
       );
     }
   );

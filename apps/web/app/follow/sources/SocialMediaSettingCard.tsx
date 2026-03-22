@@ -9,15 +9,9 @@ import SourceDialog from "./SourceDialog";
 import SocialMediaSources from "./SocialMediaSources";
 import { useFollow } from "@/hooks/useFollow";
 import { Skeleton } from "@/components/ui/skeleton";
-import { SocialMediaSource, SourceWithRelations } from "@/lib/types";
+import { SourceWithRelations } from "@/lib/types";
+import { classifySourceCategory } from "@/lib/source-taxonomy";
 import type { Proxy } from "@/app/generated/prisma";
-
-const isSocialMediaSource = (
-  source: SourceWithRelations
-): source is SocialMediaSource =>
-  source.type === "SOCIAL_MEDIA" &&
-  "social" in source &&
-  Boolean(source.social);
 
 const SocialMediaSettingCard = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -37,17 +31,26 @@ const SocialMediaSettingCard = () => {
     );
   }
 
-  const socialMediaSources = (sources?.filter(isSocialMediaSource) ??
-    []) as SocialMediaSource[];
+  const socialMediaSources =
+    sources?.filter((source) =>
+      classifySourceCategory({
+        type: source.type,
+        social: "social" in source ? source.social : null,
+        search: "search" in source ? source.search : null,
+        searchPlatform: "search" in source ? source.search?.platform : null,
+      }) === "INTERACTIVE"
+    ) ?? [];
 
   const filteredSources = socialMediaSources.filter(
     (source) =>
       source.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       source.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      source.social?.platform?.toLowerCase().includes(searchQuery.toLowerCase())
+      ("social" in source ? source.social?.platform : "")
+        ?.toLowerCase()
+        .includes(searchQuery.toLowerCase())
   );
 
-  const dataForTable: Array<SocialMediaSource & { proxy: Proxy | null }> =
+  const dataForTable: Array<SourceWithRelations & { proxy: Proxy | null }> =
     filteredSources.map((source) => ({
       ...source,
       proxy: source.proxy ?? null,

@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { PencilIcon, TrashIcon } from "lucide-react";
-import { Source, WebSourceConfig, Proxy } from "@/app/generated/prisma";
-import { WebSource } from "@/lib/types";
+import { Source, Proxy } from "@/app/generated/prisma";
+import { SourceWithRelations } from "@/lib/types";
 import {
   DataTable,
   DataTableColumn,
@@ -14,16 +14,16 @@ import SourceDialog from "./SourceDialog";
 import SourceDeleteAlert from "./SourceDeleteAlert";
 
 interface Props {
-  sources: WebSource[];
+  sources: SourceWithRelations[];
   proxies: Proxy[];
 }
 
-type WebSiteSource = Source & { web: WebSourceConfig } & { proxy: Proxy };
+type StreamSource = SourceWithRelations & Source;
 
 const WebSites = ({ sources, proxies }: Props) => {
-  const [editingSource, setEditingSource] = useState<WebSource | undefined>();
+  const [editingSource, setEditingSource] = useState<SourceWithRelations | undefined>();
 
-  const handleEdit = (source: WebSource) => {
+  const handleEdit = (source: SourceWithRelations) => {
     setEditingSource(source);
   };
 
@@ -31,7 +31,7 @@ const WebSites = ({ sources, proxies }: Props) => {
     setEditingSource(undefined);
   };
 
-  const columns: DataTableColumn<WebSiteSource>[] = [
+  const columns: DataTableColumn<StreamSource>[] = [
     {
       key: "name",
       label: "Name",
@@ -44,12 +44,16 @@ const WebSites = ({ sources, proxies }: Props) => {
       render: (source) => <div className="truncate">{source.description}</div>,
     },
     {
-      key: "url",
-      label: "URL",
+      key: "target",
+      label: "Target",
       className: "max-w-[300px]",
       render: (source) => {
-        const urls = source.web?.url ?? [];
-        const display = urls.length > 0 ? urls.join(", ") : "-";
+        const urls = "web" in source ? source.web?.url ?? [] : [];
+        const platform =
+          ("social" in source ? source.social?.platform : null) ??
+          ("search" in source ? source.search?.platform : null) ??
+          null;
+        const display = urls.length > 0 ? urls.join(", ") : platform || "-";
         const tooltip = urls.length > 0 ? urls.join("\n") : undefined;
         return (
           <div className="truncate" title={tooltip}>
@@ -65,7 +69,7 @@ const WebSites = ({ sources, proxies }: Props) => {
     },
   ];
 
-  const actions: DataTableAction<WebSiteSource>[] = [
+  const actions: DataTableAction<StreamSource>[] = [
     {
       type: "edit",
       render: (source) => (
@@ -100,7 +104,7 @@ const WebSites = ({ sources, proxies }: Props) => {
         onOpenChange={(open) => !open && handleCloseDialog()}
       />
       <DataTable
-        data={sources as WebSiteSource[]}
+        data={sources as StreamSource[]}
         columns={columns}
         actions={actions}
         emptyMessage="No website sources found. Add your first website source to get started."

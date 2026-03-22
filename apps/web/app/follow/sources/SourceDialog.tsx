@@ -389,28 +389,28 @@ function getInitialScriptState(source?: SourceWithRelations): {
 }
 
 function buildPayloadFromUnified(input: {
-  effectiveType: SourceType;
+  targetType: SourceType;
   values: SourceFormValues;
   platform: string;
   intentType: string;
   scriptArgs: Record<string, unknown>;
   driverConfig: DriverConfigInput;
 }) {
-  const { effectiveType, values, platform, intentType, scriptArgs, driverConfig } = input;
+  const { targetType, values, platform, intentType, scriptArgs, driverConfig } = input;
   const intentArgs = scriptArgs;
   const driver = buildDriverConfig({ intentType, intentArgs, config: driverConfig });
 
   const base = {
     name: values.name.trim(),
     description: values.description?.trim() ?? "",
-    type: effectiveType,
+    type: targetType,
     active: values.active ?? true,
     rateLimit: values.rateLimit ?? 10,
     proxyId: values.proxyId ?? null,
     credentialId: values.credentialId ?? null,
   };
 
-  if (effectiveType === "WEB") {
+  if (targetType === "WEB") {
     const urls = splitToUrls(
       intentArgs.url ?? intentArgs.urls ?? intentArgs.targetUrl ?? intentArgs.site
     );
@@ -431,7 +431,7 @@ function buildPayloadFromUnified(input: {
     };
   }
 
-  if (effectiveType === "SEARCH_ENGINE") {
+  if (targetType === "SEARCH_ENGINE") {
     const provider = normalizePlatform(platform);
     const objective = String(
       intentArgs.query ?? intentArgs.keyword ?? intentArgs.objective ?? ""
@@ -464,7 +464,7 @@ function buildPayloadFromUnified(input: {
     };
   }
 
-  if (effectiveType === "DARKNET") {
+  if (targetType === "DARKNET") {
     const urls = splitToUrls(
       intentArgs.url ?? intentArgs.urls ?? intentArgs.targetUrl ?? intentArgs.site
     );
@@ -626,9 +626,28 @@ const SourceDialog = ({
     });
   }, [open, currentSource, form]);
 
+  const expectedCategory = inferCategoryFromSourceType(effectiveType);
+  const gatherPlatforms = useMemo(
+    () =>
+      new Set(
+        (catalog?.items ?? [])
+          .map((item) => normalizePlatform(item.platform))
+          .filter(Boolean)
+      ),
+    [catalog?.items]
+  );
+  const normalizedSelectedPlatform = normalizePlatform(selectedPlatform);
+  const targetType: SourceType = useMemo(() => {
+    if (currentSource?.type) return currentSource.type;
+    if (normalizedSelectedPlatform && gatherPlatforms.has(normalizedSelectedPlatform)) {
+      return "SOCIAL_MEDIA";
+    }
+    return effectiveType;
+  }, [currentSource?.type, normalizedSelectedPlatform, gatherPlatforms, effectiveType]);
+
   const mutation = useSourceMutation({
     sourceId: currentSource?.id,
-    sourceType: effectiveType,
+    sourceType: targetType,
     onSuccess: () => {
       onOpenChange(false);
       if (!isUpdate) {
@@ -644,7 +663,6 @@ const SourceDialog = ({
     },
   });
 
-  const expectedCategory = inferCategoryFromSourceType(effectiveType);
   const watchedValues = form.watch();
   const watchedProxyId = form.watch("proxyId");
   const selectedProxy = useMemo(
@@ -869,7 +887,7 @@ const SourceDialog = ({
 
   const sourceApiPreview = useMemo(() => {
     const built = buildPayloadFromUnified({
-      effectiveType,
+      targetType,
       values: watchedValues,
       platform: selectedPlatform,
       intentType: selectedIntentType,
@@ -886,7 +904,7 @@ const SourceDialog = ({
     if ("error" in built) return { error: built.error } as const;
     return built.payload;
   }, [
-    effectiveType,
+    targetType,
     watchedValues,
     selectedPlatform,
     selectedIntentType,
@@ -905,7 +923,7 @@ const SourceDialog = ({
     !!sourceApiPreviewError && /\brequires?\b|\brequired\b/i.test(sourceApiPreviewError);
 
   const gatherRequestPreview = useMemo(() => {
-    if (effectiveType !== "SOCIAL_MEDIA") return null;
+    if (targetType !== "SOCIAL_MEDIA") return null;
     const normalizedPlatform = normalizePlatform(selectedPlatform);
     if (!normalizedPlatform) return null;
     return {
@@ -926,7 +944,7 @@ const SourceDialog = ({
       }),
     };
   }, [
-    effectiveType,
+    targetType,
     selectedPlatform,
     currentSource?.id,
     selectedIntentType,
@@ -962,7 +980,7 @@ const SourceDialog = ({
     }
 
     const built = buildPayloadFromUnified({
-      effectiveType,
+      targetType,
       values,
       platform: selectedPlatform,
       intentType: selectedIntentType,

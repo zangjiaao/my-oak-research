@@ -4,6 +4,31 @@ export type SourceCategory = "STREAM" | "INTERACTIVE" | "RETRIEVAL";
 export type SourceNetworkPolicy = "DEFAULT" | "TOR_SOCKS5H";
 
 const DARKNET_PROVIDER_KEYWORDS = ["darkwebgo", "darksearch", "onion"];
+const PLATFORM_CATEGORY_OVERRIDES: Record<string, SourceCategory> = {
+  BBC: "STREAM",
+  REUTERS: "STREAM",
+  X: "INTERACTIVE",
+  TWITTER: "INTERACTIVE",
+  XIAOHONGSHU: "INTERACTIVE",
+  REDDIT: "INTERACTIVE",
+  WEIBO: "INTERACTIVE",
+  DOUYIN: "INTERACTIVE",
+  TIKTOK: "INTERACTIVE",
+  YOUTUBE: "INTERACTIVE",
+  TELEGRAM: "INTERACTIVE",
+  INSTAGRAM: "INTERACTIVE",
+  FACEBOOK: "INTERACTIVE",
+  WHATSAPP: "INTERACTIVE",
+  GOOGLE: "RETRIEVAL",
+  BING: "RETRIEVAL",
+  BAIDU: "RETRIEVAL",
+  DUCKDUCKGO: "RETRIEVAL",
+  TAVILY: "RETRIEVAL",
+  PARALLEL: "RETRIEVAL",
+  ANSPIRE: "RETRIEVAL",
+  DARKWEBGO: "RETRIEVAL",
+  DARKSEARCH: "RETRIEVAL",
+};
 
 function asRecord(value: unknown): Record<string, unknown> {
   if (value && typeof value === "object" && !Array.isArray(value)) {
@@ -22,7 +47,17 @@ export function classifySourceCategory(source: {
   type: Source["type"];
   search?: Pick<SearchEngineSourceConfig, "options"> | null;
   social?: Pick<SocialMediaSourceConfig, "platform"> | null;
+  searchPlatform?: string | null;
 }): SourceCategory {
+  const socialPlatform = String(source.social?.platform ?? "").trim().toUpperCase();
+  if (socialPlatform && PLATFORM_CATEGORY_OVERRIDES[socialPlatform]) {
+    return PLATFORM_CATEGORY_OVERRIDES[socialPlatform];
+  }
+  const searchPlatform = String(source.searchPlatform ?? "").trim().toUpperCase();
+  if (searchPlatform && PLATFORM_CATEGORY_OVERRIDES[searchPlatform]) {
+    return PLATFORM_CATEGORY_OVERRIDES[searchPlatform];
+  }
+
   if (source.type === "SOCIAL_MEDIA") return "INTERACTIVE";
   if (source.type === "WEB") return "STREAM";
   if (source.type === "DARKNET") return "RETRIEVAL";
