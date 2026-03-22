@@ -53,10 +53,10 @@ const SearchEngineSettingCard = () => {
   if (error) {
     return (
       <SettingCard
-        title="Manage Search Engines"
-        description="Error loading search engines. Please try again."
+        title="Retrieval Sources"
+        description="Error loading retrieval sources. Please try again."
         count={0}
-        countLabel="search engines"
+        countLabel="sources"
       />
     );
   }
@@ -138,25 +138,24 @@ const SearchEngineSettingCard = () => {
       <div className="relative flex-1">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
-          placeholder="Search search engines..."
+          placeholder="Search items..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="pl-9"
         />
       </div>
-      <Button onClick={handleAdd}>
+      <Button onClick={handleAdd} aria-label="Add source">
         <PlusIcon className="size-4" />
-        Add Search Engine
       </Button>
     </div>
   );
 
   return (
     <SettingCard
-      title="Manage Search Engines"
-      description="You can manage search engines here."
+      title="Retrieval Sources"
+      description="Configure retrieval category sources."
       count={filteredSources.length}
-      countLabel="search engines"
+      countLabel="sources"
       filterComponent={filterComponent}
     >
       <SourceDialog

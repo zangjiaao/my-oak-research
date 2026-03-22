@@ -29,10 +29,10 @@ const SocialMediaSettingCard = () => {
   if (error) {
     return (
       <SettingCard
-        title="Manage Social Media"
-        description="Error loading social media sources. Please try again."
+        title="Interactive Sources"
+        description="Error loading interactive sources. Please try again."
         count={0}
-        countLabel="social media"
+        countLabel="sources"
       />
     );
   }
@@ -58,7 +58,7 @@ const SocialMediaSettingCard = () => {
       <div className="relative flex-1">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
-          placeholder="Search social media..."
+          placeholder="Search items..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="pl-9"
@@ -70,9 +70,8 @@ const SocialMediaSettingCard = () => {
         open={isDialogOpen}
         onOpenChange={setDialogOpen}
         triggerButton={
-          <Button onClick={() => setDialogOpen(true)}>
+          <Button onClick={() => setDialogOpen(true)} aria-label="Add source">
             <PlusIcon className="size-4" />
-            Add Social Media
           </Button>
         }
       />
@@ -81,10 +80,10 @@ const SocialMediaSettingCard = () => {
 
   return (
     <SettingCard
-      title="Manage Social Media"
-      description="You can manage information sources from the social media here."
+      title="Interactive Sources"
+      description="Configure interactive category sources."
       count={filteredSources.length}
-      countLabel="social media"
+      countLabel="sources"
       filterComponent={filterComponent}
     >
       {isLoading ? (
