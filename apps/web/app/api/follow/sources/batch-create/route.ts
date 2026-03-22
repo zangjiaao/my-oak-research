@@ -5,7 +5,7 @@ import { Prisma } from "@/app/generated/prisma";
 import prisma from "@/lib/prisma";
 import { logger } from "@/lib/logger";
 import {
-  SOURCE_BATCH_TEMPLATE_MAP,
+  loadBatchTemplates,
   buildIdentity,
   buildSourceCreateData,
   identityKey,
@@ -46,6 +46,9 @@ export async function POST(req: Request) {
       });
     }
     parsedBody = parsed.data;
+    const templateMap = new Map(
+      (await loadBatchTemplates()).map((item) => [item.key, item])
+    );
 
     const credentialRows = await prisma.credential.findMany({
       select: { id: true, kind: true },
@@ -67,7 +70,7 @@ export async function POST(req: Request) {
         continue;
       }
 
-      const template = SOURCE_BATCH_TEMPLATE_MAP.get(item.key);
+      const template = templateMap.get(item.key);
       if (!template) {
         invalid.push({
           key: item.key,
@@ -139,7 +142,7 @@ export async function POST(req: Request) {
     }> = [];
 
     for (const item of enabledItems) {
-      const template = SOURCE_BATCH_TEMPLATE_MAP.get(item.key);
+      const template = templateMap.get(item.key);
       if (!template) continue;
 
       const identity = buildIdentity(template, item.config);
@@ -156,7 +159,7 @@ export async function POST(req: Request) {
 
     await prisma.$transaction(async (tx) => {
       for (const task of creationQueue) {
-        const template = SOURCE_BATCH_TEMPLATE_MAP.get(task.key);
+        const template = templateMap.get(task.key);
         if (!template) continue;
 
         const createData = buildSourceCreateData({

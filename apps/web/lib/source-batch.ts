@@ -1,11 +1,11 @@
 import { createHash } from "node:crypto";
 
 import { Prisma, SourceType } from "@/app/generated/prisma";
-import { type KnownSocialPlatform } from "@/lib/social-driver-support";
 import type { SourceCategory, SourceNetworkPolicy } from "@/lib/source-taxonomy";
 import {
-  getCredentialKindForPlatform,
-  requiresAuthForPlatform,
+  type SourceCapability,
+  buildGatherCapabilities,
+  buildWorkerApiCapabilities,
 } from "@/lib/source-capabilities";
 
 type JsonObject = Record<string, unknown>;
@@ -43,227 +43,214 @@ export type BatchIdentity = {
   intentArgsHash: string;
 };
 
-const SOCIAL_PLATFORMS: KnownSocialPlatform[] = [
-  "X",
-  "REDDIT",
-  "XIAOHONGSHU",
-  "DOUYIN",
-  "TIKTOK",
-  "WEIBO",
-  "TELEGRAM",
-  "WHATSAPP",
-  "INSTAGRAM",
-  "FACEBOOK",
-];
-
-const REQUIRED_SOCIAL_ARGS: Record<KnownSocialPlatform, string[]> = {
-  X: ["query"],
-  REDDIT: ["subreddit"],
-  XIAOHONGSHU: ["query"],
-  DOUYIN: ["query"],
-  TIKTOK: ["query"],
-  WEIBO: ["query"],
-  TELEGRAM: ["chatId"],
-  WHATSAPP: ["contactName"],
-  INSTAGRAM: ["query"],
-  FACEBOOK: ["query"],
+type GatherCatalogItem = {
+  key: string;
+  platform: string;
+  intent: string;
+  mode: string;
+  sample?: {
+    intentType?: string;
+    intentArgs?: Record<string, unknown>;
+    outputField?: unknown;
+  };
+  meta?: {
+    category?: string;
+    auth?: {
+      required?: boolean;
+      kind?: string;
+      description?: string;
+    };
+    tags?: string[];
+  };
 };
 
-function buildSocialTemplates(): BatchTemplate[] {
-  const templates: BatchTemplate[] = [];
+type WorkerCapabilitiesResponse = {
+  items?: SourceCapability[];
+};
 
-  for (const platform of SOCIAL_PLATFORMS) {
-    const requiredArgs = REQUIRED_SOCIAL_ARGS[platform] ?? [];
-    const baseArgs = Object.fromEntries(requiredArgs.map((field) => [field, ""]));
-    templates.push({
-      key: `interactive:${platform}:playwright:search`,
-      type: "SOCIAL_MEDIA",
-      category: "INTERACTIVE",
-      platform,
-      driver: "playwright",
-      networkPolicy: "DEFAULT",
-      tags: [],
-      intent: { type: "search", args: baseArgs },
-      title: `${platform}`,
-      description: `Collect ${platform} data with Playwright-based gather scripts.`,
-      defaultConfig: {
-        intent: { type: "search", args: baseArgs },
-        driver: "playwright",
-        keywordStrategy: "AUTO",
-      },
-      requiredFields: requiredArgs.map((field) => `intent.args.${field}`),
-      credentialRequirements: requiresAuthForPlatform(platform)
-        ? [
-            {
-              kind: getCredentialKindForPlatform(platform),
-              required: true,
-              description: `${platform} auth credential`,
-            },
-          ]
-        : [],
-    });
-  }
+const REQUIRED_INTENT_ARGS = new Set([
+  "query",
+  "keyword",
+  "id",
+  "url",
+  "username",
+  "tweet_id",
+  "channel_id",
+  "bvid",
+  "subreddit",
+  "slug",
+  "uid",
+]);
 
-  return templates;
+function hasTag(tags: string[], value: string): boolean {
+  const lower = value.toLowerCase();
+  return tags.some((tag) => tag.toLowerCase() === lower);
 }
 
-function buildSearchTemplates(): BatchTemplate[] {
+function inferNetworkPolicy(tags: string[]): SourceNetworkPolicy {
+  if (hasTag(tags, "tor") || hasTag(tags, "socks5h") || hasTag(tags, "darknet")) {
+    return "TOR_SOCKS5H";
+  }
+  return "DEFAULT";
+}
+
+function inferTemplateType(capability: SourceCapability): SourceType {
+  if (capability.execution.engine === "worker_api") return "SEARCH_ENGINE";
+  return "SOCIAL_MEDIA";
+}
+
+function inferRequiredIntentFields(args: Record<string, unknown>): string[] {
+  return Object.keys(args)
+    .filter((key) => REQUIRED_INTENT_ARGS.has(key.trim().toLowerCase()))
+    .map((key) => `intent.args.${key}`);
+}
+
+function buildCredentialRequirements(
+  capability: SourceCapability
+): BatchCredentialRequirement[] {
+  const requirement = capability.authRequirement;
+  if (!requirement.required && !requirement.kind) {
+    return [];
+  }
   return [
     {
-      key: "retrieval:PARALLEL:playwright:search",
-      type: "SEARCH_ENGINE",
-      category: "RETRIEVAL",
-      platform: "PARALLEL",
-      driver: "playwright",
-      networkPolicy: "DEFAULT",
-      tags: [],
-      intent: { type: "search", args: {} },
-      title: "Parallel Search",
-      description: "Search through Parallel API.",
-      defaultConfig: {
-        platform: "PARALLEL",
-        engine: "CUSTOM",
-        objective: "",
-        apiEndpoint: null,
-        options: { provider: "parallel" },
-        keywordStrategy: "AUTO",
-      },
-      requiredFields: ["objective"],
-      credentialRequirements: [
-        {
-          kind: "parallel-api-key",
-          required: true,
-          description: "Parallel API credential",
-        },
-      ],
-    },
-    {
-      key: "retrieval:TAVILY:playwright:search",
-      type: "SEARCH_ENGINE",
-      category: "RETRIEVAL",
-      platform: "TAVILY",
-      driver: "playwright",
-      networkPolicy: "DEFAULT",
-      tags: [],
-      intent: { type: "search", args: {} },
-      title: "Tavily Search",
-      description: "Search through Tavily API.",
-      defaultConfig: {
-        platform: "TAVILY",
-        engine: "CUSTOM",
-        objective: "",
-        apiEndpoint: null,
-        options: { provider: "tavily" },
-        keywordStrategy: "AUTO",
-      },
-      requiredFields: ["objective"],
-      credentialRequirements: [
-        {
-          kind: "tavily-api-key",
-          required: true,
-          description: "Tavily API credential",
-        },
-      ],
-    },
-    {
-      key: "retrieval:GOOGLE:playwright:search",
-      type: "SEARCH_ENGINE",
-      category: "RETRIEVAL",
-      platform: "CUSTOM",
-      driver: "playwright",
-      networkPolicy: "DEFAULT",
-      tags: [],
-      intent: { type: "search", args: {} },
-      title: "Google Search",
-      description: "Search through Google-compatible retrieval backend.",
-      defaultConfig: {
-        platform: "CUSTOM",
-        engine: "CUSTOM",
-        objective: "",
-        apiEndpoint: null,
-        options: { provider: "google" },
-        keywordStrategy: "AUTO",
-      },
-      requiredFields: ["objective"],
-      credentialRequirements: [],
-    },
-    {
-      key: "retrieval:DARKWEBGO:playwright:search",
-      type: "SEARCH_ENGINE",
-      category: "RETRIEVAL",
-      platform: "CUSTOM",
-      driver: "playwright",
-      networkPolicy: "TOR_SOCKS5H",
-      tags: ["darknet"],
-      intent: { type: "search", args: {} },
-      title: "DarkWebGo Search",
-      description: "Darknet retrieval through TOR(socks5h) network policy.",
-      defaultConfig: {
-        platform: "CUSTOM",
-        engine: "CUSTOM",
-        objective: "",
-        apiEndpoint: null,
-        options: { provider: "darkwebgo" },
-        keywordStrategy: "AUTO",
-      },
-      requiredFields: ["objective", "proxyId"],
-      credentialRequirements: [],
+      kind: requirement.kind ?? `${capability.platform.toLowerCase()}-credential`,
+      required: requirement.required,
+      description:
+        requirement.description ?? `${capability.platform} auth credential`,
     },
   ];
 }
 
-export const SOURCE_BATCH_TEMPLATES: BatchTemplate[] = [
-  {
-    key: "stream:BBC:playwright:feed",
-    type: "WEB",
-    category: "STREAM",
-    platform: "WEB",
-    driver: "playwright",
-    networkPolicy: "DEFAULT",
-    tags: ["stream"],
-    intent: { type: "crawl", args: {} },
-    title: "BBC Stream",
-    description: "Stream-like collection from BBC feeds/pages.",
-    defaultConfig: {
-      url: "https://www.bbc.com/news",
-      crawlerEngine: "FETCH",
-      render: false,
-      robotsRespect: true,
-      headers: null,
-      parseRules: null,
-    },
-    requiredFields: ["url"],
-    credentialRequirements: [],
-  },
-  {
-    key: "stream:REUTERS:playwright:feed",
-    type: "WEB",
-    category: "STREAM",
-    platform: "WEB",
-    driver: "playwright",
-    networkPolicy: "DEFAULT",
-    tags: ["stream"],
-    intent: { type: "crawl", args: {} },
-    title: "Reuters Stream",
-    description: "Stream-like collection from Reuters feeds/pages.",
-    defaultConfig: {
-      url: "https://www.reuters.com/world/",
-      crawlerEngine: "FETCH",
-      render: false,
-      robotsRespect: true,
-      headers: null,
-      parseRules: null,
-    },
-    requiredFields: ["url"],
-    credentialRequirements: [],
-  },
-  ...buildSearchTemplates(),
-  ...buildSocialTemplates(),
-];
+function buildTemplateFromCapabilityIntent(
+  capability: SourceCapability,
+  intent: SourceCapability["intents"][number]
+): BatchTemplate {
+  const args =
+    intent.sample?.intentArgs &&
+    typeof intent.sample.intentArgs === "object" &&
+    !Array.isArray(intent.sample.intentArgs)
+      ? (intent.sample.intentArgs as Record<string, unknown>)
+      : {};
+  const templateType = inferTemplateType(capability);
 
-export const SOURCE_BATCH_TEMPLATE_MAP = new Map(
-  SOURCE_BATCH_TEMPLATES.map((item) => [item.key, item])
-);
+  if (templateType === "SEARCH_ENGINE") {
+    return {
+      key: intent.key,
+      type: "SEARCH_ENGINE",
+      category: capability.category,
+      platform: capability.platform,
+      driver: capability.execution.driver,
+      networkPolicy: inferNetworkPolicy(capability.tags),
+      tags: capability.tags,
+      intent: {
+        type: intent.sample?.intentType ?? intent.intent,
+        args,
+      },
+      title: `${capability.platform} Search`,
+      description: `Search via ${capability.platform} worker API capability.`,
+      defaultConfig: {
+        platform: capability.platform,
+        engine: "CUSTOM",
+        objective: "",
+        apiEndpoint: null,
+        options: { provider: capability.platform.toLowerCase() },
+        keywordStrategy: "AUTO",
+      },
+      requiredFields: ["objective"],
+      credentialRequirements: buildCredentialRequirements(capability),
+    };
+  }
+
+  return {
+    key: intent.key,
+    type: "SOCIAL_MEDIA",
+    category: capability.category,
+    platform: capability.platform,
+    driver: capability.execution.driver,
+    networkPolicy: inferNetworkPolicy(capability.tags),
+    tags: capability.tags,
+    intent: {
+      type: intent.sample?.intentType ?? intent.intent,
+      args,
+    },
+    title: `${capability.platform} ${intent.intent}`,
+    description: `Collect ${capability.platform} (${intent.intent}) via gather capability.`,
+    defaultConfig: {
+      intent: {
+        type: intent.sample?.intentType ?? intent.intent,
+        args,
+      },
+      driver: capability.execution.driver,
+      keywordStrategy: "AUTO",
+    },
+    requiredFields: inferRequiredIntentFields(args),
+    credentialRequirements: buildCredentialRequirements(capability),
+  };
+}
+
+function mergeCapabilities(input: {
+  gather: SourceCapability[];
+  worker: SourceCapability[];
+}): SourceCapability[] {
+  const gatherPlatformSet = new Set(
+    input.gather.map((item) => item.platform.toUpperCase())
+  );
+  const workerFiltered = input.worker.filter(
+    (item) => !gatherPlatformSet.has(item.platform.toUpperCase())
+  );
+  return [...input.gather, ...workerFiltered].sort((a, b) =>
+    a.platform.localeCompare(b.platform)
+  );
+}
+
+export async function loadBatchTemplates(): Promise<BatchTemplate[]> {
+  const gatherUrl = process.env.GATHER_SERVICE_URL || "http://localhost:8000";
+  let gatherItems: GatherCatalogItem[] = [];
+  try {
+    const response = await fetch(`${gatherUrl}/v3/scripts/catalog`, {
+      cache: "no-store",
+      headers: { Accept: "application/json" },
+    });
+    if (response.ok) {
+      const payload = await response.json();
+      gatherItems = Array.isArray(payload?.items)
+        ? (payload.items as GatherCatalogItem[])
+        : [];
+    }
+  } catch {
+    gatherItems = [];
+  }
+
+  const workerUrl = process.env.WORKER_SERVICE_URL || "http://localhost:8100";
+  let workerItems: SourceCapability[] = [];
+  try {
+    const response = await fetch(`${workerUrl}/v1/source-capabilities`, {
+      cache: "no-store",
+      headers: { Accept: "application/json" },
+    });
+    if (response.ok) {
+      const payload = (await response.json()) as WorkerCapabilitiesResponse;
+      workerItems = Array.isArray(payload?.items) ? payload.items : [];
+    } else {
+      workerItems = buildWorkerApiCapabilities();
+    }
+  } catch {
+    workerItems = buildWorkerApiCapabilities();
+  }
+
+  const capabilities = mergeCapabilities({
+    gather: buildGatherCapabilities(gatherItems),
+    worker: workerItems,
+  });
+  return capabilities
+    .flatMap((capability) =>
+      capability.intents.map((intent) =>
+        buildTemplateFromCapabilityIntent(capability, intent)
+      )
+    )
+    .sort((a, b) => a.key.localeCompare(b.key));
+}
 
 function asRecord(value: unknown): Record<string, unknown> {
   if (value && typeof value === "object" && !Array.isArray(value)) {
@@ -619,10 +606,16 @@ export function sourceIdentityFromSource(source: {
   }
 
   if (source.type === "SEARCH_ENGINE" && source.search) {
+    const searchOptions = asRecord((source.search as { options?: unknown }).options);
+    const provider = String(searchOptions.provider ?? "").trim().toLowerCase();
+    const driver =
+      provider === "parallel" || provider === "tavily" || provider === "anspire"
+        ? "http"
+        : "playwright";
     return {
       type: "SEARCH_ENGINE",
       platform: source.search.platform,
-      driver: "playwright",
+      driver,
       intentType: "search",
       intentArgsHash: computeIntentArgsHash({}),
     };

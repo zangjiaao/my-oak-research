@@ -1,7 +1,7 @@
 import { json, serverError } from "@/app/api/_utils/http";
 import prisma from "@/lib/prisma";
 import {
-  SOURCE_BATCH_TEMPLATES,
+  loadBatchTemplates,
   listMissingRequirements,
   sourceIdentityFromSource,
 } from "@/lib/source-batch";
@@ -61,7 +61,8 @@ export async function GET() {
       );
     }
 
-    const items = SOURCE_BATCH_TEMPLATES.map((template) => {
+    const templates = await loadBatchTemplates();
+    const items = templates.map((template) => {
       const missingRequirements = listMissingRequirements(
         template,
         template.defaultConfig,
