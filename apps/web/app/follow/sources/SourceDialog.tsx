@@ -521,6 +521,11 @@ const SourceDialog = ({
     intentArgsParseError,
   ]);
 
+  const sourceApiPreviewError =
+    sourceApiPreview && "error" in sourceApiPreview ? sourceApiPreview.error : null;
+  const sourceApiPreviewPending =
+    !!sourceApiPreviewError && /\brequires?\b|\brequired\b/i.test(sourceApiPreviewError);
+
   const gatherRequestPreview = useMemo(() => {
     if (effectiveType !== "SOCIAL_MEDIA") return null;
     const normalizedPlatform = normalizePlatform(selectedPlatform);
@@ -825,9 +830,18 @@ const SourceDialog = ({
                 <div className="rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-xs text-destructive">
                   {intentArgsParseError}
                 </div>
-              ) : sourceApiPreview && "error" in sourceApiPreview ? (
-                <div className="rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-xs text-destructive">
-                  {sourceApiPreview.error}
+              ) : sourceApiPreviewError ? (
+                <div
+                  className={cn(
+                    "rounded-md px-3 py-2 text-xs",
+                    sourceApiPreviewPending
+                      ? "border border-amber-300/60 bg-amber-50 text-amber-700 dark:border-amber-700/50 dark:bg-amber-950/30 dark:text-amber-300"
+                      : "border border-destructive/40 bg-destructive/5 text-destructive"
+                  )}
+                >
+                  {sourceApiPreviewPending
+                    ? `预览暂不可用：${sourceApiPreviewError}（补全后会自动显示 JSON）`
+                    : sourceApiPreviewError}
                 </div>
               ) : (
                 <pre className="max-h-64 overflow-auto rounded-md bg-background p-3 text-xs leading-5">
