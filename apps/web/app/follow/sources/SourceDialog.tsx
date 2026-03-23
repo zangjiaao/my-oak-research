@@ -1024,6 +1024,32 @@ const SourceDialog = ({
     if (selectedCapabilityEngine !== "gather_playwright") return null;
     const normalizedPlatform = normalizePlatform(selectedPlatform);
     if (!normalizedPlatform) return null;
+    const rawOutputField = selectedCatalogItem?.sample?.outputField;
+    const outputField =
+      Array.isArray(rawOutputField)
+        ? Array.from(
+            new Set(
+              rawOutputField
+                .filter((item): item is string => typeof item === "string")
+                .map((item) => item.trim())
+                .filter(Boolean)
+            )
+          )
+        : rawOutputField &&
+            typeof rawOutputField === "object" &&
+            !Array.isArray(rawOutputField)
+          ? Object.fromEntries(
+              Object.entries(rawOutputField as Record<string, unknown>)
+                .map(([key, value]) => [key.trim(), String(value ?? "").trim()] as const)
+                .filter(([key, value]) => key.length > 0 && value.length > 0)
+            )
+          : null;
+    const output =
+      outputField &&
+      ((Array.isArray(outputField) && outputField.length > 0) ||
+        (typeof outputField === "object" && Object.keys(outputField).length > 0))
+        ? { field: outputField }
+        : undefined;
     return {
       sourceId: currentSource?.id ?? "__SOURCE_ID__",
       platform: normalizedPlatform.toLowerCase(),
@@ -1040,10 +1066,12 @@ const SourceDialog = ({
           proxy: selectedProxy,
         },
       }),
+      ...(output ? { output } : {}),
     };
   }, [
     selectedCapabilityEngine,
     selectedPlatform,
+    selectedCatalogItem,
     currentSource?.id,
     selectedIntentType,
     scriptArgs,
