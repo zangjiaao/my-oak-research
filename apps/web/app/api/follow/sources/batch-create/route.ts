@@ -51,8 +51,13 @@ function reserveUniqueName(baseName: string, usedNames: Set<string>): string {
 }
 
 function normalizeSearchPlatform(
-  value: unknown
+  value: unknown,
+  driver: unknown
 ): "PARALLEL" | "TAVILY" | "ANSPIRE" | "CUSTOM" {
+  const normalizedDriver = String(driver ?? "").trim().toLowerCase();
+  if (normalizedDriver !== "http") {
+    return "CUSTOM";
+  }
   const normalized = String(value ?? "").trim().toUpperCase();
   if (SEARCH_PLATFORM_VALUES.has(normalized)) {
     return normalized as "PARALLEL" | "TAVILY" | "ANSPIRE" | "CUSTOM";
@@ -260,7 +265,10 @@ export async function POST(req: Request) {
             await tx.searchEngineSourceConfig.create({
               data: {
                 sourceId: base.id,
-                platform: normalizeSearchPlatform(search.platform ?? template.platform),
+                platform: normalizeSearchPlatform(
+                  search.platform ?? template.platform,
+                  template.driver
+                ),
                 engine: String(search.engine ?? "CUSTOM") as any,
                 objective: String(search.objective ?? ""),
                 apiEndpoint:
