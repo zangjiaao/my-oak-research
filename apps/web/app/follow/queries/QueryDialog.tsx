@@ -222,7 +222,12 @@ const QueryDialog = ({
           <CardContent className="grid gap-4">
             <div className="grid gap-3">
               <Label htmlFor="name">Name</Label>
-              <Input id="name" placeholder="Query Name" {...register("name")} />
+              <Input
+                id="name"
+                placeholder="Query Name"
+                className="bg-background"
+                {...register("name")}
+              />
               <ErrorMessage>{errors.name?.message?.toString()}</ErrorMessage>
             </div>
 
@@ -232,6 +237,7 @@ const QueryDialog = ({
                 id="description"
                 placeholder="Description"
                 rows={3}
+                className="bg-background"
                 {...register("description")}
               />
               <ErrorMessage>{errors.description?.message?.toString()}</ErrorMessage>
@@ -383,6 +389,7 @@ const QueryDialog = ({
                 <Input
                   id="cronSchedule"
                   placeholder="e.g., 0 0 * * * (daily at midnight)"
+                  className="bg-background"
                   {...register("cronSchedule")}
                 />
                 <ErrorMessage>
@@ -403,6 +410,7 @@ const QueryDialog = ({
                     min={1}
                     max={600}
                     placeholder="e.g. 60"
+                    className="bg-background"
                     value={field.value ?? ""}
                     onChange={(event) => {
                       const raw = event.target.value.trim();
