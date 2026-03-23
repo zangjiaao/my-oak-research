@@ -117,6 +117,24 @@ function parseNumber(value: unknown, fallback: number): number {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
+function asRecord(value: unknown): Record<string, unknown> {
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    return value as Record<string, unknown>;
+  }
+  return {};
+}
+
+function parseGatherMarker(value?: string | null): { platform: string; intentType: string } | null {
+  const text = String(value ?? "").trim();
+  if (!text) return null;
+  const match = text.match(/collect\s+([a-z0-9_-]+)\s*\(([\w-]+)\)\s+via\s+gather_playwright/i);
+  if (!match) return null;
+  const platform = String(match[1] ?? "").trim().toUpperCase();
+  const intentType = String(match[2] ?? "").trim().toLowerCase();
+  if (!platform || !intentType) return null;
+  return { platform, intentType };
+}
+
 function parseProxyUrl(proxyUrl: string): {
   host: string;
   port: number;
@@ -233,10 +251,9 @@ function getInitialScriptState(source?: SourceWithRelations): {
 
   if (source.category === "INTERACTIVE" && "social" in source && source.social) {
     const config = (source.social.config as Record<string, unknown>) ?? {};
-    const driver =
-      config.driver && typeof config.driver === "object" && !Array.isArray(config.driver)
-        ? (config.driver as Record<string, unknown>)
-        : {};
+    const runtime = asRecord(config.runtime);
+    const playwright = asRecord(config.playwright);
+    const driver = Object.keys(runtime).length > 0 ? runtime : asRecord(config.driver);
     const script =
       driver.script && typeof driver.script === "object" && !Array.isArray(driver.script)
         ? (driver.script as Record<string, unknown>)
@@ -265,12 +282,27 @@ function getInitialScriptState(source?: SourceWithRelations): {
           ? String(script.type ?? intent.type)
           : "search",
       scriptArgs: intentArgs,
-      poolEnabled: typeof driver.poolEnabled === "boolean" ? driver.poolEnabled : true,
-      poolIdleTimeoutMs: parseNumber(driver.poolIdleTimeoutMs, 120000),
-      headless: typeof driver.headless === "boolean" ? driver.headless : false,
+      poolEnabled:
+        typeof driver.poolEnabled === "boolean"
+          ? driver.poolEnabled
+          : typeof playwright.poolEnabled === "boolean"
+            ? playwright.poolEnabled
+            : true,
+      poolIdleTimeoutMs: parseNumber(
+        driver.poolIdleTimeoutMs ?? playwright.poolIdleTimeoutMs,
+        120000
+      ),
+      headless:
+        typeof driver.headless === "boolean"
+          ? driver.headless
+          : typeof playwright.headless === "boolean"
+            ? playwright.headless
+            : false,
       stateFile:
         typeof driver.stateFile === "string" && driver.stateFile.trim()
           ? driver.stateFile
+          : typeof playwright.stateFile === "string" && playwright.stateFile.trim()
+            ? String(playwright.stateFile)
           : "",
       filterMinChars: parseNumber(filter.minChars, 8),
     };
@@ -300,11 +332,26 @@ function getInitialScriptState(source?: SourceWithRelations): {
   }
 
   if (source.category === "STREAM" && "web" in source && source.web) {
+    const parseRules = asRecord(source.web.parseRules);
+    const gather = asRecord(parseRules.gather);
+    const gatherIntentArgs = asRecord(gather.intentArgs);
+    const marker =
+      parseGatherMarker(source.description) ??
+      parseGatherMarker(source.name);
     return {
       category: "STREAM",
-      platform: "BBC",
-      intentType: "crawl",
-      scriptArgs: { url: source.web.url ?? [] },
+      platform:
+        String(gather.platform ?? "").trim().toUpperCase() ||
+        marker?.platform ||
+        "BBC",
+      intentType:
+        String(gather.intentType ?? "").trim() ||
+        marker?.intentType ||
+        "crawl",
+      scriptArgs:
+        Object.keys(gatherIntentArgs).length > 0
+          ? gatherIntentArgs
+          : { url: source.web.url ?? [] },
       poolEnabled: true,
       poolIdleTimeoutMs: 120000,
       headless: false,
@@ -353,15 +400,29 @@ function buildPayloadFromUnified(input: {
   intentType: string;
   scriptArgs: Record<string, unknown>;
   driverConfig: DriverConfigInput;
+  selectedCapabilityEngine?: string | null;
 }) {
-  const { targetCategory, isDarknet, values, platform, intentType, scriptArgs, driverConfig } =
+  const {
+    targetCategory,
+    isDarknet,
+    values,
+    platform,
+    intentType,
+    scriptArgs,
+    driverConfig,
+    selectedCapabilityEngine,
+  } =
     input;
   const intentArgs = scriptArgs;
   const driver = buildDriverConfig({ intentType, intentArgs, config: driverConfig });
 
   const base = {
     name: values.name.trim(),
-    description: values.description?.trim() ?? "",
+    description:
+      values.description?.trim() ||
+      (selectedCapabilityEngine === "gather_playwright" && normalizePlatform(platform)
+        ? `Collect ${normalizePlatform(platform)} (${intentType || "search"}) via gather_playwright.`
+        : ""),
     category: targetCategory,
     isDarknet,
     active: values.active ?? true,
@@ -374,6 +435,17 @@ function buildPayloadFromUnified(input: {
     const urls = splitToUrls(
       intentArgs.url ?? intentArgs.urls ?? intentArgs.targetUrl ?? intentArgs.site
     );
+    const gatherParseRules =
+      selectedCapabilityEngine === "gather_playwright"
+        ? {
+            gather: {
+              platform: normalizePlatform(platform),
+              intentType: intentType || "search",
+              intentArgs,
+              driver,
+            },
+          }
+        : null;
     return {
       payload: {
         ...base,
@@ -385,7 +457,7 @@ function buildPayloadFromUnified(input: {
           render: false,
           robotsRespect: true,
           headers: null,
-          parseRules: null,
+          parseRules: gatherParseRules,
           proxyId: values.proxyId ?? null,
         },
       },
@@ -617,17 +689,6 @@ const SourceDialog = ({
 
   const selectedCapabilityEngine = selectedCapability?.execution.engine ?? null;
 
-  const gatherPlatforms = useMemo(
-    () =>
-      new Set(
-        capabilities
-          .filter((item) => item.execution.engine === "gather_playwright")
-          .map((item) => normalizePlatform(item.platform))
-          .filter(Boolean)
-      ),
-    [capabilities]
-  );
-
   const form = useForm<SourceFormValues>({
     defaultValues: {
       name: currentSource?.name ?? "",
@@ -652,22 +713,14 @@ const SourceDialog = ({
   }, [open, currentSource, form]);
 
   const expectedCategory = effectiveCategory;
-  const normalizedSelectedPlatform = normalizePlatform(selectedPlatform);
   const targetCategory: SourceCategory = useMemo(() => {
     if (currentSource?.category) return currentSource.category;
-    if (selectedCapabilityEngine === "worker_api") {
-      return "RETRIEVAL";
-    }
-    if (normalizedSelectedPlatform && gatherPlatforms.has(normalizedSelectedPlatform)) {
-      return "INTERACTIVE";
-    }
+    if (selectedCapabilityEngine === "worker_api") return "RETRIEVAL";
     return effectiveCategory;
   }, [
     currentSource?.category,
     selectedCapabilityEngine,
     effectiveCategory,
-    normalizedSelectedPlatform,
-    gatherPlatforms,
   ]);
 
   const mutation = useSourceMutation({
@@ -943,6 +996,7 @@ const SourceDialog = ({
         filterMinChars,
         proxy: selectedProxy,
       },
+      selectedCapabilityEngine,
     });
     if ("error" in built) return { error: built.error } as const;
     return built.payload;
@@ -1038,6 +1092,7 @@ const SourceDialog = ({
         filterMinChars,
         proxy: selectedProxy,
       },
+      selectedCapabilityEngine,
     });
 
     if ("error" in built) {
