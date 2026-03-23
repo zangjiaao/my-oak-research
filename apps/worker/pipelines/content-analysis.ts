@@ -410,6 +410,35 @@ export async function runFocusCollector(runId: string, queryId: string) {
     const sanitizedRecordContent = sanitizeJsonForDb(
       normalizedRecordContent
     ) as Prisma.InputJsonValue;
+    const contentMeta: Record<string, unknown> = {
+      queryId,
+      runId,
+      sourceRequestId: item.sourceRequestId
+        ? stripNullBytes(item.sourceRequestId)
+        : null,
+      sourceFingerprint: item.fingerprint
+        ? stripNullBytes(item.fingerprint)
+        : null,
+      driver: item.driver ? stripNullBytes(item.driver) : null,
+      matchedKeywords: (item.matchedKeywords ?? []).map((term) =>
+        stripNullBytes(term)
+      ),
+      keywordMatchScore: item.keywordMatchScore ?? null,
+      recordId: stripNullBytesNullable(normalizedRecordContent.relation.recordId),
+      recordType: stripNullBytesNullable(normalizedRecordContent.relation.recordType),
+      recordTime: stripNullBytesNullable(normalizedRecordContent.detailView.publishedAt),
+      recordContent: sanitizedRecordContent,
+      schemaVersion: stripNullBytesNullable(normalizedRecordContent.schemaVersion),
+      recordIndex: normalizedRecordContent.relation.recordIndex,
+      keywords: expandedKeywords.map((keywordValue) =>
+        stripNullBytes(keywordValue)
+      ),
+      summaryRelevance: summary.relevance,
+      sourceId: stripNullBytes(item.sourceId),
+      sourceType: item.sourceType,
+      intent: item.intent ? stripNullBytes(item.intent) : null,
+    };
+
     const content = await prisma.content.create({
       data: {
         title: sanitizedTitle,
@@ -419,34 +448,7 @@ export async function runFocusCollector(runId: string, queryId: string) {
         type: mapContentType(item.sourceType, item.sourceIsDarknet),
         time: contentTime,
         url: sanitizedUrl,
-        meta: {
-          queryId,
-          runId,
-          sourceRequestId: item.sourceRequestId
-            ? stripNullBytes(item.sourceRequestId)
-            : null,
-          sourceFingerprint: item.fingerprint
-            ? stripNullBytes(item.fingerprint)
-            : null,
-          driver: item.driver ? stripNullBytes(item.driver) : null,
-          matchedKeywords: (item.matchedKeywords ?? []).map((term) =>
-            stripNullBytes(term)
-          ),
-          keywordMatchScore: item.keywordMatchScore ?? null,
-          recordId: stripNullBytesNullable(normalizedRecordContent.relation.recordId),
-          recordType: stripNullBytesNullable(normalizedRecordContent.relation.recordType),
-          recordTime: stripNullBytesNullable(normalizedRecordContent.detailView.publishedAt),
-          recordContent: sanitizedRecordContent,
-          schemaVersion: stripNullBytesNullable(normalizedRecordContent.schemaVersion),
-          recordIndex: normalizedRecordContent.relation.recordIndex,
-          keywords: expandedKeywords.map((keywordValue) =>
-            stripNullBytes(keywordValue)
-          ),
-          summaryRelevance: summary.relevance,
-          sourceId: stripNullBytes(item.sourceId),
-          sourceType: item.sourceType,
-          intent: item.intent ? stripNullBytes(item.intent) : null,
-        },
+        meta: contentMeta as Prisma.InputJsonValue,
       },
     });
 
@@ -458,12 +460,36 @@ export async function runFocusCollector(runId: string, queryId: string) {
         })),
         skipDuplicates: true,
       });
-      await upsertContentSubjectMatches({
+      const subjectMatchResult = await upsertContentSubjectMatches({
         contentId: content.id,
         contentText: `${content.title}\n${content.summary}\n${content.markdown}`,
         item,
         keywords: query.keywords,
       });
+      const reasonSummaryRaw = subjectMatchResult.bestReason?.trim();
+      if (SKIP_AI_SUMMARY && reasonSummaryRaw) {
+        const reasonSummary = stripNullBytes(reasonSummaryRaw);
+        const updatedRecordContent = {
+          ...normalizedRecordContent,
+          summaryView: {
+            ...normalizedRecordContent.summaryView,
+            summary: reasonSummary,
+          },
+        };
+        const sanitizedUpdatedRecordContent = sanitizeJsonForDb(
+          updatedRecordContent
+        ) as Prisma.InputJsonValue;
+        await prisma.content.update({
+          where: { id: content.id },
+          data: {
+            summary: reasonSummary,
+            meta: {
+              ...contentMeta,
+              recordContent: sanitizedUpdatedRecordContent,
+            } as Prisma.InputJsonValue,
+          },
+        });
+      }
     }
     await publishContentEvent({
       type: "content:created",
@@ -2124,9 +2150,11 @@ async function upsertContentSubjectMatches(input: {
   contentText: string;
   item: CleanItem;
   keywords: QueryKeyword[];
-}): Promise<void> {
+}): Promise<{ bestReason: string | null; bestScore: number | null }> {
   const { contentId, contentText, item, keywords } = input;
   const normalizedContentText = contentText.toLowerCase();
+  let bestReason: string | null = null;
+  let bestScore: number | null = null;
   for (const keyword of keywords) {
     const recallTerms = normalizeStringArray(
       keyword.includes.length > 0 ? keyword.includes : [keyword.name]
@@ -2175,6 +2203,13 @@ async function upsertContentSubjectMatches(input: {
       aiScore == null
         ? ruleScore
         : roundScore(0.25 * ruleScore + 0.75 * aiScore);
+    const reasonText = aiResult?.reason?.trim() ?? "";
+    if (reasonText) {
+      if (bestScore == null || finalScore > bestScore) {
+        bestScore = finalScore;
+        bestReason = reasonText;
+      }
+    }
     const matchSource =
       aiScore == null
         ? item.keywordMatchScore == null
@@ -2211,6 +2246,10 @@ async function upsertContentSubjectMatches(input: {
       },
     });
   }
+  return {
+    bestReason,
+    bestScore,
+  };
 }
 
 function calculateRuleScore(input: {
