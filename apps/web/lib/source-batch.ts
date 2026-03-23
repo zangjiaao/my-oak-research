@@ -179,6 +179,16 @@ function buildTemplateFromCapabilityIntent(
   if (templateCategory === "STREAM") {
     const defaultUrl =
       typeof args.url === "string" && args.url.trim() ? [args.url.trim()] : [];
+    const gatherParseRules =
+      capability.execution.engine === "gather_playwright"
+        ? {
+            gather: {
+              platform: capability.platform,
+              intentType,
+              intentArgs: args,
+            },
+          }
+        : null;
     return {
       key: intent.key,
       category: "STREAM",
@@ -198,7 +208,7 @@ function buildTemplateFromCapabilityIntent(
         headers: null,
         crawlerEngine: "FETCH",
         render: false,
-        parseRules: null,
+        parseRules: gatherParseRules,
         robotsRespect: true,
         proxyId: null,
         intent: {
@@ -510,6 +520,23 @@ export function buildSourceCreateData(input: {
   };
 
   if (template.category === "STREAM") {
+    const intent = asRecord(config.intent);
+    const intentType =
+      typeof intent.type === "string" && intent.type.trim()
+        ? intent.type.trim()
+        : template.intent.type;
+    const intentArgs = asRecord(intent.args);
+    const configParseRules = config.parseRules;
+    const parseRules =
+      configParseRules !== undefined
+        ? configParseRules
+        : {
+            gather: {
+              platform: template.platform,
+              intentType,
+              intentArgs,
+            },
+          };
     return {
       ...base,
       web: {
@@ -518,7 +545,7 @@ export function buildSourceCreateData(input: {
         crawlerEngine:
           typeof config.crawlerEngine === "string" ? config.crawlerEngine : "FETCH",
         render: Boolean(config.render),
-        parseRules: withJsonNull(config.parseRules ?? null),
+        parseRules: withJsonNull(parseRules),
         robotsRespect:
           typeof config.robotsRespect === "boolean" ? config.robotsRespect : true,
         proxyId: resolvedProxyId,
