@@ -74,6 +74,7 @@ type ScriptArgEntry = {
   key: string;
   value: string;
 };
+type BadgeFilterKey = "API" | "BROWSER" | "AUTH" | "DARKNET" | "EXISTS";
 
 function isEmptyValue(value: unknown): boolean {
   if (value === null || value === undefined) return true;
@@ -167,6 +168,18 @@ function getExecutionMode(driver: string): "API" | "Browser" {
   return "API";
 }
 
+function requiresAuth(template: BatchTemplate): boolean {
+  return template.credentialRequirements.some((requirement) => requirement.required);
+}
+
+function isDarknet(template: BatchTemplate): boolean {
+  return (
+    template.isDarknet ||
+    template.networkPolicy === "TOR_SOCKS5H" ||
+    (template.tags ?? []).includes("darknet")
+  );
+}
+
 const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
   const [open, setOpen] = useState(false);
   const [state, setState] = useState<Record<string, ItemFormState>>({});
@@ -188,6 +201,13 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
     "ALL" | BatchTemplate["category"]
   >("ALL");
   const [platformFilter, setPlatformFilter] = useState<string>("ALL");
+  const [badgeFilters, setBadgeFilters] = useState<Record<BadgeFilterKey, boolean>>({
+    API: false,
+    BROWSER: false,
+    AUTH: false,
+    DARKNET: false,
+    EXISTS: false,
+  });
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   const queryClient = useQueryClient();
@@ -227,9 +247,22 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
       templates.filter((item) => {
         if (categoryFilter !== "ALL" && item.category !== categoryFilter) return false;
         if (platformFilter !== "ALL" && item.platform !== platformFilter) return false;
+        const executionMode = getExecutionMode(item.driver);
+        const executionBadgeSelected = badgeFilters.API || badgeFilters.BROWSER;
+        if (executionBadgeSelected) {
+          const allowApi = badgeFilters.API;
+          const allowBrowser = badgeFilters.BROWSER;
+          if (!(allowApi && allowBrowser)) {
+            if (allowApi && executionMode !== "API") return false;
+            if (allowBrowser && executionMode !== "Browser") return false;
+          }
+        }
+        if (badgeFilters.AUTH && !requiresAuth(item)) return false;
+        if (badgeFilters.DARKNET && !isDarknet(item)) return false;
+        if (badgeFilters.EXISTS && !item.exists) return false;
         return true;
       }),
-    [templates, categoryFilter, platformFilter]
+    [templates, categoryFilter, platformFilter, badgeFilters]
   );
 
   useEffect(() => {
@@ -241,6 +274,9 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
     () => groupedByCategory(filteredTemplates),
     [filteredTemplates]
   );
+  const toggleBadgeFilter = (key: BadgeFilterKey) => {
+    setBadgeFilters((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
 
   const selectedTemplates = templates.filter((item) => state[item.key]?.enabled);
   const selectedTemplatesByPlatform = useMemo(
@@ -632,6 +668,54 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
                         </SelectContent>
                       </Select>
                     </div>
+                    <div className="space-y-2">
+                      <Label>Badge Filter</Label>
+                      <div className="flex flex-wrap gap-2">
+                        <button type="button" onClick={() => toggleBadgeFilter("API")}>
+                          <Badge
+                            variant="outline"
+                            className={badgeFilters.API ? "bg-white text-black" : "opacity-60"}
+                          >
+                            API
+                          </Badge>
+                        </button>
+                        <button type="button" onClick={() => toggleBadgeFilter("BROWSER")}>
+                          <Badge
+                            variant="outline"
+                            className={badgeFilters.BROWSER ? "bg-white text-black" : "opacity-60"}
+                          >
+                            Browser
+                          </Badge>
+                        </button>
+                        <button type="button" onClick={() => toggleBadgeFilter("AUTH")}>
+                          <Badge
+                            variant="destructive"
+                            className={badgeFilters.AUTH ? "" : "opacity-60"}
+                          >
+                            Auth
+                          </Badge>
+                        </button>
+                        <button type="button" onClick={() => toggleBadgeFilter("DARKNET")}>
+                          <Badge
+                            className={
+                              badgeFilters.DARKNET
+                                ? "border-black bg-black text-white"
+                                : "border-black bg-black text-white opacity-60"
+                            }
+                          >
+                            Darknet
+                          </Badge>
+                        </button>
+                        <button type="button" onClick={() => toggleBadgeFilter("EXISTS")}>
+                          <Badge
+                            variant="secondary"
+                            className={badgeFilters.EXISTS ? "" : "opacity-60"}
+                          >
+                            Exists
+                          </Badge>
+                        </button>
+                      </div>
+                    </div>
                   </div>
 
                   {templateQuery.isLoading ? (
@@ -657,13 +741,8 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
                             const enabled = Boolean(state[template.key]?.enabled);
                             const localMissing = enabled ? getLocalMissing(template) : [];
                             const serverInvalid = invalidMap[template.key] ?? [];
-                            const requiresAuth = template.credentialRequirements.some(
-                              (requirement) => requirement.required
-                            );
-                            const isDarknetTemplate =
-                              template.isDarknet ||
-                              template.networkPolicy === "TOR_SOCKS5H" ||
-                              (template.tags ?? []).includes("darknet");
+                            const hasAuth = requiresAuth(template);
+                            const isDarknetTemplate = isDarknet(template);
                             const executionMode = getExecutionMode(template.driver);
                             return (
                               <label
@@ -682,12 +761,14 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
                                       <div className="min-w-0 text-sm font-medium break-words">
                                         {template.title}
                                       </div>
-                                      {template.exists ? <Badge>Exists</Badge> : null}
-                                      {requiresAuth ? <Badge variant="outline">Auth</Badge> : null}
-                                      <Badge variant="outline">{executionMode}</Badge>
+                                      <Badge variant="outline" className="bg-white text-black">
+                                        {executionMode}
+                                      </Badge>
+                                      {hasAuth ? <Badge variant="destructive">Auth</Badge> : null}
                                       {isDarknetTemplate ? (
-                                        <Badge variant="secondary">Darknet</Badge>
+                                        <Badge className="border-black bg-black text-white">Darknet</Badge>
                                       ) : null}
+                                      {template.exists ? <Badge variant="secondary">Exists</Badge> : null}
                                     </div>
                                     <div className="text-xs text-muted-foreground break-words">
                                       {template.description}
