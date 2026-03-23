@@ -92,6 +92,7 @@ export function MultiSelect({
       </PopoverTrigger>
       <PopoverContent
         align="start"
+        portal={false}
         className="w-[var(--radix-popover-trigger-width)] max-w-[var(--radix-popover-trigger-width)] p-0"
       >
         <Command className="max-h-80">
