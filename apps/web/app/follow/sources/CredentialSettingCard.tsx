@@ -19,6 +19,7 @@ import { useFollow } from "@/hooks/useFollow";
 import { toast } from "sonner";
 import { SettingEditDialog } from "@/components/layout";
 import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 type CredentialListItem = {
   id: string;
@@ -282,62 +283,83 @@ export default function CredentialSettingCard() {
           createMutation.mutate();
         }}
       >
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <div className="grid gap-2">
-            <Label>Kind</Label>
-            <Select value={kind} onValueChange={setKind}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select kind" />
-              </SelectTrigger>
-              <SelectContent>
-                {KIND_OPTIONS.map((item) => (
-                  <SelectItem key={item} value={item}>
-                    {item}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="grid gap-2">
-            <Label>Alias</Label>
-            <Input
-              placeholder="Credential alias"
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-            />
-          </div>
-          <div className="grid gap-2">
-            <Label>Bind Source (Optional)</Label>
-            <Select value={sourceId} onValueChange={setSourceId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Bind source (optional)" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__none__">No source binding</SelectItem>
-                {sources.map((source) => (
-                  <SelectItem key={source.id} value={source.id}>
-                    {source.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="grid gap-2">
-            <Label>{isApiKeyKind(kind) ? "API Key" : "Credential File"}</Label>
-            {isApiKeyKind(kind) ? (
-              <Input
-                placeholder="API key"
-                value={secret}
-                onChange={(event) => setSecret(event.target.value)}
-              />
-            ) : (
-              <Input
-                type="file"
-                accept={kind === "whatsapp-profile" ? ".zip" : ".json"}
-                onChange={(event) => setFile(event.target.files?.[0] ?? null)}
-              />
-            )}
-          </div>
+        <div className="grid gap-4">
+          <Card className="gap-4 bg-muted/30">
+            <CardHeader>
+              <CardTitle>Basic Info</CardTitle>
+              <CardDescription>Configure credential kind, alias, and source binding.</CardDescription>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="grid gap-2">
+                <Label>Kind</Label>
+                <Select value={kind} onValueChange={setKind}>
+                  <SelectTrigger className="bg-background">
+                    <SelectValue placeholder="Select kind" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {KIND_OPTIONS.map((item) => (
+                      <SelectItem key={item} value={item}>
+                        {item}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-2">
+                <Label>Alias</Label>
+                <Input
+                  className="bg-background"
+                  placeholder="Credential alias"
+                  value={name}
+                  onChange={(event) => setName(event.target.value)}
+                />
+              </div>
+              <div className="grid gap-2 md:col-span-2">
+                <Label>Bind Source (Optional)</Label>
+                <Select value={sourceId} onValueChange={setSourceId}>
+                  <SelectTrigger className="bg-background">
+                    <SelectValue placeholder="Bind source (optional)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">No source binding</SelectItem>
+                    {sources.map((source) => (
+                      <SelectItem key={source.id} value={source.id}>
+                        {source.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="gap-4 bg-muted/30">
+            <CardHeader>
+              <CardTitle>Credential Payload</CardTitle>
+              <CardDescription>
+                {isApiKeyKind(kind)
+                  ? "Enter API key secret for this provider."
+                  : "Upload credential file to be validated and stored."}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-2">
+              <Label>{isApiKeyKind(kind) ? "API Key" : "Credential File"}</Label>
+              {isApiKeyKind(kind) ? (
+                <Input
+                  className="bg-background"
+                  placeholder="API key"
+                  value={secret}
+                  onChange={(event) => setSecret(event.target.value)}
+                />
+              ) : (
+                <Input
+                  className="bg-background"
+                  type="file"
+                  accept={kind === "whatsapp-profile" ? ".zip" : ".json"}
+                  onChange={(event) => setFile(event.target.files?.[0] ?? null)}
+                />
+              )}
+            </CardContent>
+          </Card>
         </div>
       </SettingEditDialog>
     </div>
