@@ -98,8 +98,7 @@ function inferNetworkPolicy(tags: string[]): SourceNetworkPolicy {
 }
 
 function inferTemplateCategory(capability: SourceCapability): SourceCategory {
-  if (capability.execution.engine === "worker_api") return "RETRIEVAL";
-  return "INTERACTIVE";
+  return capability.category;
 }
 
 function inferRequiredIntentFields(args: Record<string, unknown>): string[] {
@@ -137,7 +136,6 @@ function buildTemplateFromCapabilityIntent(
       ? (intent.sample.intentArgs as Record<string, unknown>)
       : {};
   const templateCategory = inferTemplateCategory(capability);
-  const isDarknet = inferNetworkPolicy(capability.tags) === "TOR_SOCKS5H";
   const intentType = intent.sample?.intentType ?? intent.intent;
   const title = intent.title?.trim()
     ? intent.title.trim()
@@ -146,6 +144,8 @@ function buildTemplateFromCapabilityIntent(
     ? intent.description.trim()
     : `Collect ${capability.platform} (${intent.intent}) via ${capability.execution.engine}.`;
   const requiredFields = inferRequiredIntentFields(args);
+  const inferredNetworkPolicy = inferNetworkPolicy(capability.tags);
+  const isDarknet = inferredNetworkPolicy === "TOR_SOCKS5H";
 
   if (templateCategory === "RETRIEVAL") {
     return {
@@ -154,7 +154,7 @@ function buildTemplateFromCapabilityIntent(
       isDarknet,
       platform: capability.platform,
       driver: capability.execution.driver,
-      networkPolicy: inferNetworkPolicy(capability.tags),
+      networkPolicy: inferredNetworkPolicy,
       tags: capability.tags,
       intent: {
         type: intentType,
@@ -167,7 +167,7 @@ function buildTemplateFromCapabilityIntent(
           type: intentType,
           args,
         },
-        networkPolicy: inferNetworkPolicy(capability.tags),
+        networkPolicy: inferredNetworkPolicy,
         options: { provider: capability.platform.toLowerCase() },
       },
       requiredFields:
@@ -176,13 +176,49 @@ function buildTemplateFromCapabilityIntent(
     };
   }
 
+  if (templateCategory === "STREAM") {
+    const defaultUrl =
+      typeof args.url === "string" && args.url.trim() ? [args.url.trim()] : [];
+    return {
+      key: intent.key,
+      category: "STREAM",
+      isDarknet: false,
+      platform: capability.platform,
+      driver: capability.execution.driver,
+      networkPolicy: inferredNetworkPolicy,
+      tags: capability.tags,
+      intent: {
+        type: intentType,
+        args,
+      },
+      title,
+      description,
+      defaultConfig: {
+        url: defaultUrl,
+        headers: null,
+        crawlerEngine: "FETCH",
+        render: false,
+        parseRules: null,
+        robotsRespect: true,
+        proxyId: null,
+        intent: {
+          type: intentType,
+          args,
+        },
+        networkPolicy: inferredNetworkPolicy,
+      },
+      requiredFields: [],
+      credentialRequirements: buildCredentialRequirements(capability),
+    };
+  }
+
   return {
     key: intent.key,
-    category: "INTERACTIVE",
+    category: templateCategory,
     isDarknet: false,
     platform: capability.platform,
     driver: capability.execution.driver,
-    networkPolicy: inferNetworkPolicy(capability.tags),
+    networkPolicy: inferredNetworkPolicy,
     tags: capability.tags,
     intent: {
       type: intentType,
@@ -190,15 +226,15 @@ function buildTemplateFromCapabilityIntent(
     },
     title,
     description,
-    defaultConfig: {
-      intent: {
-        type: intentType,
-        args,
+      defaultConfig: {
+        intent: {
+          type: intentType,
+          args,
+        },
+        networkPolicy: inferredNetworkPolicy,
+        driver: capability.execution.driver,
+        keywordStrategy: "AUTO",
       },
-      networkPolicy: inferNetworkPolicy(capability.tags),
-      driver: capability.execution.driver,
-      keywordStrategy: "AUTO",
-    },
     requiredFields,
     credentialRequirements: buildCredentialRequirements(capability),
   };
