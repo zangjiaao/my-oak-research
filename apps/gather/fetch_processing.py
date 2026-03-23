@@ -1,5 +1,6 @@
 import json
 import re
+import unicodedata
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
@@ -446,7 +447,13 @@ def _extract_keyword_filter_keywords(config: Dict[str, Any]) -> Optional[List[st
 def _extract_keyword_filter_options(config: Dict[str, Any]) -> dict[str, Any]:
     raw_filter = _resolve_keyword_filter(config)
     if raw_filter is None:
-        return {"min_chars": 1}
+        return {
+            "min_chars": 1,
+            "scope_fields": [],
+            "match_mode": "smart",
+            "include_url": False,
+            "min_cjk_term_chars": 2,
+        }
     if not isinstance(raw_filter, dict):
         raise KeywordFilterConfigError("config.keywordFilter or config.filters.keyword must be an object")
 
@@ -458,6 +465,15 @@ def _extract_keyword_filter_options(config: Dict[str, Any]) -> dict[str, Any]:
     min_chars = raw_filter.get("minChars", raw_filter.get("minSegmentChars", 1))
     if not isinstance(min_chars, int) or min_chars < 1:
         raise KeywordFilterConfigError("keyword filter minChars must be a positive integer")
+    match_mode = raw_filter.get("matchMode", "smart")
+    if not isinstance(match_mode, str) or match_mode not in {"smart", "contains"}:
+        raise KeywordFilterConfigError("keyword filter matchMode must be one of: smart, contains")
+    include_url = raw_filter.get("includeUrl", False)
+    if not isinstance(include_url, bool):
+        raise KeywordFilterConfigError("keyword filter includeUrl must be boolean")
+    min_cjk_term_chars = raw_filter.get("minCjkTermChars", 2)
+    if not isinstance(min_cjk_term_chars, int) or min_cjk_term_chars < 1:
+        raise KeywordFilterConfigError("keyword filter minCjkTermChars must be a positive integer")
     raw_scope_fields = raw_filter.get("scopeFields", raw_filter.get("keywordScope"))
     scope_fields: list[str] = []
     if raw_scope_fields is not None:
@@ -468,22 +484,49 @@ def _extract_keyword_filter_options(config: Dict[str, Any]) -> dict[str, Any]:
                 raise KeywordFilterConfigError(f"keyword filter scopeFields[{index}] must be non-empty string")
             scope_fields.append(value.strip())
 
-    return {"min_chars": min_chars, "scope_fields": scope_fields}
+    return {
+        "min_chars": min_chars,
+        "scope_fields": scope_fields,
+        "match_mode": match_mode,
+        "include_url": include_url,
+        "min_cjk_term_chars": min_cjk_term_chars,
+    }
 
 
-def _collect_record_content_strings(value: Any) -> list[str]:
+def _normalize_keyword_filter_text(value: str) -> str:
+    normalized = unicodedata.normalize("NFKC", value).casefold()
+    return " ".join(normalized.split())
+
+
+def _contains_cjk(value: str) -> bool:
+    return any(
+        ("\u4e00" <= char <= "\u9fff")
+        or ("\u3400" <= char <= "\u4dbf")
+        or ("\u3040" <= char <= "\u30ff")
+        or ("\uac00" <= char <= "\ud7af")
+        for char in value
+    )
+
+
+def _is_ascii_word(value: str) -> bool:
+    return bool(re.fullmatch(r"[a-z0-9_]+", value))
+
+
+def _collect_record_content_strings(value: Any, include_url: bool) -> list[str]:
     if isinstance(value, str):
         stripped = value.strip()
         return [stripped] if stripped else []
     if isinstance(value, dict):
         collected: list[str] = []
-        for nested in value.values():
-            collected.extend(_collect_record_content_strings(nested))
+        for key, nested in value.items():
+            if not include_url and isinstance(key, str) and key.strip().lower() == "url":
+                continue
+            collected.extend(_collect_record_content_strings(nested, include_url))
         return collected
     if isinstance(value, list):
         collected: list[str] = []
         for nested in value:
-            collected.extend(_collect_record_content_strings(nested))
+            collected.extend(_collect_record_content_strings(nested, include_url))
         return collected
     return []
 
@@ -497,7 +540,7 @@ def _read_nested_value(payload: dict[str, Any], path: list[str]) -> Any:
     return current
 
 
-def _keyword_filter_text(item: CleanItem, scope_fields: list[str]) -> str:
+def _keyword_filter_text(item: CleanItem, scope_fields: list[str], include_url: bool) -> str:
     record_content = item.recordContent if isinstance(item.recordContent, dict) else {}
     if scope_fields:
         parts: list[str] = []
@@ -505,13 +548,44 @@ def _keyword_filter_text(item: CleanItem, scope_fields: list[str]) -> str:
             path = [segment for segment in field.split(".") if segment]
             if not path:
                 continue
+            if (not include_url) and path[-1].strip().lower() == "url":
+                continue
             value = _read_nested_value(record_content, path)
             if value is None:
                 continue
-            parts.extend(_collect_record_content_strings(value))
+            parts.extend(_collect_record_content_strings(value, include_url=True))
     else:
-        parts = _collect_record_content_strings(record_content)
-    return " ".join(parts).lower()
+        parts = _collect_record_content_strings(record_content, include_url=include_url)
+    return _normalize_keyword_filter_text(" ".join(parts))
+
+
+def _smart_match_keyword(keyword: str, haystack: str, options: dict[str, Any]) -> tuple[bool, Optional[str]]:
+    if not keyword:
+        return False, None
+    if _is_ascii_word(keyword):
+        boundary_pattern = re.compile(rf"(?<!\w){re.escape(keyword)}(?!\w)")
+        matched = bool(boundary_pattern.search(haystack))
+        return matched, "word" if matched else None
+    if _contains_cjk(keyword):
+        if len(keyword) < options["min_cjk_term_chars"]:
+            return False, None
+        matched = keyword in haystack
+        return matched, "cjk" if matched else None
+    unicode_boundary = re.compile(rf"(?<!\w){re.escape(keyword)}(?!\w)")
+    matched = bool(unicode_boundary.search(haystack))
+    if matched:
+        return True, "unicode-word"
+    if " " in keyword:
+        phrase_matched = keyword in haystack
+        return phrase_matched, "phrase" if phrase_matched else None
+    return False, None
+
+
+def _match_keyword(keyword: str, haystack: str, options: dict[str, Any]) -> tuple[bool, Optional[str]]:
+    if options["match_mode"] == "contains":
+        matched = keyword in haystack
+        return matched, "contains" if matched else None
+    return _smart_match_keyword(keyword, haystack, options)
 
 
 def apply_keyword_hard_filter(request: FetchRequest, items: List[CleanItem]) -> List[CleanItem]:
@@ -527,12 +601,17 @@ def apply_keyword_hard_filter(request: FetchRequest, items: List[CleanItem]) -> 
 
     if not keywords:
         return items
+    keywords = [_normalize_keyword_filter_text(keyword) for keyword in keywords]
     filtered: list[CleanItem] = []
     hit = 0
     miss = 0
     fetched = len(items)
     for item in items:
-        haystack = _keyword_filter_text(item, options["scope_fields"])
+        haystack = _keyword_filter_text(
+            item,
+            options["scope_fields"],
+            include_url=options["include_url"],
+        )
         if len(haystack.strip()) < options["min_chars"]:
             miss += 1
             print(
@@ -540,21 +619,32 @@ def apply_keyword_hard_filter(request: FetchRequest, items: List[CleanItem]) -> 
                 f"{json.dumps({'sourceId': item.sourceId, 'platform': item.platform, 'url': item.url, 'reason': 'min_chars'}, ensure_ascii=False)}"
             )
             continue
-        matched = [keyword for keyword in keywords if keyword in haystack]
+        matched: list[str] = []
+        matched_by: dict[str, str] = {}
+        for keyword in keywords:
+            is_hit, strategy = _match_keyword(keyword, haystack, options)
+            if is_hit:
+                matched.append(keyword)
+                if strategy:
+                    matched_by[keyword] = strategy
         if matched:
             item.matchedKeywords = matched
             item.keywordMatchScore = round(len(matched) / len(keywords), 4)
             filtered.append(item)
             hit += 1
+            print(
+                f"[gather][keyword-filter][audit] "
+                f"{json.dumps({'sourceId': item.sourceId, 'platform': item.platform, 'url': item.url, 'reason': 'keyword_hit', 'matchMode': options['match_mode'], 'matchedBy': matched_by}, ensure_ascii=False)}"
+            )
             continue
         miss += 1
         print(
             f"[gather][keyword-filter][audit] "
-            f"{json.dumps({'sourceId': item.sourceId, 'platform': item.platform, 'url': item.url, 'reason': 'keyword_miss'}, ensure_ascii=False)}"
+            f"{json.dumps({'sourceId': item.sourceId, 'platform': item.platform, 'url': item.url, 'reason': 'keyword_miss', 'matchMode': options['match_mode']}, ensure_ascii=False)}"
         )
 
     print(
         f"[gather][keyword-filter][metrics] "
-        f"{json.dumps({'sourceId': request.source_id, 'platform': request.platform, 'fetched': fetched, 'hit': hit, 'miss': miss, 'persisted': len(filtered), 'minChars': options['min_chars'], 'scopeFields': options['scope_fields']}, ensure_ascii=False)}"
+        f"{json.dumps({'sourceId': request.source_id, 'platform': request.platform, 'fetched': fetched, 'hit': hit, 'miss': miss, 'persisted': len(filtered), 'minChars': options['min_chars'], 'scopeFields': options['scope_fields'], 'matchMode': options['match_mode'], 'includeUrl': options['include_url']}, ensure_ascii=False)}"
     )
     return filtered

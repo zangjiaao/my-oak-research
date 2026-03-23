@@ -7,6 +7,7 @@ import {
   DarknetSourceConfig,
   SocialMediaSourceConfig,
   SearchEngineSourceConfig,
+  SourceIdentity,
   SourcePresetBinding,
   Proxy,
   Credential,
@@ -37,6 +38,7 @@ type SourcePresetBindingWithPreset = SourcePresetBinding & {
 type SourceBaseWithRelations = Source & {
   proxy?: Proxy | null;
   credential?: Credential | null;
+  identity?: SourceIdentity | null;
   presetBindings?: SourcePresetBindingWithPreset[];
 };
 

@@ -52,10 +52,11 @@ export async function GET(req: Request) {
       });
     }
 
-    const { q, type, active, page, pageSize } = parsed.data;
+    const { q, category, isDarknet, active, page, pageSize } = parsed.data;
     const where: Record<string, unknown> = {};
     if (q) where.name = { contains: q, mode: "insensitive" };
-    if (type) where.type = type;
+    if (category) where.category = category;
+    if (isDarknet) where.isDarknet = isDarknet === "true";
     if (active) where.active = active === "true";
 
     const include = includeRelations
@@ -64,6 +65,7 @@ export async function GET(req: Request) {
         darknet: { include: { proxy: true } },
         search: true,
         social: true,
+        identity: true,
         presetBindings: {
           include: {
             preset: {
@@ -126,7 +128,8 @@ export async function POST(req: Request) {
         data: {
           name: data.name,
           description: data.description ?? null,
-          type: data.type,
+          category: data.category,
+          isDarknet: data.isDarknet ?? false,
           active: data.active ?? true,
           rateLimit: data.rateLimit ?? null,
           proxyId: data.proxyId ?? null,
@@ -134,8 +137,8 @@ export async function POST(req: Request) {
         },
       });
 
-      switch (data.type) {
-        case "WEB":
+      switch (data.category) {
+        case "STREAM":
           await tx.webSourceConfig.create({
             data: {
               sourceId: base.id,
@@ -149,20 +152,21 @@ export async function POST(req: Request) {
             },
           });
           break;
-        case "DARKNET":
-          await tx.darknetSourceConfig.create({
-            data: {
-              sourceId: base.id,
-              url: data.darknet.url,
-              headers: jsonOrNull(data.darknet.headers),
-              crawlerEngine: data.darknet.crawlerEngine ?? "FETCH",
-              proxyId: data.darknet.proxyId,
-              render: data.darknet.render ?? false,
-              parseRules: jsonOrNull(data.darknet.parseRules),
-            },
-          });
-          break;
-        case "SEARCH_ENGINE":
+        case "RETRIEVAL":
+          if (data.isDarknet) {
+            await tx.darknetSourceConfig.create({
+              data: {
+                sourceId: base.id,
+                url: data.darknet.url,
+                headers: jsonOrNull(data.darknet.headers),
+                crawlerEngine: data.darknet.crawlerEngine ?? "FETCH",
+                proxyId: data.darknet.proxyId,
+                render: data.darknet.render ?? false,
+                parseRules: jsonOrNull(data.darknet.parseRules),
+              },
+            });
+            break;
+          }
           await tx.searchEngineSourceConfig.create({
             data: {
               sourceId: base.id,
@@ -176,7 +180,7 @@ export async function POST(req: Request) {
             },
           });
           break;
-        case "SOCIAL_MEDIA":
+        case "INTERACTIVE":
           await tx.socialMediaSourceConfig.create({
             data: {
               sourceId: base.id,
@@ -201,6 +205,7 @@ export async function POST(req: Request) {
           darknet: { include: { proxy: true } },
           search: true,
           social: true,
+          identity: true,
           presetBindings: {
             include: {
               preset: {

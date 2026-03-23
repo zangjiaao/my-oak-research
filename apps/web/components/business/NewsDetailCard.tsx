@@ -70,24 +70,19 @@ const NewsDetailCard = ({
       )}
     >
       <CardHeader className="flex-shrink-0 space-y-2 px-6 pt-4 pb-1 lg:px-8 lg:pt-5 lg:pb-2">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex flex-wrap items-center gap-2">
-            {source ? <Badge variant="secondary">{source}</Badge> : null}
-            {author ? <Badge variant="outline">作者: {author}</Badge> : null}
-            {publishedAt ? (
-              <Badge variant="outline">
-                时间: {new Date(publishedAt).toLocaleString()}
-              </Badge>
-            ) : null}
-            {subjectMatch ? (
-              <>
-                <Badge variant="secondary">
-                  相关度:{" "}
-                  {typeof subjectMatch.score === "number"
-                    ? subjectMatch.score.toFixed(2)
-                    : "N/A"}
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1 space-y-2">
+            <div className="flex flex-wrap items-center gap-2">
+              {source ? <Badge variant="secondary">{source}</Badge> : null}
+              {author ? <Badge variant="outline">作者: {author}</Badge> : null}
+              {publishedAt ? (
+                <Badge variant="outline">
+                  时间: {new Date(publishedAt).toLocaleString()}
                 </Badge>
-                <Badge variant="outline">{subjectMatch.matchSource}</Badge>
+              ) : null}
+            </div>
+            {subjectMatch ? (
+              <div className="flex flex-wrap items-center gap-2">
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Badge variant="outline" className="cursor-help">
@@ -110,10 +105,17 @@ const NewsDetailCard = ({
                     {subjectMatch.reason ? <p>reason: {subjectMatch.reason}</p> : null}
                   </TooltipContent>
                 </Tooltip>
-              </>
+                <Badge variant="secondary">
+                  相关度:{" "}
+                  {typeof subjectMatch.score === "number"
+                    ? subjectMatch.score.toFixed(2)
+                    : "N/A"}
+                </Badge>
+                <Badge variant="outline">{subjectMatch.matchSource}</Badge>
+              </div>
             ) : null}
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex shrink-0 items-center gap-1 self-start">
             <Button
               variant="ghost"
               size="icon"

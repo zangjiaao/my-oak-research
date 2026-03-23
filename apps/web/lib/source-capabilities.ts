@@ -46,6 +46,7 @@ type GatherCatalogItem = {
   platform: string;
   intent: string;
   mode: string;
+  driver?: string;
   sample?: {
     intentType?: string;
     intentArgs?: Record<string, unknown>;
@@ -364,12 +365,16 @@ export function buildGatherCapabilities(items: GatherCatalogItem[]): SourceCapab
     if (!metaCategory || typeof authMetaRequired !== "boolean") {
       tags.push("UNSPECIFIED");
     }
+    const catalogDriver =
+      typeof item.driver === "string" && item.driver.trim()
+        ? item.driver.trim()
+        : "playwright";
     grouped.set(platform, {
       platform,
       category,
       execution: {
         engine: "gather_playwright",
-        driver: "playwright",
+        driver: catalogDriver,
       },
       tags: Array.from(
         new Set([getRegionTag(platform), ...tags])

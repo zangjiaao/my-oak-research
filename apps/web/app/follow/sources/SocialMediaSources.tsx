@@ -24,6 +24,23 @@ type InteractiveSource = SourceWithRelations & Source & {
   proxy?: Proxy | null;
 };
 
+function getSourcePlatformLabel(source: InteractiveSource): string {
+  const search =
+    "search" in source
+      ? (source.search as unknown as { platform?: string; options?: unknown })
+      : null;
+  const provider =
+    search?.options && typeof search.options === "object"
+      ? (search.options as Record<string, unknown>).provider
+      : null;
+  const providerLabel =
+    typeof provider === "string" && provider.trim() ? provider.trim().toUpperCase() : null;
+  const platform = ("social" in source ? source.social?.platform : null) ?? search?.platform;
+
+  if (platform === "CUSTOM" && providerLabel) return providerLabel;
+  return platform ?? "-";
+}
+
 const SocialMediaSources = ({ sources, proxies }: Props) => {
   const [editingSource, setEditingSource] = useState<
     InteractiveSource | undefined
@@ -44,17 +61,22 @@ const SocialMediaSources = ({ sources, proxies }: Props) => {
       render: (source) => source.name,
     },
     {
-      key: "description",
-      label: "Description",
-      render: (source) => source.description,
+      key: "platform",
+      label: "Platform",
+      className: "max-w-xs",
+      render: (source) => (
+        <span className="text-sm break-all whitespace-normal">
+          {getSourcePlatformLabel(source)}
+        </span>
+      ),
     },
     {
-      key: "platform",
-      label: "Type",
-      render: (source) =>
-        ("social" in source ? source.social?.platform : null) ??
-        ("search" in source ? source.search?.platform : null) ??
-        ("web" in source ? "WEB" : "-"),
+      key: "description",
+      label: "Description",
+      className: "max-w-xs",
+      render: (source) => (
+        <div className="whitespace-normal">{source.description}</div>
+      ),
     },
     {
       key: "proxy",
@@ -77,7 +99,7 @@ const SocialMediaSources = ({ sources, proxies }: Props) => {
       render: (source) => (
         <SourceDeleteAlert
           source={source}
-          queryKeyType="SOCIAL_MEDIA"
+          queryKeyType="INTERACTIVE"
           triggerButton={
             <Button size="sm" variant="outline">
               <TrashIcon className="size-3" />
@@ -91,7 +113,7 @@ const SocialMediaSources = ({ sources, proxies }: Props) => {
   return (
     <>
       <SourceDialog
-        sourceType="SOCIAL_MEDIA"
+        sourceType="INTERACTIVE"
         source={editingSource}
         proxies={proxies}
         open={!!editingSource}

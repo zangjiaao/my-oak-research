@@ -157,8 +157,8 @@ export async function PATCH(
         },
       });
 
-      // 2) update per-type config (type 不允许变更)
-      if (exists.type === "WEB" && parsed.data.web) {
+      // 2) update per-category config (category 不允许变更)
+      if (exists.category === "STREAM" && parsed.data.web) {
         const webData = parsed.data.web;
         const updateData: ConfigUpdateData = {};
         if (webData.url !== undefined) updateData.url = webData.url;
@@ -178,13 +178,13 @@ export async function PATCH(
           data: updateData,
         });
       }
-      if (exists.type === "DARKNET" && parsed.data.darknet) {
+      if (exists.category === "RETRIEVAL" && exists.isDarknet && parsed.data.darknet) {
         const darknetData = parsed.data.darknet;
         // 确保 proxyId 不被清空
         if (darknetData.proxyId === null) {
-          return badRequest("DARKNET.proxyId is required", {
+          return badRequest("darknet proxyId is required", {
             message: "Validation failed",
-            details: "Proxy ID is required for DARKNET source type.",
+            details: "Proxy ID is required for retrieval darknet source.",
           });
         }
 
@@ -206,7 +206,7 @@ export async function PATCH(
           data: updateData,
         });
       }
-      if (exists.type === "SEARCH_ENGINE" && parsed.data.search) {
+      if (exists.category === "RETRIEVAL" && !exists.isDarknet && parsed.data.search) {
         const searchData = parsed.data.search;
         const updateData: ConfigUpdateData = {};
         if (searchData.platform !== undefined)
@@ -229,7 +229,7 @@ export async function PATCH(
           data: updateData,
         });
       }
-      if (exists.type === "SOCIAL_MEDIA" && parsed.data.social) {
+      if (exists.category === "INTERACTIVE" && parsed.data.social) {
         const socialData = parsed.data.social;
         const updateData: ConfigUpdateData = {};
         if (socialData.platform !== undefined)

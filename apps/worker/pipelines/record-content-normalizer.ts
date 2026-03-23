@@ -25,6 +25,7 @@ export type NormalizedRecordContent = {
     title: string;
     author: string | null;
     content: string;
+    markdown: string;
     publishedAt: string;
     links: string[];
     images: string[];
@@ -252,8 +253,17 @@ export function buildNormalizedRecordContent(
   const rawRecordContent = asObject(input.rawRecordContent);
 
   const title = pickFirst(rawRecordContent, rule.title) ?? input.fallbackTitle;
-  const summary = pickFirst(rawRecordContent, rule.summary) ?? input.fallbackSummary;
+  const summary =
+    (input.fallbackSummary && input.fallbackSummary.trim()
+      ? input.fallbackSummary.trim()
+      : null) ??
+    pickFirst(rawRecordContent, rule.summary) ??
+    input.fallbackSummary;
   const content = pickFirst(rawRecordContent, rule.content) ?? input.fallbackMarkdown;
+  const detailMarkdown =
+    title && content && !content.toLowerCase().startsWith(title.toLowerCase())
+      ? `# ${title}\n\n${content}`
+      : content;
   const author = pickFirst(rawRecordContent, rule.author);
 
   const publishedRaw = pickFirst(rawRecordContent, rule.time);
@@ -325,6 +335,7 @@ export function buildNormalizedRecordContent(
       title,
       author,
       content,
+      markdown: detailMarkdown,
       publishedAt,
       links,
       images: media.filter((item) => item.type === "image").map((item) => item.url),

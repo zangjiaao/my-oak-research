@@ -39,7 +39,7 @@ import {
 import { ErrorMessage } from "@/components/business";
 import { apiFetcher } from "@/lib/fetcher";
 import type { Proxy } from "@/app/generated/prisma";
-import { SourceType } from "@/app/generated/prisma";
+import { SourceCategory } from "@/app/generated/prisma";
 import { SourceWithRelations } from "@/lib/types";
 import { useSourceMutation } from "@/hooks/useSourceMutation";
 import { type SourceCapability } from "@/lib/source-capabilities";
@@ -57,8 +57,6 @@ type SourceFormValues = {
 type SourceCapabilityResponse = {
   items: SourceCapability[];
 };
-
-type SourceCategory = "STREAM" | "INTERACTIVE" | "RETRIEVAL";
 
 type DriverConfigInput = {
   poolEnabled: boolean;
@@ -94,12 +92,6 @@ function normalizePlatform(value?: string | null): string {
   return String(value ?? "").trim().toUpperCase();
 }
 
-function inferCategoryFromSourceType(type: SourceType): SourceCategory {
-  if (type === "WEB") return "STREAM";
-  if (type === "SOCIAL_MEDIA") return "INTERACTIVE";
-  return "RETRIEVAL";
-}
-
 function getPlatformRegion(tags?: string[]): "国内" | "国外" | "未配置" {
   if (Array.isArray(tags)) {
     if (tags.includes("domestic")) return "国内";
@@ -123,6 +115,24 @@ function splitToUrls(value: unknown): string[] {
 function parseNumber(value: unknown, fallback: number): number {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    return value as Record<string, unknown>;
+  }
+  return {};
+}
+
+function parseGatherMarker(value?: string | null): { platform: string; intentType: string } | null {
+  const text = String(value ?? "").trim();
+  if (!text) return null;
+  const match = text.match(/collect\s+([a-z0-9_-]+)\s*\(([\w-]+)\)\s+via\s+gather_playwright/i);
+  if (!match) return null;
+  const platform = String(match[1] ?? "").trim().toUpperCase();
+  const intentType = String(match[2] ?? "").trim().toLowerCase();
+  if (!platform || !intentType) return null;
+  return { platform, intentType };
 }
 
 function parseProxyUrl(proxyUrl: string): {
@@ -229,22 +239,21 @@ function getInitialScriptState(source?: SourceWithRelations): {
     return {
       category: "INTERACTIVE",
       platform: "",
-      intentType: "search",
+      intentType: "",
       scriptArgs: {},
       poolEnabled: true,
       poolIdleTimeoutMs: 120000,
       headless: false,
-      stateFile: ".auth/x_auth.json",
+      stateFile: "",
       filterMinChars: 8,
     };
   }
 
-  if (source.type === "SOCIAL_MEDIA" && "social" in source && source.social) {
+  if (source.category === "INTERACTIVE" && "social" in source && source.social) {
     const config = (source.social.config as Record<string, unknown>) ?? {};
-    const driver =
-      config.driver && typeof config.driver === "object" && !Array.isArray(config.driver)
-        ? (config.driver as Record<string, unknown>)
-        : {};
+    const runtime = asRecord(config.runtime);
+    const playwright = asRecord(config.playwright);
+    const driver = Object.keys(runtime).length > 0 ? runtime : asRecord(config.driver);
     const script =
       driver.script && typeof driver.script === "object" && !Array.isArray(driver.script)
         ? (driver.script as Record<string, unknown>)
@@ -273,18 +282,38 @@ function getInitialScriptState(source?: SourceWithRelations): {
           ? String(script.type ?? intent.type)
           : "search",
       scriptArgs: intentArgs,
-      poolEnabled: typeof driver.poolEnabled === "boolean" ? driver.poolEnabled : true,
-      poolIdleTimeoutMs: parseNumber(driver.poolIdleTimeoutMs, 120000),
-      headless: typeof driver.headless === "boolean" ? driver.headless : false,
+      poolEnabled:
+        typeof driver.poolEnabled === "boolean"
+          ? driver.poolEnabled
+          : typeof playwright.poolEnabled === "boolean"
+            ? playwright.poolEnabled
+            : true,
+      poolIdleTimeoutMs: parseNumber(
+        driver.poolIdleTimeoutMs ?? playwright.poolIdleTimeoutMs,
+        120000
+      ),
+      headless:
+        typeof driver.headless === "boolean"
+          ? driver.headless
+          : typeof playwright.headless === "boolean"
+            ? playwright.headless
+            : false,
       stateFile:
         typeof driver.stateFile === "string" && driver.stateFile.trim()
           ? driver.stateFile
-          : ".auth/x_auth.json",
+          : typeof playwright.stateFile === "string" && playwright.stateFile.trim()
+            ? String(playwright.stateFile)
+          : "",
       filterMinChars: parseNumber(filter.minChars, 8),
     };
   }
 
-  if (source.type === "SEARCH_ENGINE" && "search" in source && source.search) {
+  if (
+    source.category === "RETRIEVAL" &&
+    !source.isDarknet &&
+    "search" in source &&
+    source.search
+  ) {
     const options =
       source.search.options && typeof source.search.options === "object"
         ? (source.search.options as Record<string, unknown>)
@@ -302,12 +331,27 @@ function getInitialScriptState(source?: SourceWithRelations): {
     };
   }
 
-  if (source.type === "WEB" && "web" in source && source.web) {
+  if (source.category === "STREAM" && "web" in source && source.web) {
+    const parseRules = asRecord(source.web.parseRules);
+    const gather = asRecord(parseRules.gather);
+    const gatherIntentArgs = asRecord(gather.intentArgs);
+    const marker =
+      parseGatherMarker(source.description) ??
+      parseGatherMarker(source.name);
     return {
       category: "STREAM",
-      platform: "BBC",
-      intentType: "crawl",
-      scriptArgs: { url: source.web.url ?? [] },
+      platform:
+        String(gather.platform ?? "").trim().toUpperCase() ||
+        marker?.platform ||
+        "BBC",
+      intentType:
+        String(gather.intentType ?? "").trim() ||
+        marker?.intentType ||
+        "crawl",
+      scriptArgs:
+        Object.keys(gatherIntentArgs).length > 0
+          ? gatherIntentArgs
+          : { url: source.web.url ?? [] },
       poolEnabled: true,
       poolIdleTimeoutMs: 120000,
       headless: false,
@@ -316,7 +360,12 @@ function getInitialScriptState(source?: SourceWithRelations): {
     };
   }
 
-  if (source.type === "DARKNET" && "darknet" in source && source.darknet) {
+  if (
+    source.category === "RETRIEVAL" &&
+    source.isDarknet &&
+    "darknet" in source &&
+    source.darknet
+  ) {
     return {
       category: "RETRIEVAL",
       platform: "DARKWEBGO",
@@ -333,60 +382,89 @@ function getInitialScriptState(source?: SourceWithRelations): {
   return {
     category: "INTERACTIVE",
     platform: "",
-    intentType: "search",
+    intentType: "",
     scriptArgs: {},
     poolEnabled: true,
     poolIdleTimeoutMs: 120000,
     headless: false,
-    stateFile: ".auth/x_auth.json",
+    stateFile: "",
     filterMinChars: 8,
   };
 }
 
 function buildPayloadFromUnified(input: {
-  targetType: SourceType;
+  targetCategory: SourceCategory;
+  isDarknet: boolean;
   values: SourceFormValues;
   platform: string;
   intentType: string;
   scriptArgs: Record<string, unknown>;
   driverConfig: DriverConfigInput;
+  selectedCapabilityEngine?: string | null;
 }) {
-  const { targetType, values, platform, intentType, scriptArgs, driverConfig } = input;
+  const {
+    targetCategory,
+    isDarknet,
+    values,
+    platform,
+    intentType,
+    scriptArgs,
+    driverConfig,
+    selectedCapabilityEngine,
+  } =
+    input;
   const intentArgs = scriptArgs;
   const driver = buildDriverConfig({ intentType, intentArgs, config: driverConfig });
 
   const base = {
     name: values.name.trim(),
-    description: values.description?.trim() ?? "",
-    type: targetType,
+    description:
+      values.description?.trim() ||
+      (selectedCapabilityEngine === "gather_playwright" && normalizePlatform(platform)
+        ? `Collect ${normalizePlatform(platform)} (${intentType || "search"}) via gather_playwright.`
+        : ""),
+    category: targetCategory,
+    isDarknet,
     active: values.active ?? true,
     rateLimit: values.rateLimit ?? 10,
     proxyId: values.proxyId ?? null,
     credentialId: values.credentialId ?? null,
   };
 
-  if (targetType === "WEB") {
+  if (targetCategory === "STREAM") {
     const urls = splitToUrls(
       intentArgs.url ?? intentArgs.urls ?? intentArgs.targetUrl ?? intentArgs.site
     );
+    const gatherParseRules =
+      selectedCapabilityEngine === "gather_playwright"
+        ? {
+            gather: {
+              platform: normalizePlatform(platform),
+              intentType: intentType || "search",
+              intentArgs,
+              driver,
+            },
+          }
+        : null;
     return {
       payload: {
         ...base,
-        type: "WEB" as const,
+        category: "STREAM" as const,
+        isDarknet: false,
         web: {
           url: urls,
           crawlerEngine: "FETCH" as const,
           render: false,
           robotsRespect: true,
           headers: null,
-          parseRules: null,
+          parseRules: gatherParseRules,
           proxyId: values.proxyId ?? null,
         },
       },
     };
   }
 
-  if (targetType === "SEARCH_ENGINE") {
+  if (targetCategory === "RETRIEVAL" && !isDarknet) {
     const provider = normalizePlatform(platform);
     const objective = String(
       intentArgs.query ?? intentArgs.keyword ?? intentArgs.objective ?? ""
@@ -400,7 +478,8 @@ function buildPayloadFromUnified(input: {
     return {
       payload: {
         ...base,
-        type: "SEARCH_ENGINE" as const,
+        category: "RETRIEVAL" as const,
+        isDarknet: false,
         search: {
           platform: mappedPlatform,
           engine: "CUSTOM" as const,
@@ -419,7 +498,7 @@ function buildPayloadFromUnified(input: {
     };
   }
 
-  if (targetType === "DARKNET") {
+  if (targetCategory === "RETRIEVAL" && isDarknet) {
     const urls = splitToUrls(
       intentArgs.url ?? intentArgs.urls ?? intentArgs.targetUrl ?? intentArgs.site
     );
@@ -433,7 +512,8 @@ function buildPayloadFromUnified(input: {
     return {
       payload: {
         ...base,
-        type: "DARKNET" as const,
+        category: "RETRIEVAL" as const,
+        isDarknet: true,
         darknet: {
           url: urls,
           headers: null,
@@ -451,15 +531,44 @@ function buildPayloadFromUnified(input: {
     return { error: "Interactive source requires a platform." };
   }
 
+  const socialConfig: Record<string, unknown> = {
+    driver: "playwright",
+    intent: {
+      type: intentType || "search",
+      args: intentArgs,
+    },
+    playwright: {
+      mode: "eval-js",
+      headless: driverConfig.headless,
+      poolEnabled: driverConfig.poolEnabled,
+      poolIdleTimeoutMs: parseNumber(driverConfig.poolIdleTimeoutMs, 120000),
+      args: Object.fromEntries(
+        Object.entries(intentArgs).map(([key, value]) => [key, String(value ?? "")])
+      ),
+    },
+    runtime: driver,
+  };
+
+  const query = String(intentArgs.query ?? "").trim();
+  const userId = String(intentArgs.userId ?? "").trim();
+  const noteId = String(intentArgs.noteId ?? "").trim();
+  const videoId = String(intentArgs.videoId ?? "").trim();
+  const username = String(intentArgs.username ?? "").trim();
+
+  if (query) socialConfig.query = query;
+  if (userId) socialConfig.userId = userId;
+  if (noteId) socialConfig.noteId = noteId;
+  if (videoId) socialConfig.videoId = videoId;
+  if (username) socialConfig.username = username;
+
   return {
     payload: {
       ...base,
-      type: "SOCIAL_MEDIA" as const,
+      category: "INTERACTIVE" as const,
+      isDarknet: false,
       social: {
         platform: normalizedPlatform,
-        config: {
-          driver,
-        },
+        config: socialConfig,
         credentialId: values.credentialId ?? null,
         proxyId: values.proxyId ?? null,
         keywordStrategy: "AUTO" as const,
@@ -473,28 +582,34 @@ const SourceDialog = ({
   source: propSource,
   proxies,
   sourceType: propSourceType,
+  sourceIsDarknet: propSourceIsDarknet,
   onOpenChange,
   open,
 }: {
   triggerButton?: React.ReactNode;
   source?: SourceWithRelations;
   proxies: Proxy[];
-  sourceType?: SourceType;
+  sourceType?: SourceCategory;
+  sourceIsDarknet?: boolean;
   onOpenChange: (open: boolean) => void;
   open: boolean;
 }) => {
   const [currentSource, setCurrentSource] = useState<SourceWithRelations | undefined>(propSource);
   const [currentSourceType, setCurrentSourceType] = useState(propSourceType);
+  const [currentIsDarknet, setCurrentIsDarknet] = useState(Boolean(propSourceIsDarknet));
 
   useEffect(() => {
     if (open) {
       setCurrentSource(propSource);
       setCurrentSourceType(propSourceType);
+      setCurrentIsDarknet(Boolean(propSourceIsDarknet));
     }
-  }, [open, propSource, propSourceType]);
+  }, [open, propSource, propSourceType, propSourceIsDarknet]);
 
   const isUpdate = !!currentSource;
-  const effectiveType: SourceType = currentSourceType || currentSource?.type || "SOCIAL_MEDIA";
+  const effectiveCategory: SourceCategory =
+    currentSourceType || currentSource?.category || "INTERACTIVE";
+  const effectiveIsDarknet = currentSource?.isDarknet ?? currentIsDarknet;
 
   const initialScriptState = useMemo(() => getInitialScriptState(currentSource), [currentSource]);
 
@@ -503,7 +618,7 @@ const SourceDialog = ({
   const [scriptArgEntries, setScriptArgEntries] = useState<ScriptArgEntry[]>(
     (() => {
       const entries = toScriptArgEntries(initialScriptState.scriptArgs);
-      return entries.length > 0 ? entries : [EMPTY_ARG_ENTRY];
+      return entries.length > 0 ? entries : [];
     })()
   );
   const [poolEnabled, setPoolEnabled] = useState(initialScriptState.poolEnabled);
@@ -525,7 +640,7 @@ const SourceDialog = ({
     setSelectedIntentType(initialScriptState.intentType);
     setScriptArgEntries(() => {
       const entries = toScriptArgEntries(initialScriptState.scriptArgs);
-      return entries.length > 0 ? entries : [EMPTY_ARG_ENTRY];
+      return entries.length > 0 ? entries : [];
     });
     setPoolEnabled(initialScriptState.poolEnabled);
     setPoolIdleTimeoutMs(initialScriptState.poolIdleTimeoutMs);
@@ -574,17 +689,6 @@ const SourceDialog = ({
 
   const selectedCapabilityEngine = selectedCapability?.execution.engine ?? null;
 
-  const gatherPlatforms = useMemo(
-    () =>
-      new Set(
-        capabilities
-          .filter((item) => item.execution.engine === "gather_playwright")
-          .map((item) => normalizePlatform(item.platform))
-          .filter(Boolean)
-      ),
-    [capabilities]
-  );
-
   const form = useForm<SourceFormValues>({
     defaultValues: {
       name: currentSource?.name ?? "",
@@ -608,29 +712,20 @@ const SourceDialog = ({
     });
   }, [open, currentSource, form]);
 
-  const expectedCategory = inferCategoryFromSourceType(effectiveType);
-  const normalizedSelectedPlatform = normalizePlatform(selectedPlatform);
-  const targetType: SourceType = useMemo(() => {
-    if (currentSource?.type) return currentSource.type;
-    if (selectedCapabilityEngine === "worker_api") {
-      return expectedCategory === "RETRIEVAL" ? "SEARCH_ENGINE" : effectiveType;
-    }
-    if (normalizedSelectedPlatform && gatherPlatforms.has(normalizedSelectedPlatform)) {
-      return "SOCIAL_MEDIA";
-    }
-    return effectiveType;
+  const expectedCategory = effectiveCategory;
+  const targetCategory: SourceCategory = useMemo(() => {
+    if (currentSource?.category) return currentSource.category;
+    if (selectedCapabilityEngine === "worker_api") return "RETRIEVAL";
+    return effectiveCategory;
   }, [
-    currentSource?.type,
+    currentSource?.category,
     selectedCapabilityEngine,
-    expectedCategory,
-    effectiveType,
-    normalizedSelectedPlatform,
-    gatherPlatforms,
+    effectiveCategory,
   ]);
 
   const mutation = useSourceMutation({
     sourceId: currentSource?.id,
-    sourceType: targetType,
+    sourceCategory: targetCategory,
     onSuccess: () => {
       onOpenChange(false);
       if (!isUpdate) {
@@ -670,13 +765,13 @@ const SourceDialog = ({
   }, [platformOptions, platformSearch]);
 
   const intentOptions = useMemo(() => {
+    if (!normalizePlatform(selectedPlatform)) return [];
     const intents = new Set<string>();
     for (const item of selectedCapability?.intents ?? []) {
       if (item.intent) intents.add(item.intent);
     }
-    if (intents.size === 0) intents.add("search");
     return Array.from(intents).sort((a, b) => a.localeCompare(b));
-  }, [selectedCapability?.intents]);
+  }, [selectedCapability?.intents, selectedPlatform]);
 
   const selectedCatalogItem = useMemo(() => {
     if (!selectedIntentType) return null;
@@ -688,17 +783,42 @@ const SourceDialog = ({
   }, [selectedCapability?.intents, selectedIntentType]);
 
   useEffect(() => {
+    if (!normalizePlatform(selectedPlatform)) {
+      setSelectedIntentType("");
+      setScriptArgEntries([]);
+      return;
+    }
+    if (!selectedIntentType) {
+      const firstIntent = intentOptions[0] ?? "";
+      setSelectedIntentType(firstIntent);
+      if (!firstIntent) {
+        setScriptArgEntries([]);
+      }
+    }
+  }, [selectedPlatform, selectedIntentType, intentOptions]);
+
+  useEffect(() => {
+    if (!selectedIntentType) {
+      setScriptArgEntries([]);
+      return;
+    }
     const sampleArgs = selectedCatalogItem?.sample?.intentArgs ?? {};
     const sampleEntries = toScriptArgEntries(sampleArgs);
-    if (sampleEntries.length === 0) return;
+    if (sampleEntries.length === 0) {
+      setScriptArgEntries((prev) => (prev.length > 0 ? prev : [EMPTY_ARG_ENTRY]));
+      return;
+    }
     setScriptArgEntries((prev) => {
-      if (prev.length === 0) return sampleEntries;
+      const prevAllEmpty = prev.length === 0 || prev.every(
+        (entry) => !entry.key.trim() && !entry.value.trim()
+      );
+      if (prevAllEmpty) return sampleEntries;
       const existingKeys = new Set(prev.map((entry) => entry.key.trim()).filter(Boolean));
       const missing = sampleEntries.filter((entry) => !existingKeys.has(entry.key.trim()));
       if (missing.length === 0) return prev;
       return [...prev, ...missing.map((entry) => ({ ...entry, value: "" }))];
     });
-  }, [selectedCatalogItem]);
+  }, [selectedCatalogItem, selectedIntentType, selectedPlatform]);
 
   const scriptArgs = useMemo(() => entriesToScriptArgs(scriptArgEntries), [scriptArgEntries]);
 
@@ -738,6 +858,9 @@ const SourceDialog = ({
       form.setValue("credentialId", credentials[0]?.id ?? null);
     }
   }, [authRequired, hasUploadedAuth, selectedCredentialId, credentials, form]);
+
+  const resolvedStateFile =
+    authRequired && Boolean(effectiveCredentialId) ? stateFile : "";
 
   const handleVerifyAuth = async () => {
     if (!selectedPlatform) {
@@ -859,7 +982,8 @@ const SourceDialog = ({
 
   const sourceApiPreview = useMemo(() => {
     const built = buildPayloadFromUnified({
-      targetType,
+      targetCategory,
+      isDarknet: effectiveIsDarknet,
       values: watchedValues,
       platform: selectedPlatform,
       intentType: selectedIntentType,
@@ -868,15 +992,17 @@ const SourceDialog = ({
         poolEnabled,
         poolIdleTimeoutMs,
         headless,
-        stateFile,
+        stateFile: resolvedStateFile,
         filterMinChars,
         proxy: selectedProxy,
       },
+      selectedCapabilityEngine,
     });
     if ("error" in built) return { error: built.error } as const;
     return built.payload;
   }, [
-    targetType,
+    targetCategory,
+    effectiveIsDarknet,
     watchedValues,
     selectedPlatform,
     selectedIntentType,
@@ -884,7 +1010,7 @@ const SourceDialog = ({
     poolEnabled,
     poolIdleTimeoutMs,
     headless,
-    stateFile,
+    resolvedStateFile,
     filterMinChars,
     selectedProxy,
   ]);
@@ -895,36 +1021,73 @@ const SourceDialog = ({
     !!sourceApiPreviewError && /\brequires?\b|\brequired\b/i.test(sourceApiPreviewError);
 
   const gatherRequestPreview = useMemo(() => {
-    if (targetType !== "SOCIAL_MEDIA") return null;
+    if (selectedCapabilityEngine !== "gather_playwright") return null;
     const normalizedPlatform = normalizePlatform(selectedPlatform);
     if (!normalizedPlatform) return null;
+    const capabilityDriver =
+      typeof selectedCapability?.execution.driver === "string" &&
+      selectedCapability.execution.driver.trim()
+        ? selectedCapability.execution.driver.trim()
+        : "playwright";
+    const rawOutputField = selectedCatalogItem?.sample?.outputField;
+    const outputField =
+      Array.isArray(rawOutputField)
+        ? Array.from(
+            new Set(
+              rawOutputField
+                .filter((item): item is string => typeof item === "string")
+                .map((item) => item.trim())
+                .filter(Boolean)
+            )
+          )
+        : rawOutputField &&
+            typeof rawOutputField === "object" &&
+            !Array.isArray(rawOutputField)
+          ? Object.fromEntries(
+              Object.entries(rawOutputField as Record<string, unknown>)
+                .map(([key, value]) => [key.trim(), String(value ?? "").trim()] as const)
+                .filter(([key, value]) => key.length > 0 && value.length > 0)
+            )
+          : null;
+    const output =
+      outputField &&
+      ((Array.isArray(outputField) && outputField.length > 0) ||
+        (typeof outputField === "object" && Object.keys(outputField).length > 0))
+        ? { field: outputField }
+        : undefined;
     return {
       sourceId: currentSource?.id ?? "__SOURCE_ID__",
       platform: normalizedPlatform.toLowerCase(),
       keywords: [],
-      driver: buildDriverConfig({
-        intentType: selectedIntentType,
-        intentArgs: scriptArgs,
-        config: {
-          poolEnabled,
-          poolIdleTimeoutMs,
-          headless,
-          stateFile,
-          filterMinChars,
-          proxy: selectedProxy,
-        },
-      }),
+      driver: {
+        name: capabilityDriver,
+        ...buildDriverConfig({
+          intentType: selectedIntentType,
+          intentArgs: scriptArgs,
+          config: {
+            poolEnabled,
+            poolIdleTimeoutMs,
+            headless,
+            stateFile: resolvedStateFile,
+            filterMinChars,
+            proxy: selectedProxy,
+          },
+        }),
+      },
+      ...(output ? { output } : {}),
     };
   }, [
-    targetType,
+    selectedCapabilityEngine,
     selectedPlatform,
+    selectedCapability?.execution.driver,
+    selectedCatalogItem,
     currentSource?.id,
     selectedIntentType,
     scriptArgs,
     poolEnabled,
     poolIdleTimeoutMs,
     headless,
-    stateFile,
+    resolvedStateFile,
     filterMinChars,
     selectedProxy,
   ]);
@@ -952,7 +1115,8 @@ const SourceDialog = ({
     }
 
     const built = buildPayloadFromUnified({
-      targetType,
+      targetCategory,
+      isDarknet: effectiveIsDarknet,
       values,
       platform: selectedPlatform,
       intentType: selectedIntentType,
@@ -961,10 +1125,11 @@ const SourceDialog = ({
         poolEnabled,
         poolIdleTimeoutMs,
         headless,
-        stateFile,
+        stateFile: resolvedStateFile,
         filterMinChars,
         proxy: selectedProxy,
       },
+      selectedCapabilityEngine,
     });
 
     if ("error" in built) {
@@ -1007,7 +1172,12 @@ const SourceDialog = ({
           <CardContent className="grid gap-4">
             <div className="grid gap-3">
               <Label htmlFor="name">Name</Label>
-              <Input id="name" placeholder="Name" {...form.register("name")} />
+              <Input
+                id="name"
+                placeholder="Name"
+                className="bg-background"
+                {...form.register("name")}
+              />
               <ErrorMessage>{form.formState.errors.name?.message?.toString()}</ErrorMessage>
             </div>
             <div className="grid gap-3">
@@ -1016,6 +1186,7 @@ const SourceDialog = ({
                 id="description"
                 placeholder="Description"
                 rows={3}
+                className="bg-background"
                 {...form.register("description")}
               />
             </div>
@@ -1133,7 +1304,7 @@ const SourceDialog = ({
           </CardHeader>
           <CardContent className="grid gap-4">
             {authRequired ? (
-              <Card className="gap-3 border bg-background/70">
+              <Card className="gap-3 border bg-background">
                 <CardHeader className="pb-0">
                   <CardTitle className="text-base">Auth</CardTitle>
                   <CardDescription>Upload and verify platform credential.</CardDescription>
@@ -1201,7 +1372,7 @@ const SourceDialog = ({
               </Card>
             ) : null}
 
-            <Card className="gap-3 border bg-background/70">
+            <Card className="gap-3 border bg-background">
               <CardHeader className="pb-0">
                 <CardTitle className="text-base">Script</CardTitle>
                 <CardDescription>Choose script and configure args by key:value.</CardDescription>
@@ -1209,8 +1380,10 @@ const SourceDialog = ({
               <CardContent className="grid gap-3">
                 <ControlledSelect
                   value={selectedIntentType || null}
-                  onValueChange={(value) => setSelectedIntentType(value ?? "search")}
-                  placeholder="Select script type"
+                  onValueChange={(value) => setSelectedIntentType(value ?? "")}
+                  placeholder={
+                    selectedPlatform ? "Select a script..." : "Select a platform first"
+                  }
                 >
                   {intentOptions.map((intent) => (
                     <SelectItem key={intent} value={intent}>
@@ -1282,7 +1455,7 @@ const SourceDialog = ({
               </CardContent>
             </Card>
 
-            <Card className="gap-3 border bg-background/70">
+            <Card className="gap-3 border bg-background">
               <CardHeader className="pb-0">
                 <CardTitle className="text-base">Network</CardTitle>
                 <CardDescription>Select a proxy from proxy tab settings.</CardDescription>
@@ -1303,7 +1476,7 @@ const SourceDialog = ({
             </Card>
 
             <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>
-              <Card className="gap-3 border bg-background/70">
+              <Card className="gap-3 border bg-background">
                 <CardHeader className="pb-0">
                   <CollapsibleTrigger asChild>
                     <Button type="button" variant="ghost" className="h-auto justify-between p-0">

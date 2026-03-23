@@ -73,6 +73,67 @@ class StubKeywordDriver(BaseDriver):
                     },
                 )
             ]
+        if request.platform == "ascii-substring-miss":
+            return [
+                CleanItem(
+                    title="International update",
+                    text="Airport and campaign updates are highlighted",
+                    markdown="Airport and campaign updates are highlighted",
+                    platform="BBC",
+                    sourceId=request.source_id,
+                    sourceType="SOCIAL_MEDIA",
+                    recordContent={
+                        "title": "International update",
+                        "description": "Airport and campaign updates are highlighted",
+                    },
+                )
+            ]
+        if request.platform == "ascii-word-hit":
+            return [
+                CleanItem(
+                    title="AI policy",
+                    text="AI regulation update",
+                    markdown="AI regulation update",
+                    platform="BBC",
+                    sourceId=request.source_id,
+                    sourceType="SOCIAL_MEDIA",
+                    recordContent={
+                        "title": "AI policy",
+                        "description": "AI regulation update",
+                    },
+                )
+            ]
+        if request.platform == "url-only":
+            return [
+                CleanItem(
+                    title="World update",
+                    text="General world update",
+                    markdown="General world update",
+                    platform="BBC",
+                    sourceId=request.source_id,
+                    sourceType="SOCIAL_MEDIA",
+                    recordContent={
+                        "title": "World update",
+                        "description": "General world update",
+                        "url": "https://example.com/news?at_campaign=world_ai_alert",
+                    },
+                )
+            ]
+        if request.platform == "cjk-hit":
+            return [
+                CleanItem(
+                    title="科技动态",
+                    text="这篇文章讨论人工智能行业发展",
+                    markdown="这篇文章讨论人工智能行业发展",
+                    platform="36kr",
+                    sourceId=request.source_id,
+                    sourceType="SOCIAL_MEDIA",
+                    recordContent={
+                        "title": "科技动态",
+                        "description": "这篇文章讨论人工智能行业发展",
+                    },
+                )
+            ]
         return [
             CleanItem(
                 title="AI signal",
@@ -286,6 +347,114 @@ def test_keyword_scope_fields_limit_matching(monkeypatch):
             "keywords": ["polymarket"],
             "driver": {"name": "playwright", "option": {}, "filter": {"minChars": 3}},
             "output": {"field": ["query", "text"], "keywordScope": ["text"]},
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json() == []
+
+
+def test_short_ascii_keyword_does_not_match_substring(monkeypatch):
+    client = _client_with_stub_driver(monkeypatch)
+    response = client.post(
+        "/v2/fetch",
+        json={
+            "platform": "ascii-substring-miss",
+            "sourceId": "source-ascii-substring-miss",
+            "keywords": ["ai"],
+            "driver": {"name": "playwright", "option": {}, "filter": {}},
+            "output": {"field": ["title", "description"]},
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json() == []
+
+
+def test_short_ascii_keyword_matches_whole_word_case_insensitive(monkeypatch):
+    client = _client_with_stub_driver(monkeypatch)
+    response = client.post(
+        "/v2/fetch",
+        json={
+            "platform": "ascii-word-hit",
+            "sourceId": "source-ascii-word-hit",
+            "keywords": ["ai"],
+            "driver": {"name": "playwright", "option": {}, "filter": {}},
+            "output": {"field": ["title", "description"]},
+        },
+    )
+
+    assert response.status_code == 200
+    items = response.json()
+    assert len(items) == 1
+    assert items[0]["matchedKeywords"] == ["ai"]
+
+
+def test_keyword_filter_excludes_url_by_default(monkeypatch):
+    client = _client_with_stub_driver(monkeypatch)
+    response = client.post(
+        "/v2/fetch",
+        json={
+            "platform": "url-only",
+            "sourceId": "source-url-only-default",
+            "keywords": ["ai"],
+            "driver": {"name": "playwright", "option": {}, "filter": {}},
+            "output": {"field": ["title", "description", "url"]},
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json() == []
+
+
+def test_keyword_filter_can_include_url_when_enabled(monkeypatch):
+    client = _client_with_stub_driver(monkeypatch)
+    response = client.post(
+        "/v2/fetch",
+        json={
+            "platform": "url-only",
+            "sourceId": "source-url-only-include",
+            "keywords": ["ai"],
+            "driver": {"name": "playwright", "option": {}, "filter": {"includeUrl": True, "matchMode": "contains"}},
+            "output": {"field": ["title", "description", "url"]},
+        },
+    )
+
+    assert response.status_code == 200
+    items = response.json()
+    assert len(items) == 1
+    assert items[0]["matchedKeywords"] == ["ai"]
+
+
+def test_cjk_keyword_matches_content(monkeypatch):
+    client = _client_with_stub_driver(monkeypatch)
+    response = client.post(
+        "/v2/fetch",
+        json={
+            "platform": "cjk-hit",
+            "sourceId": "source-cjk-hit",
+            "keywords": ["人工智能"],
+            "driver": {"name": "playwright", "option": {}, "filter": {}},
+            "output": {"field": ["title", "description"]},
+        },
+    )
+
+    assert response.status_code == 200
+    items = response.json()
+    assert len(items) == 1
+    assert items[0]["matchedKeywords"] == ["人工智能"]
+
+
+def test_single_cjk_keyword_filtered_by_min_cjk_chars(monkeypatch):
+    client = _client_with_stub_driver(monkeypatch)
+    response = client.post(
+        "/v2/fetch",
+        json={
+            "platform": "cjk-hit",
+            "sourceId": "source-cjk-short-keyword",
+            "keywords": ["智"],
+            "driver": {"name": "playwright", "option": {}, "filter": {}},
+            "output": {"field": ["title", "description"]},
         },
     )
 

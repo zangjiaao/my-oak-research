@@ -26,6 +26,31 @@ const SEARCH_PLATFORM_LABELS: Record<string, string> = {
 
 type RetrievalSource = SourceWithRelations;
 
+function getSourcePlatformLabel(source: RetrievalSource): string {
+  const searchPlatform =
+    "search" in source
+      ? (source.search as unknown as { platform?: string; options?: unknown })?.platform
+      : null;
+  const searchOptions =
+    "search" in source
+      ? (source.search as unknown as { options?: unknown })?.options
+      : null;
+  const provider =
+    searchOptions && typeof searchOptions === "object"
+      ? (searchOptions as Record<string, unknown>).provider
+      : null;
+  const providerLabel =
+    typeof provider === "string" && provider.trim() ? provider.trim().toUpperCase() : null;
+  const socialPlatform = "social" in source ? source.social?.platform : null;
+  const platform = searchPlatform ?? socialPlatform ?? null;
+
+  if (platform === "CUSTOM" && providerLabel) {
+    return providerLabel;
+  }
+  if (!platform) return "-";
+  return SEARCH_PLATFORM_LABELS[platform] ?? platform;
+}
+
 const SearchEngineSettingCard = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [isDialogOpen, setDialogOpen] = useState(false);
@@ -60,7 +85,8 @@ const SearchEngineSettingCard = () => {
   const searchEngineSources =
     sources?.filter((source) =>
       classifySourceCategory({
-        type: source.type,
+        category: source.category,
+        isDarknet: source.isDarknet,
         social: "social" in source ? source.social : null,
         search: "search" in source ? source.search : null,
         searchPlatform: "search" in source ? source.search?.platform : null,
@@ -79,9 +105,7 @@ const SearchEngineSettingCard = () => {
         .toLowerCase()
         .includes(searchQuery.toLowerCase()) ||
       (
-        ("social" in source ? source.social?.platform : null) ??
-        ("search" in source ? source.search?.platform : null) ??
-        ""
+        getSourcePlatformLabel(source) ?? ""
       )
         .toLowerCase()
         .includes(searchQuery.toLowerCase())
@@ -97,18 +121,11 @@ const SearchEngineSettingCard = () => {
       key: "objective",
       label: "Platform",
       className: "max-w-xs",
-      render: (source) => {
-        const platform =
-          ("search" in source
-            ? (source.search as unknown as { platform?: string })?.platform
-            : null) ??
-          ("social" in source ? source.social?.platform : null);
-        return (
-          <span className="text-sm break-all whitespace-normal">
-            {platform ? SEARCH_PLATFORM_LABELS[platform] ?? platform : "-"}
-          </span>
-        );
-      },
+      render: (source) => (
+        <span className="text-sm break-all whitespace-normal">
+          {getSourcePlatformLabel(source)}
+        </span>
+      ),
     },
     {
       key: "description",
@@ -139,7 +156,7 @@ const SearchEngineSettingCard = () => {
       render: (source) => (
         <SourceDeleteAlert
           source={source}
-          queryKeyType="SEARCH_ENGINE"
+          queryKeyType="RETRIEVAL"
           triggerButton={
             <Button size="sm" variant="outline">
               <TrashIcon className="size-3" />
@@ -176,7 +193,8 @@ const SearchEngineSettingCard = () => {
       filterComponent={filterComponent}
     >
       <SourceDialog
-        sourceType="SEARCH_ENGINE"
+        sourceType="RETRIEVAL"
+        sourceIsDarknet={false}
         source={editingSource}
         proxies={proxies}
         open={isDialogOpen}

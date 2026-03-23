@@ -18,7 +18,8 @@ async function test() {
     const base = await prisma.source.create({
       data: {
         name: "Test Instagram " + Date.now(),
-        type: "SOCIAL_MEDIA",
+        category: "INTERACTIVE",
+        isDarknet: false,
         active: true,
       }
     });

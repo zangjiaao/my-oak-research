@@ -5,7 +5,7 @@ import { createHash } from "crypto";
 import prisma from "@/lib/prisma";
 import {
   Prisma,
-  SourceType,
+  SourceCategory,
   ContentType,
   CrawlerEngine,
   KeywordStrategy,
@@ -25,17 +25,29 @@ import { redact, stripPromptLike } from "@/lib/security";
 import { writeWorkerApiIoLog } from "./api-io-log";
 import { buildNormalizedRecordContent } from "./record-content-normalizer";
 
-const SummarySchema = z.object({
+const SKIP_AI_SUMMARY = process.env.COLLECTOR_SKIP_AI_SUMMARY !== "false";
+const ENABLE_SUBJECT_AI_SCORE =
+  process.env.COLLECTOR_ENABLE_SUBJECT_AI_SCORE !== "false";
+
+const ContentAnalyzeSchema = z.object({
   summary: z.string().min(30).max(400),
   relevance: z.boolean(),
+  subjects: z
+    .array(
+      z.object({
+        keywordId: z.string().min(1),
+        score: z.number().min(0).max(1).nullable().optional(),
+        reason: z.string().max(200).nullable().optional(),
+      })
+    )
+    .default([]),
 });
 
-const SubjectScoreSchema = z.object({
-  score: z.number().min(0).max(1),
-  reason: z.string().min(1).max(200),
-});
-
-const SKIP_AI_SUMMARY = process.env.COLLECTOR_SKIP_AI_SUMMARY !== "false";
+type ContentAnalyzeResult = {
+  summary: string;
+  relevance: boolean;
+  subjectsByKeyword: Map<string, { score: number | null; reason: string | null }>;
+};
 
 type CleanItem = {
   title?: string;
@@ -45,7 +57,8 @@ type CleanItem = {
   url?: string;
   time?: Date;
   sourceId: string;
-  sourceType: SourceType;
+  sourceType: SourceCategory;
+  sourceIsDarknet?: boolean;
   normalizedText?: string;
   fingerprint?: string;
   driver?: string;
@@ -94,30 +107,18 @@ type GatherScriptCatalogItem = {
   };
 };
 
-const SOCIAL_PLATFORM_DRIVER_SUPPORT: Record<string, readonly GatherSocialDriver[]> = {
-  X: ["playwright", "xhttp", "agent-browser"],
-  REDDIT: ["playwright", "xhttp", "agent-browser"],
-  XIAOHONGSHU: ["playwright", "xhttp", "agent-browser"],
-  DOUYIN: ["playwright", "xhttp", "agent-browser"],
-  TIKTOK: ["playwright", "xhttp", "agent-browser"],
-  WEIBO: ["playwright", "xhttp", "agent-browser"],
-  TELEGRAM: ["playwright", "xhttp", "agent-browser"],
-  WHATSAPP: ["playwright", "xhttp", "agent-browser"],
-  INSTAGRAM: ["playwright", "xhttp", "agent-browser"],
-  FACEBOOK: ["playwright", "xhttp", "agent-browser"],
-};
-
 const GATHER_OUTPUT_FIELD_RULE_TTL_MS = 5 * 60 * 1000;
 const gatherOutputFieldRuleCache = new Map<string, GatherOutputField>();
+const gatherPlatformIntentCache = new Map<string, string[]>();
 let gatherOutputFieldRuleCacheExpireAt = 0;
 const runSearchSignatureCache = new Map<string, Set<string>>();
 
 function isWebSource(source: SourceWithRelations): source is WebSource {
-  return source.type === SourceType.WEB;
+  return source.category === "STREAM";
 }
 
 function isDarknetSource(source: SourceWithRelations): source is DarknetSource {
-  return source.type === SourceType.DARKNET;
+  return source.category === "RETRIEVAL" && source.isDarknet;
 }
 
 function stripNullBytes(value: string): string {
@@ -272,19 +273,20 @@ export async function runFocusCollector(runId: string, queryId: string) {
   await send({ type: "fetch", message: "拉取数据中" });
   const normalizedSources: SourceWithRelations[] = [];
   query.sources.forEach((source) => {
-    switch (source.type) {
-      case SourceType.WEB:
-        if (source.web) normalizedSources.push(source as WebSource);
-        break;
-      case SourceType.DARKNET:
-        if (source.darknet) normalizedSources.push(source as DarknetSource);
-        break;
-      case SourceType.SEARCH_ENGINE:
-        if (source.search) normalizedSources.push(source as SearchEngineSource);
-        break;
-      case SourceType.SOCIAL_MEDIA:
-        if (source.social) normalizedSources.push(source as SocialMediaSource);
-        break;
+    if (source.category === "STREAM" && source.web) {
+      normalizedSources.push(source as WebSource);
+      return;
+    }
+    if (source.category === "RETRIEVAL" && source.isDarknet && source.darknet) {
+      normalizedSources.push(source as DarknetSource);
+      return;
+    }
+    if (source.category === "RETRIEVAL" && !source.isDarknet && source.search) {
+      normalizedSources.push(source as SearchEngineSource);
+      return;
+    }
+    if (source.category === "INTERACTIVE" && source.social) {
+      normalizedSources.push(source as SocialMediaSource);
     }
   });
   const rawItems = await fetchBySources(
@@ -298,7 +300,7 @@ export async function runFocusCollector(runId: string, queryId: string) {
     string,
     {
       sourceName: string;
-      sourceType: SourceType;
+      sourceType: SourceCategory;
       fetched: number;
       cleaned: number;
       dedupSkipped: number;
@@ -308,7 +310,7 @@ export async function runFocusCollector(runId: string, queryId: string) {
   for (const source of normalizedSources) {
     sourceStats.set(source.id, {
       sourceName: source.name,
-      sourceType: source.type,
+      sourceType: source.category,
       fetched: 0,
       cleaned: 0,
       dedupSkipped: 0,
@@ -372,6 +374,19 @@ export async function runFocusCollector(runId: string, queryId: string) {
       continue;
     }
 
+    const shouldRunContentAnalyze = !SKIP_AI_SUMMARY || ENABLE_SUBJECT_AI_SCORE;
+    let contentAnalyzeResult: ContentAnalyzeResult | null = null;
+    if (shouldRunContentAnalyze) {
+      await send({ type: "summary", message: `第 ${i + 1} 条内容AI分析` });
+      contentAnalyzeResult = await analyzeContentWithRetry(
+        item,
+        query.keywords,
+        keywordsStr,
+        queryId,
+        runId
+      );
+    }
+
     let summary: { summary: string; relevance: boolean };
     if (SKIP_AI_SUMMARY) {
       await send({
@@ -382,14 +397,16 @@ export async function runFocusCollector(runId: string, queryId: string) {
         summary: buildFallbackSummary(item),
         relevance: true,
       };
+    } else if (contentAnalyzeResult) {
+      summary = {
+        summary: contentAnalyzeResult.summary,
+        relevance: contentAnalyzeResult.relevance,
+      };
     } else {
-      await send({ type: "summary", message: `第 ${i + 1} 条内容生成摘要` });
-      summary = await summarizeWithRetry(
-        item,
-        keywordsStr,
-        queryId,
-        runId
-      );
+      summary = {
+        summary: buildFallbackSummary(item),
+        relevance: true,
+      };
     }
 
     const contentTitle =
@@ -420,43 +437,45 @@ export async function runFocusCollector(runId: string, queryId: string) {
     const sanitizedRecordContent = sanitizeJsonForDb(
       normalizedRecordContent
     ) as Prisma.InputJsonValue;
+    const contentMeta: Record<string, unknown> = {
+      queryId,
+      runId,
+      sourceRequestId: item.sourceRequestId
+        ? stripNullBytes(item.sourceRequestId)
+        : null,
+      sourceFingerprint: item.fingerprint
+        ? stripNullBytes(item.fingerprint)
+        : null,
+      driver: item.driver ? stripNullBytes(item.driver) : null,
+      matchedKeywords: (item.matchedKeywords ?? []).map((term) =>
+        stripNullBytes(term)
+      ),
+      keywordMatchScore: item.keywordMatchScore ?? null,
+      recordId: stripNullBytesNullable(normalizedRecordContent.relation.recordId),
+      recordType: stripNullBytesNullable(normalizedRecordContent.relation.recordType),
+      recordTime: stripNullBytesNullable(normalizedRecordContent.detailView.publishedAt),
+      recordContent: sanitizedRecordContent,
+      schemaVersion: stripNullBytesNullable(normalizedRecordContent.schemaVersion),
+      recordIndex: normalizedRecordContent.relation.recordIndex,
+      keywords: expandedKeywords.map((keywordValue) =>
+        stripNullBytes(keywordValue)
+      ),
+      summaryRelevance: summary.relevance,
+      sourceId: stripNullBytes(item.sourceId),
+      sourceType: item.sourceType,
+      intent: item.intent ? stripNullBytes(item.intent) : null,
+    };
+
     const content = await prisma.content.create({
       data: {
         title: sanitizedTitle,
         summary: sanitizedSummary,
         markdown: sanitizedMarkdown,
         platform: sanitizedPlatform,
-        type: mapContentType(item.sourceType),
+        type: mapContentType(item.sourceType, item.sourceIsDarknet),
         time: contentTime,
         url: sanitizedUrl,
-        meta: {
-          queryId,
-          runId,
-          sourceRequestId: item.sourceRequestId
-            ? stripNullBytes(item.sourceRequestId)
-            : null,
-          sourceFingerprint: item.fingerprint
-            ? stripNullBytes(item.fingerprint)
-            : null,
-          driver: item.driver ? stripNullBytes(item.driver) : null,
-          matchedKeywords: (item.matchedKeywords ?? []).map((term) =>
-            stripNullBytes(term)
-          ),
-          keywordMatchScore: item.keywordMatchScore ?? null,
-          recordId: stripNullBytesNullable(normalizedRecordContent.relation.recordId),
-          recordType: stripNullBytesNullable(normalizedRecordContent.relation.recordType),
-          recordTime: stripNullBytesNullable(normalizedRecordContent.detailView.publishedAt),
-          recordContent: sanitizedRecordContent,
-          schemaVersion: stripNullBytesNullable(normalizedRecordContent.schemaVersion),
-          recordIndex: normalizedRecordContent.relation.recordIndex,
-          keywords: expandedKeywords.map((keywordValue) =>
-            stripNullBytes(keywordValue)
-          ),
-          summaryRelevance: summary.relevance,
-          sourceId: stripNullBytes(item.sourceId),
-          sourceType: item.sourceType,
-          intent: item.intent ? stripNullBytes(item.intent) : null,
-        },
+        meta: contentMeta as Prisma.InputJsonValue,
       },
     });
 
@@ -468,12 +487,40 @@ export async function runFocusCollector(runId: string, queryId: string) {
         })),
         skipDuplicates: true,
       });
-      await upsertContentSubjectMatches({
+      const subjectMatchResult = await upsertContentSubjectMatches({
         contentId: content.id,
         contentText: `${content.title}\n${content.summary}\n${content.markdown}`,
         item,
         keywords: query.keywords,
+        aiByKeyword:
+          ENABLE_SUBJECT_AI_SCORE && contentAnalyzeResult
+            ? contentAnalyzeResult.subjectsByKeyword
+            : undefined,
       });
+      const reasonSummaryRaw = subjectMatchResult.bestReason?.trim();
+      if (SKIP_AI_SUMMARY && reasonSummaryRaw) {
+        const reasonSummary = stripNullBytes(reasonSummaryRaw);
+        const updatedRecordContent = {
+          ...normalizedRecordContent,
+          summaryView: {
+            ...normalizedRecordContent.summaryView,
+            summary: reasonSummary,
+          },
+        };
+        const sanitizedUpdatedRecordContent = sanitizeJsonForDb(
+          updatedRecordContent
+        ) as Prisma.InputJsonValue;
+        await prisma.content.update({
+          where: { id: content.id },
+          data: {
+            summary: reasonSummary,
+            meta: {
+              ...contentMeta,
+              recordContent: sanitizedUpdatedRecordContent,
+            } as Prisma.InputJsonValue,
+          },
+        });
+      }
     }
     await publishContentEvent({
       type: "content:created",
@@ -541,13 +588,11 @@ export async function runFocusCollector(runId: string, queryId: string) {
   }
 }
 
-function mapContentType(sourceType: SourceType): ContentType {
-  switch (sourceType) {
-    case SourceType.DARKNET:
-      return ContentType.Darknet;
-    default:
-      return ContentType.Web;
+function mapContentType(sourceType: SourceCategory, isDarknet?: boolean): ContentType {
+  if (sourceType === "RETRIEVAL" && isDarknet) {
+    return ContentType.Darknet;
   }
+  return ContentType.Web;
 }
 
 function buildKeywordFilterTerms(
@@ -565,12 +610,12 @@ function buildKeywordFilterTerms(
 }
 
 function resolveKeywordStrategy(source: SourceWithRelations): KeywordStrategy {
-  if (source.type === SourceType.SEARCH_ENGINE) {
+  if (source.category === "RETRIEVAL" && !source.isDarknet) {
     const configured =
       (source as SearchEngineSource).search?.keywordStrategy ?? KeywordStrategy.AUTO;
     return configured === KeywordStrategy.AUTO ? KeywordStrategy.HYBRID : configured;
   }
-  if (source.type === SourceType.SOCIAL_MEDIA) {
+  if (source.category === "INTERACTIVE") {
     const socialSource = source as SocialMediaSource;
     const configured = socialSource.social?.keywordStrategy ?? KeywordStrategy.AUTO;
     if (configured !== KeywordStrategy.AUTO) {
@@ -653,7 +698,7 @@ async function fetchBySources(
     sourceConcurrency,
     async (source): Promise<CleanItem[]> => {
       console.log(
-        `[collector] fetchBySources start ${source.name} (${source.type})`
+        `[collector] fetchBySources start ${source.name} (${source.category})`
       );
       const driver = resolveFetchDriver(source);
       await publishTaskEvent(runId, {
@@ -805,6 +850,15 @@ async function executeFetchDriver(
   recallQueries: string[],
   objectiveFallback?: string
 ): Promise<CleanItem[]> {
+  const gatherDispatchSource = resolveGatherDispatchSource(source);
+  if (gatherDispatchSource) {
+    return fetchSocialSource(
+      gatherDispatchSource,
+      keywordFilterTerms,
+      recallQueries
+    );
+  }
+
   switch (driver) {
     case "playwright":
       if (isWebSource(source)) {
@@ -843,29 +897,104 @@ async function fetchWithDefaultSource(
   objectiveFallback?: string
 ): Promise<CleanItem[]> {
   console.log(
-    `[collector] fetchWithDefaultSource ${source.name} (${source.type})`
+    `[collector] fetchWithDefaultSource ${source.name} (${source.category})`
   );
-  switch (source.type) {
-    case SourceType.WEB:
-      return fetchHtmlSource(source as WebSource);
-    case SourceType.DARKNET:
-      return fetchHtmlSource(source as DarknetSource);
-    case SourceType.SEARCH_ENGINE:
-      return fetchSearchSource(source as SearchEngineSource, {
-        runId,
-        queryId,
-        recallQueries,
-        objectiveFallback,
-      });
-    case SourceType.SOCIAL_MEDIA:
-      return fetchSocialSource(
-        source as SocialMediaSource,
-        keywordFilterTerms,
-        recallQueries
-      );
-    default:
-      return [];
+  if (source.category === "STREAM") {
+    return fetchHtmlSource(source as WebSource);
   }
+  if (source.category === "RETRIEVAL" && source.isDarknet) {
+    return fetchHtmlSource(source as DarknetSource);
+  }
+  if (source.category === "RETRIEVAL" && !source.isDarknet) {
+    return fetchSearchSource(source as SearchEngineSource, {
+      runId,
+      queryId,
+      recallQueries,
+      objectiveFallback,
+    });
+  }
+  if (source.category === "INTERACTIVE") {
+    return fetchSocialSource(
+      source as SocialMediaSource,
+      keywordFilterTerms,
+      recallQueries
+    );
+  }
+  return [];
+}
+
+function resolveGatherDispatchSource(
+  source: SourceWithRelations
+): SocialMediaSource | null {
+  if (source.category === "INTERACTIVE") {
+    return source as SocialMediaSource;
+  }
+
+  const parsedByMarker =
+    parseGatherExecutionMarker(source.description) ??
+    parseGatherExecutionMarker(source.name);
+  const parsedByConfig = parseGatherExecutionConfig(source);
+  const platform = parsedByConfig?.platform ?? parsedByMarker?.platform ?? "";
+  const intent = parsedByConfig?.intent ?? parsedByMarker?.intent ?? "";
+  const args = (parsedByConfig?.args ?? {}) as Prisma.JsonObject;
+
+  if (!platform || !intent) {
+    return null;
+  }
+
+  return {
+    ...(source as unknown as SocialMediaSource),
+    category: "INTERACTIVE",
+    social: {
+      sourceId: source.id,
+      platform,
+      config: {
+        driver: "playwright",
+        intent: {
+          type: intent,
+          args,
+        },
+      },
+      credentialId: source.credentialId,
+      credential: source.credential ?? null,
+      proxyId: source.proxyId,
+      proxy: source.proxy ?? null,
+      keywordStrategy: KeywordStrategy.AUTO,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    },
+  };
+}
+
+function parseGatherExecutionConfig(
+  source: SourceWithRelations
+): { platform: string; intent: string; args: Record<string, unknown> } | null {
+  if (!isWebSource(source)) return null;
+  const parseRules = asObject(source.web?.parseRules);
+  const gather = asObject(parseRules.gather);
+  if (Object.keys(gather).length === 0) return null;
+
+  const platform = String(gather.platform ?? "").trim().toUpperCase();
+  const intent = String(gather.intentType ?? "").trim().toLowerCase();
+  const args = asObject(gather.intentArgs);
+  if (!platform || !intent) return null;
+
+  return { platform, intent, args };
+}
+
+function parseGatherExecutionMarker(
+  text: string | null | undefined
+): { platform: string; intent: string } | null {
+  const raw = String(text ?? "").trim();
+  if (!raw) return null;
+  const match = raw.match(
+    /collect\s+([a-z0-9_-]+)\s*\(([\w-]+)\)\s+via\s+gather_playwright/i
+  );
+  if (!match) return null;
+  const platform = (match[1] ?? "").trim().toUpperCase();
+  const intent = (match[2] ?? "").trim().toLowerCase();
+  if (!platform || !intent) return null;
+  return { platform, intent };
 }
 
 async function fetchPlaywrightSource(
@@ -882,16 +1011,14 @@ async function fetchBrowserSource(
 ): Promise<CleanItem[]> {
   console.log(`[collector] fetchBrowserSource ${source.name}`);
 
-  let urls: string[] = [];
-  if (isWebSource(source) && source.web?.url) {
-    urls = Array.isArray(source.web.url) ? source.web.url : [source.web.url];
-  } else if (isDarknetSource(source) && source.darknet?.url) {
-    urls = Array.isArray(source.darknet.url) ? source.darknet.url : [source.darknet.url];
-  }
-
+  const urls = resolveValidSourceUrls(source);
   if (urls.length === 0) {
-    const fallbackUrl = source.description || `https://example.com/${source.id}`;
-    urls = [fallbackUrl];
+    logger.warn("skip browser fetch: no valid source urls", {
+      sourceId: source.id,
+      sourceName: source.name,
+      sourceCategory: source.category,
+    });
+    return [];
   }
 
   const allItems: CleanItem[] = [];
@@ -907,7 +1034,8 @@ async function fetchBrowserSource(
         url,
         time: new Date(),
         sourceId: source.id,
-        sourceType: source.type,
+        sourceType: source.category,
+        sourceIsDarknet: source.isDarknet,
       });
     } catch (error) {
       console.error(`[collector] fetchBrowserSource error: ${url}`, error);
@@ -930,7 +1058,7 @@ async function fetchAICrawlerSource(
     );
     return fetchBrowserSource(source);
   }
-  if (source.type === SourceType.SEARCH_ENGINE) {
+  if (source.category === "RETRIEVAL" && !source.isDarknet) {
     console.log(
       `[collector] fetchAICrawlerSource -> fetchSearchSource ${source.name}`
     );
@@ -967,16 +1095,14 @@ async function fetchHtmlSource(
 ): Promise<CleanItem[]> {
   console.log(`[collector] fetchHtmlSource ${source.name}`);
 
-  let urls: string[] = [];
-  if (isWebSource(source) && source.web?.url) {
-    urls = Array.isArray(source.web.url) ? source.web.url : [source.web.url];
-  } else if (isDarknetSource(source) && source.darknet?.url) {
-    urls = Array.isArray(source.darknet.url) ? source.darknet.url : [source.darknet.url];
-  }
-
+  const urls = resolveValidSourceUrls(source);
   if (urls.length === 0) {
-    const fallbackUrl = source.description || `https://example.com/${source.id}`;
-    urls = [fallbackUrl];
+    logger.warn("skip html fetch: no valid source urls", {
+      sourceId: source.id,
+      sourceName: source.name,
+      sourceCategory: source.category,
+    });
+    return [];
   }
 
   const allItems: CleanItem[] = [];
@@ -993,7 +1119,8 @@ async function fetchHtmlSource(
         url,
         time: new Date(),
         sourceId: source.id,
-        sourceType: source.type,
+        sourceType: source.category,
+        sourceIsDarknet: source.isDarknet,
       });
     } catch (error) {
       console.error(`[collector] fetchHtmlSource error: ${url}`, error);
@@ -1002,6 +1129,29 @@ async function fetchHtmlSource(
   }
 
   return allItems;
+}
+
+function resolveValidSourceUrls(source: WebSource | DarknetSource): string[] {
+  const rawUrls = isWebSource(source)
+    ? (Array.isArray(source.web?.url) ? source.web?.url : source.web?.url ? [source.web.url] : [])
+    : isDarknetSource(source)
+      ? (Array.isArray(source.darknet?.url)
+          ? source.darknet?.url
+          : source.darknet?.url
+            ? [source.darknet.url]
+            : [])
+      : [];
+  return rawUrls
+    .map((url) => String(url).trim())
+    .filter(Boolean)
+    .filter((url) => {
+      try {
+        const parsed = new URL(url);
+        return parsed.protocol === "http:" || parsed.protocol === "https:";
+      } catch {
+        return false;
+      }
+    });
 }
 
 async function fetchSearchSource(
@@ -1109,7 +1259,8 @@ async function fetchSearchSource(
           platform: source.name,
           time: new Date(),
           sourceId: source.id,
-          sourceType: source.type,
+          sourceType: source.category,
+          sourceIsDarknet: source.isDarknet,
         },
       ];
     }
@@ -1170,7 +1321,8 @@ async function fetchSearchSource(
           url: item.url,
           time: item.time ? new Date(item.time) : new Date(),
           sourceId: source.id,
-          sourceType: source.type,
+          sourceType: source.category,
+          sourceIsDarknet: source.isDarknet,
           sourceRequestId: parsedResult.requestId,
         }))
       );
@@ -1236,7 +1388,8 @@ async function fetchSearchSource(
         platform: source.name,
         time: new Date(),
         sourceId: source.id,
-        sourceType: source.type,
+        sourceType: source.category,
+        sourceIsDarknet: source.isDarknet,
       },
     ];
   }
@@ -1254,15 +1407,19 @@ async function fetchSocialSource(
   const gatherPlatform = mapGatherPlatform(source.social?.platform);
   const sourceConfig = source.social?.config || {};
   const sourceConfigObj = asObject(sourceConfig);
-  const gatherDriver = resolveGatherDriver(
-    sourceConfigObj,
-    source.social?.platform
-  );
+  const gatherDriver = resolveGatherDriver(sourceConfigObj);
   const proxyUrl =
     source.social?.proxy?.url ??
     source.proxy?.url ??
     null;
-  const intent = resolveGatherIntent(sourceConfigObj);
+  const rawConfiguredIntent = asObject(sourceConfigObj.intent);
+  const hasConfiguredIntentType =
+    typeof rawConfiguredIntent.type === "string" &&
+    rawConfiguredIntent.type.trim().length > 0;
+  const defaultIntentType = hasConfiguredIntentType
+    ? undefined
+    : await resolveGatherDefaultIntent(gatherUrl, gatherPlatform);
+  const intent = resolveGatherIntent(sourceConfigObj, defaultIntentType);
   const outputFieldRule = await resolveGatherOutputFieldRule(
     gatherUrl,
     gatherPlatform,
@@ -1341,13 +1498,8 @@ async function fetchSocialSource(
 }
 
 function resolveGatherDriver(
-  config: Record<string, unknown>,
-  platform?: string | null
+  config: Record<string, unknown>
 ): GatherSocialDriver {
-  const normalizedPlatform = (platform || "").toUpperCase();
-  const supportedDrivers =
-    SOCIAL_PLATFORM_DRIVER_SUPPORT[normalizedPlatform] ??
-    (["playwright"] as const);
   const driverConfig = asObject(config.driver);
   const rawDriver =
     typeof config.driver === "string"
@@ -1355,13 +1507,7 @@ function resolveGatherDriver(
       : typeof driverConfig.name === "string"
         ? driverConfig.name.trim().toLowerCase()
         : "";
-  if (
-    (rawDriver === "xhttp" || rawDriver === "agent-browser" || rawDriver === "playwright") &&
-    supportedDrivers.includes(rawDriver)
-  ) {
-    return rawDriver;
-  }
-  return supportedDrivers[0] ?? "playwright";
+  return rawDriver === "playwright" ? "playwright" : "playwright";
 }
 
 function mapGatherPlatform(platform?: string | null): string {
@@ -1567,14 +1713,17 @@ function sanitizeGatherConfig(
 }
 
 function resolveGatherIntent(
-  config: Record<string, unknown>
+  config: Record<string, unknown>,
+  fallbackIntentType?: string
 ): GatherIntentPayload {
   const rawIntent = asObject(config.intent);
   const rawArgs = asObject(rawIntent.args);
   const intentType =
     typeof rawIntent.type === "string" && rawIntent.type.trim()
       ? rawIntent.type.trim()
-      : "search";
+      : typeof fallbackIntentType === "string" && fallbackIntentType.trim()
+        ? fallbackIntentType.trim()
+        : "search";
 
   if (Object.keys(rawArgs).length > 0) {
     return {
@@ -1704,42 +1853,63 @@ async function resolveGatherOutputFieldRule(
   platform: string,
   intentType: string
 ): Promise<GatherOutputField | undefined> {
-  const now = Date.now();
-  if (now >= gatherOutputFieldRuleCacheExpireAt) {
-    try {
-      const response = await fetch(`${gatherUrl}/v3/scripts/catalog`, {
-        cache: "no-store",
-        headers: { Accept: "application/json" },
-      });
-      if (response.ok) {
-        const data = await response.json();
-        const items = Array.isArray(data?.items)
-          ? (data.items as GatherScriptCatalogItem[])
-          : [];
-        gatherOutputFieldRuleCache.clear();
-        for (const item of items) {
-          const itemPlatform =
-            typeof item.platform === "string" ? item.platform.trim().toLowerCase() : "";
-          const itemIntent =
-            typeof item.intent === "string" ? item.intent.trim().toLowerCase() : "";
-          if (!itemPlatform || !itemIntent) continue;
-          const normalizedField = normalizeGatherOutputField(item.sample?.outputField);
-          if (!normalizedField) continue;
-          gatherOutputFieldRuleCache.set(
-            `${itemPlatform}:${itemIntent}`,
-            normalizedField
-          );
-        }
-      }
-    } catch {
-      // Best effort: keep existing cache/fallback behavior.
-    } finally {
-      gatherOutputFieldRuleCacheExpireAt = now + GATHER_OUTPUT_FIELD_RULE_TTL_MS;
-    }
-  }
-
+  await refreshGatherScriptCatalogCache(gatherUrl);
   const cacheKey = `${platform.trim().toLowerCase()}:${intentType.trim().toLowerCase()}`;
   return gatherOutputFieldRuleCache.get(cacheKey);
+}
+
+async function resolveGatherDefaultIntent(
+  gatherUrl: string,
+  platform: string
+): Promise<string | undefined> {
+  await refreshGatherScriptCatalogCache(gatherUrl);
+  const intents = gatherPlatformIntentCache.get(platform.trim().toLowerCase()) ?? [];
+  if (intents.includes("search")) {
+    return "search";
+  }
+  return intents[0];
+}
+
+async function refreshGatherScriptCatalogCache(gatherUrl: string): Promise<void> {
+  const now = Date.now();
+  if (now < gatherOutputFieldRuleCacheExpireAt) return;
+
+  try {
+    const response = await fetch(`${gatherUrl}/v3/scripts/catalog`, {
+      cache: "no-store",
+      headers: { Accept: "application/json" },
+    });
+    if (!response.ok) return;
+    const data = await response.json();
+    const items = Array.isArray(data?.items)
+      ? (data.items as GatherScriptCatalogItem[])
+      : [];
+    gatherOutputFieldRuleCache.clear();
+    gatherPlatformIntentCache.clear();
+    for (const item of items) {
+      const itemPlatform =
+        typeof item.platform === "string" ? item.platform.trim().toLowerCase() : "";
+      const itemIntent =
+        typeof item.intent === "string" ? item.intent.trim().toLowerCase() : "";
+      if (!itemPlatform || !itemIntent) continue;
+      const intents = gatherPlatformIntentCache.get(itemPlatform) ?? [];
+      if (!intents.includes(itemIntent)) {
+        intents.push(itemIntent);
+      }
+      gatherPlatformIntentCache.set(itemPlatform, intents);
+
+      const normalizedField = normalizeGatherOutputField(item.sample?.outputField);
+      if (!normalizedField) continue;
+      gatherOutputFieldRuleCache.set(
+        `${itemPlatform}:${itemIntent}`,
+        normalizedField
+      );
+    }
+  } catch {
+    // Best effort: keep existing cache/fallback behavior.
+  } finally {
+    gatherOutputFieldRuleCacheExpireAt = now + GATHER_OUTPUT_FIELD_RULE_TTL_MS;
+  }
 }
 
 function resolveAgentBrowserOwnerId(
@@ -1876,8 +2046,23 @@ function normalizeStringArray(value: unknown): string[] {
   return [];
 }
 
+function escapeRegexTerm(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function matchTermInContent(contentLower: string, term: string): boolean {
+  const normalizedTerm = term.trim().toLowerCase();
+  if (!normalizedTerm) return false;
+  const isAsciiWord = /^[a-z0-9_]+$/i.test(normalizedTerm);
+  if (isAsciiWord && normalizedTerm.length <= 3) {
+    const boundaryPattern = new RegExp(`\\b${escapeRegexTerm(normalizedTerm)}\\b`, "i");
+    return boundaryPattern.test(contentLower);
+  }
+  return contentLower.includes(normalizedTerm);
+}
+
 function pickFallbackText(recordContent: Record<string, unknown>): string {
-  const directKeys = ["title", "content", "summary", "description", "author"];
+  const directKeys = ["content", "summary", "description", "text", "title", "author"];
   for (const key of directKeys) {
     const value = recordContent[key];
     if (typeof value === "string" && value.trim()) {
@@ -1905,6 +2090,12 @@ function normalizeGatherItems(
     if (!item || typeof item !== "object") continue;
     const row = item as Record<string, unknown>;
     const recordContent = asObject(row.recordContent);
+    const resolvedTitle =
+      typeof row.title === "string" && row.title.trim()
+        ? row.title.trim()
+        : typeof recordContent.title === "string" && recordContent.title.trim()
+          ? recordContent.title.trim()
+          : undefined;
     const text =
       typeof recordContent.text === "string"
         ? recordContent.text
@@ -1915,12 +2106,19 @@ function normalizeGatherItems(
             : pickFallbackText(recordContent);
     if (!text) continue;
 
+    const normalizedText = text.trim();
+    const shouldComposeTitleMarkdown =
+      Boolean(resolvedTitle) &&
+      !normalizedText.toLowerCase().startsWith((resolvedTitle ?? "").toLowerCase());
+    const composedMarkdown = shouldComposeTitleMarkdown
+      ? `# ${resolvedTitle}\n\n${normalizedText}`
+      : normalizedText;
     const markdown =
       typeof recordContent.markdown === "string" && recordContent.markdown.trim()
         ? recordContent.markdown
         : typeof row.markdown === "string" && row.markdown.trim()
           ? row.markdown
-        : text;
+          : composedMarkdown;
     const recordTimeRaw = row.recordTime ?? row.time;
     const parsedTime =
       typeof recordTimeRaw === "string" || recordTimeRaw instanceof Date
@@ -1938,8 +2136,8 @@ function normalizeGatherItems(
           : undefined;
 
     normalized.push({
-      title: typeof row.title === "string" ? row.title : undefined,
-      text,
+      title: resolvedTitle,
+      text: normalizedText,
       markdown,
       platform:
         typeof row.platform === "string" && row.platform.trim()
@@ -1951,7 +2149,8 @@ function normalizeGatherItems(
           ? parsedTime
           : new Date(),
       sourceId: source.id,
-      sourceType: source.type,
+      sourceType: source.category,
+      sourceIsDarknet: source.isDarknet,
       driver: typeof row.driver === "string" ? row.driver : "python-gather",
       matchedKeywords: Array.isArray(row.matchedKeywords)
         ? row.matchedKeywords.filter((entry): entry is string => typeof entry === "string")
@@ -1982,8 +2181,12 @@ async function upsertContentSubjectMatches(input: {
   contentText: string;
   item: CleanItem;
   keywords: QueryKeyword[];
-}): Promise<void> {
-  const { contentId, contentText, item, keywords } = input;
+  aiByKeyword?: Map<string, { score: number | null; reason: string | null }>;
+}): Promise<{ bestReason: string | null; bestScore: number | null }> {
+  const { contentId, contentText, item, keywords, aiByKeyword } = input;
+  const normalizedContentText = contentText.toLowerCase();
+  let bestReason: string | null = null;
+  let bestScore: number | null = null;
   for (const keyword of keywords) {
     const recallTerms = normalizeStringArray(
       keyword.includes.length > 0 ? keyword.includes : [keyword.name]
@@ -1997,13 +2200,13 @@ async function upsertContentSubjectMatches(input: {
     );
     const excludes = normalizeStringArray(keyword.excludes);
     const matchedRecallTerms = recallTerms.filter((term) =>
-      contentText.toLowerCase().includes(term.toLowerCase())
+      matchTermInContent(normalizedContentText, term)
     );
     const matchedScoringTerms = scoringTerms.filter((term) =>
-      contentText.toLowerCase().includes(term.toLowerCase())
+      matchTermInContent(normalizedContentText, term)
     );
     const matchedExcludes = excludes.filter((term) =>
-      contentText.toLowerCase().includes(term.toLowerCase())
+      matchTermInContent(normalizedContentText, term)
     );
     const ruleScore = calculateRuleScore({
       recallTerms,
@@ -2016,22 +2219,22 @@ async function upsertContentSubjectMatches(input: {
       gatherMatchedKeywords: item.matchedKeywords ?? [],
       contentText,
     });
-    const aiResult = await scoreSubjectWithAI({
-      keyword,
-      contentText,
-    }).catch((error) => {
-      logger.warn("subject ai score failed", {
-        contentId,
-        keywordId: keyword.id,
-        error: logger.normalizeError(error),
-      });
-      return null;
-    });
-    const aiScore = aiResult?.score ?? null;
+    const aiResult = aiByKeyword?.get(keyword.id) ?? null;
+    const aiScore =
+      typeof aiResult?.score === "number"
+        ? roundScore(Math.min(1, Math.max(0, aiResult.score)))
+        : null;
     const finalScore =
       aiScore == null
         ? ruleScore
         : roundScore(0.25 * ruleScore + 0.75 * aiScore);
+    const reasonText = aiResult?.reason?.trim() ?? "";
+    if (reasonText) {
+      if (bestScore == null || finalScore > bestScore) {
+        bestScore = finalScore;
+        bestReason = reasonText;
+      }
+    }
     const matchSource =
       aiScore == null
         ? item.keywordMatchScore == null
@@ -2055,7 +2258,7 @@ async function upsertContentSubjectMatches(input: {
         matchedIncludes: matchedScoringTerms,
         matchedExcludes,
         matchSource,
-        reason: aiResult?.reason ?? null,
+        reason: reasonText || null,
       },
       update: {
         ruleScore,
@@ -2064,10 +2267,14 @@ async function upsertContentSubjectMatches(input: {
         matchedIncludes: matchedScoringTerms,
         matchedExcludes,
         matchSource,
-        reason: aiResult?.reason ?? null,
+        reason: reasonText || null,
       },
     });
   }
+  return {
+    bestReason,
+    bestScore,
+  };
 }
 
 function calculateRuleScore(input: {
@@ -2103,11 +2310,15 @@ function calculateRuleScore(input: {
     excludes.length > 0 ? matchedExcludes.length / excludes.length : 0;
   const gatherBoost =
     typeof gatherScore === "number" ? Math.min(1, Math.max(0, gatherScore)) : 0;
-  const gatherMatched = gatherMatchedKeywords.length > 0 ? 1 : 0;
+  const normalizedContentText = contentText.toLowerCase();
+  const validatedGatherMatches = gatherMatchedKeywords.filter((term) =>
+    matchTermInContent(normalizedContentText, term)
+  );
+  const gatherMatched = validatedGatherMatches.length > 0 ? 1 : 0;
   const titleText = contentText.split("\n")[0]?.toLowerCase() ?? "";
   const titleAnchorMatch =
     recallTerms.length > 0 &&
-    recallTerms.some((term) => titleText.includes(term.toLowerCase()))
+    recallTerms.some((term) => matchTermInContent(titleText, term))
       ? 1
       : 0;
   const evidenceMatch = matchedScoringTerms.length > 0 ? 1 : 0;
@@ -2124,116 +2335,155 @@ function calculateRuleScore(input: {
   return roundScore(Math.min(1, Math.max(0.05, score)));
 }
 
-async function scoreSubjectWithAI(input: {
-  keyword: QueryKeyword;
-  contentText: string;
-}): Promise<{ score: number; reason: string } | null> {
-  const disabled = process.env.COLLECTOR_ENABLE_SUBJECT_AI_SCORE === "false";
-  if (disabled) {
-    return null;
-  }
-  const prompt = stripPromptLike(
-    `你是主题相关度打分器。请判断内容与主题是否相关，并输出 JSON: {"score":0-1,"reason":"简短原因"}。
-评分原则：
-1) 主题名称和主题描述是核心判断依据；
-2) 召回词仅用于检索，不应主导最终评分；
-3) 评分词是辅助证据，命中可加分，但不能替代主题语义；
-4) 若只出现个别词但语义无关，应给低分。
-主题名称: ${input.keyword.name}
-主题描述: ${input.keyword.description ?? ""}
-召回词: ${(input.keyword.includes ?? []).join(", ")}
-评分词: ${(input.keyword.synonyms ?? []).join(", ")}
-排除词: ${(input.keyword.excludes ?? []).join(", ")}
-内容:
-${input.contentText.slice(0, 8000)}`
-  );
-  const result = await llmGateway.json<{ score: number; reason: string }>(
-    "subject-score",
-    {
-      prompt: redact(prompt),
-      schema: SubjectScoreSchema,
-      temperature: 0.1,
-      metadata: { keywordId: input.keyword.id },
-    }
-  );
-  return {
-    score: roundScore(Math.min(1, Math.max(0, result.score))),
-    reason: result.reason.trim().slice(0, 200),
-  };
-}
-
 function roundScore(score: number): number {
   return Math.round(score * 10000) / 10000;
 }
 
-async function summarizeWithRetry(
+async function analyzeContentWithRetry(
   item: CleanItem,
-  keywords: string,
+  keywords: QueryKeyword[],
+  keywordsSummary: string,
   queryId: string,
   runId: string
-): Promise<{ summary: string; relevance: boolean }> {
+): Promise<ContentAnalyzeResult> {
+  const subjectInput = keywords.map((keyword) => ({
+    keywordId: keyword.id,
+    name: keyword.name,
+    description: keyword.description ?? "",
+    recallTerms: keyword.includes ?? [],
+    scoringTerms: keyword.synonyms ?? [],
+    excludes: keyword.excludes ?? [],
+  }));
   const prompt = stripPromptLike(
-    `请基于关键词：${keywords}，用 2-3 句中文解释下面内容的要点和价值，输出结构化 JSON：{ "summary": "...", "relevance": true/false }；\n${item.text}`
+    `你是内容分析器。请只输出 JSON，结构为：
+{
+  "summary": "2-3句中文摘要（30-400字）",
+  "relevance": true/false,
+  "subjects": [
+    {
+      "keywordId": "关键词ID",
+      "score": 0-1,
+      "reason": "不超过200字的中文原因"
+    }
+  ]
+}
+
+要求：
+1) summary 基于内容核心信息，不要编造；
+2) relevance 表示内容是否与查询主题整体相关；
+3) subjects 必须覆盖每个 keywordId；
+4) score 以主题语义为主，不能因为单词子串命中就高分；
+5) 只出现词形但语义无关时，给低分（接近 0）。
+
+查询关键词概览: ${keywordsSummary}
+主题明细(JSON): ${JSON.stringify(subjectInput)}
+内容:
+${item.text.slice(0, 8000)}`
   );
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
-      const summary = await llmGateway.json<{
-        summary: string;
-        relevance: boolean;
-      }>("content-summary", {
+      const result = await llmGateway.json<z.infer<typeof ContentAnalyzeSchema>>(
+        "content-analyze",
+        {
         prompt: redact(prompt),
-        schema: SummarySchema,
+        schema: ContentAnalyzeSchema,
         temperature: 0.3,
         metadata: { queryId, source: item.platform },
-      });
+        }
+      );
+      const subjectsByKeyword = new Map<
+        string,
+        { score: number | null; reason: string | null }
+      >();
+      for (const keyword of keywords) {
+        const matched = result.subjects.find(
+          (subject) => subject.keywordId === keyword.id
+        );
+        subjectsByKeyword.set(keyword.id, {
+          score:
+            typeof matched?.score === "number"
+              ? roundScore(Math.min(1, Math.max(0, matched.score)))
+              : null,
+          reason: matched?.reason?.trim().slice(0, 200) || null,
+        });
+      }
       await publishTaskEvent(runId, {
-        type: "summary-success",
-        message: `摘要成功 ${item.platform}`,
+        type: "content-analyze-success",
+        message: `内容分析成功 ${item.platform}`,
         attempt,
       });
       console.log(
-        `[collector] summary-success attempt=${attempt} source=${item.platform} summary=${summary.summary}`
+        `[collector] content-analyze-success attempt=${attempt} source=${item.platform} summary=${result.summary}`
       );
-      return summary;
+      return {
+        summary: result.summary,
+        relevance: result.relevance,
+        subjectsByKeyword,
+      };
     } catch (error) {
       await publishTaskEvent(runId, {
-        type: "summary-error",
-        message: `第 ${attempt} 次摘要失败：${(error as Error).message}`,
+        type: "content-analyze-error",
+        message: `第 ${attempt} 次内容分析失败：${(error as Error).message}`,
         attempt,
         source: item.platform,
       });
       console.log(
-        `[collector] summary-error attempt=${attempt} source=${item.platform
+        `[collector] content-analyze-error attempt=${attempt} source=${item.platform
         } error=${(error as Error).message}`
       );
       if (attempt === 3) throw error;
       await new Promise((resolve) => setTimeout(resolve, 500 * attempt));
     }
   }
-  throw new Error("摘要失败");
+  throw new Error("内容分析失败");
 }
 
 async function findExistingContentBySourceRecord(
   item: CleanItem
 ): Promise<{ id: string } | null> {
   if (item.recordId) {
+    const recordWhere =
+      typeof item.recordIndex === "number" && Number.isFinite(item.recordIndex)
+        ? {
+            AND: [
+              {
+                meta: {
+                  path: ["sourceId"],
+                  equals: item.sourceId,
+                },
+              },
+              {
+                meta: {
+                  path: ["recordId"],
+                  equals: item.recordId,
+                },
+              },
+              {
+                meta: {
+                  path: ["recordIndex"],
+                  equals: item.recordIndex,
+                },
+              },
+            ],
+          }
+        : {
+            AND: [
+              {
+                meta: {
+                  path: ["sourceId"],
+                  equals: item.sourceId,
+                },
+              },
+              {
+                meta: {
+                  path: ["recordId"],
+                  equals: item.recordId,
+                },
+              },
+            ],
+          };
     const existingByRecordId = await prisma.content.findFirst({
-      where: {
-        AND: [
-          {
-            meta: {
-              path: ["sourceId"],
-              equals: item.sourceId,
-            },
-          },
-          {
-            meta: {
-              path: ["recordId"],
-              equals: item.recordId,
-            },
-          },
-        ],
-      },
+      where: recordWhere,
       select: { id: true },
     });
     if (existingByRecordId) return existingByRecordId;

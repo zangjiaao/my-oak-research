@@ -20,6 +20,56 @@ interface Props {
 
 type StreamSource = SourceWithRelations & Source;
 
+function asRecord(value: unknown): Record<string, unknown> {
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    return value as Record<string, unknown>;
+  }
+  return {};
+}
+
+function parseGatherMarker(value?: string | null): string | null {
+  const text = String(value ?? "").trim();
+  if (!text) return null;
+  const match = text.match(/collect\s+([a-z0-9_-]+)\s*\(([\w-]+)\)\s+via\s+gather_playwright/i);
+  const platform = String(match?.[1] ?? "").trim();
+  return platform ? platform.toUpperCase() : null;
+}
+
+function getSourcePlatformLabel(source: StreamSource): string {
+  const identityPlatform =
+    typeof source.identity?.platform === "string" ? source.identity.platform.trim() : "";
+  if (identityPlatform) {
+    return identityPlatform.toUpperCase();
+  }
+  const webConfig = "web" in source ? source.web : null;
+  const parseRules = asRecord(webConfig?.parseRules);
+  const gather = asRecord(parseRules.gather);
+  const gatherPlatform = String(gather.platform ?? "").trim();
+  if (gatherPlatform) {
+    return gatherPlatform.toUpperCase();
+  }
+  const markerPlatform =
+    parseGatherMarker(source.description) ?? parseGatherMarker(source.name);
+  if (markerPlatform) {
+    return markerPlatform;
+  }
+
+  const search =
+    "search" in source
+      ? (source.search as unknown as { platform?: string; options?: unknown })
+      : null;
+  const provider =
+    search?.options && typeof search.options === "object"
+      ? (search.options as Record<string, unknown>).provider
+      : null;
+  const providerLabel =
+    typeof provider === "string" && provider.trim() ? provider.trim().toUpperCase() : null;
+  const platform = search?.platform ?? ("social" in source ? source.social?.platform : null);
+
+  if (platform === "CUSTOM" && providerLabel) return providerLabel;
+  return platform ?? "-";
+}
+
 const WebSites = ({ sources, proxies }: Props) => {
   const [editingSource, setEditingSource] = useState<SourceWithRelations | undefined>();
 
@@ -38,29 +88,22 @@ const WebSites = ({ sources, proxies }: Props) => {
       render: (source) => source.name,
     },
     {
-      key: "description",
-      label: "Description",
-      className: "max-w-[200px]",
-      render: (source) => <div className="truncate">{source.description}</div>,
+      key: "platform",
+      label: "Platform",
+      className: "max-w-xs",
+      render: (source) => (
+        <span className="text-sm break-all whitespace-normal">
+          {getSourcePlatformLabel(source)}
+        </span>
+      ),
     },
     {
-      key: "target",
-      label: "Target",
-      className: "max-w-[300px]",
-      render: (source) => {
-        const urls = "web" in source ? source.web?.url ?? [] : [];
-        const platform =
-          ("social" in source ? source.social?.platform : null) ??
-          ("search" in source ? source.search?.platform : null) ??
-          null;
-        const display = urls.length > 0 ? urls.join(", ") : platform || "-";
-        const tooltip = urls.length > 0 ? urls.join("\n") : undefined;
-        return (
-          <div className="truncate" title={tooltip}>
-            {display}
-          </div>
-        );
-      },
+      key: "description",
+      label: "Description",
+      className: "max-w-xs",
+      render: (source) => (
+        <div className="whitespace-normal">{source.description}</div>
+      ),
     },
     {
       key: "proxy",
@@ -83,7 +126,7 @@ const WebSites = ({ sources, proxies }: Props) => {
       render: (source) => (
         <SourceDeleteAlert
           source={source}
-          queryKeyType="WEB"
+          queryKeyType="STREAM"
           triggerButton={
             <Button size="sm" variant="outline">
               <TrashIcon className="size-3" />
@@ -97,7 +140,7 @@ const WebSites = ({ sources, proxies }: Props) => {
   return (
     <>
       <SourceDialog
-        sourceType="WEB"
+        sourceType="STREAM"
         source={editingSource}
         proxies={proxies}
         open={!!editingSource}

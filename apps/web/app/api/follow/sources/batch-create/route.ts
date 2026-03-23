@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { json, badRequest, serverError } from "@/app/api/_utils/http";
-import { Prisma } from "@/app/generated/prisma";
+import { Prisma, SearchPlatform } from "@/app/generated/prisma";
 import prisma from "@/lib/prisma";
 import { logger } from "@/lib/logger";
 import {
@@ -30,6 +30,40 @@ const BatchCreateSchema = z.object({
     })
     .optional(),
 });
+
+const SEARCH_PLATFORM_VALUES = Object.values(SearchPlatform) as string[];
+
+function reserveUniqueName(baseName: string, usedNames: Set<string>): string {
+  const normalizedBase = baseName.trim() || "Untitled Source";
+  if (!usedNames.has(normalizedBase)) {
+    usedNames.add(normalizedBase);
+    return normalizedBase;
+  }
+
+  let index = 2;
+  let candidate = `${normalizedBase} #${index}`;
+  while (usedNames.has(candidate)) {
+    index += 1;
+    candidate = `${normalizedBase} #${index}`;
+  }
+  usedNames.add(candidate);
+  return candidate;
+}
+
+function normalizeSearchPlatform(
+  value: unknown,
+  driver: unknown
+): SearchPlatform {
+  const normalizedDriver = String(driver ?? "").trim().toLowerCase();
+  if (normalizedDriver !== "http") {
+    return SearchPlatform.CUSTOM;
+  }
+  const normalized = String(value ?? "").trim().toUpperCase();
+  if (SEARCH_PLATFORM_VALUES.includes(normalized)) {
+    return normalized as SearchPlatform;
+  }
+  return SearchPlatform.CUSTOM;
+}
 
 export async function POST(req: Request) {
   let parsedBody: z.infer<typeof BatchCreateSchema> | null = null;
@@ -108,7 +142,8 @@ export async function POST(req: Request) {
     const [identityRows, sources] = await Promise.all([
       prisma.sourceIdentity.findMany({
         select: {
-          type: true,
+          category: true,
+          isDarknet: true,
           platform: true,
           driver: true,
           intentType: true,
@@ -117,7 +152,9 @@ export async function POST(req: Request) {
       }),
       prisma.source.findMany({
         select: {
-          type: true,
+          name: true,
+          category: true,
+          isDarknet: true,
           web: { select: { sourceId: true } },
           darknet: { select: { sourceId: true } },
           search: { select: { sourceId: true, platform: true, objective: true, options: true } },
@@ -132,11 +169,15 @@ export async function POST(req: Request) {
       if (!fallbackIdentity) continue;
       existingIdentityKeys.add(identityKey(fallbackIdentity));
     }
+    const usedSourceNames = new Set(
+      sources.map((source) => source.name.trim()).filter(Boolean)
+    );
 
     const creationQueue: Array<{
       key: string;
       identity: ReturnType<typeof buildIdentity>;
       item: z.infer<typeof BatchCreateItemSchema>;
+      createData: Record<string, unknown>;
     }> = [];
 
     for (const item of enabledItems) {
@@ -150,126 +191,144 @@ export async function POST(req: Request) {
         continue;
       }
       existingIdentityKeys.add(key);
-      creationQueue.push({ key: item.key, identity, item });
+      const createData = buildSourceCreateData({
+        template,
+        config: item.config,
+        defaults: parsed.data.defaults,
+        credentialRefs: item.credentialRefs,
+        identity,
+      }) as Record<string, unknown>;
+      createData.name = reserveUniqueName(String(createData.name ?? ""), usedSourceNames);
+
+      creationQueue.push({ key: item.key, identity, item, createData });
     }
 
     const created: Array<{ key: string; sourceId: string; name: string }> = [];
+    const failed: Array<{ key: string; error: string }> = [];
 
     await prisma.$transaction(async (tx) => {
       for (const task of creationQueue) {
         const template = templateMap.get(task.key);
         if (!template) continue;
-
-        const createData = buildSourceCreateData({
-          template,
-          config: task.item.config,
-          defaults: parsed.data.defaults,
-          credentialRefs: task.item.credentialRefs,
-          identity: task.identity,
-        }) as Record<string, unknown>;
-
-        const base = await tx.source.create({
-          data: {
-            name: String(createData.name),
-            description:
-              typeof createData.description === "string"
-                ? createData.description
-                : null,
-            type: template.type,
-            active: Boolean(createData.active),
-            rateLimit:
-              typeof createData.rateLimit === "number" ? createData.rateLimit : null,
-            proxyId:
-              typeof createData.proxyId === "string" ? createData.proxyId : null,
-            credentialId:
-              typeof createData.credentialId === "string"
-                ? createData.credentialId
-                : null,
-          },
-        });
-
-        if (template.type === "WEB") {
-          const web = createData.web as Record<string, unknown>;
-          await tx.webSourceConfig.create({
+        const createData = task.createData;
+        try {
+          const base = await tx.source.create({
             data: {
-              sourceId: base.id,
-              url: Array.isArray(web.url) ? (web.url as string[]) : [],
-              headers: (web.headers ?? null) as Prisma.InputJsonValue,
-              crawlerEngine: String(web.crawlerEngine ?? "FETCH") as any,
-              render: Boolean(web.render),
-              parseRules: (web.parseRules ?? null) as Prisma.InputJsonValue,
-              robotsRespect: web.robotsRespect !== false,
-              proxyId: typeof web.proxyId === "string" ? web.proxyId : null,
-            },
-          });
-        } else if (template.type === "DARKNET") {
-          const darknet = createData.darknet as Record<string, unknown>;
-          await tx.darknetSourceConfig.create({
-            data: {
-              sourceId: base.id,
-              url: Array.isArray(darknet.url) ? (darknet.url as string[]) : [],
-              headers: (darknet.headers ?? null) as Prisma.InputJsonValue,
-              crawlerEngine: String(darknet.crawlerEngine ?? "FETCH") as any,
-              proxyId: String(darknet.proxyId ?? ""),
-              render: Boolean(darknet.render),
-              parseRules: (darknet.parseRules ?? null) as Prisma.InputJsonValue,
-            },
-          });
-        } else if (template.type === "SEARCH_ENGINE") {
-          const search = createData.search as Record<string, unknown>;
-          await tx.searchEngineSourceConfig.create({
-            data: {
-              sourceId: base.id,
-              platform: String(search.platform ?? template.platform) as any,
-              engine: String(search.engine ?? "CUSTOM") as any,
-              objective: String(search.objective ?? ""),
-              apiEndpoint:
-                typeof search.apiEndpoint === "string" ? search.apiEndpoint : null,
-              options: (search.options ?? null) as Prisma.InputJsonValue,
-              credentialId:
-                typeof search.credentialId === "string"
-                  ? search.credentialId
+              name: String(createData.name),
+              description:
+                typeof createData.description === "string"
+                  ? createData.description
                   : null,
-              keywordStrategy: String(search.keywordStrategy ?? "AUTO") as any,
+              category: template.category,
+              isDarknet: template.isDarknet,
+              active: Boolean(createData.active),
+              rateLimit:
+                typeof createData.rateLimit === "number" ? createData.rateLimit : null,
+              proxyId:
+                typeof createData.proxyId === "string" ? createData.proxyId : null,
+              credentialId:
+                typeof createData.credentialId === "string"
+                  ? createData.credentialId
+                  : null,
             },
           });
-        } else if (template.type === "SOCIAL_MEDIA") {
-          const social = createData.social as Record<string, unknown>;
-          await tx.socialMediaSourceConfig.create({
+
+          if (template.category === "STREAM") {
+            const web = createData.web as Record<string, unknown>;
+            await tx.webSourceConfig.create({
+              data: {
+                sourceId: base.id,
+                url: Array.isArray(web.url) ? (web.url as string[]) : [],
+                headers: (web.headers ?? null) as Prisma.InputJsonValue,
+                crawlerEngine: String(web.crawlerEngine ?? "FETCH") as any,
+                render: Boolean(web.render),
+                parseRules: (web.parseRules ?? null) as Prisma.InputJsonValue,
+                robotsRespect: web.robotsRespect !== false,
+                proxyId: typeof web.proxyId === "string" ? web.proxyId : null,
+              },
+            });
+          } else if (template.category === "RETRIEVAL" && template.isDarknet) {
+            const darknet = createData.darknet as Record<string, unknown>;
+            await tx.darknetSourceConfig.create({
+              data: {
+                sourceId: base.id,
+                url: Array.isArray(darknet.url) ? (darknet.url as string[]) : [],
+                headers: (darknet.headers ?? null) as Prisma.InputJsonValue,
+                crawlerEngine: String(darknet.crawlerEngine ?? "FETCH") as any,
+                proxyId: String(darknet.proxyId ?? ""),
+                render: Boolean(darknet.render),
+                parseRules: (darknet.parseRules ?? null) as Prisma.InputJsonValue,
+              },
+            });
+          } else if (template.category === "RETRIEVAL" && !template.isDarknet) {
+            const search = createData.search as Record<string, unknown>;
+            await tx.searchEngineSourceConfig.create({
+              data: {
+                sourceId: base.id,
+                platform: normalizeSearchPlatform(
+                  search.platform ?? template.platform,
+                  template.driver
+                ),
+                engine: String(search.engine ?? "CUSTOM") as any,
+                objective: String(search.objective ?? ""),
+                apiEndpoint:
+                  typeof search.apiEndpoint === "string" ? search.apiEndpoint : null,
+                options: (search.options ?? null) as Prisma.InputJsonValue,
+                credentialId:
+                  typeof search.credentialId === "string"
+                    ? search.credentialId
+                    : null,
+                keywordStrategy: String(search.keywordStrategy ?? "AUTO") as any,
+              },
+            });
+          } else if (template.category === "INTERACTIVE") {
+            const social = createData.social as Record<string, unknown>;
+            await tx.socialMediaSourceConfig.create({
+              data: {
+                sourceId: base.id,
+                platform: String(social.platform ?? template.platform),
+                config: social.config as Prisma.InputJsonObject,
+                credentialId:
+                  typeof social.credentialId === "string"
+                    ? social.credentialId
+                    : null,
+                proxyId: typeof social.proxyId === "string" ? social.proxyId : null,
+                keywordStrategy: String(social.keywordStrategy ?? "AUTO") as any,
+              },
+            });
+            await syncSocialPresetBinding(tx, {
+              sourceId: base.id,
+              config: social.config,
+            });
+          }
+
+          await tx.sourceIdentity.create({
             data: {
               sourceId: base.id,
-              platform: String(social.platform ?? template.platform),
-              config: social.config as Prisma.InputJsonObject,
-              credentialId:
-                typeof social.credentialId === "string"
-                  ? social.credentialId
-                  : null,
-              proxyId: typeof social.proxyId === "string" ? social.proxyId : null,
-              keywordStrategy: String(social.keywordStrategy ?? "AUTO") as any,
+              category: task.identity.category,
+              isDarknet: task.identity.isDarknet,
+              platform: task.identity.platform,
+              driver: task.identity.driver,
+              intentType: task.identity.intentType,
+              intentArgsHash: task.identity.intentArgsHash,
             },
           });
-          await syncSocialPresetBinding(tx, {
+
+          created.push({
+            key: task.key,
             sourceId: base.id,
-            config: social.config,
+            name: base.name,
           });
+        } catch (error) {
+          if (isUniqueViolation(error)) {
+            failed.push({
+              key: task.key,
+              error: "Source name conflict",
+            });
+            continue;
+          }
+          throw error;
         }
-
-        await tx.sourceIdentity.create({
-          data: {
-            sourceId: base.id,
-            type: task.identity.type,
-            platform: task.identity.platform,
-            driver: task.identity.driver,
-            intentType: task.identity.intentType,
-            intentArgsHash: task.identity.intentArgsHash,
-          },
-        });
-
-        created.push({
-          key: task.key,
-          sourceId: base.id,
-          name: base.name,
-        });
       }
     });
 
@@ -277,7 +336,7 @@ export async function POST(req: Request) {
       created,
       skipped,
       invalid: [],
-      failed: [],
+      failed,
     });
   } catch (error) {
     if (isUniqueViolation(error)) {

@@ -22,6 +22,13 @@ import { Button } from "@/components/ui/button";
 import { Sparkles, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 
 type KeywordWithCategory = Prisma.KeywordGetPayload<{
   include: { category: true };
@@ -264,193 +271,236 @@ const EditKeywordDialog = ({
       triggerButton={triggerButton}
       onSubmit={handleSubmit(onSubmit)}
     >
-      <div className="grid gap-3">
-        <Label htmlFor="keyword">Name</Label>
-        <Input id="keyword" placeholder="Keyword Name" {...register("name")} />
-        <ErrorMessage>{errors.name?.message}</ErrorMessage>
-      </div>
-      <div className="grid gap-3">
-        <Label htmlFor="categoryId">Category</Label>
-        <Controller
-          name="categoryId"
-          control={control}
-          render={({ field }) => (
-            <ControlledSelect
-              value={field.value}
-              onValueChange={field.onChange}
-              placeholder="Select a category"
-              nullValue="none"
-            >
-              {categories.map((category: Category) => (
-                <SelectItem key={category.id} value={category.id}>
-                  {category.name}
-                </SelectItem>
-              ))}
-            </ControlledSelect>
-          )}
-        />
-        <ErrorMessage>{errors.categoryId?.message}</ErrorMessage>
-      </div>
-      <div className="grid gap-3">
-        <Label htmlFor="description">Description</Label>
-        <Textarea
-          id="description"
-          placeholder="Description (you can mark topic anchors like #openclaw #qmd)"
-          rows={3}
-          {...register("description")}
-        />
-        <p className="text-xs text-muted-foreground">
-          Tip: add `#topic` tags to lock first-round web search anchors.
-        </p>
-        <ErrorMessage>{errors.description?.message}</ErrorMessage>
-      </div>
-      <div className="grid gap-3">
-        <Label htmlFor="deriveLanguages">Generation Languages</Label>
-        <Controller
-          name="deriveLanguages"
-          control={control}
-          render={({ field }) => (
-            <MultiSelect
-              options={LANGUAGE_OPTIONS}
-              value={Array.isArray(field.value) ? field.value : DEFAULT_DERIVE_LANGUAGES}
-              onValueChange={(next) =>
-                field.onChange(next.length > 0 ? next : DEFAULT_DERIVE_LANGUAGES)
-              }
-              placeholder="Choose generation languages"
-            />
-          )}
-        />
-        <p className="text-xs text-muted-foreground">
-          Defaults to Chinese and English. Add more languages for multilingual term generation.
-        </p>
-        <ErrorMessage>{errors.deriveLanguages?.message}</ErrorMessage>
-      </div>
-      <div className="grid gap-3">
-        <div className="flex items-center justify-between">
-          <Label htmlFor="includes">Recall Terms（召回词）</Label>
-          <Badge variant="outline">{recallTermsCount} terms</Badge>
-        </div>
-        <Textarea
-          id="includes"
-          placeholder="按行输入，例如: openclaw"
-          rows={3}
-          {...register("includes")}
-        />
-        <p className="text-xs text-muted-foreground">
-          用于尽量多找内容（召回）。不会直接决定最终相关度高低。
-        </p>
-        {deriveMeta?.recallOverSoftLimit ? (
-          <p className="text-xs text-amber-600">
-            {deriveMeta.recallWarning ??
-              `召回词较多（${deriveMeta.recallTermCount ?? "?"}/${deriveMeta.recallSoftLimit ?? "?"}），后续检索成本可能上升。`}
-          </p>
-        ) : null}
-        {deriveMeta?.scoringOverSoftLimit ? (
-          <p className="text-xs text-amber-600">
-            {deriveMeta.scoringWarning ??
-              `评分词较多（${deriveMeta.scoringTermCount ?? "?"}/${deriveMeta.scoringSoftLimit ?? "?"}），评分稳定性可能下降。`}
-          </p>
-        ) : null}
-        {deriveMeta?.exclusionOverSoftLimit ? (
-          <p className="text-xs text-amber-600">
-            {deriveMeta.exclusionWarning ??
-              `排除词较多（${deriveMeta.exclusionTermCount ?? "?"}/${deriveMeta.exclusionSoftLimit ?? "?"}），请检查是否过度过滤。`}
-          </p>
-        ) : null}
-        <ErrorMessage>{errors.includes?.message}</ErrorMessage>
-        <div className="flex justify-between items-center group">
-          <div className="grid gap-2">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="synonyms" className="flex items-center gap-2">
-                Scoring Terms（评分词）
-              </Label>
-              <Badge variant="outline">{scoringTermsCount} terms</Badge>
+      <div className="grid gap-4">
+        <Card className="gap-4 bg-muted/30">
+          <CardHeader>
+            <CardTitle>Basic Info</CardTitle>
+            <CardDescription>Name, category and description.</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            <div className="grid gap-3">
+              <Label htmlFor="keyword">Name</Label>
+              <Input
+                id="keyword"
+                placeholder="Keyword Name"
+                className="bg-background"
+                {...register("name")}
+              />
+              <ErrorMessage>{errors.name?.message}</ErrorMessage>
             </div>
-            <div className="flex items-center gap-2">
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6 transition-opacity"
-                onClick={handleClickDerive}
-                disabled={isDeriving}
-              >
-                {isDeriving ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Sparkles className="h-4 w-4 text-amber-500" />
+            <div className="grid gap-3">
+              <Label htmlFor="categoryId">Category</Label>
+              <Controller
+                name="categoryId"
+                control={control}
+                render={({ field }) => (
+                  <ControlledSelect
+                    value={field.value}
+                    onValueChange={field.onChange}
+                    placeholder="Select a category"
+                    nullValue="none"
+                  >
+                    {categories.map((category: Category) => (
+                      <SelectItem key={category.id} value={category.id}>
+                        {category.name}
+                      </SelectItem>
+                    ))}
+                  </ControlledSelect>
                 )}
-              </Button>
+              />
+              <ErrorMessage>{errors.categoryId?.message}</ErrorMessage>
             </div>
-            <p className="text-sm text-muted-foreground">
-              用于相关性打分，建议填写“主题证据词”（如功能、机制、上下文）。
-            </p>
-            {deriveMeta ? (
+            <div className="grid gap-3">
+              <Label htmlFor="description">Description</Label>
+              <Textarea
+                id="description"
+                placeholder="Description (you can mark topic anchors like #openclaw #qmd)"
+                rows={3}
+                className="bg-background"
+                {...register("description")}
+              />
               <p className="text-xs text-muted-foreground">
-                {deriveMeta.degraded
-                  ? `Derived in fallback mode (${deriveMeta.reason ?? "unknown"}).`
-                  : `Calibrated by ${deriveMeta.searchProvider ?? "unknown provider"}.`}
-                {deriveMeta.filteredByLanguageCount
-                  ? ` Filtered ${deriveMeta.filteredByLanguageCount} terms by language.`
-                  : ""}
-                {Array.isArray(deriveMeta.usedTopicTerms) &&
-                deriveMeta.usedTopicTerms.length > 0
-                  ? ` Topic terms: ${deriveMeta.usedTopicTerms
-                      .map((term) => `#${term}`)
-                      .join(", ")}.`
-                  : ""}
-                {deriveMeta.topicHintMissing
-                  ? " Add #topic anchors for better calibration."
-                  : ""}
-                {includesLanguageSummary
-                  ? ` Includes by language: ${includesLanguageSummary}.`
-                  : ""}
+                Tip: add `#topic` tags to lock first-round web search anchors.
               </p>
-            ) : null}
-          </div>
-          <div className="flex items-center gap-2">
-            <Label
-              htmlFor="synonyms-switch"
-              className="text-xs font-normal text-muted-foreground"
-            >
-              AI 扩展
-            </Label>
-            <Controller
-              name="enableAiExpand"
-              control={control}
-              render={({ field }) => (
-                <Switch
-                  id="synonyms-switch"
-                  checked={field.value}
-                  onCheckedChange={field.onChange}
+              <ErrorMessage>{errors.description?.message}</ErrorMessage>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="gap-4 bg-muted/30">
+          <CardHeader>
+            <CardTitle>Generation</CardTitle>
+            <CardDescription>Configure languages and AI expansion behavior.</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            <div className="grid gap-3">
+              <Label htmlFor="deriveLanguages">Generation Languages</Label>
+              <Controller
+                name="deriveLanguages"
+                control={control}
+                render={({ field }) => (
+                  <MultiSelect
+                    options={LANGUAGE_OPTIONS}
+                    value={Array.isArray(field.value) ? field.value : DEFAULT_DERIVE_LANGUAGES}
+                    onValueChange={(next) =>
+                      field.onChange(next.length > 0 ? next : DEFAULT_DERIVE_LANGUAGES)
+                    }
+                    placeholder="Choose generation languages"
+                  />
+                )}
+              />
+              <p className="text-xs text-muted-foreground">
+                Defaults to Chinese and English. Add more languages for multilingual term generation.
+              </p>
+              <ErrorMessage>{errors.deriveLanguages?.message}</ErrorMessage>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="gap-4 bg-muted/30">
+          <CardHeader>
+            <CardTitle>Term Config</CardTitle>
+            <CardDescription>Manage recall, scoring, and exclusion terms.</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            <div className="grid gap-3">
+              <div className="flex w-full items-center justify-between">
+                <Label htmlFor="includes">Recall Terms（召回词）</Label>
+                <Badge variant="outline">{recallTermsCount} terms</Badge>
+              </div>
+              <Textarea
+                id="includes"
+                placeholder="按行输入，例如: openclaw"
+                rows={3}
+                className="bg-background"
+                {...register("includes")}
+              />
+              <p className="text-xs text-muted-foreground">
+                用于尽量多找内容（召回）。不会直接决定最终相关度高低。
+              </p>
+              {deriveMeta?.recallOverSoftLimit ? (
+                <p className="text-xs text-amber-600">
+                  {deriveMeta.recallWarning ??
+                    `召回词较多（${deriveMeta.recallTermCount ?? "?"}/${deriveMeta.recallSoftLimit ?? "?"}），后续检索成本可能上升。`}
+                </p>
+              ) : null}
+              {deriveMeta?.scoringOverSoftLimit ? (
+                <p className="text-xs text-amber-600">
+                  {deriveMeta.scoringWarning ??
+                    `评分词较多（${deriveMeta.scoringTermCount ?? "?"}/${deriveMeta.scoringSoftLimit ?? "?"}），评分稳定性可能下降。`}
+                </p>
+              ) : null}
+              {deriveMeta?.exclusionOverSoftLimit ? (
+                <p className="text-xs text-amber-600">
+                  {deriveMeta.exclusionWarning ??
+                    `排除词较多（${deriveMeta.exclusionTermCount ?? "?"}/${deriveMeta.exclusionSoftLimit ?? "?"}），请检查是否过度过滤。`}
+                </p>
+              ) : null}
+              <ErrorMessage>{errors.includes?.message}</ErrorMessage>
+            </div>
+
+            <Card className="gap-3 border bg-background">
+              <CardHeader className="pb-0">
+                <div className="flex w-full items-start justify-between gap-4 group">
+                  <div className="grid w-full gap-2">
+                    <div className="flex w-full items-center justify-between">
+                      <Label htmlFor="synonyms" className="flex items-center gap-2">
+                        Scoring Terms（评分词）
+                      </Label>
+                      <Badge variant="outline">{scoringTermsCount} terms</Badge>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 transition-opacity"
+                        onClick={handleClickDerive}
+                        disabled={isDeriving}
+                      >
+                        {isDeriving ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Sparkles className="h-4 w-4 text-amber-500" />
+                        )}
+                      </Button>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      用于相关性打分，建议填写“主题证据词”（如功能、机制、上下文）。
+                    </p>
+                    {deriveMeta ? (
+                      <p className="text-xs text-muted-foreground">
+                        {deriveMeta.degraded
+                          ? `Derived in fallback mode (${deriveMeta.reason ?? "unknown"}).`
+                          : `Calibrated by ${deriveMeta.searchProvider ?? "unknown provider"}.`}
+                        {deriveMeta.filteredByLanguageCount
+                          ? ` Filtered ${deriveMeta.filteredByLanguageCount} terms by language.`
+                          : ""}
+                        {Array.isArray(deriveMeta.usedTopicTerms) &&
+                        deriveMeta.usedTopicTerms.length > 0
+                          ? ` Topic terms: ${deriveMeta.usedTopicTerms
+                              .map((term) => `#${term}`)
+                              .join(", ")}.`
+                          : ""}
+                        {deriveMeta.topicHintMissing
+                          ? " Add #topic anchors for better calibration."
+                          : ""}
+                        {includesLanguageSummary
+                          ? ` Includes by language: ${includesLanguageSummary}.`
+                          : ""}
+                      </p>
+                    ) : null}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Label
+                      htmlFor="synonyms-switch"
+                      className="text-xs font-normal text-muted-foreground"
+                    >
+                      AI 扩展
+                    </Label>
+                    <Controller
+                      name="enableAiExpand"
+                      control={control}
+                      render={({ field }) => (
+                        <Switch
+                          id="synonyms-switch"
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      )}
+                    />
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="grid gap-3">
+                <Textarea
+                  id="synonyms"
+                  {...register("synonyms")}
+                  placeholder="按行输入评分词，例如: memory architecture"
+                  rows={5}
+                  className="bg-background"
                 />
-              )}
-            />
-          </div>
-        </div>
-        <div className="grid gap-3">
-          <Textarea
-            id="synonyms"
-            {...register("synonyms")}
-            placeholder="按行输入评分词，例如: memory architecture"
-            rows={5}
-          />
-          <p className="text-xs text-muted-foreground">
-            可点击闪电按钮由 AI 衍生评分词。词越具体，评分越稳定。
-            {!enableAiExpand ? "（当前不会自动扩展）" : ""}
-          </p>
-          <ErrorMessage>{errors.synonyms?.message}</ErrorMessage>
-        </div>
-      </div>
-      <div className="grid gap-3">
-        <Label htmlFor="excludes">Exclusion Terms (Optional)</Label>
-        <Textarea
-          id="excludes"
-          placeholder="Exclusion terms"
-          rows={3}
-          {...register("excludes")}
-        />
-        <ErrorMessage>{errors.excludes?.message}</ErrorMessage>
+                <p className="text-xs text-muted-foreground">
+                  可点击闪电按钮由 AI 衍生评分词。词越具体，评分越稳定。
+                  {!enableAiExpand ? "（当前不会自动扩展）" : ""}
+                </p>
+                <ErrorMessage>{errors.synonyms?.message}</ErrorMessage>
+              </CardContent>
+            </Card>
+
+            <div className="grid gap-3">
+              <Label htmlFor="excludes">Exclusion Terms (Optional)</Label>
+              <Textarea
+                id="excludes"
+                placeholder="Exclusion terms"
+                rows={3}
+                className="bg-background"
+                {...register("excludes")}
+              />
+              <ErrorMessage>{errors.excludes?.message}</ErrorMessage>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </SettingEditDialog>
   );

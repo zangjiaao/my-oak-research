@@ -10,7 +10,7 @@ function asObject(value: unknown): Record<string, unknown> {
 async function main() {
   const sources = await prisma.source.findMany({
     where: {
-      type: "SOCIAL_MEDIA",
+      category: "INTERACTIVE",
       social: {
         isNot: null,
       },
