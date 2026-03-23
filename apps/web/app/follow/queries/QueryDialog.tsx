@@ -213,11 +213,29 @@ const QueryDialog = ({
     >
       <div className="grid gap-4">
         <Card className="gap-4 bg-muted/30">
-          <CardHeader>
-            <CardTitle>Basic Info</CardTitle>
-            <CardDescription>
-              填写 Query 基本信息。
-            </CardDescription>
+          <CardHeader className="flex flex-row items-start justify-between gap-3">
+            <div className="space-y-1.5">
+              <CardTitle>Basic Info</CardTitle>
+              <CardDescription>
+                填写 Query 基本信息。
+              </CardDescription>
+            </div>
+            <div className="flex items-center gap-2">
+              <Label htmlFor="enabled" className="cursor-pointer">
+                Enabled
+              </Label>
+              <Controller
+                name="enabled"
+                control={control}
+                render={({ field }) => (
+                  <Switch
+                    id="enabled"
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                )}
+              />
+            </div>
           </CardHeader>
           <CardContent className="grid gap-4">
             <div className="grid gap-3">
@@ -357,7 +375,7 @@ const QueryDialog = ({
           <CardHeader>
             <CardTitle>Execution</CardTitle>
             <CardDescription>
-              设定执行频率、rate limit 和启用状态。
+              设定执行频率和 rate limit。
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4">
@@ -422,16 +440,6 @@ const QueryDialog = ({
               <ErrorMessage>{errors.rateLimit?.message?.toString()}</ErrorMessage>
             </div>
 
-            <div className="flex items-center justify-between">
-              <Label htmlFor="enabled">Enabled</Label>
-              <Controller
-                name="enabled"
-                control={control}
-                render={({ field }) => (
-                  <Switch checked={field.value} onCheckedChange={field.onChange} />
-                )}
-              />
-            </div>
           </CardContent>
         </Card>
       </div>
