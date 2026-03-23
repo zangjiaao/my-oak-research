@@ -23,7 +23,7 @@ const Sources = () => {
     <div>
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-2">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex max-w-full flex-wrap items-center gap-2">
+          <div className="flex max-w-full flex-wrap items-center gap-4">
             <TabsList>
               <TabsTrigger value="web-sites">Stream</TabsTrigger>
               <TabsTrigger value="social-media">Interactive</TabsTrigger>
