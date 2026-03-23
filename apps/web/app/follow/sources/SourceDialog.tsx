@@ -1021,7 +1021,7 @@ const SourceDialog = ({
     !!sourceApiPreviewError && /\brequires?\b|\brequired\b/i.test(sourceApiPreviewError);
 
   const gatherRequestPreview = useMemo(() => {
-    if (targetCategory !== "INTERACTIVE") return null;
+    if (selectedCapabilityEngine !== "gather_playwright") return null;
     const normalizedPlatform = normalizePlatform(selectedPlatform);
     if (!normalizedPlatform) return null;
     return {
@@ -1042,7 +1042,7 @@ const SourceDialog = ({
       }),
     };
   }, [
-    targetCategory,
+    selectedCapabilityEngine,
     selectedPlatform,
     currentSource?.id,
     selectedIntentType,
