@@ -183,6 +183,19 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
 `output.keywordScope` 可选，限制关键词过滤只检查 `recordContent` 指定字段（例如 `["text"]`）。
 
+`driver.filter` 关键词匹配参数（`/v2/fetch` 与 `/v3/fetch` 一致）：
+
+- `minChars`：最小正文长度门槛（默认 `1`）
+- `matchMode`：匹配模式，`smart`（默认，词级匹配）或 `contains`（子串匹配兼容模式）
+- `includeUrl`：是否把 `url` 字段纳入关键词匹配（默认 `false`）
+- `minCjkTermChars`：CJK 关键词最小长度（默认 `2`）
+
+`smart` 模式说明：
+
+- 英文/数字词按词边界匹配（避免 `ai` 命中 `airport/campaign`）
+- CJK 关键词按子串匹配（受 `minCjkTermChars` 限制）
+- 未显式开启 `includeUrl` 时，URL 不参与关键词命中
+
 `/v2/fetch` 只接受新字段：`sourceId`、`userId`、`platform`、`keywords`、`driver.name`、`driver.option`、`driver.filter`、`output.field`。不再兼容旧字段。
 
 ### 通用网络代理配置（支持 HTTP/SOCKS/Tor）
