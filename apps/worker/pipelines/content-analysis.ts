@@ -21,9 +21,11 @@ import {
 import { llmGateway, browserAgent } from "@oak/agents";
 import { publishTaskEvent, publishContentEvent } from "@/lib/queue";
 import { logger } from "@/lib/logger";
+import { downloadFile } from "@/lib/storage";
 import { redact, stripPromptLike } from "@/lib/security";
 import { writeWorkerApiIoLog } from "./api-io-log";
 import { buildNormalizedRecordContent } from "./record-content-normalizer";
+import { unwrapCredentialPayload } from "@/lib/credential-secret";
 
 const SKIP_AI_SUMMARY = process.env.COLLECTOR_SKIP_AI_SUMMARY !== "false";
 const ENABLE_SUBJECT_AI_SCORE =
@@ -251,7 +253,11 @@ export async function runFocusCollector(runId: string, queryId: string) {
       sources: {
         include: {
           web: true,
-          search: true,
+          search: {
+            include: {
+              credential: true,
+            },
+          },
           social: {
             include: {
               credential: true,
@@ -1426,10 +1432,16 @@ async function fetchSocialSource(
     intent.type
   );
   const output = resolveGatherOutput(sourceConfigObj, outputFieldRule);
+  const ensuredCredentialStateFile = await ensureGatherStateFileFromStorage(
+    source,
+    gatherUrl,
+    gatherPlatform
+  );
   const normalizedSocialConfig = normalizeGatherSocialConfig(
     source,
     sourceConfigObj,
-    gatherDriver
+    gatherDriver,
+    ensuredCredentialStateFile
   );
   const baseConfig = applyGatherProxyConfig(normalizedSocialConfig, proxyUrl);
   const existingKeywordFilter = resolveGatherKeywordFilter(baseConfig, gatherDriver);
@@ -1518,10 +1530,11 @@ function mapGatherPlatform(platform?: string | null): string {
 function normalizeGatherSocialConfig(
   source: SocialMediaSource,
   config: Record<string, unknown>,
-  driver: GatherSocialDriver
+  driver: GatherSocialDriver,
+  stateFileOverride?: string | null
 ): Record<string, unknown> {
   const sanitizedConfig = sanitizeGatherConfig(config);
-  const credentialStateFile = resolveCredentialStateFile(source);
+  const credentialStateFile = stateFileOverride ?? resolveCredentialStateFile(source);
   if (driver === "agent-browser") {
     return normalizeAgentBrowserGatherConfig(
       source,
@@ -1550,6 +1563,72 @@ function normalizeGatherSocialConfig(
   }
 
   return { playwright: normalizedPlaywright };
+}
+
+async function ensureGatherStateFileFromStorage(
+  source: SocialMediaSource,
+  gatherUrl: string,
+  gatherPlatform: string
+): Promise<string | null> {
+  const credentialCandidates = [source.social?.credential?.data, source.credential?.data];
+  for (const rawCandidate of credentialCandidates) {
+    const decrypted = unwrapCredentialPayload(rawCandidate);
+    if (!decrypted || typeof decrypted !== "object" || Array.isArray(decrypted)) {
+      continue;
+    }
+    const payload = decrypted as Record<string, unknown>;
+    const stateFile = typeof payload.stateFile === "string" ? payload.stateFile.trim() : "";
+    const storageKey = typeof payload.storageKey === "string" ? payload.storageKey.trim() : "";
+    if (!stateFile || !storageKey) continue;
+
+    try {
+      const verifyResp = await fetch(`${gatherUrl}/verify-auth`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          platform: gatherPlatform,
+          state_file: stateFile,
+          headless: true,
+        }),
+      });
+      if (verifyResp.ok) {
+        const verifyPayload = await verifyResp.json().catch(() => ({}));
+        if (verifyPayload?.valid) {
+          return stateFile;
+        }
+      }
+    } catch {
+      // continue to restore from storage
+    }
+
+    try {
+      const storageBuffer = await downloadFile(storageKey);
+      const authData = JSON.parse(storageBuffer.toString("utf-8")) as Record<string, unknown>;
+      const restoreResp = await fetch(`${gatherUrl}/auth/state-file`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          platform: gatherPlatform,
+          name: source.name,
+          auth_data: authData,
+        }),
+      });
+      if (!restoreResp.ok) continue;
+      const restorePayload = await restoreResp.json().catch(() => ({}));
+      const restoredStateFile =
+        typeof restorePayload?.stateFile === "string"
+          ? restorePayload.stateFile.trim()
+          : "";
+      if (restoredStateFile) return restoredStateFile;
+    } catch (error) {
+      logger.warn("failed to restore gather state file from storage", {
+        sourceId: source.id,
+        storageKey,
+        error: logger.normalizeError(error),
+      });
+    }
+  }
+  return null;
 }
 
 function normalizeAgentBrowserGatherConfig(
@@ -1688,7 +1767,8 @@ function normalizeAgentBrowserGatherConfig(
 
 function resolveCredentialStateFile(source: SocialMediaSource): string | null {
   const candidates = [source.social?.credential?.data, source.credential?.data];
-  for (const candidate of candidates) {
+  for (const rawCandidate of candidates) {
+    const candidate = unwrapCredentialPayload(rawCandidate);
     if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) {
       continue;
     }
@@ -2647,7 +2727,7 @@ function buildSearchRequest(
   };
 
   if (provider === "parallel") {
-    const apiKey = resolveApiKey(options, process.env.PARALLEL_API_KEY);
+    const apiKey = resolveApiKey(options, resolveSearchCredentialApiKey(source));
     if (apiKey) {
       headers["x-api-key"] = apiKey;
     }
@@ -2708,7 +2788,7 @@ function buildSearchRequest(
   }
 
   if (provider === "tavily") {
-    const apiKey = resolveApiKey(options, process.env.TAVILY_API_KEY);
+    const apiKey = resolveApiKey(options, resolveSearchCredentialApiKey(source));
     const payload: Record<string, unknown> = {
       api_key: apiKey,
       query: objective,
@@ -2753,7 +2833,7 @@ function buildSearchRequest(
   }
 
   if (provider === "anspire") {
-    const apiKey = resolveApiKey(options, process.env.ANSPIRE_API_KEY);
+    const apiKey = resolveApiKey(options, resolveSearchCredentialApiKey(source));
     if (apiKey) {
       headers.Authorization = `Bearer ${apiKey}`;
     }
@@ -2962,6 +3042,17 @@ function resolveApiKey(options: Record<string, unknown>, fallback?: string): str
     options.token,
     fallback
   );
+}
+
+function resolveSearchCredentialApiKey(source: SearchEngineSource): string | undefined {
+  const payload = source.search?.credential?.data;
+  if (!payload) return undefined;
+  const decrypted = unwrapCredentialPayload(payload);
+  if (!decrypted || typeof decrypted !== "object" || Array.isArray(decrypted)) {
+    return undefined;
+  }
+  const auth = decrypted as Record<string, unknown>;
+  return pickString(auth.secret, auth.apiKey, auth.api_key, auth.token, auth.key);
 }
 
 function stripUndefined<T extends Record<string, unknown>>(payload: T): T {

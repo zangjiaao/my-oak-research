@@ -63,7 +63,7 @@ export async function GET(req: Request) {
       ? {
         web: true,
         darknet: { include: { proxy: true } },
-        search: true,
+        search: { include: { credential: true } },
         social: true,
         identity: true,
         presetBindings: {
@@ -203,7 +203,7 @@ export async function POST(req: Request) {
         include: {
           web: true,
           darknet: { include: { proxy: true } },
-          search: true,
+          search: { include: { credential: true } },
           social: true,
           identity: true,
           presetBindings: {
