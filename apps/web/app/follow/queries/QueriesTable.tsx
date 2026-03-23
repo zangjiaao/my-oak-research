@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { PencilIcon, TrashIcon, PlayIcon } from "lucide-react";
 import { Progress } from "@/components/ui";
 import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
 import { Keyword, Source } from "@/app/generated/prisma";
 import { QueryWithAggregations } from "@/lib/types";
 import {
@@ -144,12 +145,38 @@ const QueriesTable = ({ queries, keywords, sources }: Props) => {
     {
       key: "keywordsCount",
       label: "Keywords",
-      render: (query) => query.keywords?.length ?? query.keywordsCount ?? 0,
+      className: "max-w-md",
+      render: (query) => (
+        <div className="flex flex-wrap gap-1">
+          {(query.keywords ?? []).length > 0 ? (
+            query.keywords.map((keyword) => (
+              <Badge key={keyword.id} variant="outline">
+                {keyword.name}
+              </Badge>
+            ))
+          ) : (
+            <span className="text-muted-foreground">-</span>
+          )}
+        </div>
+      ),
     },
     {
       key: "sourcesCount",
       label: "Sources",
-      render: (query) => query.sources?.length ?? query.sourcesCount ?? 0,
+      className: "max-w-md",
+      render: (query) => (
+        <div className="flex flex-wrap gap-1">
+          {(query.sources ?? []).length > 0 ? (
+            query.sources.map((source) => (
+              <Badge key={source.id} variant="secondary">
+                {source.name}
+              </Badge>
+            ))
+          ) : (
+            <span className="text-muted-foreground">-</span>
+          )}
+        </div>
+      ),
     },
     {
       key: "enabled",
