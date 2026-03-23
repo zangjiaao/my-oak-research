@@ -63,7 +63,6 @@ const QueryDialog = ({
     watch,
     reset,
     setValue,
-    setError,
     formState: { errors },
   } = useForm<QueryFormValues>({
     resolver: formResolver,
@@ -76,7 +75,6 @@ const QueryDialog = ({
       // Make sure query.keywords and query.sources are always arrays before mapping
       keywordIds: query?.keywords?.map((k) => k.id) || [],
       sourceIds: query?.sources?.map((s) => s.id) || [],
-      rules: query?.rules ? JSON.stringify(query.rules, null, 2) : undefined,
       sourcePolicies: query?.sourcePolicies ?? [],
     },
   });
@@ -97,7 +95,6 @@ const QueryDialog = ({
         enabled: query?.enabled ?? true,
         keywordIds: query?.keywords?.map((k) => k.id) || [],
         sourceIds: query?.sources?.map((s) => s.id) || [],
-        rules: query?.rules ? JSON.stringify(query.rules, null, 2) : undefined,
         sourcePolicies: query?.sourcePolicies ?? [],
       });
     } else {
@@ -110,7 +107,6 @@ const QueryDialog = ({
         enabled: true,
         keywordIds: [],
         sourceIds: [],
-        rules: undefined,
         sourcePolicies: [],
       });
     }
@@ -157,29 +153,7 @@ const QueryDialog = ({
   });
 
   const onSubmit: SubmitHandler<QueryFormValues> = (data) => {
-    let parsedRules: QueryFormValues["rules"] = undefined;
-    if (data.rules) {
-      if (typeof data.rules === "string") {
-        try {
-          parsedRules = JSON.parse(data.rules);
-        } catch (err) {
-          setError("rules", {
-            type: "manual",
-            message: "Rules must be valid JSON.",
-          });
-          return;
-        }
-      } else {
-        parsedRules = data.rules;
-      }
-    }
-    const submittedData = {
-      ...data,
-      rules: parsedRules,
-      // keywords and sources should be connect operations, not just IDs
-      // Backend API expects keywordIds and sourceIds for connect, so no change needed here.
-    };
-    mutation.mutate(submittedData);
+    mutation.mutate(data);
   };
 
   const availableKeywords = keywords.map((k) => ({
@@ -321,6 +295,9 @@ const QueryDialog = ({
         {(sourcePolicies ?? []).length > 0 && (
           <div className="grid gap-3 rounded-md border p-3">
             <Label>Source Content Filter</Label>
+            <p className="text-xs text-muted-foreground">
+              控制每个 Source 是否启用内容过滤。关闭后该 Source 只做采集，不做关键词内容过滤；开启后按过滤模式执行。
+            </p>
             {(sourcePolicies ?? []).map((policy, index) => (
               <div
                 key={policy.sourceId}
@@ -360,17 +337,6 @@ const QueryDialog = ({
             ))}
           </div>
         )}
-
-        <div className="grid gap-3">
-          <Label htmlFor="rules">Rules (JSON)</Label>
-          <Textarea
-            id="rules"
-            placeholder={'{"key":"value"}'}
-            rows={5}
-            {...register("rules")}
-          />
-          <ErrorMessage>{errors.rules?.message?.toString()}</ErrorMessage>
-        </div>
       </div>
     </SettingEditDialog>
   );
