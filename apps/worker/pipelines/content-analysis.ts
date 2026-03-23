@@ -25,17 +25,29 @@ import { redact, stripPromptLike } from "@/lib/security";
 import { writeWorkerApiIoLog } from "./api-io-log";
 import { buildNormalizedRecordContent } from "./record-content-normalizer";
 
-const SummarySchema = z.object({
+const SKIP_AI_SUMMARY = process.env.COLLECTOR_SKIP_AI_SUMMARY !== "false";
+const ENABLE_SUBJECT_AI_SCORE =
+  process.env.COLLECTOR_ENABLE_SUBJECT_AI_SCORE !== "false";
+
+const ContentAnalyzeSchema = z.object({
   summary: z.string().min(30).max(400),
   relevance: z.boolean(),
+  subjects: z
+    .array(
+      z.object({
+        keywordId: z.string().min(1),
+        score: z.number().min(0).max(1).nullable().optional(),
+        reason: z.string().max(200).nullable().optional(),
+      })
+    )
+    .default([]),
 });
 
-const SubjectScoreSchema = z.object({
-  score: z.number().min(0).max(1),
-  reason: z.string().min(1).max(200),
-});
-
-const SKIP_AI_SUMMARY = process.env.COLLECTOR_SKIP_AI_SUMMARY !== "false";
+type ContentAnalyzeResult = {
+  summary: string;
+  relevance: boolean;
+  subjectsByKeyword: Map<string, { score: number | null; reason: string | null }>;
+};
 
 type CleanItem = {
   title?: string;
@@ -362,6 +374,19 @@ export async function runFocusCollector(runId: string, queryId: string) {
       continue;
     }
 
+    const shouldRunContentAnalyze = !SKIP_AI_SUMMARY || ENABLE_SUBJECT_AI_SCORE;
+    let contentAnalyzeResult: ContentAnalyzeResult | null = null;
+    if (shouldRunContentAnalyze) {
+      await send({ type: "summary", message: `第 ${i + 1} 条内容AI分析` });
+      contentAnalyzeResult = await analyzeContentWithRetry(
+        item,
+        query.keywords,
+        keywordsStr,
+        queryId,
+        runId
+      );
+    }
+
     let summary: { summary: string; relevance: boolean };
     if (SKIP_AI_SUMMARY) {
       await send({
@@ -372,14 +397,16 @@ export async function runFocusCollector(runId: string, queryId: string) {
         summary: buildFallbackSummary(item),
         relevance: true,
       };
+    } else if (contentAnalyzeResult) {
+      summary = {
+        summary: contentAnalyzeResult.summary,
+        relevance: contentAnalyzeResult.relevance,
+      };
     } else {
-      await send({ type: "summary", message: `第 ${i + 1} 条内容生成摘要` });
-      summary = await summarizeWithRetry(
-        item,
-        keywordsStr,
-        queryId,
-        runId
-      );
+      summary = {
+        summary: buildFallbackSummary(item),
+        relevance: true,
+      };
     }
 
     const contentTitle =
@@ -465,6 +492,10 @@ export async function runFocusCollector(runId: string, queryId: string) {
         contentText: `${content.title}\n${content.summary}\n${content.markdown}`,
         item,
         keywords: query.keywords,
+        aiByKeyword:
+          ENABLE_SUBJECT_AI_SCORE && contentAnalyzeResult
+            ? contentAnalyzeResult.subjectsByKeyword
+            : undefined,
       });
       const reasonSummaryRaw = subjectMatchResult.bestReason?.trim();
       if (SKIP_AI_SUMMARY && reasonSummaryRaw) {
@@ -2150,8 +2181,9 @@ async function upsertContentSubjectMatches(input: {
   contentText: string;
   item: CleanItem;
   keywords: QueryKeyword[];
+  aiByKeyword?: Map<string, { score: number | null; reason: string | null }>;
 }): Promise<{ bestReason: string | null; bestScore: number | null }> {
-  const { contentId, contentText, item, keywords } = input;
+  const { contentId, contentText, item, keywords, aiByKeyword } = input;
   const normalizedContentText = contentText.toLowerCase();
   let bestReason: string | null = null;
   let bestScore: number | null = null;
@@ -2187,18 +2219,11 @@ async function upsertContentSubjectMatches(input: {
       gatherMatchedKeywords: item.matchedKeywords ?? [],
       contentText,
     });
-    const aiResult = await scoreSubjectWithAI({
-      keyword,
-      contentText,
-    }).catch((error) => {
-      logger.warn("subject ai score failed", {
-        contentId,
-        keywordId: keyword.id,
-        error: logger.normalizeError(error),
-      });
-      return null;
-    });
-    const aiScore = aiResult?.score ?? null;
+    const aiResult = aiByKeyword?.get(keyword.id) ?? null;
+    const aiScore =
+      typeof aiResult?.score === "number"
+        ? roundScore(Math.min(1, Math.max(0, aiResult.score)))
+        : null;
     const finalScore =
       aiScore == null
         ? ruleScore
@@ -2233,7 +2258,7 @@ async function upsertContentSubjectMatches(input: {
         matchedIncludes: matchedScoringTerms,
         matchedExcludes,
         matchSource,
-        reason: aiResult?.reason ?? null,
+        reason: reasonText || null,
       },
       update: {
         ruleScore,
@@ -2242,7 +2267,7 @@ async function upsertContentSubjectMatches(input: {
         matchedIncludes: matchedScoringTerms,
         matchedExcludes,
         matchSource,
-        reason: aiResult?.reason ?? null,
+        reason: reasonText || null,
       },
     });
   }
@@ -2310,93 +2335,107 @@ function calculateRuleScore(input: {
   return roundScore(Math.min(1, Math.max(0.05, score)));
 }
 
-async function scoreSubjectWithAI(input: {
-  keyword: QueryKeyword;
-  contentText: string;
-}): Promise<{ score: number; reason: string } | null> {
-  const disabled = process.env.COLLECTOR_ENABLE_SUBJECT_AI_SCORE === "false";
-  if (disabled) {
-    return null;
-  }
-  const prompt = stripPromptLike(
-    `你是主题相关度打分器。请判断内容与主题是否相关，并输出 JSON: {"score":0-1,"reason":"简短原因"}。
-评分原则：
-1) 主题名称和主题描述是核心判断依据；
-2) 召回词仅用于检索，不应主导最终评分；
-3) 评分词是辅助证据，命中可加分，但不能替代主题语义；
-4) 若只出现个别词但语义无关，应给低分。
-主题名称: ${input.keyword.name}
-主题描述: ${input.keyword.description ?? ""}
-召回词: ${(input.keyword.includes ?? []).join(", ")}
-评分词: ${(input.keyword.synonyms ?? []).join(", ")}
-排除词: ${(input.keyword.excludes ?? []).join(", ")}
-内容:
-${input.contentText.slice(0, 8000)}`
-  );
-  const result = await llmGateway.json<{ score: number; reason: string }>(
-    "subject-score",
-    {
-      prompt: redact(prompt),
-      schema: SubjectScoreSchema,
-      temperature: 0.1,
-      metadata: { keywordId: input.keyword.id },
-    }
-  );
-  return {
-    score: roundScore(Math.min(1, Math.max(0, result.score))),
-    reason: result.reason.trim().slice(0, 200),
-  };
-}
-
 function roundScore(score: number): number {
   return Math.round(score * 10000) / 10000;
 }
 
-async function summarizeWithRetry(
+async function analyzeContentWithRetry(
   item: CleanItem,
-  keywords: string,
+  keywords: QueryKeyword[],
+  keywordsSummary: string,
   queryId: string,
   runId: string
-): Promise<{ summary: string; relevance: boolean }> {
+): Promise<ContentAnalyzeResult> {
+  const subjectInput = keywords.map((keyword) => ({
+    keywordId: keyword.id,
+    name: keyword.name,
+    description: keyword.description ?? "",
+    recallTerms: keyword.includes ?? [],
+    scoringTerms: keyword.synonyms ?? [],
+    excludes: keyword.excludes ?? [],
+  }));
   const prompt = stripPromptLike(
-    `请基于关键词：${keywords}，用 2-3 句中文解释下面内容的要点和价值，输出结构化 JSON：{ "summary": "...", "relevance": true/false }；\n${item.text}`
+    `你是内容分析器。请只输出 JSON，结构为：
+{
+  "summary": "2-3句中文摘要（30-400字）",
+  "relevance": true/false,
+  "subjects": [
+    {
+      "keywordId": "关键词ID",
+      "score": 0-1,
+      "reason": "不超过200字的中文原因"
+    }
+  ]
+}
+
+要求：
+1) summary 基于内容核心信息，不要编造；
+2) relevance 表示内容是否与查询主题整体相关；
+3) subjects 必须覆盖每个 keywordId；
+4) score 以主题语义为主，不能因为单词子串命中就高分；
+5) 只出现词形但语义无关时，给低分（接近 0）。
+
+查询关键词概览: ${keywordsSummary}
+主题明细(JSON): ${JSON.stringify(subjectInput)}
+内容:
+${item.text.slice(0, 8000)}`
   );
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
-      const summary = await llmGateway.json<{
-        summary: string;
-        relevance: boolean;
-      }>("content-summary", {
+      const result = await llmGateway.json<z.infer<typeof ContentAnalyzeSchema>>(
+        "content-analyze",
+        {
         prompt: redact(prompt),
-        schema: SummarySchema,
+        schema: ContentAnalyzeSchema,
         temperature: 0.3,
         metadata: { queryId, source: item.platform },
-      });
+        }
+      );
+      const subjectsByKeyword = new Map<
+        string,
+        { score: number | null; reason: string | null }
+      >();
+      for (const keyword of keywords) {
+        const matched = result.subjects.find(
+          (subject) => subject.keywordId === keyword.id
+        );
+        subjectsByKeyword.set(keyword.id, {
+          score:
+            typeof matched?.score === "number"
+              ? roundScore(Math.min(1, Math.max(0, matched.score)))
+              : null,
+          reason: matched?.reason?.trim().slice(0, 200) || null,
+        });
+      }
       await publishTaskEvent(runId, {
-        type: "summary-success",
-        message: `摘要成功 ${item.platform}`,
+        type: "content-analyze-success",
+        message: `内容分析成功 ${item.platform}`,
         attempt,
       });
       console.log(
-        `[collector] summary-success attempt=${attempt} source=${item.platform} summary=${summary.summary}`
+        `[collector] content-analyze-success attempt=${attempt} source=${item.platform} summary=${result.summary}`
       );
-      return summary;
+      return {
+        summary: result.summary,
+        relevance: result.relevance,
+        subjectsByKeyword,
+      };
     } catch (error) {
       await publishTaskEvent(runId, {
-        type: "summary-error",
-        message: `第 ${attempt} 次摘要失败：${(error as Error).message}`,
+        type: "content-analyze-error",
+        message: `第 ${attempt} 次内容分析失败：${(error as Error).message}`,
         attempt,
         source: item.platform,
       });
       console.log(
-        `[collector] summary-error attempt=${attempt} source=${item.platform
+        `[collector] content-analyze-error attempt=${attempt} source=${item.platform
         } error=${(error as Error).message}`
       );
       if (attempt === 3) throw error;
       await new Promise((resolve) => setTimeout(resolve, 500 * attempt));
     }
   }
-  throw new Error("摘要失败");
+  throw new Error("内容分析失败");
 }
 
 async function findExistingContentBySourceRecord(
