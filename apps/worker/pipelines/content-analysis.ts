@@ -95,21 +95,9 @@ type GatherScriptCatalogItem = {
   };
 };
 
-const SOCIAL_PLATFORM_DRIVER_SUPPORT: Record<string, readonly GatherSocialDriver[]> = {
-  X: ["playwright", "xhttp", "agent-browser"],
-  REDDIT: ["playwright", "xhttp", "agent-browser"],
-  XIAOHONGSHU: ["playwright", "xhttp", "agent-browser"],
-  DOUYIN: ["playwright", "xhttp", "agent-browser"],
-  TIKTOK: ["playwright", "xhttp", "agent-browser"],
-  WEIBO: ["playwright", "xhttp", "agent-browser"],
-  TELEGRAM: ["playwright", "xhttp", "agent-browser"],
-  WHATSAPP: ["playwright", "xhttp", "agent-browser"],
-  INSTAGRAM: ["playwright", "xhttp", "agent-browser"],
-  FACEBOOK: ["playwright", "xhttp", "agent-browser"],
-};
-
 const GATHER_OUTPUT_FIELD_RULE_TTL_MS = 5 * 60 * 1000;
 const gatherOutputFieldRuleCache = new Map<string, GatherOutputField>();
+const gatherPlatformIntentCache = new Map<string, string[]>();
 let gatherOutputFieldRuleCacheExpireAt = 0;
 const runSearchSignatureCache = new Map<string, Set<string>>();
 
@@ -1260,15 +1248,19 @@ async function fetchSocialSource(
   const gatherPlatform = mapGatherPlatform(source.social?.platform);
   const sourceConfig = source.social?.config || {};
   const sourceConfigObj = asObject(sourceConfig);
-  const gatherDriver = resolveGatherDriver(
-    sourceConfigObj,
-    source.social?.platform
-  );
+  const gatherDriver = resolveGatherDriver(sourceConfigObj);
   const proxyUrl =
     source.social?.proxy?.url ??
     source.proxy?.url ??
     null;
-  const intent = resolveGatherIntent(sourceConfigObj);
+  const rawConfiguredIntent = asObject(sourceConfigObj.intent);
+  const hasConfiguredIntentType =
+    typeof rawConfiguredIntent.type === "string" &&
+    rawConfiguredIntent.type.trim().length > 0;
+  const defaultIntentType = hasConfiguredIntentType
+    ? undefined
+    : await resolveGatherDefaultIntent(gatherUrl, gatherPlatform);
+  const intent = resolveGatherIntent(sourceConfigObj, defaultIntentType);
   const outputFieldRule = await resolveGatherOutputFieldRule(
     gatherUrl,
     gatherPlatform,
@@ -1347,13 +1339,8 @@ async function fetchSocialSource(
 }
 
 function resolveGatherDriver(
-  config: Record<string, unknown>,
-  platform?: string | null
+  config: Record<string, unknown>
 ): GatherSocialDriver {
-  const normalizedPlatform = (platform || "").toUpperCase();
-  const supportedDrivers =
-    SOCIAL_PLATFORM_DRIVER_SUPPORT[normalizedPlatform] ??
-    (["playwright"] as const);
   const driverConfig = asObject(config.driver);
   const rawDriver =
     typeof config.driver === "string"
@@ -1361,13 +1348,7 @@ function resolveGatherDriver(
       : typeof driverConfig.name === "string"
         ? driverConfig.name.trim().toLowerCase()
         : "";
-  if (
-    (rawDriver === "xhttp" || rawDriver === "agent-browser" || rawDriver === "playwright") &&
-    supportedDrivers.includes(rawDriver)
-  ) {
-    return rawDriver;
-  }
-  return supportedDrivers[0] ?? "playwright";
+  return rawDriver === "playwright" ? "playwright" : "playwright";
 }
 
 function mapGatherPlatform(platform?: string | null): string {
@@ -1573,14 +1554,17 @@ function sanitizeGatherConfig(
 }
 
 function resolveGatherIntent(
-  config: Record<string, unknown>
+  config: Record<string, unknown>,
+  fallbackIntentType?: string
 ): GatherIntentPayload {
   const rawIntent = asObject(config.intent);
   const rawArgs = asObject(rawIntent.args);
   const intentType =
     typeof rawIntent.type === "string" && rawIntent.type.trim()
       ? rawIntent.type.trim()
-      : "search";
+      : typeof fallbackIntentType === "string" && fallbackIntentType.trim()
+        ? fallbackIntentType.trim()
+        : "search";
 
   if (Object.keys(rawArgs).length > 0) {
     return {
@@ -1710,42 +1694,63 @@ async function resolveGatherOutputFieldRule(
   platform: string,
   intentType: string
 ): Promise<GatherOutputField | undefined> {
-  const now = Date.now();
-  if (now >= gatherOutputFieldRuleCacheExpireAt) {
-    try {
-      const response = await fetch(`${gatherUrl}/v3/scripts/catalog`, {
-        cache: "no-store",
-        headers: { Accept: "application/json" },
-      });
-      if (response.ok) {
-        const data = await response.json();
-        const items = Array.isArray(data?.items)
-          ? (data.items as GatherScriptCatalogItem[])
-          : [];
-        gatherOutputFieldRuleCache.clear();
-        for (const item of items) {
-          const itemPlatform =
-            typeof item.platform === "string" ? item.platform.trim().toLowerCase() : "";
-          const itemIntent =
-            typeof item.intent === "string" ? item.intent.trim().toLowerCase() : "";
-          if (!itemPlatform || !itemIntent) continue;
-          const normalizedField = normalizeGatherOutputField(item.sample?.outputField);
-          if (!normalizedField) continue;
-          gatherOutputFieldRuleCache.set(
-            `${itemPlatform}:${itemIntent}`,
-            normalizedField
-          );
-        }
-      }
-    } catch {
-      // Best effort: keep existing cache/fallback behavior.
-    } finally {
-      gatherOutputFieldRuleCacheExpireAt = now + GATHER_OUTPUT_FIELD_RULE_TTL_MS;
-    }
-  }
-
+  await refreshGatherScriptCatalogCache(gatherUrl);
   const cacheKey = `${platform.trim().toLowerCase()}:${intentType.trim().toLowerCase()}`;
   return gatherOutputFieldRuleCache.get(cacheKey);
+}
+
+async function resolveGatherDefaultIntent(
+  gatherUrl: string,
+  platform: string
+): Promise<string | undefined> {
+  await refreshGatherScriptCatalogCache(gatherUrl);
+  const intents = gatherPlatformIntentCache.get(platform.trim().toLowerCase()) ?? [];
+  if (intents.includes("search")) {
+    return "search";
+  }
+  return intents[0];
+}
+
+async function refreshGatherScriptCatalogCache(gatherUrl: string): Promise<void> {
+  const now = Date.now();
+  if (now < gatherOutputFieldRuleCacheExpireAt) return;
+
+  try {
+    const response = await fetch(`${gatherUrl}/v3/scripts/catalog`, {
+      cache: "no-store",
+      headers: { Accept: "application/json" },
+    });
+    if (!response.ok) return;
+    const data = await response.json();
+    const items = Array.isArray(data?.items)
+      ? (data.items as GatherScriptCatalogItem[])
+      : [];
+    gatherOutputFieldRuleCache.clear();
+    gatherPlatformIntentCache.clear();
+    for (const item of items) {
+      const itemPlatform =
+        typeof item.platform === "string" ? item.platform.trim().toLowerCase() : "";
+      const itemIntent =
+        typeof item.intent === "string" ? item.intent.trim().toLowerCase() : "";
+      if (!itemPlatform || !itemIntent) continue;
+      const intents = gatherPlatformIntentCache.get(itemPlatform) ?? [];
+      if (!intents.includes(itemIntent)) {
+        intents.push(itemIntent);
+      }
+      gatherPlatformIntentCache.set(itemPlatform, intents);
+
+      const normalizedField = normalizeGatherOutputField(item.sample?.outputField);
+      if (!normalizedField) continue;
+      gatherOutputFieldRuleCache.set(
+        `${itemPlatform}:${itemIntent}`,
+        normalizedField
+      );
+    }
+  } catch {
+    // Best effort: keep existing cache/fallback behavior.
+  } finally {
+    gatherOutputFieldRuleCacheExpireAt = now + GATHER_OUTPUT_FIELD_RULE_TTL_MS;
+  }
 }
 
 function resolveAgentBrowserOwnerId(
