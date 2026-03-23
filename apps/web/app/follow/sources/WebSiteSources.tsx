@@ -21,6 +21,12 @@ interface Props {
 type StreamSource = SourceWithRelations & Source;
 
 function getSourcePlatformLabel(source: StreamSource): string {
+  const identityPlatform =
+    typeof source.identity?.platform === "string" ? source.identity.platform.trim() : "";
+  if (identityPlatform) {
+    return identityPlatform.toUpperCase();
+  }
+
   const search =
     "search" in source
       ? (source.search as unknown as { platform?: string; options?: unknown })
@@ -34,7 +40,7 @@ function getSourcePlatformLabel(source: StreamSource): string {
   const platform = search?.platform ?? ("social" in source ? source.social?.platform : null);
 
   if (platform === "CUSTOM" && providerLabel) return providerLabel;
-  return platform ?? "WEB";
+  return platform ?? "-";
 }
 
 const WebSites = ({ sources, proxies }: Props) => {
