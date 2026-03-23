@@ -17,6 +17,8 @@ import { apiFetcher } from "@/lib/fetcher";
 import { kindToPlatform, isApiKeyKind } from "@/lib/credential-utils";
 import { useFollow } from "@/hooks/useFollow";
 import { toast } from "sonner";
+import { SettingEditDialog } from "@/components/layout";
+import { Label } from "@/components/ui/label";
 
 type CredentialListItem = {
   id: string;
@@ -50,6 +52,7 @@ export default function CredentialSettingCard() {
   const queryClient = useQueryClient();
   const { sources } = useFollow();
   const [searchQuery, setSearchQuery] = useState("");
+  const [dialogOpen, setDialogOpen] = useState(false);
   const [kind, setKind] = useState("x-cookie");
   const [name, setName] = useState("");
   const [sourceId, setSourceId] = useState<string>("__none__");
@@ -138,7 +141,10 @@ export default function CredentialSettingCard() {
     },
     onSuccess: async () => {
       toast.success("Credential saved");
+      setDialogOpen(false);
       setName("");
+      setKind("x-cookie");
+      setSourceId("__none__");
       setSecret("");
       setFile(null);
       await refresh();
@@ -240,8 +246,8 @@ export default function CredentialSettingCard() {
   ];
 
   const filterComponent = (
-    <div className="space-y-3">
-      <div className="relative">
+    <div className="flex items-center gap-2">
+      <div className="relative flex-1">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           className="pl-9"
@@ -250,55 +256,90 @@ export default function CredentialSettingCard() {
           onChange={(event) => setSearchQuery(event.target.value)}
         />
       </div>
-      <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
-        <Select value={kind} onValueChange={setKind}>
-          <SelectTrigger>
-            <SelectValue placeholder="Select kind" />
-          </SelectTrigger>
-          <SelectContent>
-            {KIND_OPTIONS.map((item) => (
-              <SelectItem key={item} value={item}>
-                {item}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Input
-          placeholder="Credential alias"
-          value={name}
-          onChange={(event) => setName(event.target.value)}
-        />
-        <Select value={sourceId} onValueChange={setSourceId}>
-          <SelectTrigger>
-            <SelectValue placeholder="Bind source (optional)" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__none__">No source binding</SelectItem>
-            {sources.map((source) => (
-              <SelectItem key={source.id} value={source.id}>
-                {source.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        {isApiKeyKind(kind) ? (
-          <Input
-            placeholder="API key"
-            value={secret}
-            onChange={(event) => setSecret(event.target.value)}
-          />
-        ) : (
-          <Input
-            type="file"
-            accept={kind === "whatsapp-profile" ? ".zip" : ".json"}
-            onChange={(event) => setFile(event.target.files?.[0] ?? null)}
-          />
-        )}
-      </div>
-      <Button onClick={() => createMutation.mutate()} disabled={createMutation.isPending}>
-        <PlusIcon className="size-4" />
-        {createMutation.isPending ? "Saving..." : "Add Credential"}
-      </Button>
+      <SettingEditDialog
+        props={{
+          open: dialogOpen,
+          onOpenChange: (open) => {
+            setDialogOpen(open);
+            if (!open) {
+              setKind("x-cookie");
+              setName("");
+              setSourceId("__none__");
+              setSecret("");
+              setFile(null);
+            }
+          },
+        }}
+        title="Add Credential"
+        description="Add a new auth credential or API key."
+        triggerButton={<Button type="button">
+          <PlusIcon className="size-4" />
+          Add Credential
+        </Button>}
+        buttonText={createMutation.isPending ? "Saving..." : "Add"}
+        onSubmit={(event) => {
+          event.preventDefault();
+          createMutation.mutate();
+        }}
+      >
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div className="grid gap-2">
+            <Label>Kind</Label>
+            <Select value={kind} onValueChange={setKind}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select kind" />
+              </SelectTrigger>
+              <SelectContent>
+                {KIND_OPTIONS.map((item) => (
+                  <SelectItem key={item} value={item}>
+                    {item}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid gap-2">
+            <Label>Alias</Label>
+            <Input
+              placeholder="Credential alias"
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+            />
+          </div>
+          <div className="grid gap-2">
+            <Label>Bind Source (Optional)</Label>
+            <Select value={sourceId} onValueChange={setSourceId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Bind source (optional)" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">No source binding</SelectItem>
+                {sources.map((source) => (
+                  <SelectItem key={source.id} value={source.id}>
+                    {source.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid gap-2">
+            <Label>{isApiKeyKind(kind) ? "API Key" : "Credential File"}</Label>
+            {isApiKeyKind(kind) ? (
+              <Input
+                placeholder="API key"
+                value={secret}
+                onChange={(event) => setSecret(event.target.value)}
+              />
+            ) : (
+              <Input
+                type="file"
+                accept={kind === "whatsapp-profile" ? ".zip" : ".json"}
+                onChange={(event) => setFile(event.target.files?.[0] ?? null)}
+              />
+            )}
+          </div>
+        </div>
+      </SettingEditDialog>
     </div>
   );
 
