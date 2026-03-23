@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Search, PlusIcon, ShieldCheck, PencilIcon, TrashIcon } from "lucide-react";
-import { SettingCard, DataTable, DataTableAction, DataTableColumn } from "@/components/common";
+import { DeleteAlert, SettingCard, DataTable, DataTableAction, DataTableColumn } from "@/components/common";
 import { apiFetcher } from "@/lib/fetcher";
 import { kindToPlatform, isApiKeyKind } from "@/lib/credential-utils";
 import { useFollow } from "@/hooks/useFollow";
@@ -186,19 +186,6 @@ export default function CredentialSettingCard() {
     }
   };
 
-  const deleteCredential = async (credential: CredentialListItem) => {
-    if (!window.confirm(`Delete credential "${credential.name}"?`)) return;
-    try {
-      await apiFetcher(`/api/follow/credentials/${credential.id}`, {
-        method: "DELETE",
-      });
-      toast.success("Credential deleted");
-      await refresh();
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to delete credential");
-    }
-  };
-
   const columns: DataTableColumn<CredentialListItem>[] = [
     { key: "name", label: "Name" },
     { key: "kind", label: "Kind" },
@@ -239,9 +226,21 @@ export default function CredentialSettingCard() {
     {
       type: "delete",
       render: (item) => (
-        <Button size="sm" variant="outline" onClick={() => deleteCredential(item)}>
-          <TrashIcon className="size-3" />
-        </Button>
+        <DeleteAlert
+          item={item}
+          itemName="name"
+          title="Delete Credential"
+          description={(credential) =>
+            `Are you sure you want to delete "${credential.name}" credential? This action cannot be undone.`
+          }
+          queryKeys={[["credentials"], ["credentials", "all"], ["sources"]]}
+          deleteEndpoint={(id) => `/api/follow/credentials/${id}`}
+          triggerButton={
+            <Button size="sm" variant="outline">
+              <TrashIcon className="size-3" />
+            </Button>
+          }
+        />
       ),
     },
   ];
