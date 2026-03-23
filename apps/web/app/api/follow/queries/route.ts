@@ -133,6 +133,7 @@ export async function POST(req: Request) {
     data: {
       name: data.name,
       description: data.description ?? null,
+      rateLimit: data.rateLimit ?? null,
       frequency: data.frequency,
       cronSchedule: data.frequency === "CRONTAB" ? data.cronSchedule ?? null : null,
       enabled: data.enabled,

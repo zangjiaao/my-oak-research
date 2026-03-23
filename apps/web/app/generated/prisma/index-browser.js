@@ -289,6 +289,7 @@ exports.Prisma.QueryScalarFieldEnum = {
   name: 'name',
   description: 'description',
   enabled: 'enabled',
+  rateLimit: 'rateLimit',
   frequency: 'frequency',
   cronSchedule: 'cronSchedule',
   rules: 'rules',

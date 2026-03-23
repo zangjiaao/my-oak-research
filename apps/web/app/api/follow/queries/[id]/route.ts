@@ -126,6 +126,7 @@ export async function PATCH(
       data: {
         ...(data.name !== undefined ? { name: data.name } : {}),
         ...(data.description !== undefined ? { description: data.description ?? null } : {}),
+        ...(data.rateLimit !== undefined ? { rateLimit: data.rateLimit ?? null } : {}),
         ...(data.frequency !== undefined ? { frequency: data.frequency } : {}),
         ...(data.frequency !== undefined
           ? { cronSchedule: data.frequency === "CRONTAB" ? (data.cronSchedule ?? null) : null }
@@ -220,6 +221,7 @@ export async function PATCH(
       data: {
         name: existing.name,
         description: existing.description,
+        rateLimit: existing.rateLimit,
         frequency: existing.frequency,
         cronSchedule: existing.cronSchedule,
         enabled: existing.enabled,

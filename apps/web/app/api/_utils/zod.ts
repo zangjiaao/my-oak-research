@@ -537,6 +537,7 @@ export const QueryCreateSchema = z.object({
     .optional()
     .nullable(),
   frequency: QueryFrequencyEnum.optional().default("MANUAL"),
+  rateLimit: z.number().int().min(1).max(600).optional().nullable(),
   cronSchedule: z.string().optional().nullable(),
   enabled: z.boolean().optional().default(true),
   keywordIds: z.preprocess(

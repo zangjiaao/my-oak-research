@@ -357,6 +357,7 @@ model Query {
   description String?
 
   enabled      Boolean        @default(true)
+  rateLimit    Int?
   frequency    QueryFrequency @default(MANUAL)
   cronSchedule String? // Field to store crontab string
 

@@ -17,6 +17,13 @@ import { Query, Keyword, Source } from "@/app/generated/prisma";
 import { useQueryMutation } from "@/hooks/useQueryMutation";
 import { MultiSelect } from "@/components/common/multi-select";
 import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
   classifySourceCategory,
   detectDarknetTag,
   displayCategoryLabel,
@@ -69,6 +76,7 @@ const QueryDialog = ({
     defaultValues: {
       name: query?.name || "",
       description: query?.description || "",
+      rateLimit: query?.rateLimit ?? null,
       frequency: query?.frequency || "MANUAL",
       cronSchedule: query?.cronSchedule || "",
       enabled: query?.enabled ?? true,
@@ -90,6 +98,7 @@ const QueryDialog = ({
       reset({
         name: query?.name || "",
         description: query?.description || "",
+        rateLimit: query?.rateLimit ?? null,
         frequency: query?.frequency || "MANUAL",
         cronSchedule: query?.cronSchedule || "",
         enabled: query?.enabled ?? true,
@@ -102,6 +111,7 @@ const QueryDialog = ({
       reset({
         name: "",
         description: "",
+        rateLimit: null,
         frequency: "MANUAL",
         cronSchedule: "",
         enabled: true,
@@ -194,149 +204,210 @@ const QueryDialog = ({
       onSubmit={handleSubmit(onSubmit)}
     >
       <div className="grid gap-4">
-        <div className="grid gap-3">
-          <Label htmlFor="name">Name</Label>
-          <Input id="name" placeholder="Query Name" {...register("name")} />
-          <ErrorMessage>{errors.name?.message?.toString()}</ErrorMessage>
-        </div>
+        <Card className="gap-4 bg-muted/30">
+          <CardHeader>
+            <CardTitle>Basic Info</CardTitle>
+            <CardDescription>
+              填写 Query 基本信息。
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            <div className="grid gap-3">
+              <Label htmlFor="name">Name</Label>
+              <Input id="name" placeholder="Query Name" {...register("name")} />
+              <ErrorMessage>{errors.name?.message?.toString()}</ErrorMessage>
+            </div>
 
-        <div className="grid gap-3">
-          <Label htmlFor="description">Description</Label>
-          <Textarea
-            id="description"
-            placeholder="Description"
-            rows={3}
-            {...register("description")}
-          />
-          <ErrorMessage>{errors.description?.message?.toString()}</ErrorMessage>
-        </div>
-
-        <div className="grid gap-3">
-          <Label htmlFor="frequency">Frequency</Label>
-          <Controller
-            name="frequency"
-            control={control}
-            render={({ field }) => (
-              <ControlledSelect
-                value={field.value}
-                onValueChange={field.onChange}
-                placeholder="Select frequency"
-              >
-                {Object.values(QueryFrequencyEnum.enum).map((freq) => (
-                  <SelectItem key={freq} value={freq}>
-                    {freq}
-                  </SelectItem>
-                ))}
-              </ControlledSelect>
-            )}
-          />
-          <ErrorMessage>{errors.frequency?.message?.toString()}</ErrorMessage>
-        </div>
-
-        {watch("frequency") === "CRONTAB" && (
-          <div className="grid gap-3">
-            <Label htmlFor="cronSchedule">Cron Schedule</Label>
-            <Input
-              id="cronSchedule"
-              placeholder="e.g., 0 0 * * * (daily at midnight)"
-              {...register("cronSchedule")}
-            />
-            <ErrorMessage>
-              {errors.cronSchedule?.message?.toString()}
-            </ErrorMessage>
-          </div>
-        )}
-
-        <div className="flex items-center justify-between">
-          <Label htmlFor="enabled">Enabled</Label>
-          <Controller
-            name="enabled"
-            control={control}
-            render={({ field }) => (
-              <Switch checked={field.value} onCheckedChange={field.onChange} />
-            )}
-          />
-        </div>
-
-        <div className="grid gap-3">
-          <Label htmlFor="keywordIds">Keywords</Label>
-          <Controller
-            name="keywordIds"
-            control={control}
-            render={({ field }) => (
-              <MultiSelect
-                options={availableKeywords}
-                value={field.value}
-                onValueChange={field.onChange}
-                placeholder="Select keywords..."
+            <div className="grid gap-3">
+              <Label htmlFor="description">Description</Label>
+              <Textarea
+                id="description"
+                placeholder="Description"
+                rows={3}
+                {...register("description")}
               />
-            )}
-          />
-          <ErrorMessage>{errors.keywordIds?.message?.toString()}</ErrorMessage>
-        </div>
+              <ErrorMessage>{errors.description?.message?.toString()}</ErrorMessage>
+            </div>
+          </CardContent>
+        </Card>
 
-        <div className="grid gap-3">
-          <Label htmlFor="sourceIds">Sources</Label>
-          <Controller
-            name="sourceIds"
-            control={control}
-            render={({ field }) => (
-              <MultiSelect
-                options={availableSources}
-                value={field.value}
-                onValueChange={field.onChange}
-                placeholder="Select sources..."
-              />
-            )}
-          />
-          <ErrorMessage>{errors.sourceIds?.message?.toString()}</ErrorMessage>
-        </div>
-
-        {(sourcePolicies ?? []).length > 0 && (
-          <div className="grid gap-3 rounded-md border p-3">
-            <Label>Source Content Filter</Label>
-            <p className="text-xs text-muted-foreground">
-              控制每个 Source 是否启用内容过滤。关闭后该 Source 只做采集，不做关键词内容过滤；开启后按过滤模式执行。
-            </p>
-            {(sourcePolicies ?? []).map((policy, index) => (
-              <div
-                key={policy.sourceId}
-                className="grid gap-3 rounded-md border bg-background p-3"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">
-                    {sourceNameById.get(policy.sourceId) ?? policy.sourceId}
-                  </span>
-                  <Controller
-                    name={`sourcePolicies.${index}.contentFilterEnabled`}
-                    control={control}
-                    render={({ field }) => (
-                      <Switch
-                        checked={Boolean(field.value)}
-                        onCheckedChange={field.onChange}
-                      />
-                    )}
-                  />
-                </div>
-                <Controller
-                  name={`sourcePolicies.${index}.contentFilterMode`}
-                  control={control}
-                  render={({ field }) => (
-                    <ControlledSelect
-                      value={field.value}
-                      onValueChange={field.onChange}
-                      placeholder="Select filter mode"
-                    >
-                      <SelectItem value="TERM_AND_WORD_BOUNDARY">
-                        TERM_AND_WORD_BOUNDARY
-                      </SelectItem>
-                    </ControlledSelect>
-                  )}
+        <Card className="gap-4 bg-muted/30">
+          <CardHeader>
+            <CardTitle>Keywords</CardTitle>
+            <CardDescription>
+              选择该 Query 绑定的关键词。
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-3">
+            <Label htmlFor="keywordIds">Keywords</Label>
+            <Controller
+              name="keywordIds"
+              control={control}
+              render={({ field }) => (
+                <MultiSelect
+                  options={availableKeywords}
+                  value={field.value}
+                  onValueChange={field.onChange}
+                  placeholder="Select keywords..."
                 />
+              )}
+            />
+            <ErrorMessage>{errors.keywordIds?.message?.toString()}</ErrorMessage>
+          </CardContent>
+        </Card>
+
+        <Card className="gap-4 bg-muted/30">
+          <CardHeader>
+            <CardTitle>Sources</CardTitle>
+            <CardDescription>
+              选择 Sources 并配置每个 Source 的内容过滤策略。
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            <div className="grid gap-3">
+              <Label htmlFor="sourceIds">Sources</Label>
+              <Controller
+                name="sourceIds"
+                control={control}
+                render={({ field }) => (
+                  <MultiSelect
+                    options={availableSources}
+                    value={field.value}
+                    onValueChange={field.onChange}
+                    placeholder="Select sources..."
+                  />
+                )}
+              />
+              <ErrorMessage>{errors.sourceIds?.message?.toString()}</ErrorMessage>
+            </div>
+
+            {(sourcePolicies ?? []).length > 0 && (
+              <div className="grid gap-3 rounded-md border p-3">
+                <Label>Source Content Filter</Label>
+                <p className="text-xs text-muted-foreground">
+                  控制每个 Source 是否启用内容过滤。关闭后该 Source 只做采集，不做关键词内容过滤；开启后按过滤模式执行。
+                </p>
+                {(sourcePolicies ?? []).map((policy, index) => (
+                  <div
+                    key={policy.sourceId}
+                    className="grid gap-3 rounded-md border bg-background p-3"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">
+                        {sourceNameById.get(policy.sourceId) ?? policy.sourceId}
+                      </span>
+                      <Controller
+                        name={`sourcePolicies.${index}.contentFilterEnabled`}
+                        control={control}
+                        render={({ field }) => (
+                          <Switch
+                            checked={Boolean(field.value)}
+                            onCheckedChange={field.onChange}
+                          />
+                        )}
+                      />
+                    </div>
+                    <Controller
+                      name={`sourcePolicies.${index}.contentFilterMode`}
+                      control={control}
+                      render={({ field }) => (
+                        <ControlledSelect
+                          value={field.value}
+                          onValueChange={field.onChange}
+                          placeholder="Select filter mode"
+                        >
+                          <SelectItem value="TERM_AND_WORD_BOUNDARY">
+                            TERM_AND_WORD_BOUNDARY
+                          </SelectItem>
+                        </ControlledSelect>
+                      )}
+                    />
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        )}
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="gap-4 bg-muted/30">
+          <CardHeader>
+            <CardTitle>Execution</CardTitle>
+            <CardDescription>
+              设定执行频率、rate limit 和启用状态。
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            <div className="grid gap-3">
+              <Label htmlFor="frequency">Frequency</Label>
+              <Controller
+                name="frequency"
+                control={control}
+                render={({ field }) => (
+                  <ControlledSelect
+                    value={field.value}
+                    onValueChange={field.onChange}
+                    placeholder="Select frequency"
+                  >
+                    {Object.values(QueryFrequencyEnum.enum).map((freq) => (
+                      <SelectItem key={freq} value={freq}>
+                        {freq}
+                      </SelectItem>
+                    ))}
+                  </ControlledSelect>
+                )}
+              />
+              <ErrorMessage>{errors.frequency?.message?.toString()}</ErrorMessage>
+            </div>
+
+            {watch("frequency") === "CRONTAB" && (
+              <div className="grid gap-3">
+                <Label htmlFor="cronSchedule">Cron Schedule</Label>
+                <Input
+                  id="cronSchedule"
+                  placeholder="e.g., 0 0 * * * (daily at midnight)"
+                  {...register("cronSchedule")}
+                />
+                <ErrorMessage>
+                  {errors.cronSchedule?.message?.toString()}
+                </ErrorMessage>
+              </div>
+            )}
+
+            <div className="grid gap-3">
+              <Label htmlFor="rateLimit">Rate Limit (req/min)</Label>
+              <Controller
+                name="rateLimit"
+                control={control}
+                render={({ field }) => (
+                  <Input
+                    id="rateLimit"
+                    type="number"
+                    min={1}
+                    max={600}
+                    placeholder="e.g. 60"
+                    value={field.value ?? ""}
+                    onChange={(event) => {
+                      const raw = event.target.value.trim();
+                      field.onChange(raw === "" ? null : Number(raw));
+                    }}
+                  />
+                )}
+              />
+              <ErrorMessage>{errors.rateLimit?.message?.toString()}</ErrorMessage>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <Label htmlFor="enabled">Enabled</Label>
+              <Controller
+                name="enabled"
+                control={control}
+                render={({ field }) => (
+                  <Switch checked={field.value} onCheckedChange={field.onChange} />
+                )}
+              />
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </SettingEditDialog>
   );

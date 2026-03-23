@@ -19420,8 +19420,18 @@ export namespace Prisma {
 
   export type AggregateQuery = {
     _count: QueryCountAggregateOutputType | null
+    _avg: QueryAvgAggregateOutputType | null
+    _sum: QuerySumAggregateOutputType | null
     _min: QueryMinAggregateOutputType | null
     _max: QueryMaxAggregateOutputType | null
+  }
+
+  export type QueryAvgAggregateOutputType = {
+    rateLimit: number | null
+  }
+
+  export type QuerySumAggregateOutputType = {
+    rateLimit: number | null
   }
 
   export type QueryMinAggregateOutputType = {
@@ -19429,6 +19439,7 @@ export namespace Prisma {
     name: string | null
     description: string | null
     enabled: boolean | null
+    rateLimit: number | null
     frequency: $Enums.QueryFrequency | null
     cronSchedule: string | null
     createdAt: Date | null
@@ -19440,6 +19451,7 @@ export namespace Prisma {
     name: string | null
     description: string | null
     enabled: boolean | null
+    rateLimit: number | null
     frequency: $Enums.QueryFrequency | null
     cronSchedule: string | null
     createdAt: Date | null
@@ -19451,6 +19463,7 @@ export namespace Prisma {
     name: number
     description: number
     enabled: number
+    rateLimit: number
     frequency: number
     cronSchedule: number
     rules: number
@@ -19460,11 +19473,20 @@ export namespace Prisma {
   }
 
 
+  export type QueryAvgAggregateInputType = {
+    rateLimit?: true
+  }
+
+  export type QuerySumAggregateInputType = {
+    rateLimit?: true
+  }
+
   export type QueryMinAggregateInputType = {
     id?: true
     name?: true
     description?: true
     enabled?: true
+    rateLimit?: true
     frequency?: true
     cronSchedule?: true
     createdAt?: true
@@ -19476,6 +19498,7 @@ export namespace Prisma {
     name?: true
     description?: true
     enabled?: true
+    rateLimit?: true
     frequency?: true
     cronSchedule?: true
     createdAt?: true
@@ -19487,6 +19510,7 @@ export namespace Prisma {
     name?: true
     description?: true
     enabled?: true
+    rateLimit?: true
     frequency?: true
     cronSchedule?: true
     rules?: true
@@ -19533,6 +19557,18 @@ export namespace Prisma {
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
      * 
+     * Select which fields to average
+    **/
+    _avg?: QueryAvgAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to sum
+    **/
+    _sum?: QuerySumAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
      * Select which fields to find the minimum value
     **/
     _min?: QueryMinAggregateInputType
@@ -19563,6 +19599,8 @@ export namespace Prisma {
     take?: number
     skip?: number
     _count?: QueryCountAggregateInputType | true
+    _avg?: QueryAvgAggregateInputType
+    _sum?: QuerySumAggregateInputType
     _min?: QueryMinAggregateInputType
     _max?: QueryMaxAggregateInputType
   }
@@ -19572,12 +19610,15 @@ export namespace Prisma {
     name: string
     description: string | null
     enabled: boolean
+    rateLimit: number | null
     frequency: $Enums.QueryFrequency
     cronSchedule: string | null
     rules: JsonValue | null
     createdAt: Date
     updatedAt: Date
     _count: QueryCountAggregateOutputType | null
+    _avg: QueryAvgAggregateOutputType | null
+    _sum: QuerySumAggregateOutputType | null
     _min: QueryMinAggregateOutputType | null
     _max: QueryMaxAggregateOutputType | null
   }
@@ -19601,6 +19642,7 @@ export namespace Prisma {
     name?: boolean
     description?: boolean
     enabled?: boolean
+    rateLimit?: boolean
     frequency?: boolean
     cronSchedule?: boolean
     rules?: boolean
@@ -19618,6 +19660,7 @@ export namespace Prisma {
     name?: boolean
     description?: boolean
     enabled?: boolean
+    rateLimit?: boolean
     frequency?: boolean
     cronSchedule?: boolean
     rules?: boolean
@@ -19630,6 +19673,7 @@ export namespace Prisma {
     name?: boolean
     description?: boolean
     enabled?: boolean
+    rateLimit?: boolean
     frequency?: boolean
     cronSchedule?: boolean
     rules?: boolean
@@ -19642,6 +19686,7 @@ export namespace Prisma {
     name?: boolean
     description?: boolean
     enabled?: boolean
+    rateLimit?: boolean
     frequency?: boolean
     cronSchedule?: boolean
     rules?: boolean
@@ -19649,7 +19694,7 @@ export namespace Prisma {
     updatedAt?: boolean
   }
 
-  export type QueryOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "name" | "description" | "enabled" | "frequency" | "cronSchedule" | "rules" | "createdAt" | "updatedAt", ExtArgs["result"]["query"]>
+  export type QueryOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "name" | "description" | "enabled" | "rateLimit" | "frequency" | "cronSchedule" | "rules" | "createdAt" | "updatedAt", ExtArgs["result"]["query"]>
   export type QueryInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     keywords?: boolean | Query$keywordsArgs<ExtArgs>
     sources?: boolean | Query$sourcesArgs<ExtArgs>
@@ -19673,6 +19718,7 @@ export namespace Prisma {
       name: string
       description: string | null
       enabled: boolean
+      rateLimit: number | null
       frequency: $Enums.QueryFrequency
       cronSchedule: string | null
       rules: Prisma.JsonValue | null
@@ -20109,6 +20155,7 @@ export namespace Prisma {
     readonly name: FieldRef<"Query", 'String'>
     readonly description: FieldRef<"Query", 'String'>
     readonly enabled: FieldRef<"Query", 'Boolean'>
+    readonly rateLimit: FieldRef<"Query", 'Int'>
     readonly frequency: FieldRef<"Query", 'QueryFrequency'>
     readonly cronSchedule: FieldRef<"Query", 'String'>
     readonly rules: FieldRef<"Query", 'Json'>
@@ -38783,6 +38830,7 @@ export namespace Prisma {
     name: 'name',
     description: 'description',
     enabled: 'enabled',
+    rateLimit: 'rateLimit',
     frequency: 'frequency',
     cronSchedule: 'cronSchedule',
     rules: 'rules',
@@ -40448,6 +40496,7 @@ export namespace Prisma {
     name?: StringFilter<"Query"> | string
     description?: StringNullableFilter<"Query"> | string | null
     enabled?: BoolFilter<"Query"> | boolean
+    rateLimit?: IntNullableFilter<"Query"> | number | null
     frequency?: EnumQueryFrequencyFilter<"Query"> | $Enums.QueryFrequency
     cronSchedule?: StringNullableFilter<"Query"> | string | null
     rules?: JsonNullableFilter<"Query">
@@ -40464,6 +40513,7 @@ export namespace Prisma {
     name?: SortOrder
     description?: SortOrderInput | SortOrder
     enabled?: SortOrder
+    rateLimit?: SortOrderInput | SortOrder
     frequency?: SortOrder
     cronSchedule?: SortOrderInput | SortOrder
     rules?: SortOrderInput | SortOrder
@@ -40483,6 +40533,7 @@ export namespace Prisma {
     NOT?: QueryWhereInput | QueryWhereInput[]
     description?: StringNullableFilter<"Query"> | string | null
     enabled?: BoolFilter<"Query"> | boolean
+    rateLimit?: IntNullableFilter<"Query"> | number | null
     frequency?: EnumQueryFrequencyFilter<"Query"> | $Enums.QueryFrequency
     cronSchedule?: StringNullableFilter<"Query"> | string | null
     rules?: JsonNullableFilter<"Query">
@@ -40499,14 +40550,17 @@ export namespace Prisma {
     name?: SortOrder
     description?: SortOrderInput | SortOrder
     enabled?: SortOrder
+    rateLimit?: SortOrderInput | SortOrder
     frequency?: SortOrder
     cronSchedule?: SortOrderInput | SortOrder
     rules?: SortOrderInput | SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
     _count?: QueryCountOrderByAggregateInput
+    _avg?: QueryAvgOrderByAggregateInput
     _max?: QueryMaxOrderByAggregateInput
     _min?: QueryMinOrderByAggregateInput
+    _sum?: QuerySumOrderByAggregateInput
   }
 
   export type QueryScalarWhereWithAggregatesInput = {
@@ -40517,6 +40571,7 @@ export namespace Prisma {
     name?: StringWithAggregatesFilter<"Query"> | string
     description?: StringNullableWithAggregatesFilter<"Query"> | string | null
     enabled?: BoolWithAggregatesFilter<"Query"> | boolean
+    rateLimit?: IntNullableWithAggregatesFilter<"Query"> | number | null
     frequency?: EnumQueryFrequencyWithAggregatesFilter<"Query"> | $Enums.QueryFrequency
     cronSchedule?: StringNullableWithAggregatesFilter<"Query"> | string | null
     rules?: JsonNullableWithAggregatesFilter<"Query">
@@ -42875,6 +42930,7 @@ export namespace Prisma {
     name: string
     description?: string | null
     enabled?: boolean
+    rateLimit?: number | null
     frequency?: $Enums.QueryFrequency
     cronSchedule?: string | null
     rules?: NullableJsonNullValueInput | InputJsonValue
@@ -42891,6 +42947,7 @@ export namespace Prisma {
     name: string
     description?: string | null
     enabled?: boolean
+    rateLimit?: number | null
     frequency?: $Enums.QueryFrequency
     cronSchedule?: string | null
     rules?: NullableJsonNullValueInput | InputJsonValue
@@ -42907,6 +42964,7 @@ export namespace Prisma {
     name?: StringFieldUpdateOperationsInput | string
     description?: NullableStringFieldUpdateOperationsInput | string | null
     enabled?: BoolFieldUpdateOperationsInput | boolean
+    rateLimit?: NullableIntFieldUpdateOperationsInput | number | null
     frequency?: EnumQueryFrequencyFieldUpdateOperationsInput | $Enums.QueryFrequency
     cronSchedule?: NullableStringFieldUpdateOperationsInput | string | null
     rules?: NullableJsonNullValueInput | InputJsonValue
@@ -42923,6 +42981,7 @@ export namespace Prisma {
     name?: StringFieldUpdateOperationsInput | string
     description?: NullableStringFieldUpdateOperationsInput | string | null
     enabled?: BoolFieldUpdateOperationsInput | boolean
+    rateLimit?: NullableIntFieldUpdateOperationsInput | number | null
     frequency?: EnumQueryFrequencyFieldUpdateOperationsInput | $Enums.QueryFrequency
     cronSchedule?: NullableStringFieldUpdateOperationsInput | string | null
     rules?: NullableJsonNullValueInput | InputJsonValue
@@ -42939,6 +42998,7 @@ export namespace Prisma {
     name: string
     description?: string | null
     enabled?: boolean
+    rateLimit?: number | null
     frequency?: $Enums.QueryFrequency
     cronSchedule?: string | null
     rules?: NullableJsonNullValueInput | InputJsonValue
@@ -42951,6 +43011,7 @@ export namespace Prisma {
     name?: StringFieldUpdateOperationsInput | string
     description?: NullableStringFieldUpdateOperationsInput | string | null
     enabled?: BoolFieldUpdateOperationsInput | boolean
+    rateLimit?: NullableIntFieldUpdateOperationsInput | number | null
     frequency?: EnumQueryFrequencyFieldUpdateOperationsInput | $Enums.QueryFrequency
     cronSchedule?: NullableStringFieldUpdateOperationsInput | string | null
     rules?: NullableJsonNullValueInput | InputJsonValue
@@ -42963,6 +43024,7 @@ export namespace Prisma {
     name?: StringFieldUpdateOperationsInput | string
     description?: NullableStringFieldUpdateOperationsInput | string | null
     enabled?: BoolFieldUpdateOperationsInput | boolean
+    rateLimit?: NullableIntFieldUpdateOperationsInput | number | null
     frequency?: EnumQueryFrequencyFieldUpdateOperationsInput | $Enums.QueryFrequency
     cronSchedule?: NullableStringFieldUpdateOperationsInput | string | null
     rules?: NullableJsonNullValueInput | InputJsonValue
@@ -45295,6 +45357,7 @@ export namespace Prisma {
     name?: SortOrder
     description?: SortOrder
     enabled?: SortOrder
+    rateLimit?: SortOrder
     frequency?: SortOrder
     cronSchedule?: SortOrder
     rules?: SortOrder
@@ -45302,11 +45365,16 @@ export namespace Prisma {
     updatedAt?: SortOrder
   }
 
+  export type QueryAvgOrderByAggregateInput = {
+    rateLimit?: SortOrder
+  }
+
   export type QueryMaxOrderByAggregateInput = {
     id?: SortOrder
     name?: SortOrder
     description?: SortOrder
     enabled?: SortOrder
+    rateLimit?: SortOrder
     frequency?: SortOrder
     cronSchedule?: SortOrder
     createdAt?: SortOrder
@@ -45318,10 +45386,15 @@ export namespace Prisma {
     name?: SortOrder
     description?: SortOrder
     enabled?: SortOrder
+    rateLimit?: SortOrder
     frequency?: SortOrder
     cronSchedule?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
+  }
+
+  export type QuerySumOrderByAggregateInput = {
+    rateLimit?: SortOrder
   }
 
   export type EnumQueryFrequencyWithAggregatesFilter<$PrismaModel = never> = {
@@ -48855,6 +48928,7 @@ export namespace Prisma {
     name: string
     description?: string | null
     enabled?: boolean
+    rateLimit?: number | null
     frequency?: $Enums.QueryFrequency
     cronSchedule?: string | null
     rules?: NullableJsonNullValueInput | InputJsonValue
@@ -48870,6 +48944,7 @@ export namespace Prisma {
     name: string
     description?: string | null
     enabled?: boolean
+    rateLimit?: number | null
     frequency?: $Enums.QueryFrequency
     cronSchedule?: string | null
     rules?: NullableJsonNullValueInput | InputJsonValue
@@ -48994,6 +49069,7 @@ export namespace Prisma {
     name?: StringFilter<"Query"> | string
     description?: StringNullableFilter<"Query"> | string | null
     enabled?: BoolFilter<"Query"> | boolean
+    rateLimit?: IntNullableFilter<"Query"> | number | null
     frequency?: EnumQueryFrequencyFilter<"Query"> | $Enums.QueryFrequency
     cronSchedule?: StringNullableFilter<"Query"> | string | null
     rules?: JsonNullableFilter<"Query">
@@ -49754,6 +49830,7 @@ export namespace Prisma {
     name: string
     description?: string | null
     enabled?: boolean
+    rateLimit?: number | null
     frequency?: $Enums.QueryFrequency
     cronSchedule?: string | null
     rules?: NullableJsonNullValueInput | InputJsonValue
@@ -49769,6 +49846,7 @@ export namespace Prisma {
     name: string
     description?: string | null
     enabled?: boolean
+    rateLimit?: number | null
     frequency?: $Enums.QueryFrequency
     cronSchedule?: string | null
     rules?: NullableJsonNullValueInput | InputJsonValue
@@ -51470,6 +51548,7 @@ export namespace Prisma {
     name: string
     description?: string | null
     enabled?: boolean
+    rateLimit?: number | null
     frequency?: $Enums.QueryFrequency
     cronSchedule?: string | null
     rules?: NullableJsonNullValueInput | InputJsonValue
@@ -51485,6 +51564,7 @@ export namespace Prisma {
     name: string
     description?: string | null
     enabled?: boolean
+    rateLimit?: number | null
     frequency?: $Enums.QueryFrequency
     cronSchedule?: string | null
     rules?: NullableJsonNullValueInput | InputJsonValue
@@ -51567,6 +51647,7 @@ export namespace Prisma {
     name?: StringFieldUpdateOperationsInput | string
     description?: NullableStringFieldUpdateOperationsInput | string | null
     enabled?: BoolFieldUpdateOperationsInput | boolean
+    rateLimit?: NullableIntFieldUpdateOperationsInput | number | null
     frequency?: EnumQueryFrequencyFieldUpdateOperationsInput | $Enums.QueryFrequency
     cronSchedule?: NullableStringFieldUpdateOperationsInput | string | null
     rules?: NullableJsonNullValueInput | InputJsonValue
@@ -51582,6 +51663,7 @@ export namespace Prisma {
     name?: StringFieldUpdateOperationsInput | string
     description?: NullableStringFieldUpdateOperationsInput | string | null
     enabled?: BoolFieldUpdateOperationsInput | boolean
+    rateLimit?: NullableIntFieldUpdateOperationsInput | number | null
     frequency?: EnumQueryFrequencyFieldUpdateOperationsInput | $Enums.QueryFrequency
     cronSchedule?: NullableStringFieldUpdateOperationsInput | string | null
     rules?: NullableJsonNullValueInput | InputJsonValue
@@ -51654,6 +51736,7 @@ export namespace Prisma {
     name: string
     description?: string | null
     enabled?: boolean
+    rateLimit?: number | null
     frequency?: $Enums.QueryFrequency
     cronSchedule?: string | null
     rules?: NullableJsonNullValueInput | InputJsonValue
@@ -51669,6 +51752,7 @@ export namespace Prisma {
     name: string
     description?: string | null
     enabled?: boolean
+    rateLimit?: number | null
     frequency?: $Enums.QueryFrequency
     cronSchedule?: string | null
     rules?: NullableJsonNullValueInput | InputJsonValue
@@ -51726,6 +51810,7 @@ export namespace Prisma {
     name?: StringFieldUpdateOperationsInput | string
     description?: NullableStringFieldUpdateOperationsInput | string | null
     enabled?: BoolFieldUpdateOperationsInput | boolean
+    rateLimit?: NullableIntFieldUpdateOperationsInput | number | null
     frequency?: EnumQueryFrequencyFieldUpdateOperationsInput | $Enums.QueryFrequency
     cronSchedule?: NullableStringFieldUpdateOperationsInput | string | null
     rules?: NullableJsonNullValueInput | InputJsonValue
@@ -51741,6 +51826,7 @@ export namespace Prisma {
     name?: StringFieldUpdateOperationsInput | string
     description?: NullableStringFieldUpdateOperationsInput | string | null
     enabled?: BoolFieldUpdateOperationsInput | boolean
+    rateLimit?: NullableIntFieldUpdateOperationsInput | number | null
     frequency?: EnumQueryFrequencyFieldUpdateOperationsInput | $Enums.QueryFrequency
     cronSchedule?: NullableStringFieldUpdateOperationsInput | string | null
     rules?: NullableJsonNullValueInput | InputJsonValue
@@ -53493,6 +53579,7 @@ export namespace Prisma {
     name?: StringFieldUpdateOperationsInput | string
     description?: NullableStringFieldUpdateOperationsInput | string | null
     enabled?: BoolFieldUpdateOperationsInput | boolean
+    rateLimit?: NullableIntFieldUpdateOperationsInput | number | null
     frequency?: EnumQueryFrequencyFieldUpdateOperationsInput | $Enums.QueryFrequency
     cronSchedule?: NullableStringFieldUpdateOperationsInput | string | null
     rules?: NullableJsonNullValueInput | InputJsonValue
@@ -53508,6 +53595,7 @@ export namespace Prisma {
     name?: StringFieldUpdateOperationsInput | string
     description?: NullableStringFieldUpdateOperationsInput | string | null
     enabled?: BoolFieldUpdateOperationsInput | boolean
+    rateLimit?: NullableIntFieldUpdateOperationsInput | number | null
     frequency?: EnumQueryFrequencyFieldUpdateOperationsInput | $Enums.QueryFrequency
     cronSchedule?: NullableStringFieldUpdateOperationsInput | string | null
     rules?: NullableJsonNullValueInput | InputJsonValue
@@ -53523,6 +53611,7 @@ export namespace Prisma {
     name?: StringFieldUpdateOperationsInput | string
     description?: NullableStringFieldUpdateOperationsInput | string | null
     enabled?: BoolFieldUpdateOperationsInput | boolean
+    rateLimit?: NullableIntFieldUpdateOperationsInput | number | null
     frequency?: EnumQueryFrequencyFieldUpdateOperationsInput | $Enums.QueryFrequency
     cronSchedule?: NullableStringFieldUpdateOperationsInput | string | null
     rules?: NullableJsonNullValueInput | InputJsonValue
@@ -54009,6 +54098,7 @@ export namespace Prisma {
     name?: StringFieldUpdateOperationsInput | string
     description?: NullableStringFieldUpdateOperationsInput | string | null
     enabled?: BoolFieldUpdateOperationsInput | boolean
+    rateLimit?: NullableIntFieldUpdateOperationsInput | number | null
     frequency?: EnumQueryFrequencyFieldUpdateOperationsInput | $Enums.QueryFrequency
     cronSchedule?: NullableStringFieldUpdateOperationsInput | string | null
     rules?: NullableJsonNullValueInput | InputJsonValue
@@ -54024,6 +54114,7 @@ export namespace Prisma {
     name?: StringFieldUpdateOperationsInput | string
     description?: NullableStringFieldUpdateOperationsInput | string | null
     enabled?: BoolFieldUpdateOperationsInput | boolean
+    rateLimit?: NullableIntFieldUpdateOperationsInput | number | null
     frequency?: EnumQueryFrequencyFieldUpdateOperationsInput | $Enums.QueryFrequency
     cronSchedule?: NullableStringFieldUpdateOperationsInput | string | null
     rules?: NullableJsonNullValueInput | InputJsonValue
@@ -54039,6 +54130,7 @@ export namespace Prisma {
     name?: StringFieldUpdateOperationsInput | string
     description?: NullableStringFieldUpdateOperationsInput | string | null
     enabled?: BoolFieldUpdateOperationsInput | boolean
+    rateLimit?: NullableIntFieldUpdateOperationsInput | number | null
     frequency?: EnumQueryFrequencyFieldUpdateOperationsInput | $Enums.QueryFrequency
     cronSchedule?: NullableStringFieldUpdateOperationsInput | string | null
     rules?: NullableJsonNullValueInput | InputJsonValue
