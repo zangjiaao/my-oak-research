@@ -459,6 +459,36 @@ function buildPayloadFromUnified(input: {
     return { error: "Interactive source requires a platform." };
   }
 
+  const socialConfig: Record<string, unknown> = {
+    driver: "playwright",
+    intent: {
+      type: intentType || "search",
+      args: intentArgs,
+    },
+    playwright: {
+      mode: "eval-js",
+      headless: driverConfig.headless,
+      poolEnabled: driverConfig.poolEnabled,
+      poolIdleTimeoutMs: parseNumber(driverConfig.poolIdleTimeoutMs, 120000),
+      args: Object.fromEntries(
+        Object.entries(intentArgs).map(([key, value]) => [key, String(value ?? "")])
+      ),
+    },
+    runtime: driver,
+  };
+
+  const query = String(intentArgs.query ?? "").trim();
+  const userId = String(intentArgs.userId ?? "").trim();
+  const noteId = String(intentArgs.noteId ?? "").trim();
+  const videoId = String(intentArgs.videoId ?? "").trim();
+  const username = String(intentArgs.username ?? "").trim();
+
+  if (query) socialConfig.query = query;
+  if (userId) socialConfig.userId = userId;
+  if (noteId) socialConfig.noteId = noteId;
+  if (videoId) socialConfig.videoId = videoId;
+  if (username) socialConfig.username = username;
+
   return {
     payload: {
       ...base,
@@ -466,9 +496,7 @@ function buildPayloadFromUnified(input: {
       isDarknet: false,
       social: {
         platform: normalizedPlatform,
-        config: {
-          driver,
-        },
+        config: socialConfig,
         credentialId: values.credentialId ?? null,
         proxyId: values.proxyId ?? null,
         keywordStrategy: "AUTO" as const,
