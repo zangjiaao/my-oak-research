@@ -16,6 +16,7 @@ const UploadAuthSchema = z.object({
     .min(1)
     .transform((value) => value.toUpperCase()),
   sourceId: z.string().cuid().optional(), // If provided, associate with existing source
+  sourceIds: z.array(z.string().cuid()).optional(),
   name: z.string().min(1, "Credential name is required").optional(),
   authData: z.object({
     cookies: z.array(z.object({
@@ -69,6 +70,28 @@ function credentialNameFromInput(name: string | undefined, platformUpper: string
   return name || `${platformUpper}_cookie_auth`;
 }
 
+async function associateCredentialWithSources(sourceIds: string[], credentialId: string) {
+  if (sourceIds.length === 0) return;
+  const uniqueSourceIds = Array.from(new Set(sourceIds));
+  const existingCount = await prisma.source.count({
+    where: { id: { in: uniqueSourceIds } },
+  });
+  if (existingCount !== uniqueSourceIds.length) {
+    return false;
+  }
+  await prisma.$transaction([
+    prisma.source.updateMany({
+      where: { id: { in: uniqueSourceIds } },
+      data: { credentialId },
+    }),
+    prisma.socialMediaSourceConfig.updateMany({
+      where: { sourceId: { in: uniqueSourceIds } },
+      data: { credentialId },
+    }),
+  ]);
+  return true;
+}
+
 /**
  * POST /api/follow/sources/auth/[platform]/cookie
  * 
@@ -92,6 +115,21 @@ export async function POST(
       const file = formData.get("file") as File;
       const name = formData.get("name") as string;
       const sourceId = formData.get("sourceId") as string;
+      const sourceIdsRaw = formData.get("sourceIds") as string | null;
+      let parsedSourceIds: string[] = [];
+      if (typeof sourceIdsRaw === "string" && sourceIdsRaw.trim()) {
+        try {
+          parsedSourceIds = z.array(z.string().cuid()).parse(JSON.parse(sourceIdsRaw));
+        } catch {
+          return badRequest("Invalid sourceIds");
+        }
+      }
+      const targetSourceIds = Array.from(
+        new Set([
+          ...(sourceId?.trim() ? [sourceId.trim()] : []),
+          ...parsedSourceIds,
+        ])
+      );
 
       if (!file) {
         return badRequest("Missing profile file");
@@ -177,31 +215,15 @@ export async function POST(
         });
       }
 
-      // If sourceId is provided, associate this credential with the source
-      if (sourceId) {
-        const source = await prisma.source.findUnique({
-          where: { id: sourceId },
-          include: { social: true },
-        });
-
-        if (source) {
-          logger.info("[auth] Associating credential with source", {
-            credentialId: credential.id,
-            sourceId,
-          });
-          await prisma.source.update({
-            where: { id: sourceId },
-            data: { credentialId: credential.id },
-          });
-
-          // Also update social config if exists
-          if (source.social) {
-            await prisma.socialMediaSourceConfig.update({
-              where: { sourceId: sourceId },
-              data: { credentialId: credential.id },
-            });
-          }
+      if (targetSourceIds.length > 0) {
+        const associated = await associateCredentialWithSources(targetSourceIds, credential.id);
+        if (!associated) {
+          return badRequest("One or more sourceIds do not exist");
         }
+        logger.info("[auth] Associated credential with sources", {
+          credentialId: credential.id,
+          sourceIds: targetSourceIds,
+        });
       }
 
       return json({
@@ -229,7 +251,10 @@ export async function POST(
       });
     }
 
-    const { authData, sourceId, name: providedName } = parsed.data;
+    const { authData, sourceId, sourceIds, name: providedName } = parsed.data;
+    const targetSourceIds = Array.from(
+      new Set([...(sourceIds ?? []), ...(sourceId ? [sourceId] : [])])
+    );
 
     const credentialName = credentialNameFromInput(providedName, platform.toUpperCase());
     const persistStateResponse = await fetch(`${GATHER_SERVICE_URL}/auth/state-file`, {
@@ -345,30 +370,15 @@ export async function POST(
       logger.info("[auth] Created new credential", { credentialId: credential.id });
     }
 
-    // Step 3: If sourceId provided, associate credential with source
-    if (sourceId) {
-      const source = await prisma.source.findUnique({
-        where: { id: sourceId },
-        include: { social: true },
-      });
-
-      if (source) {
-        // Update source's credentialId
-        await prisma.source.update({
-          where: { id: sourceId },
-          data: { credentialId: credential.id },
-        });
-
-        // Also update social config if exists
-        if (source.social) {
-          await prisma.socialMediaSourceConfig.update({
-            where: { sourceId: sourceId },
-            data: { credentialId: credential.id },
-          });
-        }
-
-        logger.info("[auth] Associated credential with source", { sourceId, credentialId: credential.id });
+    if (targetSourceIds.length > 0) {
+      const associated = await associateCredentialWithSources(targetSourceIds, credential.id);
+      if (!associated) {
+        return badRequest("One or more sourceIds do not exist");
       }
+      logger.info("[auth] Associated credential with sources", {
+        sourceIds: targetSourceIds,
+        credentialId: credential.id,
+      });
     }
 
     return json({

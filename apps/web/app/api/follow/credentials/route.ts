@@ -15,6 +15,7 @@ const CreateCredentialSchema = z.object({
   name: z.string().trim().min(1, "Credential name is required"),
   kind: z.string().trim().min(1, "Credential kind is required"),
   sourceId: z.string().cuid().optional(),
+  sourceIds: z.array(z.string().cuid()).optional(),
   secret: z.string().trim().min(1).optional(),
 });
 
@@ -121,13 +122,23 @@ export async function POST(req: Request) {
         details: z.flattenError(parsed.error),
       });
     }
-    const { name, kind, sourceId, secret } = parsed.data;
+    const { name, kind, sourceId, sourceIds, secret } = parsed.data;
     if (!isApiKeyKind(kind)) {
       return badRequest("Only api-key credentials are supported by this endpoint");
     }
     if (!secret) {
       return badRequest("Missing required secret for api-key credential");
     }
+    const normalizedSourceIds = Array.from(new Set([...(sourceIds ?? []), ...(sourceId ? [sourceId] : [])]));
+    if (normalizedSourceIds.length > 0) {
+      const existingSources = await prisma.source.count({
+        where: { id: { in: normalizedSourceIds } },
+      });
+      if (existingSources !== normalizedSourceIds.length) {
+        return badRequest("One or more sourceIds do not exist");
+      }
+    }
+
     const encryptedPayload = encryptCredentialPayload({
       authType: "api-key",
       secret,
@@ -147,9 +158,9 @@ export async function POST(req: Request) {
       },
     });
 
-    if (sourceId) {
-      await prisma.source.update({
-        where: { id: sourceId },
+    if (normalizedSourceIds.length > 0) {
+      await prisma.source.updateMany({
+        where: { id: { in: normalizedSourceIds } },
         data: { credentialId: created.id },
       });
     }
@@ -170,7 +181,7 @@ export async function POST(req: Request) {
       credential: {
         ...created,
         platform: kindToPlatform(created.kind),
-        usageCount: sourceId ? 1 : 0,
+        usageCount: normalizedSourceIds.length,
       },
     }, 201);
   } catch (error) {

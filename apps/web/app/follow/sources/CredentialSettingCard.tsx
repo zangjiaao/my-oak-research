@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/select";
 import { Search, PlusIcon, ShieldCheck, PencilIcon, TrashIcon } from "lucide-react";
 import { DeleteAlert, SettingCard, DataTable, DataTableAction, DataTableColumn } from "@/components/common";
+import { MultiSelect } from "@/components/common/multi-select";
 import { apiFetcher } from "@/lib/fetcher";
 import { kindToPlatform, isApiKeyKind } from "@/lib/credential-utils";
 import { useFollow } from "@/hooks/useFollow";
@@ -58,7 +59,7 @@ export default function CredentialSettingCard() {
   const [editingCredential, setEditingCredential] = useState<CredentialListItem | null>(null);
   const [kind, setKind] = useState("x-cookie");
   const [name, setName] = useState("");
-  const [sourceId, setSourceId] = useState<string>("__none__");
+  const [sourceIds, setSourceIds] = useState<string[]>([]);
   const [secret, setSecret] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [editName, setEditName] = useState("");
@@ -80,6 +81,15 @@ export default function CredentialSettingCard() {
     );
   }, [credentials, searchQuery]);
 
+  const sourceOptions = useMemo(
+    () =>
+      sources.map((source) => ({
+        label: source.name,
+        value: source.id,
+      })),
+    [sources]
+  );
+
   const refresh = async () => {
     await queryClient.invalidateQueries({ queryKey: ["credentials"] });
     await queryClient.invalidateQueries({ queryKey: ["sources"] });
@@ -87,7 +97,7 @@ export default function CredentialSettingCard() {
 
   const createMutation = useMutation({
     mutationFn: async () => {
-      const normalizedSourceId = sourceId === "__none__" ? undefined : sourceId;
+      const normalizedSourceIds = sourceIds;
       if (isApiKeyKind(kind)) {
         if (!secret.trim()) {
           throw new Error("API key is required");
@@ -98,7 +108,7 @@ export default function CredentialSettingCard() {
           body: JSON.stringify({
             name: name.trim() || `${kind}_credential`,
             kind,
-            sourceId: normalizedSourceId,
+            sourceIds: normalizedSourceIds,
             secret: secret.trim(),
           }),
         });
@@ -111,8 +121,8 @@ export default function CredentialSettingCard() {
         const formData = new FormData();
         formData.append("file", file);
         formData.append("name", name.trim() || "whatsapp_profile_auth");
-        if (normalizedSourceId) {
-          formData.append("sourceId", normalizedSourceId);
+        if (normalizedSourceIds.length > 0) {
+          formData.append("sourceIds", JSON.stringify(normalizedSourceIds));
         }
         const response = await fetch("/api/follow/sources/auth/whatsapp/cookie", {
           method: "POST",
@@ -133,7 +143,7 @@ export default function CredentialSettingCard() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             name: name.trim() || undefined,
-            sourceId: normalizedSourceId,
+            sourceIds: normalizedSourceIds,
             authData: parsed,
           }),
         }
@@ -149,7 +159,7 @@ export default function CredentialSettingCard() {
       setDialogOpen(false);
       setName("");
       setKind("x-cookie");
-      setSourceId("__none__");
+      setSourceIds([]);
       setSecret("");
       setFile(null);
       await refresh();
@@ -300,7 +310,7 @@ export default function CredentialSettingCard() {
             if (!open) {
               setKind("x-cookie");
               setName("");
-              setSourceId("__none__");
+              setSourceIds([]);
               setSecret("");
               setFile(null);
             }
@@ -350,20 +360,14 @@ export default function CredentialSettingCard() {
                 />
               </div>
               <div className="grid gap-2 md:col-span-2">
-                <Label>Bind Source (Optional)</Label>
-                <Select value={sourceId} onValueChange={setSourceId}>
-                  <SelectTrigger className="bg-background">
-                    <SelectValue placeholder="Bind source (optional)" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__none__">No source binding</SelectItem>
-                    {sources.map((source) => (
-                      <SelectItem key={source.id} value={source.id}>
-                        {source.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label>Bind Sources (Optional)</Label>
+                <MultiSelect
+                  options={sourceOptions}
+                  value={sourceIds}
+                  onValueChange={setSourceIds}
+                  placeholder="No source binding"
+                  className="bg-background"
+                />
               </div>
             </CardContent>
           </Card>
