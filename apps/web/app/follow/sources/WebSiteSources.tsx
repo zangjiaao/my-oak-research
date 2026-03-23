@@ -20,11 +20,38 @@ interface Props {
 
 type StreamSource = SourceWithRelations & Source;
 
+function asRecord(value: unknown): Record<string, unknown> {
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    return value as Record<string, unknown>;
+  }
+  return {};
+}
+
+function parseGatherMarker(value?: string | null): string | null {
+  const text = String(value ?? "").trim();
+  if (!text) return null;
+  const match = text.match(/collect\s+([a-z0-9_-]+)\s*\(([\w-]+)\)\s+via\s+gather_playwright/i);
+  const platform = String(match?.[1] ?? "").trim();
+  return platform ? platform.toUpperCase() : null;
+}
+
 function getSourcePlatformLabel(source: StreamSource): string {
   const identityPlatform =
     typeof source.identity?.platform === "string" ? source.identity.platform.trim() : "";
   if (identityPlatform) {
     return identityPlatform.toUpperCase();
+  }
+  const webConfig = "web" in source ? source.web : null;
+  const parseRules = asRecord(webConfig?.parseRules);
+  const gather = asRecord(parseRules.gather);
+  const gatherPlatform = String(gather.platform ?? "").trim();
+  if (gatherPlatform) {
+    return gatherPlatform.toUpperCase();
+  }
+  const markerPlatform =
+    parseGatherMarker(source.description) ?? parseGatherMarker(source.name);
+  if (markerPlatform) {
+    return markerPlatform;
   }
 
   const search =
