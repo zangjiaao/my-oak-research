@@ -31,6 +31,8 @@ const BatchCreateSchema = z.object({
     .optional(),
 });
 
+const SEARCH_PLATFORM_VALUES = new Set(["PARALLEL", "TAVILY", "ANSPIRE", "CUSTOM"]);
+
 function reserveUniqueName(baseName: string, usedNames: Set<string>): string {
   const normalizedBase = baseName.trim() || "Untitled Source";
   if (!usedNames.has(normalizedBase)) {
@@ -46,6 +48,16 @@ function reserveUniqueName(baseName: string, usedNames: Set<string>): string {
   }
   usedNames.add(candidate);
   return candidate;
+}
+
+function normalizeSearchPlatform(
+  value: unknown
+): "PARALLEL" | "TAVILY" | "ANSPIRE" | "CUSTOM" {
+  const normalized = String(value ?? "").trim().toUpperCase();
+  if (SEARCH_PLATFORM_VALUES.has(normalized)) {
+    return normalized as "PARALLEL" | "TAVILY" | "ANSPIRE" | "CUSTOM";
+  }
+  return "CUSTOM";
 }
 
 export async function POST(req: Request) {
@@ -248,7 +260,7 @@ export async function POST(req: Request) {
             await tx.searchEngineSourceConfig.create({
               data: {
                 sourceId: base.id,
-                platform: String(search.platform ?? template.platform) as any,
+                platform: normalizeSearchPlatform(search.platform ?? template.platform),
                 engine: String(search.engine ?? "CUSTOM") as any,
                 objective: String(search.objective ?? ""),
                 apiEndpoint:
