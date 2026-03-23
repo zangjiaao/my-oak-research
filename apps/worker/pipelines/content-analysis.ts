@@ -2005,7 +2005,7 @@ function matchTermInContent(contentLower: string, term: string): boolean {
 }
 
 function pickFallbackText(recordContent: Record<string, unknown>): string {
-  const directKeys = ["title", "content", "summary", "description", "author"];
+  const directKeys = ["content", "summary", "description", "text", "title", "author"];
   for (const key of directKeys) {
     const value = recordContent[key];
     if (typeof value === "string" && value.trim()) {
@@ -2033,6 +2033,12 @@ function normalizeGatherItems(
     if (!item || typeof item !== "object") continue;
     const row = item as Record<string, unknown>;
     const recordContent = asObject(row.recordContent);
+    const resolvedTitle =
+      typeof row.title === "string" && row.title.trim()
+        ? row.title.trim()
+        : typeof recordContent.title === "string" && recordContent.title.trim()
+          ? recordContent.title.trim()
+          : undefined;
     const text =
       typeof recordContent.text === "string"
         ? recordContent.text
@@ -2043,12 +2049,19 @@ function normalizeGatherItems(
             : pickFallbackText(recordContent);
     if (!text) continue;
 
+    const normalizedText = text.trim();
+    const shouldComposeTitleMarkdown =
+      Boolean(resolvedTitle) &&
+      !normalizedText.toLowerCase().startsWith((resolvedTitle ?? "").toLowerCase());
+    const composedMarkdown = shouldComposeTitleMarkdown
+      ? `# ${resolvedTitle}\n\n${normalizedText}`
+      : normalizedText;
     const markdown =
       typeof recordContent.markdown === "string" && recordContent.markdown.trim()
         ? recordContent.markdown
         : typeof row.markdown === "string" && row.markdown.trim()
           ? row.markdown
-        : text;
+          : composedMarkdown;
     const recordTimeRaw = row.recordTime ?? row.time;
     const parsedTime =
       typeof recordTimeRaw === "string" || recordTimeRaw instanceof Date
@@ -2066,8 +2079,8 @@ function normalizeGatherItems(
           : undefined;
 
     normalized.push({
-      title: typeof row.title === "string" ? row.title : undefined,
-      text,
+      title: resolvedTitle,
+      text: normalizedText,
       markdown,
       platform:
         typeof row.platform === "string" && row.platform.trim()
