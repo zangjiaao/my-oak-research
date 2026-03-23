@@ -873,8 +873,15 @@ function resolveGatherDispatchSource(
     return source as SocialMediaSource;
   }
 
-  const parsed = parseGatherExecutionMarker(source.description) ?? parseGatherExecutionMarker(source.name);
-  if (!parsed) {
+  const parsedByMarker =
+    parseGatherExecutionMarker(source.description) ??
+    parseGatherExecutionMarker(source.name);
+  const parsedByConfig = parseGatherExecutionConfig(source);
+  const platform = parsedByConfig?.platform ?? parsedByMarker?.platform ?? "";
+  const intent = parsedByConfig?.intent ?? parsedByMarker?.intent ?? "";
+  const args = (parsedByConfig?.args ?? {}) as Prisma.JsonObject;
+
+  if (!platform || !intent) {
     return null;
   }
 
@@ -883,12 +890,12 @@ function resolveGatherDispatchSource(
     category: "INTERACTIVE",
     social: {
       sourceId: source.id,
-      platform: parsed.platform,
+      platform,
       config: {
         driver: "playwright",
         intent: {
-          type: parsed.intent,
-          args: {},
+          type: intent,
+          args,
         },
       },
       credentialId: source.credentialId,
@@ -900,6 +907,22 @@ function resolveGatherDispatchSource(
       updatedAt: new Date(),
     },
   };
+}
+
+function parseGatherExecutionConfig(
+  source: SourceWithRelations
+): { platform: string; intent: string; args: Record<string, unknown> } | null {
+  if (!isWebSource(source)) return null;
+  const parseRules = asObject(source.web?.parseRules);
+  const gather = asObject(parseRules.gather);
+  if (Object.keys(gather).length === 0) return null;
+
+  const platform = String(gather.platform ?? "").trim().toUpperCase();
+  const intent = String(gather.intentType ?? "").trim().toLowerCase();
+  const args = asObject(gather.intentArgs);
+  if (!platform || !intent) return null;
+
+  return { platform, intent, args };
 }
 
 function parseGatherExecutionMarker(
