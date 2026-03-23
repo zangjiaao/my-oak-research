@@ -793,6 +793,15 @@ async function executeFetchDriver(
   recallQueries: string[],
   objectiveFallback?: string
 ): Promise<CleanItem[]> {
+  const gatherDispatchSource = resolveGatherDispatchSource(source);
+  if (gatherDispatchSource) {
+    return fetchSocialSource(
+      gatherDispatchSource,
+      keywordFilterTerms,
+      recallQueries
+    );
+  }
+
   switch (driver) {
     case "playwright":
       if (isWebSource(source)) {
@@ -857,6 +866,57 @@ async function fetchWithDefaultSource(
   return [];
 }
 
+function resolveGatherDispatchSource(
+  source: SourceWithRelations
+): SocialMediaSource | null {
+  if (source.category === "INTERACTIVE") {
+    return source as SocialMediaSource;
+  }
+
+  const parsed = parseGatherExecutionMarker(source.description) ?? parseGatherExecutionMarker(source.name);
+  if (!parsed) {
+    return null;
+  }
+
+  return {
+    ...(source as unknown as SocialMediaSource),
+    category: "INTERACTIVE",
+    social: {
+      sourceId: source.id,
+      platform: parsed.platform,
+      config: {
+        driver: "playwright",
+        intent: {
+          type: parsed.intent,
+          args: {},
+        },
+      },
+      credentialId: source.credentialId,
+      credential: source.credential ?? null,
+      proxyId: source.proxyId,
+      proxy: source.proxy ?? null,
+      keywordStrategy: KeywordStrategy.AUTO,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    },
+  };
+}
+
+function parseGatherExecutionMarker(
+  text: string | null | undefined
+): { platform: string; intent: string } | null {
+  const raw = String(text ?? "").trim();
+  if (!raw) return null;
+  const match = raw.match(
+    /collect\s+([a-z0-9_-]+)\s*\(([\w-]+)\)\s+via\s+gather_playwright/i
+  );
+  if (!match) return null;
+  const platform = (match[1] ?? "").trim().toUpperCase();
+  const intent = (match[2] ?? "").trim().toLowerCase();
+  if (!platform || !intent) return null;
+  return { platform, intent };
+}
+
 async function fetchPlaywrightSource(
   source: WebSource | DarknetSource
 ): Promise<CleanItem[]> {
@@ -871,16 +931,14 @@ async function fetchBrowserSource(
 ): Promise<CleanItem[]> {
   console.log(`[collector] fetchBrowserSource ${source.name}`);
 
-  let urls: string[] = [];
-  if (isWebSource(source) && source.web?.url) {
-    urls = Array.isArray(source.web.url) ? source.web.url : [source.web.url];
-  } else if (isDarknetSource(source) && source.darknet?.url) {
-    urls = Array.isArray(source.darknet.url) ? source.darknet.url : [source.darknet.url];
-  }
-
+  const urls = resolveValidSourceUrls(source);
   if (urls.length === 0) {
-    const fallbackUrl = source.description || `https://example.com/${source.id}`;
-    urls = [fallbackUrl];
+    logger.warn("skip browser fetch: no valid source urls", {
+      sourceId: source.id,
+      sourceName: source.name,
+      sourceCategory: source.category,
+    });
+    return [];
   }
 
   const allItems: CleanItem[] = [];
@@ -957,16 +1015,14 @@ async function fetchHtmlSource(
 ): Promise<CleanItem[]> {
   console.log(`[collector] fetchHtmlSource ${source.name}`);
 
-  let urls: string[] = [];
-  if (isWebSource(source) && source.web?.url) {
-    urls = Array.isArray(source.web.url) ? source.web.url : [source.web.url];
-  } else if (isDarknetSource(source) && source.darknet?.url) {
-    urls = Array.isArray(source.darknet.url) ? source.darknet.url : [source.darknet.url];
-  }
-
+  const urls = resolveValidSourceUrls(source);
   if (urls.length === 0) {
-    const fallbackUrl = source.description || `https://example.com/${source.id}`;
-    urls = [fallbackUrl];
+    logger.warn("skip html fetch: no valid source urls", {
+      sourceId: source.id,
+      sourceName: source.name,
+      sourceCategory: source.category,
+    });
+    return [];
   }
 
   const allItems: CleanItem[] = [];
@@ -993,6 +1049,29 @@ async function fetchHtmlSource(
   }
 
   return allItems;
+}
+
+function resolveValidSourceUrls(source: WebSource | DarknetSource): string[] {
+  const rawUrls = isWebSource(source)
+    ? (Array.isArray(source.web?.url) ? source.web?.url : source.web?.url ? [source.web.url] : [])
+    : isDarknetSource(source)
+      ? (Array.isArray(source.darknet?.url)
+          ? source.darknet?.url
+          : source.darknet?.url
+            ? [source.darknet.url]
+            : [])
+      : [];
+  return rawUrls
+    .map((url) => String(url).trim())
+    .filter(Boolean)
+    .filter((url) => {
+      try {
+        const parsed = new URL(url);
+        return parsed.protocol === "http:" || parsed.protocol === "https:";
+      } catch {
+        return false;
+      }
+    });
 }
 
 async function fetchSearchSource(
