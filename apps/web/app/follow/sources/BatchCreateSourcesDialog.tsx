@@ -155,6 +155,18 @@ function groupedByPlatform(templates: BatchTemplate[]) {
   }, {});
 }
 
+function getExecutionMode(driver: string): "API" | "Browser" {
+  const normalizedDriver = driver.trim().toLowerCase();
+  if (
+    normalizedDriver.includes("playwright") ||
+    normalizedDriver.includes("browser") ||
+    normalizedDriver.includes("puppeteer")
+  ) {
+    return "Browser";
+  }
+  return "API";
+}
+
 const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
   const [open, setOpen] = useState(false);
   const [state, setState] = useState<Record<string, ItemFormState>>({});
@@ -645,6 +657,14 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
                             const enabled = Boolean(state[template.key]?.enabled);
                             const localMissing = enabled ? getLocalMissing(template) : [];
                             const serverInvalid = invalidMap[template.key] ?? [];
+                            const requiresAuth = template.credentialRequirements.some(
+                              (requirement) => requirement.required
+                            );
+                            const isDarknetTemplate =
+                              template.isDarknet ||
+                              template.networkPolicy === "TOR_SOCKS5H" ||
+                              (template.tags ?? []).includes("darknet");
+                            const executionMode = getExecutionMode(template.driver);
                             return (
                               <label
                                 key={template.key}
@@ -662,13 +682,12 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
                                       <div className="min-w-0 text-sm font-medium break-words">
                                         {template.title}
                                       </div>
-                                      <Badge variant="outline">{template.category}</Badge>
-                                      <Badge variant="outline">{template.driver}</Badge>
-                                      <Badge variant="outline">{template.intent.type}</Badge>
-                                      {(template.tags ?? []).includes("darknet") ? (
-                                        <Badge variant="secondary">darknet</Badge>
+                                      {template.exists ? <Badge>Exists</Badge> : null}
+                                      {requiresAuth ? <Badge variant="outline">Auth</Badge> : null}
+                                      <Badge variant="outline">{executionMode}</Badge>
+                                      {isDarknetTemplate ? (
+                                        <Badge variant="secondary">Darknet</Badge>
                                       ) : null}
-                                      {template.exists ? <Badge>EXISTS</Badge> : null}
                                     </div>
                                     <div className="text-xs text-muted-foreground break-words">
                                       {template.description}
