@@ -45,6 +45,8 @@ function extractProfileName(data: unknown): string | null {
 const PatchCredentialSchema = z.object({
   name: z.string().trim().min(1).optional(),
   secret: z.string().trim().min(1).optional(),
+  sourceId: z.string().cuid().optional(),
+  sourceIds: z.array(z.string().cuid()).optional(),
 });
 
 /**
@@ -166,8 +168,13 @@ export async function PATCH(
         details: z.flattenError(parsed.error),
       });
     }
-    if (!parsed.data.name && !parsed.data.secret) {
-      return badRequest("At least one of name or secret must be provided");
+    if (
+      !parsed.data.name &&
+      !parsed.data.secret &&
+      parsed.data.sourceId === undefined &&
+      parsed.data.sourceIds === undefined
+    ) {
+      return badRequest("At least one of name, secret or sourceIds must be provided");
     }
 
     const existing = await prisma.credential.findUnique({ where: { id } });
@@ -192,6 +199,20 @@ export async function PATCH(
       });
     }
 
+    const normalizedSourceIds = Array.from(
+      new Set([...(parsed.data.sourceIds ?? []), ...(parsed.data.sourceId ? [parsed.data.sourceId] : [])])
+    );
+    if (parsed.data.sourceIds !== undefined || parsed.data.sourceId !== undefined) {
+      if (normalizedSourceIds.length > 0) {
+        const existingSources = await prisma.source.count({
+          where: { id: { in: normalizedSourceIds } },
+        });
+        if (existingSources !== normalizedSourceIds.length) {
+          return badRequest("One or more sourceIds do not exist");
+        }
+      }
+    }
+
     const updated = await prisma.credential.update({
       where: { id },
       data: {
@@ -205,6 +226,44 @@ export async function PATCH(
         updatedAt: true,
       },
     });
+
+    if (parsed.data.sourceIds !== undefined || parsed.data.sourceId !== undefined) {
+      await prisma.source.updateMany({
+        where: {
+          credentialId: id,
+          ...(normalizedSourceIds.length > 0 ? { id: { notIn: normalizedSourceIds } } : {}),
+        },
+        data: { credentialId: null },
+      });
+      await prisma.socialMediaSourceConfig.updateMany({
+        where: {
+          credentialId: id,
+          ...(normalizedSourceIds.length > 0 ? { sourceId: { notIn: normalizedSourceIds } } : {}),
+        },
+        data: { credentialId: null },
+      });
+      await prisma.searchEngineSourceConfig.updateMany({
+        where: {
+          credentialId: id,
+          ...(normalizedSourceIds.length > 0 ? { sourceId: { notIn: normalizedSourceIds } } : {}),
+        },
+        data: { credentialId: null },
+      });
+      if (normalizedSourceIds.length > 0) {
+        await prisma.source.updateMany({
+          where: { id: { in: normalizedSourceIds } },
+          data: { credentialId: id },
+        });
+        await prisma.socialMediaSourceConfig.updateMany({
+          where: { sourceId: { in: normalizedSourceIds } },
+          data: { credentialId: id },
+        });
+        await prisma.searchEngineSourceConfig.updateMany({
+          where: { sourceId: { in: normalizedSourceIds } },
+          data: { credentialId: id },
+        });
+      }
+    }
 
     return json({
       success: true,

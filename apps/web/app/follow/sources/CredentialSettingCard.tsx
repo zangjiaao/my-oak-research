@@ -64,6 +64,7 @@ export default function CredentialSettingCard() {
   const [file, setFile] = useState<File | null>(null);
   const [editName, setEditName] = useState("");
   const [editSecret, setEditSecret] = useState("");
+  const [editSourceIds, setEditSourceIds] = useState<string[]>([]);
 
   const credentialQuery = useQuery<{ credentials: CredentialListItem[] }>({
     queryKey: ["credentials", "all"],
@@ -81,9 +82,8 @@ export default function CredentialSettingCard() {
     );
   }, [credentials, searchQuery]);
 
-  const sourceOptions = useMemo(
-    () => {
-      const kindPlatform = kindToPlatform(kind).toLowerCase();
+  const getSourceOptionsByKind = (targetKind: string) => {
+      const kindPlatform = kindToPlatform(targetKind).toLowerCase();
       return sources
         .filter((source) => {
           const socialPlatform =
@@ -104,7 +104,7 @@ export default function CredentialSettingCard() {
                 ).toLowerCase()
               : "";
 
-          if (isApiKeyKind(kind)) {
+          if (isApiKeyKind(targetKind)) {
             return searchPlatform === kindPlatform || searchProvider === kindPlatform;
           }
           return socialPlatform === kindPlatform;
@@ -113,14 +113,23 @@ export default function CredentialSettingCard() {
           label: source.name,
           value: source.id,
         }));
-    },
-    [kind, sources]
+    };
+
+  const sourceOptions = useMemo(() => getSourceOptionsByKind(kind), [kind, sources]);
+  const editSourceOptions = useMemo(
+    () => getSourceOptionsByKind(editingCredential?.kind ?? ""),
+    [editingCredential?.kind, sources]
   );
 
   useEffect(() => {
     const allowedIds = new Set(sourceOptions.map((option) => option.value));
     setSourceIds((prev) => prev.filter((id) => allowedIds.has(id)));
   }, [sourceOptions]);
+
+  useEffect(() => {
+    const allowedIds = new Set(editSourceOptions.map((option) => option.value));
+    setEditSourceIds((prev) => prev.filter((id) => allowedIds.has(id)));
+  }, [editSourceOptions]);
 
   const refresh = async () => {
     await queryClient.invalidateQueries({ queryKey: ["credentials"] });
@@ -225,13 +234,14 @@ export default function CredentialSettingCard() {
       if (!nextName) {
         throw new Error("Credential name is required");
       }
-      const payload: Record<string, string> = {};
+      const payload: Record<string, unknown> = {};
       if (nextName !== editingCredential.name) {
         payload.name = nextName;
       }
       if (isApiKeyKind(editingCredential.kind) && editSecret.trim()) {
         payload.secret = editSecret.trim();
       }
+      payload.sourceIds = editSourceIds;
       if (Object.keys(payload).length === 0) {
         throw new Error("No changes to update");
       }
@@ -248,6 +258,7 @@ export default function CredentialSettingCard() {
       setEditingCredential(null);
       setEditName("");
       setEditSecret("");
+      setEditSourceIds([]);
       await refresh();
     },
     onError: (error) => {
@@ -294,6 +305,25 @@ export default function CredentialSettingCard() {
             setEditingCredential(item);
             setEditName(item.name);
             setEditSecret("");
+            const boundSourceIds = Array.from(
+              new Set(
+                sources
+                  .filter((source) => {
+                    const sourceCredentialId = source.credentialId ?? null;
+                    const socialCredentialId =
+                      "social" in source ? source.social?.credentialId ?? null : null;
+                    const searchCredentialId =
+                      "search" in source ? source.search?.credentialId ?? null : null;
+                    return (
+                      sourceCredentialId === item.id ||
+                      socialCredentialId === item.id ||
+                      searchCredentialId === item.id
+                    );
+                  })
+                  .map((source) => source.id)
+              )
+            );
+            setEditSourceIds(boundSourceIds);
             setEditDialogOpen(true);
           }}
         >
@@ -444,6 +474,7 @@ export default function CredentialSettingCard() {
               setEditingCredential(null);
               setEditName("");
               setEditSecret("");
+              setEditSourceIds([]);
             }
           },
         }}
@@ -475,6 +506,16 @@ export default function CredentialSettingCard() {
                     placeholder="Credential alias"
                     value={editName}
                     onChange={(event) => setEditName(event.target.value)}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label>Bind Sources (Optional)</Label>
+                  <MultiSelect
+                    options={editSourceOptions}
+                    value={editSourceIds}
+                    onValueChange={setEditSourceIds}
+                    placeholder="No source binding"
+                    className="bg-background"
                   />
                 </div>
               </CardContent>
