@@ -346,7 +346,10 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
       ...prev,
       [template.key]: {
         enabled,
-        config: prev[template.key]?.config ?? structuredClone(template.defaultConfig),
+        config:
+          enabled
+            ? structuredClone(template.defaultConfig)
+            : prev[template.key]?.config ?? structuredClone(template.defaultConfig),
         credentialRefs: prev[template.key]?.credentialRefs ?? {},
       },
     }));
