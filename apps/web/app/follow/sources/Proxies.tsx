@@ -51,11 +51,6 @@ const Proxies = ({ proxies }: Props) => {
 
   const columns: DataTableColumn<Proxy>[] = [
     {
-      key: "id",
-      label: "ID",
-      render: (proxy, index) => index + 1,
-    },
-    {
       key: "name",
       label: "Name",
       render: (proxy) => proxy.name,
