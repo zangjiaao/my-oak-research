@@ -364,7 +364,7 @@ const EditKeywordDialog = ({
           </CardHeader>
           <CardContent className="grid gap-4">
             <div className="grid gap-3">
-              <div className="flex items-center justify-between">
+              <div className="flex w-full items-center justify-between">
                 <Label htmlFor="includes">Recall Terms（召回词）</Label>
                 <Badge variant="outline">{recallTermsCount} terms</Badge>
               </div>
@@ -401,9 +401,9 @@ const EditKeywordDialog = ({
 
             <Card className="gap-3 border bg-background">
               <CardHeader className="pb-0">
-                <div className="flex justify-between items-center group">
-                  <div className="grid gap-2">
-                    <div className="flex items-center justify-between">
+                <div className="flex w-full items-start justify-between gap-4 group">
+                  <div className="grid w-full gap-2">
+                    <div className="flex w-full items-center justify-between">
                       <Label htmlFor="synonyms" className="flex items-center gap-2">
                         Scoring Terms（评分词）
                       </Label>
