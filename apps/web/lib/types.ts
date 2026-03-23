@@ -55,7 +55,9 @@ export type SocialMediaSource = SourceBaseWithRelations & {
   };
 };
 export type SearchEngineSource = SourceBaseWithRelations & {
-  search: SearchEngineSourceConfig;
+  search: SearchEngineSourceConfig & {
+    credential?: Credential | null;
+  };
 };
 
 export type SourceWithRelations =

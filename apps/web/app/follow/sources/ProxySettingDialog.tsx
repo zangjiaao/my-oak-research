@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { ControlledSelect } from "@/components/ui/controlled-select";
 import { SelectItem } from "@/components/ui/select";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface Props {
   triggerButton: React.ReactNode;
@@ -117,44 +118,65 @@ const EditProxySettingDialog = ({
       onSubmit={handleSubmit(onSubmit)}
     >
       <div className="grid gap-4">
-        <div className="grid gap-3">
-          <Label htmlFor="name">Name</Label>
-          <Input id="name" placeholder="Name" required {...register("name")} />
-          <ErrorMessage>{errors.name?.message}</ErrorMessage>
-        </div>
-        <div className="grid gap-3">
-          <Label htmlFor="type">Type</Label>
-          <Controller
-            name="type"
-            control={control}
-            render={({ field }) => (
-              <ControlledSelect
-                value={field.value as string | null}
-                onValueChange={(value: string | null) => {
-                  field.onChange(value);
-                }}
-                nullValue=""
-              >
-                {Object.values(ProxyType).map((type) => (
-                  <SelectItem key={type} value={type}>
-                    {type}
-                  </SelectItem>
-                ))}
-              </ControlledSelect>
-            )}
-          />
-          <ErrorMessage>{errors.type?.message}</ErrorMessage>
-        </div>
-        <div className="grid gap-3">
-          <Label htmlFor="url">URL</Label>
-          <Input
-            id="url"
-            placeholder="proxy://user:pass@host:port"
-            required
-            {...register("url")}
-          />
-          <ErrorMessage>{errors.url?.message}</ErrorMessage>
-        </div>
+        <Card className="gap-4 bg-muted/30">
+          <CardHeader>
+            <CardTitle>Basic Info</CardTitle>
+            <CardDescription>Set proxy name and protocol type.</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            <div className="grid gap-3">
+              <Label htmlFor="name">Name</Label>
+              <Input
+                id="name"
+                placeholder="Name"
+                required
+                className="bg-background"
+                {...register("name")}
+              />
+              <ErrorMessage>{errors.name?.message}</ErrorMessage>
+            </div>
+            <div className="grid gap-3">
+              <Label htmlFor="type">Type</Label>
+              <Controller
+                name="type"
+                control={control}
+                render={({ field }) => (
+                  <ControlledSelect
+                    value={field.value as string | null}
+                    onValueChange={(value: string | null) => {
+                      field.onChange(value);
+                    }}
+                    nullValue=""
+                  >
+                    {Object.values(ProxyType).map((type) => (
+                      <SelectItem key={type} value={type}>
+                        {type}
+                      </SelectItem>
+                    ))}
+                  </ControlledSelect>
+                )}
+              />
+              <ErrorMessage>{errors.type?.message}</ErrorMessage>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="gap-4 bg-muted/30">
+          <CardHeader>
+            <CardTitle>Connection</CardTitle>
+            <CardDescription>Provide complete proxy URL with optional auth.</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-3">
+            <Label htmlFor="url">URL</Label>
+            <Input
+              id="url"
+              placeholder="proxy://user:pass@host:port"
+              required
+              className="bg-background"
+              {...register("url")}
+            />
+            <ErrorMessage>{errors.url?.message}</ErrorMessage>
+          </CardContent>
+        </Card>
       </div>
     </SettingEditDialog>
   );

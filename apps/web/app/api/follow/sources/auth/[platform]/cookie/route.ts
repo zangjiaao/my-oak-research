@@ -1,5 +1,12 @@
 import { json, badRequest, serverError } from "@/app/api/_utils/http";
 import prisma from "@/lib/prisma";
+import { logger } from "@/lib/logger";
+import { uploadFile } from "@/lib/storage";
+import {
+  buildCredentialStorageKey,
+  platformToCredentialKind,
+} from "@/lib/credential-utils";
+import { encryptCredentialPayload, unwrapCredentialPayload } from "@/lib/credential-secret";
 import { z } from "zod";
 
 const UploadAuthSchema = z.object({
@@ -9,6 +16,7 @@ const UploadAuthSchema = z.object({
     .min(1)
     .transform((value) => value.toUpperCase()),
   sourceId: z.string().cuid().optional(), // If provided, associate with existing source
+  sourceIds: z.array(z.string().cuid()).optional(),
   name: z.string().min(1, "Credential name is required").optional(),
   authData: z.object({
     cookies: z.array(z.object({
@@ -43,21 +51,15 @@ function resolveVerifyPlatform(platform: string) {
 }
 
 function resolveCredentialKind(platform: string) {
-  const normalized = platform.trim().toLowerCase();
-  if (normalized === "x" || normalized === "twitter") {
-    return "x-cookie";
-  }
-  if (normalized === "whatsapp") {
-    return "whatsapp-profile";
-  }
-  return `${normalized}-cookie`;
+  return platformToCredentialKind(platform);
 }
 
 function extractStateFilePath(data: unknown): string | null {
-  if (!data || typeof data !== "object" || Array.isArray(data)) {
+  const payload = unwrapCredentialPayload(data);
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
     return null;
   }
-  const stateFile = (data as Record<string, unknown>).stateFile;
+  const stateFile = (payload as Record<string, unknown>).stateFile;
   if (typeof stateFile === "string" && stateFile.trim()) {
     return stateFile.trim();
   }
@@ -66,6 +68,28 @@ function extractStateFilePath(data: unknown): string | null {
 
 function credentialNameFromInput(name: string | undefined, platformUpper: string): string {
   return name || `${platformUpper}_cookie_auth`;
+}
+
+async function associateCredentialWithSources(sourceIds: string[], credentialId: string) {
+  if (sourceIds.length === 0) return;
+  const uniqueSourceIds = Array.from(new Set(sourceIds));
+  const existingCount = await prisma.source.count({
+    where: { id: { in: uniqueSourceIds } },
+  });
+  if (existingCount !== uniqueSourceIds.length) {
+    return false;
+  }
+  await prisma.$transaction([
+    prisma.source.updateMany({
+      where: { id: { in: uniqueSourceIds } },
+      data: { credentialId },
+    }),
+    prisma.socialMediaSourceConfig.updateMany({
+      where: { sourceId: { in: uniqueSourceIds } },
+      data: { credentialId },
+    }),
+  ]);
+  return true;
 }
 
 /**
@@ -86,11 +110,26 @@ export async function POST(
 
     // Special handling for WhatsApp profile (multipart/form-data)
     if (platformNormalized === "whatsapp" && contentType.includes("multipart/form-data")) {
-      console.log(`[auth] Handling WhatsApp profile upload...`);
+      logger.info("[auth] Handling WhatsApp profile upload");
       const formData = await req.formData();
       const file = formData.get("file") as File;
       const name = formData.get("name") as string;
       const sourceId = formData.get("sourceId") as string;
+      const sourceIdsRaw = formData.get("sourceIds") as string | null;
+      let parsedSourceIds: string[] = [];
+      if (typeof sourceIdsRaw === "string" && sourceIdsRaw.trim()) {
+        try {
+          parsedSourceIds = z.array(z.string().cuid()).parse(JSON.parse(sourceIdsRaw));
+        } catch {
+          return badRequest("Invalid sourceIds");
+        }
+      }
+      const targetSourceIds = Array.from(
+        new Set([
+          ...(sourceId?.trim() ? [sourceId.trim()] : []),
+          ...parsedSourceIds,
+        ])
+      );
 
       if (!file) {
         return badRequest("Missing profile file");
@@ -109,7 +148,7 @@ export async function POST(
 
       if (!verifyResponse.ok) {
         const errorText = await verifyResponse.text();
-        console.error(`[auth] Gather service error: ${errorText}`);
+        logger.error("[auth] Gather service upload-profile error", { errorText });
         return serverError(new Error(`Gather service error: ${errorText}`));
       }
 
@@ -136,16 +175,33 @@ export async function POST(
       });
 
       let credential;
+      const fileBytes = Buffer.from(await file.arrayBuffer());
+      const storageKey = buildCredentialStorageKey({
+        kind: credentialKind,
+        credentialId: null,
+        ext: "zip",
+      });
+      await uploadFile(
+        storageKey,
+        fileBytes,
+        "application/zip",
+        {
+          kind: credentialKind,
+          platform: "whatsapp",
+          profileName: String(verifyResult.profile_name ?? ""),
+        }
+      );
       const authData = {
         profileName: verifyResult.profile_name,
-        authType: "profile"
+        authType: "profile",
+        storageKey,
       };
 
       if (existingCredential) {
         credential = await prisma.credential.update({
           where: { id: existingCredential.id },
           data: {
-            data: authData as any,
+            data: encryptCredentialPayload(authData) as any,
             updatedAt: new Date(),
           },
         });
@@ -154,33 +210,20 @@ export async function POST(
           data: {
             name: credentialName,
             kind: credentialKind,
-            data: authData as any,
+            data: encryptCredentialPayload(authData) as any,
           },
         });
       }
 
-      // If sourceId is provided, associate this credential with the source
-      if (sourceId) {
-        const source = await prisma.source.findUnique({
-          where: { id: sourceId },
-          include: { social: true },
-        });
-
-        if (source) {
-          console.log(`[auth] Associating credential ${credential.id} with source ${sourceId}`);
-          await prisma.source.update({
-            where: { id: sourceId },
-            data: { credentialId: credential.id },
-          });
-
-          // Also update social config if exists
-          if (source.social) {
-            await prisma.socialMediaSourceConfig.update({
-              where: { sourceId: sourceId },
-              data: { credentialId: credential.id },
-            });
-          }
+      if (targetSourceIds.length > 0) {
+        const associated = await associateCredentialWithSources(targetSourceIds, credential.id);
+        if (!associated) {
+          return badRequest("One or more sourceIds do not exist");
         }
+        logger.info("[auth] Associated credential with sources", {
+          credentialId: credential.id,
+          sourceIds: targetSourceIds,
+        });
       }
 
       return json({
@@ -208,7 +251,10 @@ export async function POST(
       });
     }
 
-    const { authData, sourceId, name: providedName } = parsed.data;
+    const { authData, sourceId, sourceIds, name: providedName } = parsed.data;
+    const targetSourceIds = Array.from(
+      new Set([...(sourceIds ?? []), ...(sourceId ? [sourceId] : [])])
+    );
 
     const credentialName = credentialNameFromInput(providedName, platform.toUpperCase());
     const persistStateResponse = await fetch(`${GATHER_SERVICE_URL}/auth/state-file`, {
@@ -222,7 +268,7 @@ export async function POST(
     });
     if (!persistStateResponse.ok) {
       const errorText = await persistStateResponse.text();
-      console.error(`[auth] Persist state file failed: ${errorText}`);
+      logger.error("[auth] Persist state file failed", { errorText });
       return serverError(new Error(`Failed to persist auth state file: ${errorText}`));
     }
     const persistStateResult = await persistStateResponse.json();
@@ -230,7 +276,7 @@ export async function POST(
     if (typeof stateFile !== "string" || !stateFile.trim()) {
       return serverError(new Error("Failed to persist auth state file: missing stateFile"));
     }
-    console.log(`[auth] Verifying ${platform} auth with gather service via stateFile...`);
+    logger.info("[auth] Verifying auth with gather state file", { platform });
     const verifyResponse = await fetch(`${GATHER_SERVICE_URL}/verify-auth`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -242,7 +288,7 @@ export async function POST(
     });
     if (!verifyResponse.ok) {
       const errorText = await verifyResponse.text();
-      console.error(`[auth] Gather service error: ${errorText}`);
+      logger.error("[auth] Gather service verify-auth error", { errorText });
       return serverError(new Error(`Gather service error: ${errorText}`));
     }
     const verifyResult = await verifyResponse.json();
@@ -266,7 +312,10 @@ export async function POST(
     // Step 2: Create or update Credential
     const credentialKind = resolveCredentialKind(platformNormalized);
 
-    console.log(`[auth] Using credential name: "${credentialName}" for kind: "${credentialKind}"`);
+    logger.info("[auth] Creating/updating credential", {
+      credentialName,
+      credentialKind,
+    });
 
     const existingCredential = await prisma.credential.findFirst({
       where: {
@@ -276,52 +325,60 @@ export async function POST(
     });
 
     let credential;
+    const artifactStorageKey = buildCredentialStorageKey({
+      kind: credentialKind,
+      credentialId: existingCredential?.id ?? null,
+      ext: "json",
+    });
+    await uploadFile(
+      artifactStorageKey,
+      Buffer.from(JSON.stringify(authData), "utf-8"),
+      "application/json",
+      {
+        kind: credentialKind,
+        platform: verifyPlatform,
+        stateFile,
+      }
+    );
     if (existingCredential) {
       // Update existing credential
       credential = await prisma.credential.update({
         where: { id: existingCredential.id },
         data: {
-          data: { authType: "state-file", stateFile } as any,
+          data: encryptCredentialPayload({
+            authType: "state-file",
+            stateFile,
+            storageKey: artifactStorageKey,
+          }) as any,
           updatedAt: new Date(),
         },
       });
-      console.log(`[auth] Updated existing credential: ${credential.id} (Name: ${credentialName})`);
+      logger.info("[auth] Updated existing credential", { credentialId: credential.id });
     } else {
       // Create new credential
       credential = await prisma.credential.create({
         data: {
           name: credentialName,
           kind: credentialKind,
-          data: { authType: "state-file", stateFile } as any,
+          data: encryptCredentialPayload({
+            authType: "state-file",
+            stateFile,
+            storageKey: artifactStorageKey,
+          }) as any,
         },
       });
-      console.log(`[auth] Created new credential: ${credential.id} (Name: ${credentialName})`);
+      logger.info("[auth] Created new credential", { credentialId: credential.id });
     }
 
-    // Step 3: If sourceId provided, associate credential with source
-    if (sourceId) {
-      const source = await prisma.source.findUnique({
-        where: { id: sourceId },
-        include: { social: true },
-      });
-
-      if (source) {
-        // Update source's credentialId
-        await prisma.source.update({
-          where: { id: sourceId },
-          data: { credentialId: credential.id },
-        });
-
-        // Also update social config if exists
-        if (source.social) {
-          await prisma.socialMediaSourceConfig.update({
-            where: { sourceId: sourceId },
-            data: { credentialId: credential.id },
-          });
-        }
-
-        console.log(`[auth] Associated credential with source: ${sourceId}`);
+    if (targetSourceIds.length > 0) {
+      const associated = await associateCredentialWithSources(targetSourceIds, credential.id);
+      if (!associated) {
+        return badRequest("One or more sourceIds do not exist");
       }
+      logger.info("[auth] Associated credential with sources", {
+        sourceIds: targetSourceIds,
+        credentialId: credential.id,
+      });
     }
 
     return json({
@@ -337,7 +394,7 @@ export async function POST(
     });
 
   } catch (error) {
-    console.error("[auth] Error:", error);
+    logger.error("[auth] POST error", { error: logger.normalizeError(error) });
     return serverError(error);
   }
 }
@@ -383,6 +440,7 @@ export async function GET(
 
     if (verify) {
       const stateFile = extractStateFilePath(credential.data);
+      const rawPayload = unwrapCredentialPayload(credential.data);
       // Check with gather service
       const verifyResponse = await fetch(`${GATHER_SERVICE_URL}/verify-auth`, {
         method: "POST",
@@ -391,7 +449,7 @@ export async function GET(
           platform: verifyPlatform,
           ...(stateFile
             ? { state_file: stateFile }
-            : { auth_data: credential.data }),
+            : { auth_data: rawPayload }),
         }),
       });
 
@@ -415,7 +473,7 @@ export async function GET(
     });
 
   } catch (error) {
-    console.error("[auth] Error:", error);
+    logger.error("[auth] GET error", { error: logger.normalizeError(error) });
     return serverError(error);
   }
 }
@@ -451,7 +509,7 @@ export async function DELETE(
     });
 
   } catch (error) {
-    console.error("[auth] Error:", error);
+    logger.error("[auth] DELETE error", { error: logger.normalizeError(error) });
     return serverError(error);
   }
 }

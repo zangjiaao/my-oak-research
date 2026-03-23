@@ -83,6 +83,7 @@ const WebSiteSettingCard = () => {
         triggerButton={
           <Button onClick={() => setDialogOpen(true)} aria-label="Add source">
             <PlusIcon className="size-4" />
+            Add Stream Source
           </Button>
         }
       />
