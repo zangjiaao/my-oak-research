@@ -228,6 +228,17 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
   const templates = templateQuery.data?.items ?? [];
   const credentials = credentialQuery.data?.credentials ?? [];
 
+  useEffect(() => {
+    if (open) return;
+    setState({});
+    setInvalidMap({});
+    setResult(null);
+    setAuthBusyMap({});
+    setAuthStatusMap({});
+    setPlatformCredentialRefs({});
+    setPlatformProxyRefs({});
+  }, [open]);
+
   const platformOptions = useMemo(
     () =>
       Array.from(
