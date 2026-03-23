@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { PencilIcon, TrashIcon, PlayIcon } from "lucide-react";
 import { Progress } from "@/components/ui";
+import { Switch } from "@/components/ui/switch";
 import { Keyword, Source } from "@/app/generated/prisma";
 import { QueryWithAggregations } from "@/lib/types";
 import {
@@ -12,6 +13,7 @@ import {
   DataTableColumn,
   DataTableAction,
 } from "@/components/common";
+import { toast } from "sonner";
 import QueryDialog from "./QueryDialog";
 import QueryDeleteAlert from "./QueryDeleteAlert";
 
@@ -27,6 +29,8 @@ const QueriesTable = ({ queries, keywords, sources }: Props) => {
     Record<string, { progress: number; status?: string }>
   >({});
   const [runningMap, setRunningMap] = useState<Record<string, boolean>>({});
+  const [togglingMap, setTogglingMap] = useState<Record<string, boolean>>({});
+  const [enabledMap, setEnabledMap] = useState<Record<string, boolean>>({});
   const [editingQuery, setEditingQuery] = useState<
     QueryWithAggregations | undefined
   >();
@@ -61,6 +65,45 @@ const QueriesTable = ({ queries, keywords, sources }: Props) => {
     };
   }, []);
 
+  useEffect(() => {
+    setEnabledMap(
+      Object.fromEntries(queries.map((query) => [query.id, query.enabled]))
+    );
+  }, [queries]);
+
+  const handleToggleEnabled = async (query: QueryWithAggregations, enabled: boolean) => {
+    const previous = enabledMap[query.id] ?? query.enabled;
+    setEnabledMap((prev) => ({ ...prev, [query.id]: enabled }));
+    setTogglingMap((prev) => ({ ...prev, [query.id]: true }));
+    try {
+      const response = await fetch(`/api/follow/queries/${query.id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ enabled }),
+      });
+      if (!response.ok) {
+        let message = "";
+        const contentType = response.headers.get("content-type") ?? "";
+        if (contentType.includes("application/json")) {
+          const payload = (await response.json()) as { error?: string; message?: string };
+          message = payload.error || payload.message || "";
+        } else {
+          message = (await response.text()).trim();
+        }
+        throw new Error(message || "Failed to update query status");
+      }
+      toast.success(enabled ? "Task enabled" : "Task paused");
+      router.refresh();
+    } catch (error) {
+      setEnabledMap((prev) => ({ ...prev, [query.id]: previous }));
+      toast.error(error instanceof Error ? error.message : "Failed to update query status");
+    } finally {
+      setTogglingMap((prev) => ({ ...prev, [query.id]: false }));
+    }
+  };
+
   const columns: DataTableColumn<QueryWithAggregations>[] = [
     {
       key: "name",
@@ -70,16 +113,14 @@ const QueriesTable = ({ queries, keywords, sources }: Props) => {
     {
       key: "progress",
       label: "Progress",
-      className: "w-32",
+      className: "w-36 text-center",
       render: (query) => {
         const runtime = progressMap[query.id];
         const latestRun = query.latestRun;
         const percent = runtime ? runtime.progress : (latestRun?.progress ?? 0);
         return (
-          <div className="flex justify-center">
-            <div className="w-24">
-              <Progress value={Math.min(100, Math.max(0, percent))} />
-            </div>
+          <div className="mx-auto w-24">
+            <Progress value={Math.min(100, Math.max(0, percent))} />
           </div>
         );
       },
@@ -110,7 +151,22 @@ const QueriesTable = ({ queries, keywords, sources }: Props) => {
     {
       key: "enabled",
       label: "Enabled",
-      render: (query) => (query.enabled ? "Yes" : "No"),
+      className: "w-24 text-center",
+      render: (query) => {
+        const checked = enabledMap[query.id] ?? query.enabled;
+        return (
+          <div className="flex justify-center">
+            <Switch
+              checked={checked}
+              disabled={Boolean(togglingMap[query.id])}
+              onCheckedChange={(nextChecked) => {
+                void handleToggleEnabled(query, nextChecked);
+              }}
+              aria-label={checked ? "Pause task" : "Enable task"}
+            />
+          </div>
+        );
+      },
     },
   ];
 
