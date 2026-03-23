@@ -22,8 +22,28 @@ async function submitQuery(data: {
   });
 
   if (!response.ok) {
-    const error = await response.text();
-    throw new Error(error || "Failed to submit query");
+    let errorMessage = "";
+    const contentType = response.headers.get("content-type") ?? "";
+    if (contentType.includes("application/json")) {
+      const json = (await response.json()) as
+        | { error?: string; message?: string; details?: unknown }
+        | undefined;
+      errorMessage =
+        json?.error ||
+        json?.message ||
+        (typeof json?.details === "string"
+          ? json.details
+          : json?.details
+            ? JSON.stringify(json.details)
+            : "");
+    } else {
+      errorMessage = (await response.text()).trim();
+    }
+
+    throw new Error(
+      errorMessage ||
+        `Failed to submit query (HTTP ${response.status} ${response.statusText})`
+    );
   }
 
   return response.json();

@@ -45,34 +45,35 @@ export async function PATCH(
   { params: paramsPromise }: { params: Promise<{ id: string }> }
 ) {
   const params = await paramsPromise;
-  const existing = await prisma.query.findUnique({
-    where: { id: params.id },
-    include: {
-      keywords: { select: { id: true } },
-      sources: { select: { id: true } },
-      sourcePolicies: true,
-    },
-  });
-  if (!existing) {
-    return NextResponse.json({ error: "Query not found" }, { status: 404 });
-  }
+  try {
+    const existing = await prisma.query.findUnique({
+      where: { id: params.id },
+      include: {
+        keywords: { select: { id: true } },
+        sources: { select: { id: true } },
+        sourcePolicies: true,
+      },
+    });
+    if (!existing) {
+      return NextResponse.json({ error: "Query not found" }, { status: 404 });
+    }
 
-  const payload = await req.json();
-  const parsed = QueryUpdateSchema.safeParse(payload);
-  if (!parsed.success) {
-    return NextResponse.json(
-      { error: "Invalid query payload", details: z.flattenError(parsed.error) },
-      { status: 400 }
+    const payload = await req.json();
+    const parsed = QueryUpdateSchema.safeParse(payload);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "Invalid query payload", details: z.flattenError(parsed.error) },
+        { status: 400 }
+      );
+    }
+    const data = parsed.data;
+    const keywordIds = data.keywordIds;
+    const sourceIds = data.sourceIds;
+    const sourcePoliciesInput = data.sourcePolicies;
+    const finalSourceIds = sourceIds ?? existing.sources.map((source) => source.id);
+    const sourcePoliciesMap = new Map(
+      (sourcePoliciesInput ?? []).map((item) => [item.sourceId, item])
     );
-  }
-  const data = parsed.data;
-  const keywordIds = data.keywordIds;
-  const sourceIds = data.sourceIds;
-  const sourcePoliciesInput = data.sourcePolicies;
-  const finalSourceIds = sourceIds ?? existing.sources.map((source) => source.id);
-  const sourcePoliciesMap = new Map(
-    (sourcePoliciesInput ?? []).map((item) => [item.sourceId, item])
-  );
 
   // Validate keywordIds
   if (keywordIds && keywordIds.length > 0) {
@@ -264,7 +265,17 @@ export async function PATCH(
     );
   }
 
-  return NextResponse.json(query);
+    return NextResponse.json(query);
+  } catch (error) {
+    logger.error("failed to update query", {
+      queryId: params.id,
+      error: logger.normalizeError(error),
+    });
+    return NextResponse.json(
+      { error: "Failed to update query" },
+      { status: 500 }
+    );
+  }
 }
 
 export async function DELETE(
