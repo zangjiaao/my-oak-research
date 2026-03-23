@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { json, badRequest, serverError } from "@/app/api/_utils/http";
-import { Prisma } from "@/app/generated/prisma";
+import { Prisma, SearchPlatform } from "@/app/generated/prisma";
 import prisma from "@/lib/prisma";
 import { logger } from "@/lib/logger";
 import {
@@ -31,7 +31,7 @@ const BatchCreateSchema = z.object({
     .optional(),
 });
 
-const SEARCH_PLATFORM_VALUES = new Set(["PARALLEL", "TAVILY", "ANSPIRE", "CUSTOM"]);
+const SEARCH_PLATFORM_VALUES = Object.values(SearchPlatform) as string[];
 
 function reserveUniqueName(baseName: string, usedNames: Set<string>): string {
   const normalizedBase = baseName.trim() || "Untitled Source";
@@ -53,16 +53,16 @@ function reserveUniqueName(baseName: string, usedNames: Set<string>): string {
 function normalizeSearchPlatform(
   value: unknown,
   driver: unknown
-): "PARALLEL" | "TAVILY" | "ANSPIRE" | "CUSTOM" {
+): SearchPlatform {
   const normalizedDriver = String(driver ?? "").trim().toLowerCase();
   if (normalizedDriver !== "http") {
-    return "CUSTOM";
+    return SearchPlatform.CUSTOM;
   }
   const normalized = String(value ?? "").trim().toUpperCase();
-  if (SEARCH_PLATFORM_VALUES.has(normalized)) {
-    return normalized as "PARALLEL" | "TAVILY" | "ANSPIRE" | "CUSTOM";
+  if (SEARCH_PLATFORM_VALUES.includes(normalized)) {
+    return normalized as SearchPlatform;
   }
-  return "CUSTOM";
+  return SearchPlatform.CUSTOM;
 }
 
 export async function POST(req: Request) {
