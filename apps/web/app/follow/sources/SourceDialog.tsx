@@ -221,7 +221,7 @@ function getInitialScriptState(source?: SourceWithRelations): {
     return {
       category: "INTERACTIVE",
       platform: "",
-      intentType: "search",
+      intentType: "",
       scriptArgs: {},
       poolEnabled: true,
       poolIdleTimeoutMs: 120000,
@@ -335,7 +335,7 @@ function getInitialScriptState(source?: SourceWithRelations): {
   return {
     category: "INTERACTIVE",
     platform: "",
-    intentType: "search",
+    intentType: "",
     scriptArgs: {},
     poolEnabled: true,
     poolIdleTimeoutMs: 120000,
@@ -546,7 +546,7 @@ const SourceDialog = ({
   const [scriptArgEntries, setScriptArgEntries] = useState<ScriptArgEntry[]>(
     (() => {
       const entries = toScriptArgEntries(initialScriptState.scriptArgs);
-      return entries.length > 0 ? entries : [EMPTY_ARG_ENTRY];
+      return entries.length > 0 ? entries : [];
     })()
   );
   const [poolEnabled, setPoolEnabled] = useState(initialScriptState.poolEnabled);
@@ -568,7 +568,7 @@ const SourceDialog = ({
     setSelectedIntentType(initialScriptState.intentType);
     setScriptArgEntries(() => {
       const entries = toScriptArgEntries(initialScriptState.scriptArgs);
-      return entries.length > 0 ? entries : [EMPTY_ARG_ENTRY];
+      return entries.length > 0 ? entries : [];
     });
     setPoolEnabled(initialScriptState.poolEnabled);
     setPoolIdleTimeoutMs(initialScriptState.poolIdleTimeoutMs);
@@ -712,13 +712,13 @@ const SourceDialog = ({
   }, [platformOptions, platformSearch]);
 
   const intentOptions = useMemo(() => {
+    if (!normalizePlatform(selectedPlatform)) return [];
     const intents = new Set<string>();
     for (const item of selectedCapability?.intents ?? []) {
       if (item.intent) intents.add(item.intent);
     }
-    if (intents.size === 0) intents.add("search");
     return Array.from(intents).sort((a, b) => a.localeCompare(b));
-  }, [selectedCapability?.intents]);
+  }, [selectedCapability?.intents, selectedPlatform]);
 
   const selectedCatalogItem = useMemo(() => {
     if (!selectedIntentType) return null;
@@ -730,17 +730,42 @@ const SourceDialog = ({
   }, [selectedCapability?.intents, selectedIntentType]);
 
   useEffect(() => {
+    if (!normalizePlatform(selectedPlatform)) {
+      setSelectedIntentType("");
+      setScriptArgEntries([]);
+      return;
+    }
+    if (!selectedIntentType) {
+      const firstIntent = intentOptions[0] ?? "";
+      setSelectedIntentType(firstIntent);
+      if (!firstIntent) {
+        setScriptArgEntries([]);
+      }
+    }
+  }, [selectedPlatform, selectedIntentType, intentOptions]);
+
+  useEffect(() => {
+    if (!selectedIntentType) {
+      setScriptArgEntries([]);
+      return;
+    }
     const sampleArgs = selectedCatalogItem?.sample?.intentArgs ?? {};
     const sampleEntries = toScriptArgEntries(sampleArgs);
-    if (sampleEntries.length === 0) return;
+    if (sampleEntries.length === 0) {
+      setScriptArgEntries((prev) => (prev.length > 0 ? prev : [EMPTY_ARG_ENTRY]));
+      return;
+    }
     setScriptArgEntries((prev) => {
-      if (prev.length === 0) return sampleEntries;
+      const prevAllEmpty = prev.length === 0 || prev.every(
+        (entry) => !entry.key.trim() && !entry.value.trim()
+      );
+      if (prevAllEmpty) return sampleEntries;
       const existingKeys = new Set(prev.map((entry) => entry.key.trim()).filter(Boolean));
       const missing = sampleEntries.filter((entry) => !existingKeys.has(entry.key.trim()));
       if (missing.length === 0) return prev;
       return [...prev, ...missing.map((entry) => ({ ...entry, value: "" }))];
     });
-  }, [selectedCatalogItem]);
+  }, [selectedCatalogItem, selectedIntentType, selectedPlatform]);
 
   const scriptArgs = useMemo(() => entriesToScriptArgs(scriptArgEntries), [scriptArgEntries]);
 
@@ -1254,8 +1279,10 @@ const SourceDialog = ({
               <CardContent className="grid gap-3">
                 <ControlledSelect
                   value={selectedIntentType || null}
-                  onValueChange={(value) => setSelectedIntentType(value ?? "search")}
-                  placeholder="Select script type"
+                  onValueChange={(value) => setSelectedIntentType(value ?? "")}
+                  placeholder={
+                    selectedPlatform ? "Select a script..." : "Select a platform first"
+                  }
                 >
                   {intentOptions.map((intent) => (
                     <SelectItem key={intent} value={intent}>
