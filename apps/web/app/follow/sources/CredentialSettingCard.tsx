@@ -380,6 +380,7 @@ export default function CredentialSettingCard() {
               <Label>{isApiKeyKind(kind) ? "API Key" : "Credential File"}</Label>
               {isApiKeyKind(kind) ? (
                 <Input
+                  key="credential-secret-input"
                   className="bg-background"
                   placeholder="API key"
                   value={secret}
@@ -387,6 +388,7 @@ export default function CredentialSettingCard() {
                 />
               ) : (
                 <Input
+                  key="credential-file-input"
                   className="bg-background"
                   type="file"
                   accept={kind === "whatsapp-profile" ? ".zip" : ".json"}
