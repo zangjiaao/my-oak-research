@@ -180,6 +180,7 @@ const SearchEngineSettingCard = () => {
       </div>
       <Button onClick={handleAdd} aria-label="Add source">
         <PlusIcon className="size-4" />
+        Add Retrieval Source
       </Button>
     </div>
   );

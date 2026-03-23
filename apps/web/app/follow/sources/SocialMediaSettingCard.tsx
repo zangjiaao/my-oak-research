@@ -76,6 +76,7 @@ const SocialMediaSettingCard = () => {
         triggerButton={
           <Button onClick={() => setDialogOpen(true)} aria-label="Add source">
             <PlusIcon className="size-4" />
+            Add Interactive Source
           </Button>
         }
       />
