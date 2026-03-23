@@ -226,7 +226,7 @@ function getInitialScriptState(source?: SourceWithRelations): {
       poolEnabled: true,
       poolIdleTimeoutMs: 120000,
       headless: false,
-      stateFile: ".auth/x_auth.json",
+      stateFile: "",
       filterMinChars: 8,
     };
   }
@@ -271,7 +271,7 @@ function getInitialScriptState(source?: SourceWithRelations): {
       stateFile:
         typeof driver.stateFile === "string" && driver.stateFile.trim()
           ? driver.stateFile
-          : ".auth/x_auth.json",
+          : "",
       filterMinChars: parseNumber(filter.minChars, 8),
     };
   }
@@ -340,7 +340,7 @@ function getInitialScriptState(source?: SourceWithRelations): {
     poolEnabled: true,
     poolIdleTimeoutMs: 120000,
     headless: false,
-    stateFile: ".auth/x_auth.json",
+    stateFile: "",
     filterMinChars: 8,
   };
 }
@@ -806,6 +806,9 @@ const SourceDialog = ({
     }
   }, [authRequired, hasUploadedAuth, selectedCredentialId, credentials, form]);
 
+  const resolvedStateFile =
+    authRequired && Boolean(effectiveCredentialId) ? stateFile : "";
+
   const handleVerifyAuth = async () => {
     if (!selectedPlatform) {
       toast.error("Please select a platform first.");
@@ -936,7 +939,7 @@ const SourceDialog = ({
         poolEnabled,
         poolIdleTimeoutMs,
         headless,
-        stateFile,
+        stateFile: resolvedStateFile,
         filterMinChars,
         proxy: selectedProxy,
       },
@@ -953,7 +956,7 @@ const SourceDialog = ({
     poolEnabled,
     poolIdleTimeoutMs,
     headless,
-    stateFile,
+    resolvedStateFile,
     filterMinChars,
     selectedProxy,
   ]);
@@ -978,7 +981,7 @@ const SourceDialog = ({
           poolEnabled,
           poolIdleTimeoutMs,
           headless,
-          stateFile,
+          stateFile: resolvedStateFile,
           filterMinChars,
           proxy: selectedProxy,
         },
@@ -993,7 +996,7 @@ const SourceDialog = ({
     poolEnabled,
     poolIdleTimeoutMs,
     headless,
-    stateFile,
+    resolvedStateFile,
     filterMinChars,
     selectedProxy,
   ]);
@@ -1031,7 +1034,7 @@ const SourceDialog = ({
         poolEnabled,
         poolIdleTimeoutMs,
         headless,
-        stateFile,
+        stateFile: resolvedStateFile,
         filterMinChars,
         proxy: selectedProxy,
       },
