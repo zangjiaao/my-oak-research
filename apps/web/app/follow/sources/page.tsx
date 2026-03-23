@@ -23,15 +23,17 @@ const Sources = () => {
     <div>
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-2">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <TabsList className="max-w-full flex-wrap">
-            <TabsTrigger value="web-sites">Stream</TabsTrigger>
-            <TabsTrigger value="social-media">Interactive</TabsTrigger>
-            <TabsTrigger value="search-engines">Retrieval</TabsTrigger>
-            <TabsTrigger value="auth" className="ml-2">
-              Auth
-            </TabsTrigger>
-            <TabsTrigger value="proxy">Proxy</TabsTrigger>
-          </TabsList>
+          <div className="flex max-w-full flex-wrap items-center gap-2">
+            <TabsList>
+              <TabsTrigger value="web-sites">Stream</TabsTrigger>
+              <TabsTrigger value="social-media">Interactive</TabsTrigger>
+              <TabsTrigger value="search-engines">Retrieval</TabsTrigger>
+            </TabsList>
+            <TabsList>
+              <TabsTrigger value="auth">Auth</TabsTrigger>
+              <TabsTrigger value="proxy">Proxy</TabsTrigger>
+            </TabsList>
+          </div>
           {showSourceBatchCreate ? <BatchCreateSourcesDialog proxies={proxies} /> : null}
         </div>
         <TabsContent value="web-sites">
