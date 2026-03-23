@@ -26,7 +26,7 @@ export const ControlledSelect = ({
       value={value || nullValue}
       onValueChange={(val) => onValueChange(val === nullValue ? null : val)}
     >
-      <SelectTrigger>
+      <SelectTrigger className="bg-background">
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
       <SelectContent>
