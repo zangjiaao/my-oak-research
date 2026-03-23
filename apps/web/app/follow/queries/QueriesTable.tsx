@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { PencilIcon, TrashIcon, PlayIcon } from "lucide-react";
 import { Progress } from "@/components/ui";
@@ -25,12 +26,12 @@ interface Props {
 
 const QueriesTable = ({ queries, keywords, sources }: Props) => {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [progressMap, setProgressMap] = useState<
     Record<string, { progress: number; status?: string }>
   >({});
   const [runningMap, setRunningMap] = useState<Record<string, boolean>>({});
   const [togglingMap, setTogglingMap] = useState<Record<string, boolean>>({});
-  const [enabledMap, setEnabledMap] = useState<Record<string, boolean>>({});
   const [editingQuery, setEditingQuery] = useState<
     QueryWithAggregations | undefined
   >();
@@ -65,16 +66,15 @@ const QueriesTable = ({ queries, keywords, sources }: Props) => {
     };
   }, []);
 
-  useEffect(() => {
-    setEnabledMap(
-      Object.fromEntries(queries.map((query) => [query.id, query.enabled]))
-    );
-  }, [queries]);
-
   const handleToggleEnabled = async (query: QueryWithAggregations, enabled: boolean) => {
-    const previous = enabledMap[query.id] ?? query.enabled;
-    setEnabledMap((prev) => ({ ...prev, [query.id]: enabled }));
+    const previousQueries =
+      queryClient.getQueryData<QueryWithAggregations[]>(["queries"]) ?? [];
     setTogglingMap((prev) => ({ ...prev, [query.id]: true }));
+    queryClient.setQueryData<QueryWithAggregations[]>(["queries"], (current) =>
+      (current ?? []).map((item) =>
+        item.id === query.id ? { ...item, enabled } : item
+      )
+    );
     try {
       const response = await fetch(`/api/follow/queries/${query.id}`, {
         method: "PATCH",
@@ -95,9 +95,12 @@ const QueriesTable = ({ queries, keywords, sources }: Props) => {
         throw new Error(message || "Failed to update query status");
       }
       toast.success(enabled ? "Task enabled" : "Task paused");
-      router.refresh();
+      queryClient.invalidateQueries({ queryKey: ["queries"] });
     } catch (error) {
-      setEnabledMap((prev) => ({ ...prev, [query.id]: previous }));
+      queryClient.setQueryData<QueryWithAggregations[]>(
+        ["queries"],
+        previousQueries
+      );
       toast.error(error instanceof Error ? error.message : "Failed to update query status");
     } finally {
       setTogglingMap((prev) => ({ ...prev, [query.id]: false }));
@@ -153,7 +156,7 @@ const QueriesTable = ({ queries, keywords, sources }: Props) => {
       label: "Enabled",
       className: "w-24 text-center",
       render: (query) => {
-        const checked = enabledMap[query.id] ?? query.enabled;
+        const checked = query.enabled;
         return (
           <div className="flex justify-center">
             <Switch
