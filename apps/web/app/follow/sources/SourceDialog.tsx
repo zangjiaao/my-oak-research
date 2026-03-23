@@ -229,6 +229,8 @@ function getInitialScriptState(source?: SourceWithRelations): {
   platform: string;
   intentType: string;
   scriptArgs: Record<string, unknown>;
+  recallBindingEnabled: boolean;
+  recallBindingArgKeys: string[];
   poolEnabled: boolean;
   poolIdleTimeoutMs: number;
   headless: boolean;
@@ -241,6 +243,8 @@ function getInitialScriptState(source?: SourceWithRelations): {
       platform: "",
       intentType: "",
       scriptArgs: {},
+      recallBindingEnabled: true,
+      recallBindingArgKeys: ["query"],
       poolEnabled: true,
       poolIdleTimeoutMs: 120000,
       headless: false,
@@ -262,6 +266,12 @@ function getInitialScriptState(source?: SourceWithRelations): {
       config.intent && typeof config.intent === "object" && !Array.isArray(config.intent)
         ? (config.intent as Record<string, unknown>)
         : {};
+    const recallBinding =
+      intent.recallBinding &&
+      typeof intent.recallBinding === "object" &&
+      !Array.isArray(intent.recallBinding)
+        ? (intent.recallBinding as Record<string, unknown>)
+        : {};
     const filter =
       driver.filter && typeof driver.filter === "object" && !Array.isArray(driver.filter)
         ? (driver.filter as Record<string, unknown>)
@@ -282,6 +292,14 @@ function getInitialScriptState(source?: SourceWithRelations): {
           ? String(script.type ?? intent.type)
           : "search",
       scriptArgs: intentArgs,
+      recallBindingEnabled:
+        typeof recallBinding.enabled === "boolean" ? recallBinding.enabled : true,
+      recallBindingArgKeys:
+        Array.isArray(recallBinding.argKeys) && recallBinding.argKeys.length > 0
+          ? recallBinding.argKeys
+              .map((item) => String(item).trim())
+              .filter(Boolean)
+          : ["query"],
       poolEnabled:
         typeof driver.poolEnabled === "boolean"
           ? driver.poolEnabled
@@ -323,6 +341,8 @@ function getInitialScriptState(source?: SourceWithRelations): {
       platform: String(options.provider ?? source.search.platform ?? ""),
       intentType: "search",
       scriptArgs: { query: source.search.objective ?? "" },
+      recallBindingEnabled: true,
+      recallBindingArgKeys: ["query"],
       poolEnabled: true,
       poolIdleTimeoutMs: 120000,
       headless: false,
@@ -352,6 +372,8 @@ function getInitialScriptState(source?: SourceWithRelations): {
         Object.keys(gatherIntentArgs).length > 0
           ? gatherIntentArgs
           : { url: source.web.url ?? [] },
+      recallBindingEnabled: true,
+      recallBindingArgKeys: ["query"],
       poolEnabled: true,
       poolIdleTimeoutMs: 120000,
       headless: false,
@@ -371,6 +393,8 @@ function getInitialScriptState(source?: SourceWithRelations): {
       platform: "DARKWEBGO",
       intentType: "search",
       scriptArgs: { url: source.darknet.url ?? [] },
+      recallBindingEnabled: true,
+      recallBindingArgKeys: ["query"],
       poolEnabled: true,
       poolIdleTimeoutMs: 120000,
       headless: false,
@@ -384,6 +408,8 @@ function getInitialScriptState(source?: SourceWithRelations): {
     platform: "",
     intentType: "",
     scriptArgs: {},
+    recallBindingEnabled: true,
+    recallBindingArgKeys: ["query"],
     poolEnabled: true,
     poolIdleTimeoutMs: 120000,
     headless: false,
@@ -399,6 +425,8 @@ function buildPayloadFromUnified(input: {
   platform: string;
   intentType: string;
   scriptArgs: Record<string, unknown>;
+  recallBindingEnabled: boolean;
+  recallBindingArgKeys: string[];
   driverConfig: DriverConfigInput;
   selectedCapabilityEngine?: string | null;
 }) {
@@ -409,6 +437,8 @@ function buildPayloadFromUnified(input: {
     platform,
     intentType,
     scriptArgs,
+    recallBindingEnabled,
+    recallBindingArgKeys,
     driverConfig,
     selectedCapabilityEngine,
   } =
@@ -536,6 +566,11 @@ function buildPayloadFromUnified(input: {
     intent: {
       type: intentType || "search",
       args: intentArgs,
+      recallBinding: {
+        enabled: recallBindingEnabled,
+        argKeys:
+          recallBindingArgKeys.length > 0 ? recallBindingArgKeys : ["query"],
+      },
     },
     playwright: {
       mode: "eval-js",
@@ -621,6 +656,12 @@ const SourceDialog = ({
       return entries.length > 0 ? entries : [];
     })()
   );
+  const [recallBindingEnabled, setRecallBindingEnabled] = useState(
+    initialScriptState.recallBindingEnabled
+  );
+  const [recallBindingArgKeysInput, setRecallBindingArgKeysInput] = useState(
+    initialScriptState.recallBindingArgKeys.join("\n")
+  );
   const [poolEnabled, setPoolEnabled] = useState(initialScriptState.poolEnabled);
   const [poolIdleTimeoutMs, setPoolIdleTimeoutMs] = useState(initialScriptState.poolIdleTimeoutMs);
   const [headless, setHeadless] = useState(initialScriptState.headless);
@@ -642,6 +683,8 @@ const SourceDialog = ({
       const entries = toScriptArgEntries(initialScriptState.scriptArgs);
       return entries.length > 0 ? entries : [];
     });
+    setRecallBindingEnabled(initialScriptState.recallBindingEnabled);
+    setRecallBindingArgKeysInput(initialScriptState.recallBindingArgKeys.join("\n"));
     setPoolEnabled(initialScriptState.poolEnabled);
     setPoolIdleTimeoutMs(initialScriptState.poolIdleTimeoutMs);
     setHeadless(initialScriptState.headless);
@@ -821,6 +864,15 @@ const SourceDialog = ({
   }, [selectedCatalogItem, selectedIntentType, selectedPlatform]);
 
   const scriptArgs = useMemo(() => entriesToScriptArgs(scriptArgEntries), [scriptArgEntries]);
+  const recallBindingArgKeys = useMemo(() => {
+    const raw = recallBindingArgKeysInput.trim();
+    if (!raw) return ["query"];
+    const parts = raw
+      .split(/[\n\r,，;；\t]+/g)
+      .map((item) => item.trim())
+      .filter(Boolean);
+    return Array.from(new Set(parts));
+  }, [recallBindingArgKeysInput]);
 
   const {
     data: credentialData,
@@ -988,6 +1040,8 @@ const SourceDialog = ({
       platform: selectedPlatform,
       intentType: selectedIntentType,
       scriptArgs,
+      recallBindingEnabled,
+      recallBindingArgKeys,
       driverConfig: {
         poolEnabled,
         poolIdleTimeoutMs,
@@ -1007,6 +1061,8 @@ const SourceDialog = ({
     selectedPlatform,
     selectedIntentType,
     scriptArgs,
+    recallBindingEnabled,
+    recallBindingArgKeys,
     poolEnabled,
     poolIdleTimeoutMs,
     headless,
@@ -1121,6 +1177,8 @@ const SourceDialog = ({
       platform: selectedPlatform,
       intentType: selectedIntentType,
       scriptArgs,
+      recallBindingEnabled,
+      recallBindingArgKeys,
       driverConfig: {
         poolEnabled,
         poolIdleTimeoutMs,
@@ -1451,6 +1509,31 @@ const SourceDialog = ({
                       </Button>
                     </div>
                   ))}
+                </div>
+                <div className="grid gap-3 rounded-md border p-3">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="recall-binding-switch">Recall Injection</Label>
+                    <Switch
+                      id="recall-binding-switch"
+                      checked={recallBindingEnabled}
+                      onCheckedChange={setRecallBindingEnabled}
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="recall-binding-arg-keys">Recall Arg Keys</Label>
+                    <Textarea
+                      id="recall-binding-arg-keys"
+                      rows={2}
+                      placeholder={"query"}
+                      value={recallBindingArgKeysInput}
+                      onChange={(event) =>
+                        setRecallBindingArgKeysInput(event.target.value)
+                      }
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      One key per line or comma-separated. Default: query.
+                    </p>
+                  </div>
                 </div>
               </CardContent>
             </Card>

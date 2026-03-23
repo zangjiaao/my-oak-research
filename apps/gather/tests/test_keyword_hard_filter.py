@@ -103,6 +103,21 @@ class StubKeywordDriver(BaseDriver):
                     },
                 )
             ]
+        if request.platform == "term-and-hit":
+            return [
+                CleanItem(
+                    title="Openclaw release",
+                    text="Openclaw latest memory improvements are published",
+                    markdown="Openclaw latest memory improvements are published",
+                    platform="BBC",
+                    sourceId=request.source_id,
+                    sourceType="SOCIAL_MEDIA",
+                    recordContent={
+                        "title": "Openclaw release",
+                        "description": "Openclaw latest memory improvements are published",
+                    },
+                )
+            ]
         if request.platform == "url-only":
             return [
                 CleanItem(
@@ -454,6 +469,50 @@ def test_single_cjk_keyword_filtered_by_min_cjk_chars(monkeypatch):
             "sourceId": "source-cjk-short-keyword",
             "keywords": ["智"],
             "driver": {"name": "playwright", "option": {}, "filter": {}},
+            "output": {"field": ["title", "description"]},
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json() == []
+
+
+def test_term_and_word_boundary_mode_matches_split_terms(monkeypatch):
+    client = _client_with_stub_driver(monkeypatch)
+    response = client.post(
+        "/v2/fetch",
+        json={
+            "platform": "term-and-hit",
+            "sourceId": "source-term-and-hit",
+            "keywords": ["openclaw memory"],
+            "driver": {
+                "name": "playwright",
+                "option": {},
+                "filter": {"matchMode": "term_and_word_boundary"},
+            },
+            "output": {"field": ["title", "description"]},
+        },
+    )
+
+    assert response.status_code == 200
+    items = response.json()
+    assert len(items) == 1
+    assert items[0]["matchedKeywords"] == ["openclaw memory"]
+
+
+def test_term_and_word_boundary_mode_still_avoids_airport_false_positive(monkeypatch):
+    client = _client_with_stub_driver(monkeypatch)
+    response = client.post(
+        "/v2/fetch",
+        json={
+            "platform": "ascii-substring-miss",
+            "sourceId": "source-term-and-airport",
+            "keywords": ["ai"],
+            "driver": {
+                "name": "playwright",
+                "option": {},
+                "filter": {"matchMode": "term_and_word_boundary"},
+            },
             "output": {"field": ["title", "description"]},
         },
     )

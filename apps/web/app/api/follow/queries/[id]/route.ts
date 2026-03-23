@@ -16,6 +16,7 @@ export async function GET(
     include: {
       keywords: true,
       sources: true,
+      sourcePolicies: true,
       _count: {
         select: {
           keywords: true,
@@ -46,7 +47,11 @@ export async function PATCH(
   const params = await paramsPromise;
   const existing = await prisma.query.findUnique({
     where: { id: params.id },
-    include: { keywords: { select: { id: true } }, sources: { select: { id: true } } },
+    include: {
+      keywords: { select: { id: true } },
+      sources: { select: { id: true } },
+      sourcePolicies: true,
+    },
   });
   if (!existing) {
     return NextResponse.json({ error: "Query not found" }, { status: 404 });
@@ -63,6 +68,11 @@ export async function PATCH(
   const data = parsed.data;
   const keywordIds = data.keywordIds;
   const sourceIds = data.sourceIds;
+  const sourcePoliciesInput = data.sourcePolicies;
+  const finalSourceIds = sourceIds ?? existing.sources.map((source) => source.id);
+  const sourcePoliciesMap = new Map(
+    (sourcePoliciesInput ?? []).map((item) => [item.sourceId, item])
+  );
 
   // Validate keywordIds
   if (keywordIds && keywordIds.length > 0) {
@@ -90,32 +100,107 @@ export async function PATCH(
     }
   }
 
-  const query = await prisma.query.update({
-    where: { id: params.id },
-    data: {
-      ...(data.name !== undefined ? { name: data.name } : {}),
-      ...(data.description !== undefined ? { description: data.description ?? null } : {}),
-      ...(data.frequency !== undefined ? { frequency: data.frequency } : {}),
-      ...(data.frequency !== undefined
-        ? { cronSchedule: data.frequency === "CRONTAB" ? (data.cronSchedule ?? null) : null }
-        : {}),
-      ...(data.enabled !== undefined ? { enabled: data.enabled } : {}),
-      ...(data.rules !== undefined ? { rules: data.rules } : {}),
-      ...(keywordIds !== undefined
-        ? {
-            keywords: {
-              set: keywordIds.map((id) => ({ id })),
+  const sourcePolicySourceIds = Array.from(sourcePoliciesMap.keys());
+  if (sourcePolicySourceIds.length > 0) {
+    const existingPolicySources = await prisma.source.count({
+      where: { id: { in: sourcePolicySourceIds } },
+    });
+    if (existingPolicySources !== sourcePolicySourceIds.length) {
+      return NextResponse.json(
+        { error: "One or more provided sourcePolicies.sourceId do not exist." },
+        { status: 400 }
+      );
+    }
+  }
+
+  if (sourcePolicySourceIds.some((sourceId) => !finalSourceIds.includes(sourceId))) {
+    return NextResponse.json(
+      { error: "sourcePolicies.sourceId must be selected in sourceIds." },
+      { status: 400 }
+    );
+  }
+
+  const query = await prisma.$transaction(async (tx) => {
+    const updated = await tx.query.update({
+      where: { id: params.id },
+      data: {
+        ...(data.name !== undefined ? { name: data.name } : {}),
+        ...(data.description !== undefined ? { description: data.description ?? null } : {}),
+        ...(data.frequency !== undefined ? { frequency: data.frequency } : {}),
+        ...(data.frequency !== undefined
+          ? { cronSchedule: data.frequency === "CRONTAB" ? (data.cronSchedule ?? null) : null }
+          : {}),
+        ...(data.enabled !== undefined ? { enabled: data.enabled } : {}),
+        ...(data.rules !== undefined ? { rules: data.rules } : {}),
+        ...(keywordIds !== undefined
+          ? {
+              keywords: {
+                set: keywordIds.map((id) => ({ id })),
+              },
+            }
+          : {}),
+        ...(sourceIds !== undefined
+          ? {
+              sources: {
+                set: sourceIds.map((id) => ({ id })),
+              },
+            }
+          : {}),
+      },
+    });
+
+    if (sourceIds !== undefined) {
+      await tx.querySourcePolicy.deleteMany({
+        where: {
+          queryId: params.id,
+          NOT: {
+            sourceId: {
+              in: sourceIds,
             },
-          }
-        : {}),
-      ...(sourceIds !== undefined
-        ? {
-            sources: {
-              set: sourceIds.map((id) => ({ id })),
+          },
+        },
+      });
+    }
+
+    if (sourcePoliciesInput !== undefined) {
+      if (sourceIds !== undefined) {
+        await tx.querySourcePolicy.deleteMany({
+          where: {
+            queryId: params.id,
+            sourceId: {
+              in: sourceIds,
             },
-          }
-        : {}),
-    },
+            NOT: {
+              sourceId: {
+                in: sourcePolicySourceIds,
+              },
+            },
+          },
+        });
+      }
+      for (const item of sourcePoliciesMap.values()) {
+        await tx.querySourcePolicy.upsert({
+          where: {
+            queryId_sourceId: {
+              queryId: params.id,
+              sourceId: item.sourceId,
+            },
+          },
+          create: {
+            queryId: params.id,
+            sourceId: item.sourceId,
+            contentFilterEnabled: item.contentFilterEnabled,
+            contentFilterMode: item.contentFilterMode,
+          },
+          update: {
+            contentFilterEnabled: item.contentFilterEnabled,
+            contentFilterMode: item.contentFilterMode,
+          },
+        });
+      }
+    }
+
+    return updated;
   });
 
   try {
@@ -147,6 +232,19 @@ export async function PATCH(
         },
       },
     });
+    await prisma.querySourcePolicy.deleteMany({
+      where: { queryId: params.id },
+    });
+    if (existing.sourcePolicies.length > 0) {
+      await prisma.querySourcePolicy.createMany({
+        data: existing.sourcePolicies.map((item) => ({
+          queryId: item.queryId,
+          sourceId: item.sourceId,
+          contentFilterEnabled: item.contentFilterEnabled,
+          contentFilterMode: item.contentFilterMode,
+        })),
+      });
+    }
     await scheduleQueryCollect({
       queryId: existing.id,
       frequency: existing.frequency,

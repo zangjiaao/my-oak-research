@@ -13,6 +13,7 @@ import {
   Credential,
   QueryRun,
   TaskStatus,
+  QuerySourcePolicy,
 } from "@/app/generated/prisma";
 
 type QueryRunSummary = Pick<
@@ -23,6 +24,7 @@ type QueryRunSummary = Pick<
 export type QueryWithAggregations = Query & {
   keywords: Keyword[];
   sources: Source[];
+  sourcePolicies: QuerySourcePolicy[];
   keywordsCount: number;
   sourcesCount: number;
   latestRun?: QueryRunSummary;

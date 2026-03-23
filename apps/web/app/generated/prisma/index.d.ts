@@ -84,6 +84,11 @@ export type SocialMediaSourceConfig = $Result.DefaultSelection<Prisma.$SocialMed
  */
 export type Query = $Result.DefaultSelection<Prisma.$QueryPayload>
 /**
+ * Model QuerySourcePolicy
+ * 
+ */
+export type QuerySourcePolicy = $Result.DefaultSelection<Prisma.$QuerySourcePolicyPayload>
+/**
  * Model QueryRun
  * 
  */
@@ -264,6 +269,13 @@ export const QueryFrequency: {
 export type QueryFrequency = (typeof QueryFrequency)[keyof typeof QueryFrequency]
 
 
+export const QueryContentFilterMode: {
+  TERM_AND_WORD_BOUNDARY: 'TERM_AND_WORD_BOUNDARY'
+};
+
+export type QueryContentFilterMode = (typeof QueryContentFilterMode)[keyof typeof QueryContentFilterMode]
+
+
 export const TaskStatus: {
   PENDING: 'PENDING',
   RUNNING: 'RUNNING',
@@ -341,6 +353,10 @@ export const ContentSubjectMatchSource: typeof $Enums.ContentSubjectMatchSource
 export type QueryFrequency = $Enums.QueryFrequency
 
 export const QueryFrequency: typeof $Enums.QueryFrequency
+
+export type QueryContentFilterMode = $Enums.QueryContentFilterMode
+
+export const QueryContentFilterMode: typeof $Enums.QueryContentFilterMode
 
 export type TaskStatus = $Enums.TaskStatus
 
@@ -614,6 +630,16 @@ export class PrismaClient<
     * ```
     */
   get query(): Prisma.QueryDelegate<ExtArgs, ClientOptions>;
+
+  /**
+   * `prisma.querySourcePolicy`: Exposes CRUD operations for the **QuerySourcePolicy** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more QuerySourcePolicies
+    * const querySourcePolicies = await prisma.querySourcePolicy.findMany()
+    * ```
+    */
+  get querySourcePolicy(): Prisma.QuerySourcePolicyDelegate<ExtArgs, ClientOptions>;
 
   /**
    * `prisma.queryRun`: Exposes CRUD operations for the **QueryRun** model.
@@ -1212,6 +1238,7 @@ export namespace Prisma {
     SearchEngineSourceConfig: 'SearchEngineSourceConfig',
     SocialMediaSourceConfig: 'SocialMediaSourceConfig',
     Query: 'Query',
+    QuerySourcePolicy: 'QuerySourcePolicy',
     QueryRun: 'QueryRun',
     TaskEvent: 'TaskEvent',
     Content: 'Content',
@@ -1242,7 +1269,7 @@ export namespace Prisma {
       omit: GlobalOmitOptions
     }
     meta: {
-      modelProps: "category" | "keyword" | "proxy" | "credential" | "source" | "sourceIdentity" | "bbPreset" | "sourcePresetBinding" | "bbPresetSyncLog" | "webSourceConfig" | "darknetSourceConfig" | "searchEngineSourceConfig" | "socialMediaSourceConfig" | "query" | "queryRun" | "taskEvent" | "content" | "contentKeyword" | "contentSubjectMatch" | "contentEntity" | "favorite" | "reportTemplate" | "report" | "chatSession" | "chatMessage" | "reportMaterial" | "knowledge" | "knowledgeFile" | "knowledgeChunk"
+      modelProps: "category" | "keyword" | "proxy" | "credential" | "source" | "sourceIdentity" | "bbPreset" | "sourcePresetBinding" | "bbPresetSyncLog" | "webSourceConfig" | "darknetSourceConfig" | "searchEngineSourceConfig" | "socialMediaSourceConfig" | "query" | "querySourcePolicy" | "queryRun" | "taskEvent" | "content" | "contentKeyword" | "contentSubjectMatch" | "contentEntity" | "favorite" | "reportTemplate" | "report" | "chatSession" | "chatMessage" | "reportMaterial" | "knowledge" | "knowledgeFile" | "knowledgeChunk"
       txIsolationLevel: Prisma.TransactionIsolationLevel
     }
     model: {
@@ -2279,6 +2306,80 @@ export namespace Prisma {
           count: {
             args: Prisma.QueryCountArgs<ExtArgs>
             result: $Utils.Optional<QueryCountAggregateOutputType> | number
+          }
+        }
+      }
+      QuerySourcePolicy: {
+        payload: Prisma.$QuerySourcePolicyPayload<ExtArgs>
+        fields: Prisma.QuerySourcePolicyFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.QuerySourcePolicyFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$QuerySourcePolicyPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.QuerySourcePolicyFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$QuerySourcePolicyPayload>
+          }
+          findFirst: {
+            args: Prisma.QuerySourcePolicyFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$QuerySourcePolicyPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.QuerySourcePolicyFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$QuerySourcePolicyPayload>
+          }
+          findMany: {
+            args: Prisma.QuerySourcePolicyFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$QuerySourcePolicyPayload>[]
+          }
+          create: {
+            args: Prisma.QuerySourcePolicyCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$QuerySourcePolicyPayload>
+          }
+          createMany: {
+            args: Prisma.QuerySourcePolicyCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.QuerySourcePolicyCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$QuerySourcePolicyPayload>[]
+          }
+          delete: {
+            args: Prisma.QuerySourcePolicyDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$QuerySourcePolicyPayload>
+          }
+          update: {
+            args: Prisma.QuerySourcePolicyUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$QuerySourcePolicyPayload>
+          }
+          deleteMany: {
+            args: Prisma.QuerySourcePolicyDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.QuerySourcePolicyUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateManyAndReturn: {
+            args: Prisma.QuerySourcePolicyUpdateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$QuerySourcePolicyPayload>[]
+          }
+          upsert: {
+            args: Prisma.QuerySourcePolicyUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$QuerySourcePolicyPayload>
+          }
+          aggregate: {
+            args: Prisma.QuerySourcePolicyAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateQuerySourcePolicy>
+          }
+          groupBy: {
+            args: Prisma.QuerySourcePolicyGroupByArgs<ExtArgs>
+            result: $Utils.Optional<QuerySourcePolicyGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.QuerySourcePolicyCountArgs<ExtArgs>
+            result: $Utils.Optional<QuerySourcePolicyCountAggregateOutputType> | number
           }
         }
       }
@@ -3498,6 +3599,7 @@ export namespace Prisma {
     searchEngineSourceConfig?: SearchEngineSourceConfigOmit
     socialMediaSourceConfig?: SocialMediaSourceConfigOmit
     query?: QueryOmit
+    querySourcePolicy?: QuerySourcePolicyOmit
     queryRun?: QueryRunOmit
     taskEvent?: TaskEventOmit
     content?: ContentOmit
@@ -3782,11 +3884,13 @@ export namespace Prisma {
   export type SourceCountOutputType = {
     presetBindings: number
     queries: number
+    querySourcePolicies: number
   }
 
   export type SourceCountOutputTypeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     presetBindings?: boolean | SourceCountOutputTypeCountPresetBindingsArgs
     queries?: boolean | SourceCountOutputTypeCountQueriesArgs
+    querySourcePolicies?: boolean | SourceCountOutputTypeCountQuerySourcePoliciesArgs
   }
 
   // Custom InputTypes
@@ -3812,6 +3916,13 @@ export namespace Prisma {
    */
   export type SourceCountOutputTypeCountQueriesArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     where?: QueryWhereInput
+  }
+
+  /**
+   * SourceCountOutputType without action
+   */
+  export type SourceCountOutputTypeCountQuerySourcePoliciesArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: QuerySourcePolicyWhereInput
   }
 
 
@@ -3853,12 +3964,14 @@ export namespace Prisma {
   export type QueryCountOutputType = {
     keywords: number
     sources: number
+    sourcePolicies: number
     queryRuns: number
   }
 
   export type QueryCountOutputTypeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     keywords?: boolean | QueryCountOutputTypeCountKeywordsArgs
     sources?: boolean | QueryCountOutputTypeCountSourcesArgs
+    sourcePolicies?: boolean | QueryCountOutputTypeCountSourcePoliciesArgs
     queryRuns?: boolean | QueryCountOutputTypeCountQueryRunsArgs
   }
 
@@ -3885,6 +3998,13 @@ export namespace Prisma {
    */
   export type QueryCountOutputTypeCountSourcesArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     where?: SourceWhereInput
+  }
+
+  /**
+   * QueryCountOutputType without action
+   */
+  export type QueryCountOutputTypeCountSourcePoliciesArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: QuerySourcePolicyWhereInput
   }
 
   /**
@@ -9050,6 +9170,7 @@ export namespace Prisma {
     identity?: boolean | Source$identityArgs<ExtArgs>
     presetBindings?: boolean | Source$presetBindingsArgs<ExtArgs>
     queries?: boolean | Source$queriesArgs<ExtArgs>
+    querySourcePolicies?: boolean | Source$querySourcePoliciesArgs<ExtArgs>
     _count?: boolean | SourceCountOutputTypeDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["source"]>
 
@@ -9116,6 +9237,7 @@ export namespace Prisma {
     identity?: boolean | Source$identityArgs<ExtArgs>
     presetBindings?: boolean | Source$presetBindingsArgs<ExtArgs>
     queries?: boolean | Source$queriesArgs<ExtArgs>
+    querySourcePolicies?: boolean | Source$querySourcePoliciesArgs<ExtArgs>
     _count?: boolean | SourceCountOutputTypeDefaultArgs<ExtArgs>
   }
   export type SourceIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
@@ -9139,6 +9261,7 @@ export namespace Prisma {
       identity: Prisma.$SourceIdentityPayload<ExtArgs> | null
       presetBindings: Prisma.$SourcePresetBindingPayload<ExtArgs>[]
       queries: Prisma.$QueryPayload<ExtArgs>[]
+      querySourcePolicies: Prisma.$QuerySourcePolicyPayload<ExtArgs>[]
     }
     scalars: $Extensions.GetPayloadResult<{
       id: string
@@ -9557,6 +9680,7 @@ export namespace Prisma {
     identity<T extends Source$identityArgs<ExtArgs> = {}>(args?: Subset<T, Source$identityArgs<ExtArgs>>): Prisma__SourceIdentityClient<$Result.GetResult<Prisma.$SourceIdentityPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
     presetBindings<T extends Source$presetBindingsArgs<ExtArgs> = {}>(args?: Subset<T, Source$presetBindingsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SourcePresetBindingPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     queries<T extends Source$queriesArgs<ExtArgs> = {}>(args?: Subset<T, Source$queriesArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$QueryPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    querySourcePolicies<T extends Source$querySourcePoliciesArgs<ExtArgs> = {}>(args?: Subset<T, Source$querySourcePoliciesArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$QuerySourcePolicyPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
      * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -10173,6 +10297,30 @@ export namespace Prisma {
     take?: number
     skip?: number
     distinct?: QueryScalarFieldEnum | QueryScalarFieldEnum[]
+  }
+
+  /**
+   * Source.querySourcePolicies
+   */
+  export type Source$querySourcePoliciesArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the QuerySourcePolicy
+     */
+    select?: QuerySourcePolicySelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the QuerySourcePolicy
+     */
+    omit?: QuerySourcePolicyOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: QuerySourcePolicyInclude<ExtArgs> | null
+    where?: QuerySourcePolicyWhereInput
+    orderBy?: QuerySourcePolicyOrderByWithRelationInput | QuerySourcePolicyOrderByWithRelationInput[]
+    cursor?: QuerySourcePolicyWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: QuerySourcePolicyScalarFieldEnum | QuerySourcePolicyScalarFieldEnum[]
   }
 
   /**
@@ -19460,6 +19608,7 @@ export namespace Prisma {
     updatedAt?: boolean
     keywords?: boolean | Query$keywordsArgs<ExtArgs>
     sources?: boolean | Query$sourcesArgs<ExtArgs>
+    sourcePolicies?: boolean | Query$sourcePoliciesArgs<ExtArgs>
     queryRuns?: boolean | Query$queryRunsArgs<ExtArgs>
     _count?: boolean | QueryCountOutputTypeDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["query"]>
@@ -19504,6 +19653,7 @@ export namespace Prisma {
   export type QueryInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     keywords?: boolean | Query$keywordsArgs<ExtArgs>
     sources?: boolean | Query$sourcesArgs<ExtArgs>
+    sourcePolicies?: boolean | Query$sourcePoliciesArgs<ExtArgs>
     queryRuns?: boolean | Query$queryRunsArgs<ExtArgs>
     _count?: boolean | QueryCountOutputTypeDefaultArgs<ExtArgs>
   }
@@ -19515,6 +19665,7 @@ export namespace Prisma {
     objects: {
       keywords: Prisma.$KeywordPayload<ExtArgs>[]
       sources: Prisma.$SourcePayload<ExtArgs>[]
+      sourcePolicies: Prisma.$QuerySourcePolicyPayload<ExtArgs>[]
       queryRuns: Prisma.$QueryRunPayload<ExtArgs>[]
     }
     scalars: $Extensions.GetPayloadResult<{
@@ -19923,6 +20074,7 @@ export namespace Prisma {
     readonly [Symbol.toStringTag]: "PrismaPromise"
     keywords<T extends Query$keywordsArgs<ExtArgs> = {}>(args?: Subset<T, Query$keywordsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$KeywordPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     sources<T extends Query$sourcesArgs<ExtArgs> = {}>(args?: Subset<T, Query$sourcesArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SourcePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    sourcePolicies<T extends Query$sourcePoliciesArgs<ExtArgs> = {}>(args?: Subset<T, Query$sourcePoliciesArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$QuerySourcePolicyPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     queryRuns<T extends Query$queryRunsArgs<ExtArgs> = {}>(args?: Subset<T, Query$queryRunsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$QueryRunPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
@@ -20398,6 +20550,30 @@ export namespace Prisma {
   }
 
   /**
+   * Query.sourcePolicies
+   */
+  export type Query$sourcePoliciesArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the QuerySourcePolicy
+     */
+    select?: QuerySourcePolicySelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the QuerySourcePolicy
+     */
+    omit?: QuerySourcePolicyOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: QuerySourcePolicyInclude<ExtArgs> | null
+    where?: QuerySourcePolicyWhereInput
+    orderBy?: QuerySourcePolicyOrderByWithRelationInput | QuerySourcePolicyOrderByWithRelationInput[]
+    cursor?: QuerySourcePolicyWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: QuerySourcePolicyScalarFieldEnum | QuerySourcePolicyScalarFieldEnum[]
+  }
+
+  /**
    * Query.queryRuns
    */
   export type Query$queryRunsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
@@ -20437,6 +20613,1098 @@ export namespace Prisma {
      * Choose, which related nodes to fetch as well
      */
     include?: QueryInclude<ExtArgs> | null
+  }
+
+
+  /**
+   * Model QuerySourcePolicy
+   */
+
+  export type AggregateQuerySourcePolicy = {
+    _count: QuerySourcePolicyCountAggregateOutputType | null
+    _min: QuerySourcePolicyMinAggregateOutputType | null
+    _max: QuerySourcePolicyMaxAggregateOutputType | null
+  }
+
+  export type QuerySourcePolicyMinAggregateOutputType = {
+    id: string | null
+    queryId: string | null
+    sourceId: string | null
+    contentFilterEnabled: boolean | null
+    contentFilterMode: $Enums.QueryContentFilterMode | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type QuerySourcePolicyMaxAggregateOutputType = {
+    id: string | null
+    queryId: string | null
+    sourceId: string | null
+    contentFilterEnabled: boolean | null
+    contentFilterMode: $Enums.QueryContentFilterMode | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type QuerySourcePolicyCountAggregateOutputType = {
+    id: number
+    queryId: number
+    sourceId: number
+    contentFilterEnabled: number
+    contentFilterMode: number
+    createdAt: number
+    updatedAt: number
+    _all: number
+  }
+
+
+  export type QuerySourcePolicyMinAggregateInputType = {
+    id?: true
+    queryId?: true
+    sourceId?: true
+    contentFilterEnabled?: true
+    contentFilterMode?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type QuerySourcePolicyMaxAggregateInputType = {
+    id?: true
+    queryId?: true
+    sourceId?: true
+    contentFilterEnabled?: true
+    contentFilterMode?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type QuerySourcePolicyCountAggregateInputType = {
+    id?: true
+    queryId?: true
+    sourceId?: true
+    contentFilterEnabled?: true
+    contentFilterMode?: true
+    createdAt?: true
+    updatedAt?: true
+    _all?: true
+  }
+
+  export type QuerySourcePolicyAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which QuerySourcePolicy to aggregate.
+     */
+    where?: QuerySourcePolicyWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of QuerySourcePolicies to fetch.
+     */
+    orderBy?: QuerySourcePolicyOrderByWithRelationInput | QuerySourcePolicyOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: QuerySourcePolicyWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` QuerySourcePolicies from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` QuerySourcePolicies.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned QuerySourcePolicies
+    **/
+    _count?: true | QuerySourcePolicyCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: QuerySourcePolicyMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: QuerySourcePolicyMaxAggregateInputType
+  }
+
+  export type GetQuerySourcePolicyAggregateType<T extends QuerySourcePolicyAggregateArgs> = {
+        [P in keyof T & keyof AggregateQuerySourcePolicy]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateQuerySourcePolicy[P]>
+      : GetScalarType<T[P], AggregateQuerySourcePolicy[P]>
+  }
+
+
+
+
+  export type QuerySourcePolicyGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: QuerySourcePolicyWhereInput
+    orderBy?: QuerySourcePolicyOrderByWithAggregationInput | QuerySourcePolicyOrderByWithAggregationInput[]
+    by: QuerySourcePolicyScalarFieldEnum[] | QuerySourcePolicyScalarFieldEnum
+    having?: QuerySourcePolicyScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: QuerySourcePolicyCountAggregateInputType | true
+    _min?: QuerySourcePolicyMinAggregateInputType
+    _max?: QuerySourcePolicyMaxAggregateInputType
+  }
+
+  export type QuerySourcePolicyGroupByOutputType = {
+    id: string
+    queryId: string
+    sourceId: string
+    contentFilterEnabled: boolean
+    contentFilterMode: $Enums.QueryContentFilterMode
+    createdAt: Date
+    updatedAt: Date
+    _count: QuerySourcePolicyCountAggregateOutputType | null
+    _min: QuerySourcePolicyMinAggregateOutputType | null
+    _max: QuerySourcePolicyMaxAggregateOutputType | null
+  }
+
+  type GetQuerySourcePolicyGroupByPayload<T extends QuerySourcePolicyGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<QuerySourcePolicyGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof QuerySourcePolicyGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], QuerySourcePolicyGroupByOutputType[P]>
+            : GetScalarType<T[P], QuerySourcePolicyGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type QuerySourcePolicySelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    queryId?: boolean
+    sourceId?: boolean
+    contentFilterEnabled?: boolean
+    contentFilterMode?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    query?: boolean | QueryDefaultArgs<ExtArgs>
+    source?: boolean | SourceDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["querySourcePolicy"]>
+
+  export type QuerySourcePolicySelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    queryId?: boolean
+    sourceId?: boolean
+    contentFilterEnabled?: boolean
+    contentFilterMode?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    query?: boolean | QueryDefaultArgs<ExtArgs>
+    source?: boolean | SourceDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["querySourcePolicy"]>
+
+  export type QuerySourcePolicySelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    queryId?: boolean
+    sourceId?: boolean
+    contentFilterEnabled?: boolean
+    contentFilterMode?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    query?: boolean | QueryDefaultArgs<ExtArgs>
+    source?: boolean | SourceDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["querySourcePolicy"]>
+
+  export type QuerySourcePolicySelectScalar = {
+    id?: boolean
+    queryId?: boolean
+    sourceId?: boolean
+    contentFilterEnabled?: boolean
+    contentFilterMode?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }
+
+  export type QuerySourcePolicyOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "queryId" | "sourceId" | "contentFilterEnabled" | "contentFilterMode" | "createdAt" | "updatedAt", ExtArgs["result"]["querySourcePolicy"]>
+  export type QuerySourcePolicyInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    query?: boolean | QueryDefaultArgs<ExtArgs>
+    source?: boolean | SourceDefaultArgs<ExtArgs>
+  }
+  export type QuerySourcePolicyIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    query?: boolean | QueryDefaultArgs<ExtArgs>
+    source?: boolean | SourceDefaultArgs<ExtArgs>
+  }
+  export type QuerySourcePolicyIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    query?: boolean | QueryDefaultArgs<ExtArgs>
+    source?: boolean | SourceDefaultArgs<ExtArgs>
+  }
+
+  export type $QuerySourcePolicyPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "QuerySourcePolicy"
+    objects: {
+      query: Prisma.$QueryPayload<ExtArgs>
+      source: Prisma.$SourcePayload<ExtArgs>
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      queryId: string
+      sourceId: string
+      contentFilterEnabled: boolean
+      contentFilterMode: $Enums.QueryContentFilterMode
+      createdAt: Date
+      updatedAt: Date
+    }, ExtArgs["result"]["querySourcePolicy"]>
+    composites: {}
+  }
+
+  type QuerySourcePolicyGetPayload<S extends boolean | null | undefined | QuerySourcePolicyDefaultArgs> = $Result.GetResult<Prisma.$QuerySourcePolicyPayload, S>
+
+  type QuerySourcePolicyCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
+    Omit<QuerySourcePolicyFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+      select?: QuerySourcePolicyCountAggregateInputType | true
+    }
+
+  export interface QuerySourcePolicyDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['QuerySourcePolicy'], meta: { name: 'QuerySourcePolicy' } }
+    /**
+     * Find zero or one QuerySourcePolicy that matches the filter.
+     * @param {QuerySourcePolicyFindUniqueArgs} args - Arguments to find a QuerySourcePolicy
+     * @example
+     * // Get one QuerySourcePolicy
+     * const querySourcePolicy = await prisma.querySourcePolicy.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends QuerySourcePolicyFindUniqueArgs>(args: SelectSubset<T, QuerySourcePolicyFindUniqueArgs<ExtArgs>>): Prisma__QuerySourcePolicyClient<$Result.GetResult<Prisma.$QuerySourcePolicyPayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find one QuerySourcePolicy that matches the filter or throw an error with `error.code='P2025'`
+     * if no matches were found.
+     * @param {QuerySourcePolicyFindUniqueOrThrowArgs} args - Arguments to find a QuerySourcePolicy
+     * @example
+     * // Get one QuerySourcePolicy
+     * const querySourcePolicy = await prisma.querySourcePolicy.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends QuerySourcePolicyFindUniqueOrThrowArgs>(args: SelectSubset<T, QuerySourcePolicyFindUniqueOrThrowArgs<ExtArgs>>): Prisma__QuerySourcePolicyClient<$Result.GetResult<Prisma.$QuerySourcePolicyPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first QuerySourcePolicy that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {QuerySourcePolicyFindFirstArgs} args - Arguments to find a QuerySourcePolicy
+     * @example
+     * // Get one QuerySourcePolicy
+     * const querySourcePolicy = await prisma.querySourcePolicy.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends QuerySourcePolicyFindFirstArgs>(args?: SelectSubset<T, QuerySourcePolicyFindFirstArgs<ExtArgs>>): Prisma__QuerySourcePolicyClient<$Result.GetResult<Prisma.$QuerySourcePolicyPayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first QuerySourcePolicy that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {QuerySourcePolicyFindFirstOrThrowArgs} args - Arguments to find a QuerySourcePolicy
+     * @example
+     * // Get one QuerySourcePolicy
+     * const querySourcePolicy = await prisma.querySourcePolicy.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends QuerySourcePolicyFindFirstOrThrowArgs>(args?: SelectSubset<T, QuerySourcePolicyFindFirstOrThrowArgs<ExtArgs>>): Prisma__QuerySourcePolicyClient<$Result.GetResult<Prisma.$QuerySourcePolicyPayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find zero or more QuerySourcePolicies that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {QuerySourcePolicyFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all QuerySourcePolicies
+     * const querySourcePolicies = await prisma.querySourcePolicy.findMany()
+     * 
+     * // Get first 10 QuerySourcePolicies
+     * const querySourcePolicies = await prisma.querySourcePolicy.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const querySourcePolicyWithIdOnly = await prisma.querySourcePolicy.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends QuerySourcePolicyFindManyArgs>(args?: SelectSubset<T, QuerySourcePolicyFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$QuerySourcePolicyPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+
+    /**
+     * Create a QuerySourcePolicy.
+     * @param {QuerySourcePolicyCreateArgs} args - Arguments to create a QuerySourcePolicy.
+     * @example
+     * // Create one QuerySourcePolicy
+     * const QuerySourcePolicy = await prisma.querySourcePolicy.create({
+     *   data: {
+     *     // ... data to create a QuerySourcePolicy
+     *   }
+     * })
+     * 
+     */
+    create<T extends QuerySourcePolicyCreateArgs>(args: SelectSubset<T, QuerySourcePolicyCreateArgs<ExtArgs>>): Prisma__QuerySourcePolicyClient<$Result.GetResult<Prisma.$QuerySourcePolicyPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Create many QuerySourcePolicies.
+     * @param {QuerySourcePolicyCreateManyArgs} args - Arguments to create many QuerySourcePolicies.
+     * @example
+     * // Create many QuerySourcePolicies
+     * const querySourcePolicy = await prisma.querySourcePolicy.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends QuerySourcePolicyCreateManyArgs>(args?: SelectSubset<T, QuerySourcePolicyCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many QuerySourcePolicies and returns the data saved in the database.
+     * @param {QuerySourcePolicyCreateManyAndReturnArgs} args - Arguments to create many QuerySourcePolicies.
+     * @example
+     * // Create many QuerySourcePolicies
+     * const querySourcePolicy = await prisma.querySourcePolicy.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many QuerySourcePolicies and only return the `id`
+     * const querySourcePolicyWithIdOnly = await prisma.querySourcePolicy.createManyAndReturn({
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends QuerySourcePolicyCreateManyAndReturnArgs>(args?: SelectSubset<T, QuerySourcePolicyCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$QuerySourcePolicyPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Delete a QuerySourcePolicy.
+     * @param {QuerySourcePolicyDeleteArgs} args - Arguments to delete one QuerySourcePolicy.
+     * @example
+     * // Delete one QuerySourcePolicy
+     * const QuerySourcePolicy = await prisma.querySourcePolicy.delete({
+     *   where: {
+     *     // ... filter to delete one QuerySourcePolicy
+     *   }
+     * })
+     * 
+     */
+    delete<T extends QuerySourcePolicyDeleteArgs>(args: SelectSubset<T, QuerySourcePolicyDeleteArgs<ExtArgs>>): Prisma__QuerySourcePolicyClient<$Result.GetResult<Prisma.$QuerySourcePolicyPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Update one QuerySourcePolicy.
+     * @param {QuerySourcePolicyUpdateArgs} args - Arguments to update one QuerySourcePolicy.
+     * @example
+     * // Update one QuerySourcePolicy
+     * const querySourcePolicy = await prisma.querySourcePolicy.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends QuerySourcePolicyUpdateArgs>(args: SelectSubset<T, QuerySourcePolicyUpdateArgs<ExtArgs>>): Prisma__QuerySourcePolicyClient<$Result.GetResult<Prisma.$QuerySourcePolicyPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Delete zero or more QuerySourcePolicies.
+     * @param {QuerySourcePolicyDeleteManyArgs} args - Arguments to filter QuerySourcePolicies to delete.
+     * @example
+     * // Delete a few QuerySourcePolicies
+     * const { count } = await prisma.querySourcePolicy.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends QuerySourcePolicyDeleteManyArgs>(args?: SelectSubset<T, QuerySourcePolicyDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more QuerySourcePolicies.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {QuerySourcePolicyUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many QuerySourcePolicies
+     * const querySourcePolicy = await prisma.querySourcePolicy.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends QuerySourcePolicyUpdateManyArgs>(args: SelectSubset<T, QuerySourcePolicyUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more QuerySourcePolicies and returns the data updated in the database.
+     * @param {QuerySourcePolicyUpdateManyAndReturnArgs} args - Arguments to update many QuerySourcePolicies.
+     * @example
+     * // Update many QuerySourcePolicies
+     * const querySourcePolicy = await prisma.querySourcePolicy.updateManyAndReturn({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Update zero or more QuerySourcePolicies and only return the `id`
+     * const querySourcePolicyWithIdOnly = await prisma.querySourcePolicy.updateManyAndReturn({
+     *   select: { id: true },
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    updateManyAndReturn<T extends QuerySourcePolicyUpdateManyAndReturnArgs>(args: SelectSubset<T, QuerySourcePolicyUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$QuerySourcePolicyPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Create or update one QuerySourcePolicy.
+     * @param {QuerySourcePolicyUpsertArgs} args - Arguments to update or create a QuerySourcePolicy.
+     * @example
+     * // Update or create a QuerySourcePolicy
+     * const querySourcePolicy = await prisma.querySourcePolicy.upsert({
+     *   create: {
+     *     // ... data to create a QuerySourcePolicy
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the QuerySourcePolicy we want to update
+     *   }
+     * })
+     */
+    upsert<T extends QuerySourcePolicyUpsertArgs>(args: SelectSubset<T, QuerySourcePolicyUpsertArgs<ExtArgs>>): Prisma__QuerySourcePolicyClient<$Result.GetResult<Prisma.$QuerySourcePolicyPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+
+    /**
+     * Count the number of QuerySourcePolicies.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {QuerySourcePolicyCountArgs} args - Arguments to filter QuerySourcePolicies to count.
+     * @example
+     * // Count the number of QuerySourcePolicies
+     * const count = await prisma.querySourcePolicy.count({
+     *   where: {
+     *     // ... the filter for the QuerySourcePolicies we want to count
+     *   }
+     * })
+    **/
+    count<T extends QuerySourcePolicyCountArgs>(
+      args?: Subset<T, QuerySourcePolicyCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], QuerySourcePolicyCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a QuerySourcePolicy.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {QuerySourcePolicyAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends QuerySourcePolicyAggregateArgs>(args: Subset<T, QuerySourcePolicyAggregateArgs>): Prisma.PrismaPromise<GetQuerySourcePolicyAggregateType<T>>
+
+    /**
+     * Group by QuerySourcePolicy.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {QuerySourcePolicyGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends QuerySourcePolicyGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: QuerySourcePolicyGroupByArgs['orderBy'] }
+        : { orderBy?: QuerySourcePolicyGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, QuerySourcePolicyGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetQuerySourcePolicyGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the QuerySourcePolicy model
+   */
+  readonly fields: QuerySourcePolicyFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for QuerySourcePolicy.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__QuerySourcePolicyClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    query<T extends QueryDefaultArgs<ExtArgs> = {}>(args?: Subset<T, QueryDefaultArgs<ExtArgs>>): Prisma__QueryClient<$Result.GetResult<Prisma.$QueryPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    source<T extends SourceDefaultArgs<ExtArgs> = {}>(args?: Subset<T, SourceDefaultArgs<ExtArgs>>): Prisma__SourceClient<$Result.GetResult<Prisma.$SourcePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the QuerySourcePolicy model
+   */
+  interface QuerySourcePolicyFieldRefs {
+    readonly id: FieldRef<"QuerySourcePolicy", 'String'>
+    readonly queryId: FieldRef<"QuerySourcePolicy", 'String'>
+    readonly sourceId: FieldRef<"QuerySourcePolicy", 'String'>
+    readonly contentFilterEnabled: FieldRef<"QuerySourcePolicy", 'Boolean'>
+    readonly contentFilterMode: FieldRef<"QuerySourcePolicy", 'QueryContentFilterMode'>
+    readonly createdAt: FieldRef<"QuerySourcePolicy", 'DateTime'>
+    readonly updatedAt: FieldRef<"QuerySourcePolicy", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * QuerySourcePolicy findUnique
+   */
+  export type QuerySourcePolicyFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the QuerySourcePolicy
+     */
+    select?: QuerySourcePolicySelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the QuerySourcePolicy
+     */
+    omit?: QuerySourcePolicyOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: QuerySourcePolicyInclude<ExtArgs> | null
+    /**
+     * Filter, which QuerySourcePolicy to fetch.
+     */
+    where: QuerySourcePolicyWhereUniqueInput
+  }
+
+  /**
+   * QuerySourcePolicy findUniqueOrThrow
+   */
+  export type QuerySourcePolicyFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the QuerySourcePolicy
+     */
+    select?: QuerySourcePolicySelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the QuerySourcePolicy
+     */
+    omit?: QuerySourcePolicyOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: QuerySourcePolicyInclude<ExtArgs> | null
+    /**
+     * Filter, which QuerySourcePolicy to fetch.
+     */
+    where: QuerySourcePolicyWhereUniqueInput
+  }
+
+  /**
+   * QuerySourcePolicy findFirst
+   */
+  export type QuerySourcePolicyFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the QuerySourcePolicy
+     */
+    select?: QuerySourcePolicySelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the QuerySourcePolicy
+     */
+    omit?: QuerySourcePolicyOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: QuerySourcePolicyInclude<ExtArgs> | null
+    /**
+     * Filter, which QuerySourcePolicy to fetch.
+     */
+    where?: QuerySourcePolicyWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of QuerySourcePolicies to fetch.
+     */
+    orderBy?: QuerySourcePolicyOrderByWithRelationInput | QuerySourcePolicyOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for QuerySourcePolicies.
+     */
+    cursor?: QuerySourcePolicyWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` QuerySourcePolicies from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` QuerySourcePolicies.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of QuerySourcePolicies.
+     */
+    distinct?: QuerySourcePolicyScalarFieldEnum | QuerySourcePolicyScalarFieldEnum[]
+  }
+
+  /**
+   * QuerySourcePolicy findFirstOrThrow
+   */
+  export type QuerySourcePolicyFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the QuerySourcePolicy
+     */
+    select?: QuerySourcePolicySelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the QuerySourcePolicy
+     */
+    omit?: QuerySourcePolicyOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: QuerySourcePolicyInclude<ExtArgs> | null
+    /**
+     * Filter, which QuerySourcePolicy to fetch.
+     */
+    where?: QuerySourcePolicyWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of QuerySourcePolicies to fetch.
+     */
+    orderBy?: QuerySourcePolicyOrderByWithRelationInput | QuerySourcePolicyOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for QuerySourcePolicies.
+     */
+    cursor?: QuerySourcePolicyWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` QuerySourcePolicies from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` QuerySourcePolicies.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of QuerySourcePolicies.
+     */
+    distinct?: QuerySourcePolicyScalarFieldEnum | QuerySourcePolicyScalarFieldEnum[]
+  }
+
+  /**
+   * QuerySourcePolicy findMany
+   */
+  export type QuerySourcePolicyFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the QuerySourcePolicy
+     */
+    select?: QuerySourcePolicySelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the QuerySourcePolicy
+     */
+    omit?: QuerySourcePolicyOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: QuerySourcePolicyInclude<ExtArgs> | null
+    /**
+     * Filter, which QuerySourcePolicies to fetch.
+     */
+    where?: QuerySourcePolicyWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of QuerySourcePolicies to fetch.
+     */
+    orderBy?: QuerySourcePolicyOrderByWithRelationInput | QuerySourcePolicyOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing QuerySourcePolicies.
+     */
+    cursor?: QuerySourcePolicyWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` QuerySourcePolicies from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` QuerySourcePolicies.
+     */
+    skip?: number
+    distinct?: QuerySourcePolicyScalarFieldEnum | QuerySourcePolicyScalarFieldEnum[]
+  }
+
+  /**
+   * QuerySourcePolicy create
+   */
+  export type QuerySourcePolicyCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the QuerySourcePolicy
+     */
+    select?: QuerySourcePolicySelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the QuerySourcePolicy
+     */
+    omit?: QuerySourcePolicyOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: QuerySourcePolicyInclude<ExtArgs> | null
+    /**
+     * The data needed to create a QuerySourcePolicy.
+     */
+    data: XOR<QuerySourcePolicyCreateInput, QuerySourcePolicyUncheckedCreateInput>
+  }
+
+  /**
+   * QuerySourcePolicy createMany
+   */
+  export type QuerySourcePolicyCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many QuerySourcePolicies.
+     */
+    data: QuerySourcePolicyCreateManyInput | QuerySourcePolicyCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * QuerySourcePolicy createManyAndReturn
+   */
+  export type QuerySourcePolicyCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the QuerySourcePolicy
+     */
+    select?: QuerySourcePolicySelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the QuerySourcePolicy
+     */
+    omit?: QuerySourcePolicyOmit<ExtArgs> | null
+    /**
+     * The data used to create many QuerySourcePolicies.
+     */
+    data: QuerySourcePolicyCreateManyInput | QuerySourcePolicyCreateManyInput[]
+    skipDuplicates?: boolean
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: QuerySourcePolicyIncludeCreateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * QuerySourcePolicy update
+   */
+  export type QuerySourcePolicyUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the QuerySourcePolicy
+     */
+    select?: QuerySourcePolicySelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the QuerySourcePolicy
+     */
+    omit?: QuerySourcePolicyOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: QuerySourcePolicyInclude<ExtArgs> | null
+    /**
+     * The data needed to update a QuerySourcePolicy.
+     */
+    data: XOR<QuerySourcePolicyUpdateInput, QuerySourcePolicyUncheckedUpdateInput>
+    /**
+     * Choose, which QuerySourcePolicy to update.
+     */
+    where: QuerySourcePolicyWhereUniqueInput
+  }
+
+  /**
+   * QuerySourcePolicy updateMany
+   */
+  export type QuerySourcePolicyUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update QuerySourcePolicies.
+     */
+    data: XOR<QuerySourcePolicyUpdateManyMutationInput, QuerySourcePolicyUncheckedUpdateManyInput>
+    /**
+     * Filter which QuerySourcePolicies to update
+     */
+    where?: QuerySourcePolicyWhereInput
+    /**
+     * Limit how many QuerySourcePolicies to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * QuerySourcePolicy updateManyAndReturn
+   */
+  export type QuerySourcePolicyUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the QuerySourcePolicy
+     */
+    select?: QuerySourcePolicySelectUpdateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the QuerySourcePolicy
+     */
+    omit?: QuerySourcePolicyOmit<ExtArgs> | null
+    /**
+     * The data used to update QuerySourcePolicies.
+     */
+    data: XOR<QuerySourcePolicyUpdateManyMutationInput, QuerySourcePolicyUncheckedUpdateManyInput>
+    /**
+     * Filter which QuerySourcePolicies to update
+     */
+    where?: QuerySourcePolicyWhereInput
+    /**
+     * Limit how many QuerySourcePolicies to update.
+     */
+    limit?: number
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: QuerySourcePolicyIncludeUpdateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * QuerySourcePolicy upsert
+   */
+  export type QuerySourcePolicyUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the QuerySourcePolicy
+     */
+    select?: QuerySourcePolicySelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the QuerySourcePolicy
+     */
+    omit?: QuerySourcePolicyOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: QuerySourcePolicyInclude<ExtArgs> | null
+    /**
+     * The filter to search for the QuerySourcePolicy to update in case it exists.
+     */
+    where: QuerySourcePolicyWhereUniqueInput
+    /**
+     * In case the QuerySourcePolicy found by the `where` argument doesn't exist, create a new QuerySourcePolicy with this data.
+     */
+    create: XOR<QuerySourcePolicyCreateInput, QuerySourcePolicyUncheckedCreateInput>
+    /**
+     * In case the QuerySourcePolicy was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<QuerySourcePolicyUpdateInput, QuerySourcePolicyUncheckedUpdateInput>
+  }
+
+  /**
+   * QuerySourcePolicy delete
+   */
+  export type QuerySourcePolicyDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the QuerySourcePolicy
+     */
+    select?: QuerySourcePolicySelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the QuerySourcePolicy
+     */
+    omit?: QuerySourcePolicyOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: QuerySourcePolicyInclude<ExtArgs> | null
+    /**
+     * Filter which QuerySourcePolicy to delete.
+     */
+    where: QuerySourcePolicyWhereUniqueInput
+  }
+
+  /**
+   * QuerySourcePolicy deleteMany
+   */
+  export type QuerySourcePolicyDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which QuerySourcePolicies to delete
+     */
+    where?: QuerySourcePolicyWhereInput
+    /**
+     * Limit how many QuerySourcePolicies to delete.
+     */
+    limit?: number
+  }
+
+  /**
+   * QuerySourcePolicy without action
+   */
+  export type QuerySourcePolicyDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the QuerySourcePolicy
+     */
+    select?: QuerySourcePolicySelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the QuerySourcePolicy
+     */
+    omit?: QuerySourcePolicyOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: QuerySourcePolicyInclude<ExtArgs> | null
   }
 
 
@@ -37525,6 +38793,19 @@ export namespace Prisma {
   export type QueryScalarFieldEnum = (typeof QueryScalarFieldEnum)[keyof typeof QueryScalarFieldEnum]
 
 
+  export const QuerySourcePolicyScalarFieldEnum: {
+    id: 'id',
+    queryId: 'queryId',
+    sourceId: 'sourceId',
+    contentFilterEnabled: 'contentFilterEnabled',
+    contentFilterMode: 'contentFilterMode',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt'
+  };
+
+  export type QuerySourcePolicyScalarFieldEnum = (typeof QuerySourcePolicyScalarFieldEnum)[keyof typeof QuerySourcePolicyScalarFieldEnum]
+
+
   export const QueryRunScalarFieldEnum: {
     id: 'id',
     queryId: 'queryId',
@@ -37971,6 +39252,20 @@ export namespace Prisma {
 
 
   /**
+   * Reference to a field of type 'QueryContentFilterMode'
+   */
+  export type EnumQueryContentFilterModeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'QueryContentFilterMode'>
+    
+
+
+  /**
+   * Reference to a field of type 'QueryContentFilterMode[]'
+   */
+  export type ListEnumQueryContentFilterModeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'QueryContentFilterMode[]'>
+    
+
+
+  /**
    * Reference to a field of type 'TaskStatus'
    */
   export type EnumTaskStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'TaskStatus'>
@@ -38382,6 +39677,7 @@ export namespace Prisma {
     identity?: XOR<SourceIdentityNullableScalarRelationFilter, SourceIdentityWhereInput> | null
     presetBindings?: SourcePresetBindingListRelationFilter
     queries?: QueryListRelationFilter
+    querySourcePolicies?: QuerySourcePolicyListRelationFilter
   }
 
   export type SourceOrderByWithRelationInput = {
@@ -38407,6 +39703,7 @@ export namespace Prisma {
     identity?: SourceIdentityOrderByWithRelationInput
     presetBindings?: SourcePresetBindingOrderByRelationAggregateInput
     queries?: QueryOrderByRelationAggregateInput
+    querySourcePolicies?: QuerySourcePolicyOrderByRelationAggregateInput
   }
 
   export type SourceWhereUniqueInput = Prisma.AtLeast<{
@@ -38435,6 +39732,7 @@ export namespace Prisma {
     identity?: XOR<SourceIdentityNullableScalarRelationFilter, SourceIdentityWhereInput> | null
     presetBindings?: SourcePresetBindingListRelationFilter
     queries?: QueryListRelationFilter
+    querySourcePolicies?: QuerySourcePolicyListRelationFilter
   }, "id" | "name">
 
   export type SourceOrderByWithAggregationInput = {
@@ -39157,6 +40455,7 @@ export namespace Prisma {
     updatedAt?: DateTimeFilter<"Query"> | Date | string
     keywords?: KeywordListRelationFilter
     sources?: SourceListRelationFilter
+    sourcePolicies?: QuerySourcePolicyListRelationFilter
     queryRuns?: QueryRunListRelationFilter
   }
 
@@ -39172,6 +40471,7 @@ export namespace Prisma {
     updatedAt?: SortOrder
     keywords?: KeywordOrderByRelationAggregateInput
     sources?: SourceOrderByRelationAggregateInput
+    sourcePolicies?: QuerySourcePolicyOrderByRelationAggregateInput
     queryRuns?: QueryRunOrderByRelationAggregateInput
   }
 
@@ -39190,6 +40490,7 @@ export namespace Prisma {
     updatedAt?: DateTimeFilter<"Query"> | Date | string
     keywords?: KeywordListRelationFilter
     sources?: SourceListRelationFilter
+    sourcePolicies?: QuerySourcePolicyListRelationFilter
     queryRuns?: QueryRunListRelationFilter
   }, "id" | "name">
 
@@ -39221,6 +40522,75 @@ export namespace Prisma {
     rules?: JsonNullableWithAggregatesFilter<"Query">
     createdAt?: DateTimeWithAggregatesFilter<"Query"> | Date | string
     updatedAt?: DateTimeWithAggregatesFilter<"Query"> | Date | string
+  }
+
+  export type QuerySourcePolicyWhereInput = {
+    AND?: QuerySourcePolicyWhereInput | QuerySourcePolicyWhereInput[]
+    OR?: QuerySourcePolicyWhereInput[]
+    NOT?: QuerySourcePolicyWhereInput | QuerySourcePolicyWhereInput[]
+    id?: StringFilter<"QuerySourcePolicy"> | string
+    queryId?: StringFilter<"QuerySourcePolicy"> | string
+    sourceId?: StringFilter<"QuerySourcePolicy"> | string
+    contentFilterEnabled?: BoolFilter<"QuerySourcePolicy"> | boolean
+    contentFilterMode?: EnumQueryContentFilterModeFilter<"QuerySourcePolicy"> | $Enums.QueryContentFilterMode
+    createdAt?: DateTimeFilter<"QuerySourcePolicy"> | Date | string
+    updatedAt?: DateTimeFilter<"QuerySourcePolicy"> | Date | string
+    query?: XOR<QueryScalarRelationFilter, QueryWhereInput>
+    source?: XOR<SourceScalarRelationFilter, SourceWhereInput>
+  }
+
+  export type QuerySourcePolicyOrderByWithRelationInput = {
+    id?: SortOrder
+    queryId?: SortOrder
+    sourceId?: SortOrder
+    contentFilterEnabled?: SortOrder
+    contentFilterMode?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    query?: QueryOrderByWithRelationInput
+    source?: SourceOrderByWithRelationInput
+  }
+
+  export type QuerySourcePolicyWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    queryId_sourceId?: QuerySourcePolicyQueryIdSourceIdCompoundUniqueInput
+    AND?: QuerySourcePolicyWhereInput | QuerySourcePolicyWhereInput[]
+    OR?: QuerySourcePolicyWhereInput[]
+    NOT?: QuerySourcePolicyWhereInput | QuerySourcePolicyWhereInput[]
+    queryId?: StringFilter<"QuerySourcePolicy"> | string
+    sourceId?: StringFilter<"QuerySourcePolicy"> | string
+    contentFilterEnabled?: BoolFilter<"QuerySourcePolicy"> | boolean
+    contentFilterMode?: EnumQueryContentFilterModeFilter<"QuerySourcePolicy"> | $Enums.QueryContentFilterMode
+    createdAt?: DateTimeFilter<"QuerySourcePolicy"> | Date | string
+    updatedAt?: DateTimeFilter<"QuerySourcePolicy"> | Date | string
+    query?: XOR<QueryScalarRelationFilter, QueryWhereInput>
+    source?: XOR<SourceScalarRelationFilter, SourceWhereInput>
+  }, "id" | "queryId_sourceId">
+
+  export type QuerySourcePolicyOrderByWithAggregationInput = {
+    id?: SortOrder
+    queryId?: SortOrder
+    sourceId?: SortOrder
+    contentFilterEnabled?: SortOrder
+    contentFilterMode?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    _count?: QuerySourcePolicyCountOrderByAggregateInput
+    _max?: QuerySourcePolicyMaxOrderByAggregateInput
+    _min?: QuerySourcePolicyMinOrderByAggregateInput
+  }
+
+  export type QuerySourcePolicyScalarWhereWithAggregatesInput = {
+    AND?: QuerySourcePolicyScalarWhereWithAggregatesInput | QuerySourcePolicyScalarWhereWithAggregatesInput[]
+    OR?: QuerySourcePolicyScalarWhereWithAggregatesInput[]
+    NOT?: QuerySourcePolicyScalarWhereWithAggregatesInput | QuerySourcePolicyScalarWhereWithAggregatesInput[]
+    id?: StringWithAggregatesFilter<"QuerySourcePolicy"> | string
+    queryId?: StringWithAggregatesFilter<"QuerySourcePolicy"> | string
+    sourceId?: StringWithAggregatesFilter<"QuerySourcePolicy"> | string
+    contentFilterEnabled?: BoolWithAggregatesFilter<"QuerySourcePolicy"> | boolean
+    contentFilterMode?: EnumQueryContentFilterModeWithAggregatesFilter<"QuerySourcePolicy"> | $Enums.QueryContentFilterMode
+    createdAt?: DateTimeWithAggregatesFilter<"QuerySourcePolicy"> | Date | string
+    updatedAt?: DateTimeWithAggregatesFilter<"QuerySourcePolicy"> | Date | string
   }
 
   export type QueryRunWhereInput = {
@@ -40652,6 +42022,7 @@ export namespace Prisma {
     identity?: SourceIdentityCreateNestedOneWithoutSourceInput
     presetBindings?: SourcePresetBindingCreateNestedManyWithoutSourceInput
     queries?: QueryCreateNestedManyWithoutSourcesInput
+    querySourcePolicies?: QuerySourcePolicyCreateNestedManyWithoutSourceInput
   }
 
   export type SourceUncheckedCreateInput = {
@@ -40675,6 +42046,7 @@ export namespace Prisma {
     identity?: SourceIdentityUncheckedCreateNestedOneWithoutSourceInput
     presetBindings?: SourcePresetBindingUncheckedCreateNestedManyWithoutSourceInput
     queries?: QueryUncheckedCreateNestedManyWithoutSourcesInput
+    querySourcePolicies?: QuerySourcePolicyUncheckedCreateNestedManyWithoutSourceInput
   }
 
   export type SourceUpdateInput = {
@@ -40698,6 +42070,7 @@ export namespace Prisma {
     identity?: SourceIdentityUpdateOneWithoutSourceNestedInput
     presetBindings?: SourcePresetBindingUpdateManyWithoutSourceNestedInput
     queries?: QueryUpdateManyWithoutSourcesNestedInput
+    querySourcePolicies?: QuerySourcePolicyUpdateManyWithoutSourceNestedInput
   }
 
   export type SourceUncheckedUpdateInput = {
@@ -40721,6 +42094,7 @@ export namespace Prisma {
     identity?: SourceIdentityUncheckedUpdateOneWithoutSourceNestedInput
     presetBindings?: SourcePresetBindingUncheckedUpdateManyWithoutSourceNestedInput
     queries?: QueryUncheckedUpdateManyWithoutSourcesNestedInput
+    querySourcePolicies?: QuerySourcePolicyUncheckedUpdateManyWithoutSourceNestedInput
   }
 
   export type SourceCreateManyInput = {
@@ -41508,6 +42882,7 @@ export namespace Prisma {
     updatedAt?: Date | string
     keywords?: KeywordCreateNestedManyWithoutQueriesInput
     sources?: SourceCreateNestedManyWithoutQueriesInput
+    sourcePolicies?: QuerySourcePolicyCreateNestedManyWithoutQueryInput
     queryRuns?: QueryRunCreateNestedManyWithoutQueryInput
   }
 
@@ -41523,6 +42898,7 @@ export namespace Prisma {
     updatedAt?: Date | string
     keywords?: KeywordUncheckedCreateNestedManyWithoutQueriesInput
     sources?: SourceUncheckedCreateNestedManyWithoutQueriesInput
+    sourcePolicies?: QuerySourcePolicyUncheckedCreateNestedManyWithoutQueryInput
     queryRuns?: QueryRunUncheckedCreateNestedManyWithoutQueryInput
   }
 
@@ -41538,6 +42914,7 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     keywords?: KeywordUpdateManyWithoutQueriesNestedInput
     sources?: SourceUpdateManyWithoutQueriesNestedInput
+    sourcePolicies?: QuerySourcePolicyUpdateManyWithoutQueryNestedInput
     queryRuns?: QueryRunUpdateManyWithoutQueryNestedInput
   }
 
@@ -41553,6 +42930,7 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     keywords?: KeywordUncheckedUpdateManyWithoutQueriesNestedInput
     sources?: SourceUncheckedUpdateManyWithoutQueriesNestedInput
+    sourcePolicies?: QuerySourcePolicyUncheckedUpdateManyWithoutQueryNestedInput
     queryRuns?: QueryRunUncheckedUpdateManyWithoutQueryNestedInput
   }
 
@@ -41588,6 +42966,74 @@ export namespace Prisma {
     frequency?: EnumQueryFrequencyFieldUpdateOperationsInput | $Enums.QueryFrequency
     cronSchedule?: NullableStringFieldUpdateOperationsInput | string | null
     rules?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type QuerySourcePolicyCreateInput = {
+    id?: string
+    contentFilterEnabled?: boolean
+    contentFilterMode?: $Enums.QueryContentFilterMode
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    query: QueryCreateNestedOneWithoutSourcePoliciesInput
+    source: SourceCreateNestedOneWithoutQuerySourcePoliciesInput
+  }
+
+  export type QuerySourcePolicyUncheckedCreateInput = {
+    id?: string
+    queryId: string
+    sourceId: string
+    contentFilterEnabled?: boolean
+    contentFilterMode?: $Enums.QueryContentFilterMode
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type QuerySourcePolicyUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    contentFilterEnabled?: BoolFieldUpdateOperationsInput | boolean
+    contentFilterMode?: EnumQueryContentFilterModeFieldUpdateOperationsInput | $Enums.QueryContentFilterMode
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    query?: QueryUpdateOneRequiredWithoutSourcePoliciesNestedInput
+    source?: SourceUpdateOneRequiredWithoutQuerySourcePoliciesNestedInput
+  }
+
+  export type QuerySourcePolicyUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    queryId?: StringFieldUpdateOperationsInput | string
+    sourceId?: StringFieldUpdateOperationsInput | string
+    contentFilterEnabled?: BoolFieldUpdateOperationsInput | boolean
+    contentFilterMode?: EnumQueryContentFilterModeFieldUpdateOperationsInput | $Enums.QueryContentFilterMode
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type QuerySourcePolicyCreateManyInput = {
+    id?: string
+    queryId: string
+    sourceId: string
+    contentFilterEnabled?: boolean
+    contentFilterMode?: $Enums.QueryContentFilterMode
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type QuerySourcePolicyUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    contentFilterEnabled?: BoolFieldUpdateOperationsInput | boolean
+    contentFilterMode?: EnumQueryContentFilterModeFieldUpdateOperationsInput | $Enums.QueryContentFilterMode
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type QuerySourcePolicyUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    queryId?: StringFieldUpdateOperationsInput | string
+    sourceId?: StringFieldUpdateOperationsInput | string
+    contentFilterEnabled?: BoolFieldUpdateOperationsInput | boolean
+    contentFilterMode?: EnumQueryContentFilterModeFieldUpdateOperationsInput | $Enums.QueryContentFilterMode
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -43198,7 +44644,17 @@ export namespace Prisma {
     none?: SourcePresetBindingWhereInput
   }
 
+  export type QuerySourcePolicyListRelationFilter = {
+    every?: QuerySourcePolicyWhereInput
+    some?: QuerySourcePolicyWhereInput
+    none?: QuerySourcePolicyWhereInput
+  }
+
   export type SourcePresetBindingOrderByRelationAggregateInput = {
+    _count?: SortOrder
+  }
+
+  export type QuerySourcePolicyOrderByRelationAggregateInput = {
     _count?: SortOrder
   }
 
@@ -43878,16 +45334,68 @@ export namespace Prisma {
     _max?: NestedEnumQueryFrequencyFilter<$PrismaModel>
   }
 
-  export type EnumTaskStatusFilter<$PrismaModel = never> = {
-    equals?: $Enums.TaskStatus | EnumTaskStatusFieldRefInput<$PrismaModel>
-    in?: $Enums.TaskStatus[] | ListEnumTaskStatusFieldRefInput<$PrismaModel>
-    notIn?: $Enums.TaskStatus[] | ListEnumTaskStatusFieldRefInput<$PrismaModel>
-    not?: NestedEnumTaskStatusFilter<$PrismaModel> | $Enums.TaskStatus
+  export type EnumQueryContentFilterModeFilter<$PrismaModel = never> = {
+    equals?: $Enums.QueryContentFilterMode | EnumQueryContentFilterModeFieldRefInput<$PrismaModel>
+    in?: $Enums.QueryContentFilterMode[] | ListEnumQueryContentFilterModeFieldRefInput<$PrismaModel>
+    notIn?: $Enums.QueryContentFilterMode[] | ListEnumQueryContentFilterModeFieldRefInput<$PrismaModel>
+    not?: NestedEnumQueryContentFilterModeFilter<$PrismaModel> | $Enums.QueryContentFilterMode
   }
 
   export type QueryScalarRelationFilter = {
     is?: QueryWhereInput
     isNot?: QueryWhereInput
+  }
+
+  export type QuerySourcePolicyQueryIdSourceIdCompoundUniqueInput = {
+    queryId: string
+    sourceId: string
+  }
+
+  export type QuerySourcePolicyCountOrderByAggregateInput = {
+    id?: SortOrder
+    queryId?: SortOrder
+    sourceId?: SortOrder
+    contentFilterEnabled?: SortOrder
+    contentFilterMode?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type QuerySourcePolicyMaxOrderByAggregateInput = {
+    id?: SortOrder
+    queryId?: SortOrder
+    sourceId?: SortOrder
+    contentFilterEnabled?: SortOrder
+    contentFilterMode?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type QuerySourcePolicyMinOrderByAggregateInput = {
+    id?: SortOrder
+    queryId?: SortOrder
+    sourceId?: SortOrder
+    contentFilterEnabled?: SortOrder
+    contentFilterMode?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type EnumQueryContentFilterModeWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: $Enums.QueryContentFilterMode | EnumQueryContentFilterModeFieldRefInput<$PrismaModel>
+    in?: $Enums.QueryContentFilterMode[] | ListEnumQueryContentFilterModeFieldRefInput<$PrismaModel>
+    notIn?: $Enums.QueryContentFilterMode[] | ListEnumQueryContentFilterModeFieldRefInput<$PrismaModel>
+    not?: NestedEnumQueryContentFilterModeWithAggregatesFilter<$PrismaModel> | $Enums.QueryContentFilterMode
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedEnumQueryContentFilterModeFilter<$PrismaModel>
+    _max?: NestedEnumQueryContentFilterModeFilter<$PrismaModel>
+  }
+
+  export type EnumTaskStatusFilter<$PrismaModel = never> = {
+    equals?: $Enums.TaskStatus | EnumTaskStatusFieldRefInput<$PrismaModel>
+    in?: $Enums.TaskStatus[] | ListEnumTaskStatusFieldRefInput<$PrismaModel>
+    notIn?: $Enums.TaskStatus[] | ListEnumTaskStatusFieldRefInput<$PrismaModel>
+    not?: NestedEnumTaskStatusFilter<$PrismaModel> | $Enums.TaskStatus
   }
 
   export type TaskEventListRelationFilter = {
@@ -45210,6 +46718,13 @@ export namespace Prisma {
     connect?: QueryWhereUniqueInput | QueryWhereUniqueInput[]
   }
 
+  export type QuerySourcePolicyCreateNestedManyWithoutSourceInput = {
+    create?: XOR<QuerySourcePolicyCreateWithoutSourceInput, QuerySourcePolicyUncheckedCreateWithoutSourceInput> | QuerySourcePolicyCreateWithoutSourceInput[] | QuerySourcePolicyUncheckedCreateWithoutSourceInput[]
+    connectOrCreate?: QuerySourcePolicyCreateOrConnectWithoutSourceInput | QuerySourcePolicyCreateOrConnectWithoutSourceInput[]
+    createMany?: QuerySourcePolicyCreateManySourceInputEnvelope
+    connect?: QuerySourcePolicyWhereUniqueInput | QuerySourcePolicyWhereUniqueInput[]
+  }
+
   export type WebSourceConfigUncheckedCreateNestedOneWithoutSourceInput = {
     create?: XOR<WebSourceConfigCreateWithoutSourceInput, WebSourceConfigUncheckedCreateWithoutSourceInput>
     connectOrCreate?: WebSourceConfigCreateOrConnectWithoutSourceInput
@@ -45251,6 +46766,13 @@ export namespace Prisma {
     create?: XOR<QueryCreateWithoutSourcesInput, QueryUncheckedCreateWithoutSourcesInput> | QueryCreateWithoutSourcesInput[] | QueryUncheckedCreateWithoutSourcesInput[]
     connectOrCreate?: QueryCreateOrConnectWithoutSourcesInput | QueryCreateOrConnectWithoutSourcesInput[]
     connect?: QueryWhereUniqueInput | QueryWhereUniqueInput[]
+  }
+
+  export type QuerySourcePolicyUncheckedCreateNestedManyWithoutSourceInput = {
+    create?: XOR<QuerySourcePolicyCreateWithoutSourceInput, QuerySourcePolicyUncheckedCreateWithoutSourceInput> | QuerySourcePolicyCreateWithoutSourceInput[] | QuerySourcePolicyUncheckedCreateWithoutSourceInput[]
+    connectOrCreate?: QuerySourcePolicyCreateOrConnectWithoutSourceInput | QuerySourcePolicyCreateOrConnectWithoutSourceInput[]
+    createMany?: QuerySourcePolicyCreateManySourceInputEnvelope
+    connect?: QuerySourcePolicyWhereUniqueInput | QuerySourcePolicyWhereUniqueInput[]
   }
 
   export type EnumSourceCategoryFieldUpdateOperationsInput = {
@@ -45366,6 +46888,20 @@ export namespace Prisma {
     deleteMany?: QueryScalarWhereInput | QueryScalarWhereInput[]
   }
 
+  export type QuerySourcePolicyUpdateManyWithoutSourceNestedInput = {
+    create?: XOR<QuerySourcePolicyCreateWithoutSourceInput, QuerySourcePolicyUncheckedCreateWithoutSourceInput> | QuerySourcePolicyCreateWithoutSourceInput[] | QuerySourcePolicyUncheckedCreateWithoutSourceInput[]
+    connectOrCreate?: QuerySourcePolicyCreateOrConnectWithoutSourceInput | QuerySourcePolicyCreateOrConnectWithoutSourceInput[]
+    upsert?: QuerySourcePolicyUpsertWithWhereUniqueWithoutSourceInput | QuerySourcePolicyUpsertWithWhereUniqueWithoutSourceInput[]
+    createMany?: QuerySourcePolicyCreateManySourceInputEnvelope
+    set?: QuerySourcePolicyWhereUniqueInput | QuerySourcePolicyWhereUniqueInput[]
+    disconnect?: QuerySourcePolicyWhereUniqueInput | QuerySourcePolicyWhereUniqueInput[]
+    delete?: QuerySourcePolicyWhereUniqueInput | QuerySourcePolicyWhereUniqueInput[]
+    connect?: QuerySourcePolicyWhereUniqueInput | QuerySourcePolicyWhereUniqueInput[]
+    update?: QuerySourcePolicyUpdateWithWhereUniqueWithoutSourceInput | QuerySourcePolicyUpdateWithWhereUniqueWithoutSourceInput[]
+    updateMany?: QuerySourcePolicyUpdateManyWithWhereWithoutSourceInput | QuerySourcePolicyUpdateManyWithWhereWithoutSourceInput[]
+    deleteMany?: QuerySourcePolicyScalarWhereInput | QuerySourcePolicyScalarWhereInput[]
+  }
+
   export type WebSourceConfigUncheckedUpdateOneWithoutSourceNestedInput = {
     create?: XOR<WebSourceConfigCreateWithoutSourceInput, WebSourceConfigUncheckedCreateWithoutSourceInput>
     connectOrCreate?: WebSourceConfigCreateOrConnectWithoutSourceInput
@@ -45441,6 +46977,20 @@ export namespace Prisma {
     update?: QueryUpdateWithWhereUniqueWithoutSourcesInput | QueryUpdateWithWhereUniqueWithoutSourcesInput[]
     updateMany?: QueryUpdateManyWithWhereWithoutSourcesInput | QueryUpdateManyWithWhereWithoutSourcesInput[]
     deleteMany?: QueryScalarWhereInput | QueryScalarWhereInput[]
+  }
+
+  export type QuerySourcePolicyUncheckedUpdateManyWithoutSourceNestedInput = {
+    create?: XOR<QuerySourcePolicyCreateWithoutSourceInput, QuerySourcePolicyUncheckedCreateWithoutSourceInput> | QuerySourcePolicyCreateWithoutSourceInput[] | QuerySourcePolicyUncheckedCreateWithoutSourceInput[]
+    connectOrCreate?: QuerySourcePolicyCreateOrConnectWithoutSourceInput | QuerySourcePolicyCreateOrConnectWithoutSourceInput[]
+    upsert?: QuerySourcePolicyUpsertWithWhereUniqueWithoutSourceInput | QuerySourcePolicyUpsertWithWhereUniqueWithoutSourceInput[]
+    createMany?: QuerySourcePolicyCreateManySourceInputEnvelope
+    set?: QuerySourcePolicyWhereUniqueInput | QuerySourcePolicyWhereUniqueInput[]
+    disconnect?: QuerySourcePolicyWhereUniqueInput | QuerySourcePolicyWhereUniqueInput[]
+    delete?: QuerySourcePolicyWhereUniqueInput | QuerySourcePolicyWhereUniqueInput[]
+    connect?: QuerySourcePolicyWhereUniqueInput | QuerySourcePolicyWhereUniqueInput[]
+    update?: QuerySourcePolicyUpdateWithWhereUniqueWithoutSourceInput | QuerySourcePolicyUpdateWithWhereUniqueWithoutSourceInput[]
+    updateMany?: QuerySourcePolicyUpdateManyWithWhereWithoutSourceInput | QuerySourcePolicyUpdateManyWithWhereWithoutSourceInput[]
+    deleteMany?: QuerySourcePolicyScalarWhereInput | QuerySourcePolicyScalarWhereInput[]
   }
 
   export type SourceCreateNestedOneWithoutIdentityInput = {
@@ -45723,6 +47273,13 @@ export namespace Prisma {
     connect?: SourceWhereUniqueInput | SourceWhereUniqueInput[]
   }
 
+  export type QuerySourcePolicyCreateNestedManyWithoutQueryInput = {
+    create?: XOR<QuerySourcePolicyCreateWithoutQueryInput, QuerySourcePolicyUncheckedCreateWithoutQueryInput> | QuerySourcePolicyCreateWithoutQueryInput[] | QuerySourcePolicyUncheckedCreateWithoutQueryInput[]
+    connectOrCreate?: QuerySourcePolicyCreateOrConnectWithoutQueryInput | QuerySourcePolicyCreateOrConnectWithoutQueryInput[]
+    createMany?: QuerySourcePolicyCreateManyQueryInputEnvelope
+    connect?: QuerySourcePolicyWhereUniqueInput | QuerySourcePolicyWhereUniqueInput[]
+  }
+
   export type QueryRunCreateNestedManyWithoutQueryInput = {
     create?: XOR<QueryRunCreateWithoutQueryInput, QueryRunUncheckedCreateWithoutQueryInput> | QueryRunCreateWithoutQueryInput[] | QueryRunUncheckedCreateWithoutQueryInput[]
     connectOrCreate?: QueryRunCreateOrConnectWithoutQueryInput | QueryRunCreateOrConnectWithoutQueryInput[]
@@ -45740,6 +47297,13 @@ export namespace Prisma {
     create?: XOR<SourceCreateWithoutQueriesInput, SourceUncheckedCreateWithoutQueriesInput> | SourceCreateWithoutQueriesInput[] | SourceUncheckedCreateWithoutQueriesInput[]
     connectOrCreate?: SourceCreateOrConnectWithoutQueriesInput | SourceCreateOrConnectWithoutQueriesInput[]
     connect?: SourceWhereUniqueInput | SourceWhereUniqueInput[]
+  }
+
+  export type QuerySourcePolicyUncheckedCreateNestedManyWithoutQueryInput = {
+    create?: XOR<QuerySourcePolicyCreateWithoutQueryInput, QuerySourcePolicyUncheckedCreateWithoutQueryInput> | QuerySourcePolicyCreateWithoutQueryInput[] | QuerySourcePolicyUncheckedCreateWithoutQueryInput[]
+    connectOrCreate?: QuerySourcePolicyCreateOrConnectWithoutQueryInput | QuerySourcePolicyCreateOrConnectWithoutQueryInput[]
+    createMany?: QuerySourcePolicyCreateManyQueryInputEnvelope
+    connect?: QuerySourcePolicyWhereUniqueInput | QuerySourcePolicyWhereUniqueInput[]
   }
 
   export type QueryRunUncheckedCreateNestedManyWithoutQueryInput = {
@@ -45777,6 +47341,20 @@ export namespace Prisma {
     update?: SourceUpdateWithWhereUniqueWithoutQueriesInput | SourceUpdateWithWhereUniqueWithoutQueriesInput[]
     updateMany?: SourceUpdateManyWithWhereWithoutQueriesInput | SourceUpdateManyWithWhereWithoutQueriesInput[]
     deleteMany?: SourceScalarWhereInput | SourceScalarWhereInput[]
+  }
+
+  export type QuerySourcePolicyUpdateManyWithoutQueryNestedInput = {
+    create?: XOR<QuerySourcePolicyCreateWithoutQueryInput, QuerySourcePolicyUncheckedCreateWithoutQueryInput> | QuerySourcePolicyCreateWithoutQueryInput[] | QuerySourcePolicyUncheckedCreateWithoutQueryInput[]
+    connectOrCreate?: QuerySourcePolicyCreateOrConnectWithoutQueryInput | QuerySourcePolicyCreateOrConnectWithoutQueryInput[]
+    upsert?: QuerySourcePolicyUpsertWithWhereUniqueWithoutQueryInput | QuerySourcePolicyUpsertWithWhereUniqueWithoutQueryInput[]
+    createMany?: QuerySourcePolicyCreateManyQueryInputEnvelope
+    set?: QuerySourcePolicyWhereUniqueInput | QuerySourcePolicyWhereUniqueInput[]
+    disconnect?: QuerySourcePolicyWhereUniqueInput | QuerySourcePolicyWhereUniqueInput[]
+    delete?: QuerySourcePolicyWhereUniqueInput | QuerySourcePolicyWhereUniqueInput[]
+    connect?: QuerySourcePolicyWhereUniqueInput | QuerySourcePolicyWhereUniqueInput[]
+    update?: QuerySourcePolicyUpdateWithWhereUniqueWithoutQueryInput | QuerySourcePolicyUpdateWithWhereUniqueWithoutQueryInput[]
+    updateMany?: QuerySourcePolicyUpdateManyWithWhereWithoutQueryInput | QuerySourcePolicyUpdateManyWithWhereWithoutQueryInput[]
+    deleteMany?: QuerySourcePolicyScalarWhereInput | QuerySourcePolicyScalarWhereInput[]
   }
 
   export type QueryRunUpdateManyWithoutQueryNestedInput = {
@@ -45819,6 +47397,20 @@ export namespace Prisma {
     deleteMany?: SourceScalarWhereInput | SourceScalarWhereInput[]
   }
 
+  export type QuerySourcePolicyUncheckedUpdateManyWithoutQueryNestedInput = {
+    create?: XOR<QuerySourcePolicyCreateWithoutQueryInput, QuerySourcePolicyUncheckedCreateWithoutQueryInput> | QuerySourcePolicyCreateWithoutQueryInput[] | QuerySourcePolicyUncheckedCreateWithoutQueryInput[]
+    connectOrCreate?: QuerySourcePolicyCreateOrConnectWithoutQueryInput | QuerySourcePolicyCreateOrConnectWithoutQueryInput[]
+    upsert?: QuerySourcePolicyUpsertWithWhereUniqueWithoutQueryInput | QuerySourcePolicyUpsertWithWhereUniqueWithoutQueryInput[]
+    createMany?: QuerySourcePolicyCreateManyQueryInputEnvelope
+    set?: QuerySourcePolicyWhereUniqueInput | QuerySourcePolicyWhereUniqueInput[]
+    disconnect?: QuerySourcePolicyWhereUniqueInput | QuerySourcePolicyWhereUniqueInput[]
+    delete?: QuerySourcePolicyWhereUniqueInput | QuerySourcePolicyWhereUniqueInput[]
+    connect?: QuerySourcePolicyWhereUniqueInput | QuerySourcePolicyWhereUniqueInput[]
+    update?: QuerySourcePolicyUpdateWithWhereUniqueWithoutQueryInput | QuerySourcePolicyUpdateWithWhereUniqueWithoutQueryInput[]
+    updateMany?: QuerySourcePolicyUpdateManyWithWhereWithoutQueryInput | QuerySourcePolicyUpdateManyWithWhereWithoutQueryInput[]
+    deleteMany?: QuerySourcePolicyScalarWhereInput | QuerySourcePolicyScalarWhereInput[]
+  }
+
   export type QueryRunUncheckedUpdateManyWithoutQueryNestedInput = {
     create?: XOR<QueryRunCreateWithoutQueryInput, QueryRunUncheckedCreateWithoutQueryInput> | QueryRunCreateWithoutQueryInput[] | QueryRunUncheckedCreateWithoutQueryInput[]
     connectOrCreate?: QueryRunCreateOrConnectWithoutQueryInput | QueryRunCreateOrConnectWithoutQueryInput[]
@@ -45831,6 +47423,38 @@ export namespace Prisma {
     update?: QueryRunUpdateWithWhereUniqueWithoutQueryInput | QueryRunUpdateWithWhereUniqueWithoutQueryInput[]
     updateMany?: QueryRunUpdateManyWithWhereWithoutQueryInput | QueryRunUpdateManyWithWhereWithoutQueryInput[]
     deleteMany?: QueryRunScalarWhereInput | QueryRunScalarWhereInput[]
+  }
+
+  export type QueryCreateNestedOneWithoutSourcePoliciesInput = {
+    create?: XOR<QueryCreateWithoutSourcePoliciesInput, QueryUncheckedCreateWithoutSourcePoliciesInput>
+    connectOrCreate?: QueryCreateOrConnectWithoutSourcePoliciesInput
+    connect?: QueryWhereUniqueInput
+  }
+
+  export type SourceCreateNestedOneWithoutQuerySourcePoliciesInput = {
+    create?: XOR<SourceCreateWithoutQuerySourcePoliciesInput, SourceUncheckedCreateWithoutQuerySourcePoliciesInput>
+    connectOrCreate?: SourceCreateOrConnectWithoutQuerySourcePoliciesInput
+    connect?: SourceWhereUniqueInput
+  }
+
+  export type EnumQueryContentFilterModeFieldUpdateOperationsInput = {
+    set?: $Enums.QueryContentFilterMode
+  }
+
+  export type QueryUpdateOneRequiredWithoutSourcePoliciesNestedInput = {
+    create?: XOR<QueryCreateWithoutSourcePoliciesInput, QueryUncheckedCreateWithoutSourcePoliciesInput>
+    connectOrCreate?: QueryCreateOrConnectWithoutSourcePoliciesInput
+    upsert?: QueryUpsertWithoutSourcePoliciesInput
+    connect?: QueryWhereUniqueInput
+    update?: XOR<XOR<QueryUpdateToOneWithWhereWithoutSourcePoliciesInput, QueryUpdateWithoutSourcePoliciesInput>, QueryUncheckedUpdateWithoutSourcePoliciesInput>
+  }
+
+  export type SourceUpdateOneRequiredWithoutQuerySourcePoliciesNestedInput = {
+    create?: XOR<SourceCreateWithoutQuerySourcePoliciesInput, SourceUncheckedCreateWithoutQuerySourcePoliciesInput>
+    connectOrCreate?: SourceCreateOrConnectWithoutQuerySourcePoliciesInput
+    upsert?: SourceUpsertWithoutQuerySourcePoliciesInput
+    connect?: SourceWhereUniqueInput
+    update?: XOR<XOR<SourceUpdateToOneWithWhereWithoutQuerySourcePoliciesInput, SourceUpdateWithoutQuerySourcePoliciesInput>, SourceUncheckedUpdateWithoutQuerySourcePoliciesInput>
   }
 
   export type QueryCreateNestedOneWithoutQueryRunsInput = {
@@ -47006,6 +48630,23 @@ export namespace Prisma {
     _max?: NestedEnumQueryFrequencyFilter<$PrismaModel>
   }
 
+  export type NestedEnumQueryContentFilterModeFilter<$PrismaModel = never> = {
+    equals?: $Enums.QueryContentFilterMode | EnumQueryContentFilterModeFieldRefInput<$PrismaModel>
+    in?: $Enums.QueryContentFilterMode[] | ListEnumQueryContentFilterModeFieldRefInput<$PrismaModel>
+    notIn?: $Enums.QueryContentFilterMode[] | ListEnumQueryContentFilterModeFieldRefInput<$PrismaModel>
+    not?: NestedEnumQueryContentFilterModeFilter<$PrismaModel> | $Enums.QueryContentFilterMode
+  }
+
+  export type NestedEnumQueryContentFilterModeWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: $Enums.QueryContentFilterMode | EnumQueryContentFilterModeFieldRefInput<$PrismaModel>
+    in?: $Enums.QueryContentFilterMode[] | ListEnumQueryContentFilterModeFieldRefInput<$PrismaModel>
+    notIn?: $Enums.QueryContentFilterMode[] | ListEnumQueryContentFilterModeFieldRefInput<$PrismaModel>
+    not?: NestedEnumQueryContentFilterModeWithAggregatesFilter<$PrismaModel> | $Enums.QueryContentFilterMode
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedEnumQueryContentFilterModeFilter<$PrismaModel>
+    _max?: NestedEnumQueryContentFilterModeFilter<$PrismaModel>
+  }
+
   export type NestedEnumTaskStatusFilter<$PrismaModel = never> = {
     equals?: $Enums.TaskStatus | EnumTaskStatusFieldRefInput<$PrismaModel>
     in?: $Enums.TaskStatus[] | ListEnumTaskStatusFieldRefInput<$PrismaModel>
@@ -47220,6 +48861,7 @@ export namespace Prisma {
     createdAt?: Date | string
     updatedAt?: Date | string
     sources?: SourceCreateNestedManyWithoutQueriesInput
+    sourcePolicies?: QuerySourcePolicyCreateNestedManyWithoutQueryInput
     queryRuns?: QueryRunCreateNestedManyWithoutQueryInput
   }
 
@@ -47234,6 +48876,7 @@ export namespace Prisma {
     createdAt?: Date | string
     updatedAt?: Date | string
     sources?: SourceUncheckedCreateNestedManyWithoutQueriesInput
+    sourcePolicies?: QuerySourcePolicyUncheckedCreateNestedManyWithoutQueryInput
     queryRuns?: QueryRunUncheckedCreateNestedManyWithoutQueryInput
   }
 
@@ -47437,6 +49080,7 @@ export namespace Prisma {
     identity?: SourceIdentityCreateNestedOneWithoutSourceInput
     presetBindings?: SourcePresetBindingCreateNestedManyWithoutSourceInput
     queries?: QueryCreateNestedManyWithoutSourcesInput
+    querySourcePolicies?: QuerySourcePolicyCreateNestedManyWithoutSourceInput
   }
 
   export type SourceUncheckedCreateWithoutProxyInput = {
@@ -47459,6 +49103,7 @@ export namespace Prisma {
     identity?: SourceIdentityUncheckedCreateNestedOneWithoutSourceInput
     presetBindings?: SourcePresetBindingUncheckedCreateNestedManyWithoutSourceInput
     queries?: QueryUncheckedCreateNestedManyWithoutSourcesInput
+    querySourcePolicies?: QuerySourcePolicyUncheckedCreateNestedManyWithoutSourceInput
   }
 
   export type SourceCreateOrConnectWithoutProxyInput = {
@@ -47715,6 +49360,7 @@ export namespace Prisma {
     identity?: SourceIdentityCreateNestedOneWithoutSourceInput
     presetBindings?: SourcePresetBindingCreateNestedManyWithoutSourceInput
     queries?: QueryCreateNestedManyWithoutSourcesInput
+    querySourcePolicies?: QuerySourcePolicyCreateNestedManyWithoutSourceInput
   }
 
   export type SourceUncheckedCreateWithoutCredentialInput = {
@@ -47737,6 +49383,7 @@ export namespace Prisma {
     identity?: SourceIdentityUncheckedCreateNestedOneWithoutSourceInput
     presetBindings?: SourcePresetBindingUncheckedCreateNestedManyWithoutSourceInput
     queries?: QueryUncheckedCreateNestedManyWithoutSourcesInput
+    querySourcePolicies?: QuerySourcePolicyUncheckedCreateNestedManyWithoutSourceInput
   }
 
   export type SourceCreateOrConnectWithoutCredentialInput = {
@@ -48113,6 +49760,7 @@ export namespace Prisma {
     createdAt?: Date | string
     updatedAt?: Date | string
     keywords?: KeywordCreateNestedManyWithoutQueriesInput
+    sourcePolicies?: QuerySourcePolicyCreateNestedManyWithoutQueryInput
     queryRuns?: QueryRunCreateNestedManyWithoutQueryInput
   }
 
@@ -48127,12 +49775,41 @@ export namespace Prisma {
     createdAt?: Date | string
     updatedAt?: Date | string
     keywords?: KeywordUncheckedCreateNestedManyWithoutQueriesInput
+    sourcePolicies?: QuerySourcePolicyUncheckedCreateNestedManyWithoutQueryInput
     queryRuns?: QueryRunUncheckedCreateNestedManyWithoutQueryInput
   }
 
   export type QueryCreateOrConnectWithoutSourcesInput = {
     where: QueryWhereUniqueInput
     create: XOR<QueryCreateWithoutSourcesInput, QueryUncheckedCreateWithoutSourcesInput>
+  }
+
+  export type QuerySourcePolicyCreateWithoutSourceInput = {
+    id?: string
+    contentFilterEnabled?: boolean
+    contentFilterMode?: $Enums.QueryContentFilterMode
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    query: QueryCreateNestedOneWithoutSourcePoliciesInput
+  }
+
+  export type QuerySourcePolicyUncheckedCreateWithoutSourceInput = {
+    id?: string
+    queryId: string
+    contentFilterEnabled?: boolean
+    contentFilterMode?: $Enums.QueryContentFilterMode
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type QuerySourcePolicyCreateOrConnectWithoutSourceInput = {
+    where: QuerySourcePolicyWhereUniqueInput
+    create: XOR<QuerySourcePolicyCreateWithoutSourceInput, QuerySourcePolicyUncheckedCreateWithoutSourceInput>
+  }
+
+  export type QuerySourcePolicyCreateManySourceInputEnvelope = {
+    data: QuerySourcePolicyCreateManySourceInput | QuerySourcePolicyCreateManySourceInput[]
+    skipDuplicates?: boolean
   }
 
   export type ProxyUpsertWithoutSourcesInput = {
@@ -48419,6 +50096,35 @@ export namespace Prisma {
     data: XOR<QueryUpdateManyMutationInput, QueryUncheckedUpdateManyWithoutSourcesInput>
   }
 
+  export type QuerySourcePolicyUpsertWithWhereUniqueWithoutSourceInput = {
+    where: QuerySourcePolicyWhereUniqueInput
+    update: XOR<QuerySourcePolicyUpdateWithoutSourceInput, QuerySourcePolicyUncheckedUpdateWithoutSourceInput>
+    create: XOR<QuerySourcePolicyCreateWithoutSourceInput, QuerySourcePolicyUncheckedCreateWithoutSourceInput>
+  }
+
+  export type QuerySourcePolicyUpdateWithWhereUniqueWithoutSourceInput = {
+    where: QuerySourcePolicyWhereUniqueInput
+    data: XOR<QuerySourcePolicyUpdateWithoutSourceInput, QuerySourcePolicyUncheckedUpdateWithoutSourceInput>
+  }
+
+  export type QuerySourcePolicyUpdateManyWithWhereWithoutSourceInput = {
+    where: QuerySourcePolicyScalarWhereInput
+    data: XOR<QuerySourcePolicyUpdateManyMutationInput, QuerySourcePolicyUncheckedUpdateManyWithoutSourceInput>
+  }
+
+  export type QuerySourcePolicyScalarWhereInput = {
+    AND?: QuerySourcePolicyScalarWhereInput | QuerySourcePolicyScalarWhereInput[]
+    OR?: QuerySourcePolicyScalarWhereInput[]
+    NOT?: QuerySourcePolicyScalarWhereInput | QuerySourcePolicyScalarWhereInput[]
+    id?: StringFilter<"QuerySourcePolicy"> | string
+    queryId?: StringFilter<"QuerySourcePolicy"> | string
+    sourceId?: StringFilter<"QuerySourcePolicy"> | string
+    contentFilterEnabled?: BoolFilter<"QuerySourcePolicy"> | boolean
+    contentFilterMode?: EnumQueryContentFilterModeFilter<"QuerySourcePolicy"> | $Enums.QueryContentFilterMode
+    createdAt?: DateTimeFilter<"QuerySourcePolicy"> | Date | string
+    updatedAt?: DateTimeFilter<"QuerySourcePolicy"> | Date | string
+  }
+
   export type SourceCreateWithoutIdentityInput = {
     id?: string
     name: string
@@ -48439,6 +50145,7 @@ export namespace Prisma {
     social?: SocialMediaSourceConfigCreateNestedOneWithoutSourceInput
     presetBindings?: SourcePresetBindingCreateNestedManyWithoutSourceInput
     queries?: QueryCreateNestedManyWithoutSourcesInput
+    querySourcePolicies?: QuerySourcePolicyCreateNestedManyWithoutSourceInput
   }
 
   export type SourceUncheckedCreateWithoutIdentityInput = {
@@ -48461,6 +50168,7 @@ export namespace Prisma {
     social?: SocialMediaSourceConfigUncheckedCreateNestedOneWithoutSourceInput
     presetBindings?: SourcePresetBindingUncheckedCreateNestedManyWithoutSourceInput
     queries?: QueryUncheckedCreateNestedManyWithoutSourcesInput
+    querySourcePolicies?: QuerySourcePolicyUncheckedCreateNestedManyWithoutSourceInput
   }
 
   export type SourceCreateOrConnectWithoutIdentityInput = {
@@ -48499,6 +50207,7 @@ export namespace Prisma {
     social?: SocialMediaSourceConfigUpdateOneWithoutSourceNestedInput
     presetBindings?: SourcePresetBindingUpdateManyWithoutSourceNestedInput
     queries?: QueryUpdateManyWithoutSourcesNestedInput
+    querySourcePolicies?: QuerySourcePolicyUpdateManyWithoutSourceNestedInput
   }
 
   export type SourceUncheckedUpdateWithoutIdentityInput = {
@@ -48521,6 +50230,7 @@ export namespace Prisma {
     social?: SocialMediaSourceConfigUncheckedUpdateOneWithoutSourceNestedInput
     presetBindings?: SourcePresetBindingUncheckedUpdateManyWithoutSourceNestedInput
     queries?: QueryUncheckedUpdateManyWithoutSourcesNestedInput
+    querySourcePolicies?: QuerySourcePolicyUncheckedUpdateManyWithoutSourceNestedInput
   }
 
   export type SourcePresetBindingCreateWithoutPresetInput = {
@@ -48587,6 +50297,7 @@ export namespace Prisma {
     social?: SocialMediaSourceConfigCreateNestedOneWithoutSourceInput
     identity?: SourceIdentityCreateNestedOneWithoutSourceInput
     queries?: QueryCreateNestedManyWithoutSourcesInput
+    querySourcePolicies?: QuerySourcePolicyCreateNestedManyWithoutSourceInput
   }
 
   export type SourceUncheckedCreateWithoutPresetBindingsInput = {
@@ -48609,6 +50320,7 @@ export namespace Prisma {
     social?: SocialMediaSourceConfigUncheckedCreateNestedOneWithoutSourceInput
     identity?: SourceIdentityUncheckedCreateNestedOneWithoutSourceInput
     queries?: QueryUncheckedCreateNestedManyWithoutSourcesInput
+    querySourcePolicies?: QuerySourcePolicyUncheckedCreateNestedManyWithoutSourceInput
   }
 
   export type SourceCreateOrConnectWithoutPresetBindingsInput = {
@@ -48688,6 +50400,7 @@ export namespace Prisma {
     social?: SocialMediaSourceConfigUpdateOneWithoutSourceNestedInput
     identity?: SourceIdentityUpdateOneWithoutSourceNestedInput
     queries?: QueryUpdateManyWithoutSourcesNestedInput
+    querySourcePolicies?: QuerySourcePolicyUpdateManyWithoutSourceNestedInput
   }
 
   export type SourceUncheckedUpdateWithoutPresetBindingsInput = {
@@ -48710,6 +50423,7 @@ export namespace Prisma {
     social?: SocialMediaSourceConfigUncheckedUpdateOneWithoutSourceNestedInput
     identity?: SourceIdentityUncheckedUpdateOneWithoutSourceNestedInput
     queries?: QueryUncheckedUpdateManyWithoutSourcesNestedInput
+    querySourcePolicies?: QuerySourcePolicyUncheckedUpdateManyWithoutSourceNestedInput
   }
 
   export type BbPresetUpsertWithoutSourceBindingsInput = {
@@ -48779,6 +50493,7 @@ export namespace Prisma {
     identity?: SourceIdentityCreateNestedOneWithoutSourceInput
     presetBindings?: SourcePresetBindingCreateNestedManyWithoutSourceInput
     queries?: QueryCreateNestedManyWithoutSourcesInput
+    querySourcePolicies?: QuerySourcePolicyCreateNestedManyWithoutSourceInput
   }
 
   export type SourceUncheckedCreateWithoutWebInput = {
@@ -48801,6 +50516,7 @@ export namespace Prisma {
     identity?: SourceIdentityUncheckedCreateNestedOneWithoutSourceInput
     presetBindings?: SourcePresetBindingUncheckedCreateNestedManyWithoutSourceInput
     queries?: QueryUncheckedCreateNestedManyWithoutSourcesInput
+    querySourcePolicies?: QuerySourcePolicyUncheckedCreateNestedManyWithoutSourceInput
   }
 
   export type SourceCreateOrConnectWithoutWebInput = {
@@ -48870,6 +50586,7 @@ export namespace Prisma {
     identity?: SourceIdentityUpdateOneWithoutSourceNestedInput
     presetBindings?: SourcePresetBindingUpdateManyWithoutSourceNestedInput
     queries?: QueryUpdateManyWithoutSourcesNestedInput
+    querySourcePolicies?: QuerySourcePolicyUpdateManyWithoutSourceNestedInput
   }
 
   export type SourceUncheckedUpdateWithoutWebInput = {
@@ -48892,6 +50609,7 @@ export namespace Prisma {
     identity?: SourceIdentityUncheckedUpdateOneWithoutSourceNestedInput
     presetBindings?: SourcePresetBindingUncheckedUpdateManyWithoutSourceNestedInput
     queries?: QueryUncheckedUpdateManyWithoutSourcesNestedInput
+    querySourcePolicies?: QuerySourcePolicyUncheckedUpdateManyWithoutSourceNestedInput
   }
 
   export type ProxyUpsertWithoutWebOverridesInput = {
@@ -48951,6 +50669,7 @@ export namespace Prisma {
     identity?: SourceIdentityCreateNestedOneWithoutSourceInput
     presetBindings?: SourcePresetBindingCreateNestedManyWithoutSourceInput
     queries?: QueryCreateNestedManyWithoutSourcesInput
+    querySourcePolicies?: QuerySourcePolicyCreateNestedManyWithoutSourceInput
   }
 
   export type SourceUncheckedCreateWithoutDarknetInput = {
@@ -48973,6 +50692,7 @@ export namespace Prisma {
     identity?: SourceIdentityUncheckedCreateNestedOneWithoutSourceInput
     presetBindings?: SourcePresetBindingUncheckedCreateNestedManyWithoutSourceInput
     queries?: QueryUncheckedCreateNestedManyWithoutSourcesInput
+    querySourcePolicies?: QuerySourcePolicyUncheckedCreateNestedManyWithoutSourceInput
   }
 
   export type SourceCreateOrConnectWithoutDarknetInput = {
@@ -49042,6 +50762,7 @@ export namespace Prisma {
     identity?: SourceIdentityUpdateOneWithoutSourceNestedInput
     presetBindings?: SourcePresetBindingUpdateManyWithoutSourceNestedInput
     queries?: QueryUpdateManyWithoutSourcesNestedInput
+    querySourcePolicies?: QuerySourcePolicyUpdateManyWithoutSourceNestedInput
   }
 
   export type SourceUncheckedUpdateWithoutDarknetInput = {
@@ -49064,6 +50785,7 @@ export namespace Prisma {
     identity?: SourceIdentityUncheckedUpdateOneWithoutSourceNestedInput
     presetBindings?: SourcePresetBindingUncheckedUpdateManyWithoutSourceNestedInput
     queries?: QueryUncheckedUpdateManyWithoutSourcesNestedInput
+    querySourcePolicies?: QuerySourcePolicyUncheckedUpdateManyWithoutSourceNestedInput
   }
 
   export type ProxyUpsertWithoutDarknetOverridesInput = {
@@ -49123,6 +50845,7 @@ export namespace Prisma {
     identity?: SourceIdentityCreateNestedOneWithoutSourceInput
     presetBindings?: SourcePresetBindingCreateNestedManyWithoutSourceInput
     queries?: QueryCreateNestedManyWithoutSourcesInput
+    querySourcePolicies?: QuerySourcePolicyCreateNestedManyWithoutSourceInput
   }
 
   export type SourceUncheckedCreateWithoutSearchInput = {
@@ -49145,6 +50868,7 @@ export namespace Prisma {
     identity?: SourceIdentityUncheckedCreateNestedOneWithoutSourceInput
     presetBindings?: SourcePresetBindingUncheckedCreateNestedManyWithoutSourceInput
     queries?: QueryUncheckedCreateNestedManyWithoutSourcesInput
+    querySourcePolicies?: QuerySourcePolicyUncheckedCreateNestedManyWithoutSourceInput
   }
 
   export type SourceCreateOrConnectWithoutSearchInput = {
@@ -49210,6 +50934,7 @@ export namespace Prisma {
     identity?: SourceIdentityUpdateOneWithoutSourceNestedInput
     presetBindings?: SourcePresetBindingUpdateManyWithoutSourceNestedInput
     queries?: QueryUpdateManyWithoutSourcesNestedInput
+    querySourcePolicies?: QuerySourcePolicyUpdateManyWithoutSourceNestedInput
   }
 
   export type SourceUncheckedUpdateWithoutSearchInput = {
@@ -49232,6 +50957,7 @@ export namespace Prisma {
     identity?: SourceIdentityUncheckedUpdateOneWithoutSourceNestedInput
     presetBindings?: SourcePresetBindingUncheckedUpdateManyWithoutSourceNestedInput
     queries?: QueryUncheckedUpdateManyWithoutSourcesNestedInput
+    querySourcePolicies?: QuerySourcePolicyUncheckedUpdateManyWithoutSourceNestedInput
   }
 
   export type CredentialUpsertWithoutSearchOverridesInput = {
@@ -49287,6 +51013,7 @@ export namespace Prisma {
     identity?: SourceIdentityCreateNestedOneWithoutSourceInput
     presetBindings?: SourcePresetBindingCreateNestedManyWithoutSourceInput
     queries?: QueryCreateNestedManyWithoutSourcesInput
+    querySourcePolicies?: QuerySourcePolicyCreateNestedManyWithoutSourceInput
   }
 
   export type SourceUncheckedCreateWithoutSocialInput = {
@@ -49309,6 +51036,7 @@ export namespace Prisma {
     identity?: SourceIdentityUncheckedCreateNestedOneWithoutSourceInput
     presetBindings?: SourcePresetBindingUncheckedCreateNestedManyWithoutSourceInput
     queries?: QueryUncheckedCreateNestedManyWithoutSourcesInput
+    querySourcePolicies?: QuerySourcePolicyUncheckedCreateNestedManyWithoutSourceInput
   }
 
   export type SourceCreateOrConnectWithoutSocialInput = {
@@ -49405,6 +51133,7 @@ export namespace Prisma {
     identity?: SourceIdentityUpdateOneWithoutSourceNestedInput
     presetBindings?: SourcePresetBindingUpdateManyWithoutSourceNestedInput
     queries?: QueryUpdateManyWithoutSourcesNestedInput
+    querySourcePolicies?: QuerySourcePolicyUpdateManyWithoutSourceNestedInput
   }
 
   export type SourceUncheckedUpdateWithoutSocialInput = {
@@ -49427,6 +51156,7 @@ export namespace Prisma {
     identity?: SourceIdentityUncheckedUpdateOneWithoutSourceNestedInput
     presetBindings?: SourcePresetBindingUncheckedUpdateManyWithoutSourceNestedInput
     queries?: QueryUncheckedUpdateManyWithoutSourcesNestedInput
+    querySourcePolicies?: QuerySourcePolicyUncheckedUpdateManyWithoutSourceNestedInput
   }
 
   export type CredentialUpsertWithoutSocialOverridesInput = {
@@ -49560,6 +51290,7 @@ export namespace Prisma {
     social?: SocialMediaSourceConfigCreateNestedOneWithoutSourceInput
     identity?: SourceIdentityCreateNestedOneWithoutSourceInput
     presetBindings?: SourcePresetBindingCreateNestedManyWithoutSourceInput
+    querySourcePolicies?: QuerySourcePolicyCreateNestedManyWithoutSourceInput
   }
 
   export type SourceUncheckedCreateWithoutQueriesInput = {
@@ -49582,11 +51313,40 @@ export namespace Prisma {
     social?: SocialMediaSourceConfigUncheckedCreateNestedOneWithoutSourceInput
     identity?: SourceIdentityUncheckedCreateNestedOneWithoutSourceInput
     presetBindings?: SourcePresetBindingUncheckedCreateNestedManyWithoutSourceInput
+    querySourcePolicies?: QuerySourcePolicyUncheckedCreateNestedManyWithoutSourceInput
   }
 
   export type SourceCreateOrConnectWithoutQueriesInput = {
     where: SourceWhereUniqueInput
     create: XOR<SourceCreateWithoutQueriesInput, SourceUncheckedCreateWithoutQueriesInput>
+  }
+
+  export type QuerySourcePolicyCreateWithoutQueryInput = {
+    id?: string
+    contentFilterEnabled?: boolean
+    contentFilterMode?: $Enums.QueryContentFilterMode
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    source: SourceCreateNestedOneWithoutQuerySourcePoliciesInput
+  }
+
+  export type QuerySourcePolicyUncheckedCreateWithoutQueryInput = {
+    id?: string
+    sourceId: string
+    contentFilterEnabled?: boolean
+    contentFilterMode?: $Enums.QueryContentFilterMode
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type QuerySourcePolicyCreateOrConnectWithoutQueryInput = {
+    where: QuerySourcePolicyWhereUniqueInput
+    create: XOR<QuerySourcePolicyCreateWithoutQueryInput, QuerySourcePolicyUncheckedCreateWithoutQueryInput>
+  }
+
+  export type QuerySourcePolicyCreateManyQueryInputEnvelope = {
+    data: QuerySourcePolicyCreateManyQueryInput | QuerySourcePolicyCreateManyQueryInput[]
+    skipDuplicates?: boolean
   }
 
   export type QueryRunCreateWithoutQueryInput = {
@@ -49657,6 +51417,22 @@ export namespace Prisma {
     data: XOR<SourceUpdateManyMutationInput, SourceUncheckedUpdateManyWithoutQueriesInput>
   }
 
+  export type QuerySourcePolicyUpsertWithWhereUniqueWithoutQueryInput = {
+    where: QuerySourcePolicyWhereUniqueInput
+    update: XOR<QuerySourcePolicyUpdateWithoutQueryInput, QuerySourcePolicyUncheckedUpdateWithoutQueryInput>
+    create: XOR<QuerySourcePolicyCreateWithoutQueryInput, QuerySourcePolicyUncheckedCreateWithoutQueryInput>
+  }
+
+  export type QuerySourcePolicyUpdateWithWhereUniqueWithoutQueryInput = {
+    where: QuerySourcePolicyWhereUniqueInput
+    data: XOR<QuerySourcePolicyUpdateWithoutQueryInput, QuerySourcePolicyUncheckedUpdateWithoutQueryInput>
+  }
+
+  export type QuerySourcePolicyUpdateManyWithWhereWithoutQueryInput = {
+    where: QuerySourcePolicyScalarWhereInput
+    data: XOR<QuerySourcePolicyUpdateManyMutationInput, QuerySourcePolicyUncheckedUpdateManyWithoutQueryInput>
+  }
+
   export type QueryRunUpsertWithWhereUniqueWithoutQueryInput = {
     where: QueryRunWhereUniqueInput
     update: XOR<QueryRunUpdateWithoutQueryInput, QueryRunUncheckedUpdateWithoutQueryInput>
@@ -49689,6 +51465,190 @@ export namespace Prisma {
     updatedAt?: DateTimeFilter<"QueryRun"> | Date | string
   }
 
+  export type QueryCreateWithoutSourcePoliciesInput = {
+    id?: string
+    name: string
+    description?: string | null
+    enabled?: boolean
+    frequency?: $Enums.QueryFrequency
+    cronSchedule?: string | null
+    rules?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    keywords?: KeywordCreateNestedManyWithoutQueriesInput
+    sources?: SourceCreateNestedManyWithoutQueriesInput
+    queryRuns?: QueryRunCreateNestedManyWithoutQueryInput
+  }
+
+  export type QueryUncheckedCreateWithoutSourcePoliciesInput = {
+    id?: string
+    name: string
+    description?: string | null
+    enabled?: boolean
+    frequency?: $Enums.QueryFrequency
+    cronSchedule?: string | null
+    rules?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    keywords?: KeywordUncheckedCreateNestedManyWithoutQueriesInput
+    sources?: SourceUncheckedCreateNestedManyWithoutQueriesInput
+    queryRuns?: QueryRunUncheckedCreateNestedManyWithoutQueryInput
+  }
+
+  export type QueryCreateOrConnectWithoutSourcePoliciesInput = {
+    where: QueryWhereUniqueInput
+    create: XOR<QueryCreateWithoutSourcePoliciesInput, QueryUncheckedCreateWithoutSourcePoliciesInput>
+  }
+
+  export type SourceCreateWithoutQuerySourcePoliciesInput = {
+    id?: string
+    name: string
+    description?: string | null
+    category: $Enums.SourceCategory
+    isDarknet?: boolean
+    active?: boolean
+    rateLimit?: number | null
+    lastFetchedAt?: Date | string | null
+    lastStatus?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    proxy?: ProxyCreateNestedOneWithoutSourcesInput
+    credential?: CredentialCreateNestedOneWithoutSourcesInput
+    web?: WebSourceConfigCreateNestedOneWithoutSourceInput
+    darknet?: DarknetSourceConfigCreateNestedOneWithoutSourceInput
+    search?: SearchEngineSourceConfigCreateNestedOneWithoutSourceInput
+    social?: SocialMediaSourceConfigCreateNestedOneWithoutSourceInput
+    identity?: SourceIdentityCreateNestedOneWithoutSourceInput
+    presetBindings?: SourcePresetBindingCreateNestedManyWithoutSourceInput
+    queries?: QueryCreateNestedManyWithoutSourcesInput
+  }
+
+  export type SourceUncheckedCreateWithoutQuerySourcePoliciesInput = {
+    id?: string
+    name: string
+    description?: string | null
+    category: $Enums.SourceCategory
+    isDarknet?: boolean
+    active?: boolean
+    rateLimit?: number | null
+    lastFetchedAt?: Date | string | null
+    lastStatus?: string | null
+    proxyId?: string | null
+    credentialId?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    web?: WebSourceConfigUncheckedCreateNestedOneWithoutSourceInput
+    darknet?: DarknetSourceConfigUncheckedCreateNestedOneWithoutSourceInput
+    search?: SearchEngineSourceConfigUncheckedCreateNestedOneWithoutSourceInput
+    social?: SocialMediaSourceConfigUncheckedCreateNestedOneWithoutSourceInput
+    identity?: SourceIdentityUncheckedCreateNestedOneWithoutSourceInput
+    presetBindings?: SourcePresetBindingUncheckedCreateNestedManyWithoutSourceInput
+    queries?: QueryUncheckedCreateNestedManyWithoutSourcesInput
+  }
+
+  export type SourceCreateOrConnectWithoutQuerySourcePoliciesInput = {
+    where: SourceWhereUniqueInput
+    create: XOR<SourceCreateWithoutQuerySourcePoliciesInput, SourceUncheckedCreateWithoutQuerySourcePoliciesInput>
+  }
+
+  export type QueryUpsertWithoutSourcePoliciesInput = {
+    update: XOR<QueryUpdateWithoutSourcePoliciesInput, QueryUncheckedUpdateWithoutSourcePoliciesInput>
+    create: XOR<QueryCreateWithoutSourcePoliciesInput, QueryUncheckedCreateWithoutSourcePoliciesInput>
+    where?: QueryWhereInput
+  }
+
+  export type QueryUpdateToOneWithWhereWithoutSourcePoliciesInput = {
+    where?: QueryWhereInput
+    data: XOR<QueryUpdateWithoutSourcePoliciesInput, QueryUncheckedUpdateWithoutSourcePoliciesInput>
+  }
+
+  export type QueryUpdateWithoutSourcePoliciesInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    enabled?: BoolFieldUpdateOperationsInput | boolean
+    frequency?: EnumQueryFrequencyFieldUpdateOperationsInput | $Enums.QueryFrequency
+    cronSchedule?: NullableStringFieldUpdateOperationsInput | string | null
+    rules?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    keywords?: KeywordUpdateManyWithoutQueriesNestedInput
+    sources?: SourceUpdateManyWithoutQueriesNestedInput
+    queryRuns?: QueryRunUpdateManyWithoutQueryNestedInput
+  }
+
+  export type QueryUncheckedUpdateWithoutSourcePoliciesInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    enabled?: BoolFieldUpdateOperationsInput | boolean
+    frequency?: EnumQueryFrequencyFieldUpdateOperationsInput | $Enums.QueryFrequency
+    cronSchedule?: NullableStringFieldUpdateOperationsInput | string | null
+    rules?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    keywords?: KeywordUncheckedUpdateManyWithoutQueriesNestedInput
+    sources?: SourceUncheckedUpdateManyWithoutQueriesNestedInput
+    queryRuns?: QueryRunUncheckedUpdateManyWithoutQueryNestedInput
+  }
+
+  export type SourceUpsertWithoutQuerySourcePoliciesInput = {
+    update: XOR<SourceUpdateWithoutQuerySourcePoliciesInput, SourceUncheckedUpdateWithoutQuerySourcePoliciesInput>
+    create: XOR<SourceCreateWithoutQuerySourcePoliciesInput, SourceUncheckedCreateWithoutQuerySourcePoliciesInput>
+    where?: SourceWhereInput
+  }
+
+  export type SourceUpdateToOneWithWhereWithoutQuerySourcePoliciesInput = {
+    where?: SourceWhereInput
+    data: XOR<SourceUpdateWithoutQuerySourcePoliciesInput, SourceUncheckedUpdateWithoutQuerySourcePoliciesInput>
+  }
+
+  export type SourceUpdateWithoutQuerySourcePoliciesInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    category?: EnumSourceCategoryFieldUpdateOperationsInput | $Enums.SourceCategory
+    isDarknet?: BoolFieldUpdateOperationsInput | boolean
+    active?: BoolFieldUpdateOperationsInput | boolean
+    rateLimit?: NullableIntFieldUpdateOperationsInput | number | null
+    lastFetchedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    lastStatus?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    proxy?: ProxyUpdateOneWithoutSourcesNestedInput
+    credential?: CredentialUpdateOneWithoutSourcesNestedInput
+    web?: WebSourceConfigUpdateOneWithoutSourceNestedInput
+    darknet?: DarknetSourceConfigUpdateOneWithoutSourceNestedInput
+    search?: SearchEngineSourceConfigUpdateOneWithoutSourceNestedInput
+    social?: SocialMediaSourceConfigUpdateOneWithoutSourceNestedInput
+    identity?: SourceIdentityUpdateOneWithoutSourceNestedInput
+    presetBindings?: SourcePresetBindingUpdateManyWithoutSourceNestedInput
+    queries?: QueryUpdateManyWithoutSourcesNestedInput
+  }
+
+  export type SourceUncheckedUpdateWithoutQuerySourcePoliciesInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    category?: EnumSourceCategoryFieldUpdateOperationsInput | $Enums.SourceCategory
+    isDarknet?: BoolFieldUpdateOperationsInput | boolean
+    active?: BoolFieldUpdateOperationsInput | boolean
+    rateLimit?: NullableIntFieldUpdateOperationsInput | number | null
+    lastFetchedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    lastStatus?: NullableStringFieldUpdateOperationsInput | string | null
+    proxyId?: NullableStringFieldUpdateOperationsInput | string | null
+    credentialId?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    web?: WebSourceConfigUncheckedUpdateOneWithoutSourceNestedInput
+    darknet?: DarknetSourceConfigUncheckedUpdateOneWithoutSourceNestedInput
+    search?: SearchEngineSourceConfigUncheckedUpdateOneWithoutSourceNestedInput
+    social?: SocialMediaSourceConfigUncheckedUpdateOneWithoutSourceNestedInput
+    identity?: SourceIdentityUncheckedUpdateOneWithoutSourceNestedInput
+    presetBindings?: SourcePresetBindingUncheckedUpdateManyWithoutSourceNestedInput
+    queries?: QueryUncheckedUpdateManyWithoutSourcesNestedInput
+  }
+
   export type QueryCreateWithoutQueryRunsInput = {
     id?: string
     name: string
@@ -49701,6 +51661,7 @@ export namespace Prisma {
     updatedAt?: Date | string
     keywords?: KeywordCreateNestedManyWithoutQueriesInput
     sources?: SourceCreateNestedManyWithoutQueriesInput
+    sourcePolicies?: QuerySourcePolicyCreateNestedManyWithoutQueryInput
   }
 
   export type QueryUncheckedCreateWithoutQueryRunsInput = {
@@ -49715,6 +51676,7 @@ export namespace Prisma {
     updatedAt?: Date | string
     keywords?: KeywordUncheckedCreateNestedManyWithoutQueriesInput
     sources?: SourceUncheckedCreateNestedManyWithoutQueriesInput
+    sourcePolicies?: QuerySourcePolicyUncheckedCreateNestedManyWithoutQueryInput
   }
 
   export type QueryCreateOrConnectWithoutQueryRunsInput = {
@@ -49771,6 +51733,7 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     keywords?: KeywordUpdateManyWithoutQueriesNestedInput
     sources?: SourceUpdateManyWithoutQueriesNestedInput
+    sourcePolicies?: QuerySourcePolicyUpdateManyWithoutQueryNestedInput
   }
 
   export type QueryUncheckedUpdateWithoutQueryRunsInput = {
@@ -49785,6 +51748,7 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     keywords?: KeywordUncheckedUpdateManyWithoutQueriesNestedInput
     sources?: SourceUncheckedUpdateManyWithoutQueriesNestedInput
+    sourcePolicies?: QuerySourcePolicyUncheckedUpdateManyWithoutQueryNestedInput
   }
 
   export type TaskEventUpsertWithWhereUniqueWithoutRunInput = {
@@ -51535,6 +53499,7 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     sources?: SourceUpdateManyWithoutQueriesNestedInput
+    sourcePolicies?: QuerySourcePolicyUpdateManyWithoutQueryNestedInput
     queryRuns?: QueryRunUpdateManyWithoutQueryNestedInput
   }
 
@@ -51549,6 +53514,7 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     sources?: SourceUncheckedUpdateManyWithoutQueriesNestedInput
+    sourcePolicies?: QuerySourcePolicyUncheckedUpdateManyWithoutQueryNestedInput
     queryRuns?: QueryRunUncheckedUpdateManyWithoutQueryNestedInput
   }
 
@@ -51689,6 +53655,7 @@ export namespace Prisma {
     identity?: SourceIdentityUpdateOneWithoutSourceNestedInput
     presetBindings?: SourcePresetBindingUpdateManyWithoutSourceNestedInput
     queries?: QueryUpdateManyWithoutSourcesNestedInput
+    querySourcePolicies?: QuerySourcePolicyUpdateManyWithoutSourceNestedInput
   }
 
   export type SourceUncheckedUpdateWithoutProxyInput = {
@@ -51711,6 +53678,7 @@ export namespace Prisma {
     identity?: SourceIdentityUncheckedUpdateOneWithoutSourceNestedInput
     presetBindings?: SourcePresetBindingUncheckedUpdateManyWithoutSourceNestedInput
     queries?: QueryUncheckedUpdateManyWithoutSourcesNestedInput
+    querySourcePolicies?: QuerySourcePolicyUncheckedUpdateManyWithoutSourceNestedInput
   }
 
   export type SourceUncheckedUpdateManyWithoutProxyInput = {
@@ -51884,6 +53852,7 @@ export namespace Prisma {
     identity?: SourceIdentityUpdateOneWithoutSourceNestedInput
     presetBindings?: SourcePresetBindingUpdateManyWithoutSourceNestedInput
     queries?: QueryUpdateManyWithoutSourcesNestedInput
+    querySourcePolicies?: QuerySourcePolicyUpdateManyWithoutSourceNestedInput
   }
 
   export type SourceUncheckedUpdateWithoutCredentialInput = {
@@ -51906,6 +53875,7 @@ export namespace Prisma {
     identity?: SourceIdentityUncheckedUpdateOneWithoutSourceNestedInput
     presetBindings?: SourcePresetBindingUncheckedUpdateManyWithoutSourceNestedInput
     queries?: QueryUncheckedUpdateManyWithoutSourcesNestedInput
+    querySourcePolicies?: QuerySourcePolicyUncheckedUpdateManyWithoutSourceNestedInput
   }
 
   export type SourceUncheckedUpdateManyWithoutCredentialInput = {
@@ -51998,6 +53968,15 @@ export namespace Prisma {
     updatedAt?: Date | string
   }
 
+  export type QuerySourcePolicyCreateManySourceInput = {
+    id?: string
+    queryId: string
+    contentFilterEnabled?: boolean
+    contentFilterMode?: $Enums.QueryContentFilterMode
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
   export type SourcePresetBindingUpdateWithoutSourceInput = {
     id?: StringFieldUpdateOperationsInput | string
     args?: JsonNullValueInput | InputJsonValue
@@ -52036,6 +54015,7 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     keywords?: KeywordUpdateManyWithoutQueriesNestedInput
+    sourcePolicies?: QuerySourcePolicyUpdateManyWithoutQueryNestedInput
     queryRuns?: QueryRunUpdateManyWithoutQueryNestedInput
   }
 
@@ -52050,6 +54030,7 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     keywords?: KeywordUncheckedUpdateManyWithoutQueriesNestedInput
+    sourcePolicies?: QuerySourcePolicyUncheckedUpdateManyWithoutQueryNestedInput
     queryRuns?: QueryRunUncheckedUpdateManyWithoutQueryNestedInput
   }
 
@@ -52061,6 +54042,33 @@ export namespace Prisma {
     frequency?: EnumQueryFrequencyFieldUpdateOperationsInput | $Enums.QueryFrequency
     cronSchedule?: NullableStringFieldUpdateOperationsInput | string | null
     rules?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type QuerySourcePolicyUpdateWithoutSourceInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    contentFilterEnabled?: BoolFieldUpdateOperationsInput | boolean
+    contentFilterMode?: EnumQueryContentFilterModeFieldUpdateOperationsInput | $Enums.QueryContentFilterMode
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    query?: QueryUpdateOneRequiredWithoutSourcePoliciesNestedInput
+  }
+
+  export type QuerySourcePolicyUncheckedUpdateWithoutSourceInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    queryId?: StringFieldUpdateOperationsInput | string
+    contentFilterEnabled?: BoolFieldUpdateOperationsInput | boolean
+    contentFilterMode?: EnumQueryContentFilterModeFieldUpdateOperationsInput | $Enums.QueryContentFilterMode
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type QuerySourcePolicyUncheckedUpdateManyWithoutSourceInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    queryId?: StringFieldUpdateOperationsInput | string
+    contentFilterEnabled?: BoolFieldUpdateOperationsInput | boolean
+    contentFilterMode?: EnumQueryContentFilterModeFieldUpdateOperationsInput | $Enums.QueryContentFilterMode
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -52099,6 +54107,15 @@ export namespace Prisma {
     enabled?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type QuerySourcePolicyCreateManyQueryInput = {
+    id?: string
+    sourceId: string
+    contentFilterEnabled?: boolean
+    contentFilterMode?: $Enums.QueryContentFilterMode
+    createdAt?: Date | string
+    updatedAt?: Date | string
   }
 
   export type QueryRunCreateManyQueryInput = {
@@ -52185,6 +54202,7 @@ export namespace Prisma {
     social?: SocialMediaSourceConfigUpdateOneWithoutSourceNestedInput
     identity?: SourceIdentityUpdateOneWithoutSourceNestedInput
     presetBindings?: SourcePresetBindingUpdateManyWithoutSourceNestedInput
+    querySourcePolicies?: QuerySourcePolicyUpdateManyWithoutSourceNestedInput
   }
 
   export type SourceUncheckedUpdateWithoutQueriesInput = {
@@ -52207,6 +54225,7 @@ export namespace Prisma {
     social?: SocialMediaSourceConfigUncheckedUpdateOneWithoutSourceNestedInput
     identity?: SourceIdentityUncheckedUpdateOneWithoutSourceNestedInput
     presetBindings?: SourcePresetBindingUncheckedUpdateManyWithoutSourceNestedInput
+    querySourcePolicies?: QuerySourcePolicyUncheckedUpdateManyWithoutSourceNestedInput
   }
 
   export type SourceUncheckedUpdateManyWithoutQueriesInput = {
@@ -52221,6 +54240,33 @@ export namespace Prisma {
     lastStatus?: NullableStringFieldUpdateOperationsInput | string | null
     proxyId?: NullableStringFieldUpdateOperationsInput | string | null
     credentialId?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type QuerySourcePolicyUpdateWithoutQueryInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    contentFilterEnabled?: BoolFieldUpdateOperationsInput | boolean
+    contentFilterMode?: EnumQueryContentFilterModeFieldUpdateOperationsInput | $Enums.QueryContentFilterMode
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    source?: SourceUpdateOneRequiredWithoutQuerySourcePoliciesNestedInput
+  }
+
+  export type QuerySourcePolicyUncheckedUpdateWithoutQueryInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    sourceId?: StringFieldUpdateOperationsInput | string
+    contentFilterEnabled?: BoolFieldUpdateOperationsInput | boolean
+    contentFilterMode?: EnumQueryContentFilterModeFieldUpdateOperationsInput | $Enums.QueryContentFilterMode
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type QuerySourcePolicyUncheckedUpdateManyWithoutQueryInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    sourceId?: StringFieldUpdateOperationsInput | string
+    contentFilterEnabled?: BoolFieldUpdateOperationsInput | boolean
+    contentFilterMode?: EnumQueryContentFilterModeFieldUpdateOperationsInput | $Enums.QueryContentFilterMode
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }

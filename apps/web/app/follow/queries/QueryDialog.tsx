@@ -28,6 +28,11 @@ interface Props {
   query?: Query & {
     keywords?: Keyword[];
     sources?: Source[];
+    sourcePolicies?: Array<{
+      sourceId: string;
+      contentFilterEnabled: boolean;
+      contentFilterMode: "TERM_AND_WORD_BOUNDARY";
+    }>;
   };
   keywords: Keyword[];
   sources: Source[];
@@ -57,6 +62,7 @@ const QueryDialog = ({
     control,
     watch,
     reset,
+    setValue,
     setError,
     formState: { errors },
   } = useForm<QueryFormValues>({
@@ -71,6 +77,7 @@ const QueryDialog = ({
       keywordIds: query?.keywords?.map((k) => k.id) || [],
       sourceIds: query?.sources?.map((s) => s.id) || [],
       rules: query?.rules ? JSON.stringify(query.rules, null, 2) : undefined,
+      sourcePolicies: query?.sourcePolicies ?? [],
     },
   });
 
@@ -91,6 +98,7 @@ const QueryDialog = ({
         keywordIds: query?.keywords?.map((k) => k.id) || [],
         sourceIds: query?.sources?.map((s) => s.id) || [],
         rules: query?.rules ? JSON.stringify(query.rules, null, 2) : undefined,
+        sourcePolicies: query?.sourcePolicies ?? [],
       });
     } else {
       // When dialog opens for create, reset to empty values
@@ -103,9 +111,43 @@ const QueryDialog = ({
         keywordIds: [],
         sourceIds: [],
         rules: undefined,
+        sourcePolicies: [],
       });
     }
   }, [open, isUpdate, query, reset]);
+
+  const selectedSourceIds = watch("sourceIds");
+  const sourcePolicies = watch("sourcePolicies");
+
+  useEffect(() => {
+    const selectedIds = selectedSourceIds ?? [];
+    const policyMap = new Map((sourcePolicies ?? []).map((item) => [item.sourceId, item]));
+    const normalizedPolicies = selectedIds.map((sourceId) => {
+      const existingPolicy = policyMap.get(sourceId);
+      if (existingPolicy) return existingPolicy;
+      return {
+        sourceId,
+        contentFilterEnabled: true,
+        contentFilterMode: "TERM_AND_WORD_BOUNDARY" as const,
+      };
+    });
+    const hasDiff =
+      normalizedPolicies.length !== (sourcePolicies ?? []).length ||
+      normalizedPolicies.some((item, index) => {
+        const current = sourcePolicies?.[index];
+        return (
+          !current ||
+          current.sourceId !== item.sourceId ||
+          current.contentFilterEnabled !== item.contentFilterEnabled ||
+          current.contentFilterMode !== item.contentFilterMode
+        );
+      });
+    if (hasDiff) {
+      setValue("sourcePolicies", normalizedPolicies, {
+        shouldDirty: false,
+      });
+    }
+  }, [selectedSourceIds, setValue, sourcePolicies]);
 
   const mutation = useQueryMutation({
     queryId: query?.id,
@@ -153,6 +195,10 @@ const QueryDialog = ({
     const prefix = `[${displayCategoryLabel(category)}${darknet ? "/Darknet" : ""}]`;
     return { label: `${prefix} ${s.name}`, value: s.id };
   });
+  const sourceNameById = useMemo(
+    () => new Map(sources.map((source) => [source.id, source.name] as const)),
+    [sources]
+  );
 
   return (
     <SettingEditDialog
@@ -271,6 +317,49 @@ const QueryDialog = ({
           />
           <ErrorMessage>{errors.sourceIds?.message?.toString()}</ErrorMessage>
         </div>
+
+        {(sourcePolicies ?? []).length > 0 && (
+          <div className="grid gap-3 rounded-md border p-3">
+            <Label>Source Content Filter</Label>
+            {(sourcePolicies ?? []).map((policy, index) => (
+              <div
+                key={policy.sourceId}
+                className="grid gap-3 rounded-md border bg-background p-3"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">
+                    {sourceNameById.get(policy.sourceId) ?? policy.sourceId}
+                  </span>
+                  <Controller
+                    name={`sourcePolicies.${index}.contentFilterEnabled`}
+                    control={control}
+                    render={({ field }) => (
+                      <Switch
+                        checked={Boolean(field.value)}
+                        onCheckedChange={field.onChange}
+                      />
+                    )}
+                  />
+                </div>
+                <Controller
+                  name={`sourcePolicies.${index}.contentFilterMode`}
+                  control={control}
+                  render={({ field }) => (
+                    <ControlledSelect
+                      value={field.value}
+                      onValueChange={field.onChange}
+                      placeholder="Select filter mode"
+                    >
+                      <SelectItem value="TERM_AND_WORD_BOUNDARY">
+                        TERM_AND_WORD_BOUNDARY
+                      </SelectItem>
+                    </ControlledSelect>
+                  )}
+                />
+              </div>
+            ))}
+          </div>
+        )}
 
         <div className="grid gap-3">
           <Label htmlFor="rules">Rules (JSON)</Label>

@@ -296,6 +296,16 @@ exports.Prisma.QueryScalarFieldEnum = {
   updatedAt: 'updatedAt'
 };
 
+exports.Prisma.QuerySourcePolicyScalarFieldEnum = {
+  id: 'id',
+  queryId: 'queryId',
+  sourceId: 'sourceId',
+  contentFilterEnabled: 'contentFilterEnabled',
+  contentFilterMode: 'contentFilterMode',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
 exports.Prisma.QueryRunScalarFieldEnum = {
   id: 'id',
   queryId: 'queryId',
@@ -547,6 +557,10 @@ exports.QueryFrequency = exports.$Enums.QueryFrequency = {
   CRONTAB: 'CRONTAB'
 };
 
+exports.QueryContentFilterMode = exports.$Enums.QueryContentFilterMode = {
+  TERM_AND_WORD_BOUNDARY: 'TERM_AND_WORD_BOUNDARY'
+};
+
 exports.TaskStatus = exports.$Enums.TaskStatus = {
   PENDING: 'PENDING',
   RUNNING: 'RUNNING',
@@ -594,6 +608,7 @@ exports.Prisma.ModelName = {
   SearchEngineSourceConfig: 'SearchEngineSourceConfig',
   SocialMediaSourceConfig: 'SocialMediaSourceConfig',
   Query: 'Query',
+  QuerySourcePolicy: 'QuerySourcePolicy',
   QueryRun: 'QueryRun',
   TaskEvent: 'TaskEvent',
   Content: 'Content',

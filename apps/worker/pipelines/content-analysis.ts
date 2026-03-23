@@ -10,6 +10,7 @@ import {
   CrawlerEngine,
   KeywordStrategy,
   ContentSubjectMatchSource,
+  QueryContentFilterMode,
 } from "@/app/generated/prisma";
 import {
   SourceWithRelations,
@@ -94,6 +95,10 @@ type GatherOutputPayload = {
 type GatherIntentPayload = {
   type: string;
   args: Record<string, unknown>;
+};
+type SourceRuntimePolicy = {
+  contentFilterEnabled: boolean;
+  contentFilterMode: QueryContentFilterMode;
 };
 type GatherDriverPayload = {
   name: GatherSocialDriver;
@@ -250,6 +255,7 @@ export async function runFocusCollector(runId: string, queryId: string) {
     where: { id: queryId },
     include: {
       keywords: true,
+      sourcePolicies: true,
       sources: {
         include: {
           web: true,
@@ -299,7 +305,16 @@ export async function runFocusCollector(runId: string, queryId: string) {
     normalizedSources,
     runId,
     queryId,
-    query.keywords
+    query.keywords,
+    new Map(
+      query.sourcePolicies.map((item) => [
+        item.sourceId,
+        {
+          contentFilterEnabled: item.contentFilterEnabled,
+          contentFilterMode: item.contentFilterMode,
+        } satisfies SourceRuntimePolicy,
+      ])
+    )
   );
   const cleaned = await cleanAndDedup(rawItems, runId);
   const sourceStats = new Map<
@@ -695,7 +710,8 @@ async function fetchBySources(
   sources: SourceWithRelations[],
   runId: string,
   queryId: string,
-  keywords: QueryKeyword[]
+  keywords: QueryKeyword[],
+  sourcePolicyBySourceId: Map<string, SourceRuntimePolicy>
 ): Promise<CleanItem[]> {
   const sourceConcurrency = resolveSourceFetchConcurrency();
   const recallQueryLimit = resolveRecallQueryLimit();
@@ -714,9 +730,14 @@ async function fetchBySources(
         driver,
       });
       try {
+        const sourcePolicy = sourcePolicyBySourceId.get(source.id) ?? {
+          contentFilterEnabled: true,
+          contentFilterMode: QueryContentFilterMode.TERM_AND_WORD_BOUNDARY,
+        };
         const strategy = resolveKeywordStrategy(source);
         const keywordFilterTerms =
-          strategy === "PRECISION_ONLY" || strategy === "HYBRID"
+          sourcePolicy.contentFilterEnabled &&
+          (strategy === "PRECISION_ONLY" || strategy === "HYBRID")
             ? buildKeywordFilterTerms(keywords)
             : [];
         const rawRecallQueries =
@@ -749,7 +770,8 @@ async function fetchBySources(
           queryId,
           keywordFilterTerms,
           recallQueries,
-          objectiveFallback
+          objectiveFallback,
+          sourcePolicy
         );
         console.log(
           `[collector] fetched ${fetched.length} items from ${source.name}`
@@ -854,14 +876,16 @@ async function executeFetchDriver(
   queryId: string,
   keywordFilterTerms: string[],
   recallQueries: string[],
-  objectiveFallback?: string
+  objectiveFallback?: string,
+  sourcePolicy?: SourceRuntimePolicy
 ): Promise<CleanItem[]> {
   const gatherDispatchSource = resolveGatherDispatchSource(source);
   if (gatherDispatchSource) {
     return fetchSocialSource(
       gatherDispatchSource,
       keywordFilterTerms,
-      recallQueries
+      recallQueries,
+      sourcePolicy
     );
   }
 
@@ -880,17 +904,19 @@ async function executeFetchDriver(
         runId,
         queryId,
         keywordFilterTerms,
-        recallQueries
+        recallQueries,
+        sourcePolicy
       );
     default:
       return fetchWithDefaultSource(
         source,
         runId,
         queryId,
-        keywordFilterTerms,
-        recallQueries,
-        objectiveFallback
-      );
+      keywordFilterTerms,
+      recallQueries,
+      objectiveFallback,
+      sourcePolicy
+    );
   }
 }
 
@@ -900,7 +926,8 @@ async function fetchWithDefaultSource(
   queryId: string,
   keywordFilterTerms: string[],
   recallQueries: string[],
-  objectiveFallback?: string
+  objectiveFallback?: string,
+  sourcePolicy?: SourceRuntimePolicy
 ): Promise<CleanItem[]> {
   console.log(
     `[collector] fetchWithDefaultSource ${source.name} (${source.category})`
@@ -923,7 +950,8 @@ async function fetchWithDefaultSource(
     return fetchSocialSource(
       source as SocialMediaSource,
       keywordFilterTerms,
-      recallQueries
+      recallQueries,
+      sourcePolicy
     );
   }
   return [];
@@ -1056,7 +1084,8 @@ async function fetchAICrawlerSource(
   runId: string,
   queryId: string,
   keywordFilterTerms: string[],
-  recallQueries: string[]
+  recallQueries: string[],
+  sourcePolicy?: SourceRuntimePolicy
 ): Promise<CleanItem[]> {
   if (isWebSource(source) || isDarknetSource(source)) {
     console.log(
@@ -1080,7 +1109,8 @@ async function fetchAICrawlerSource(
   return fetchSocialSource(
     source as SocialMediaSource,
     keywordFilterTerms,
-    recallQueries
+    recallQueries,
+    sourcePolicy
   );
 }
 
@@ -1405,7 +1435,8 @@ async function fetchSearchSource(
 async function fetchSocialSource(
   source: SocialMediaSource,
   keywordFilterTerms: string[],
-  recallQueries: string[]
+  recallQueries: string[],
+  sourcePolicy?: SourceRuntimePolicy
 ): Promise<CleanItem[]> {
   console.log(`[collector] fetchSocialSource ${source.name} via Python Gather`);
 
@@ -1450,28 +1481,49 @@ async function fetchSocialSource(
   const driverOption = normalizeGatherDriverOption(baseConfig, gatherDriver);
   const gatherUserId = resolveGatherPoolUserId(source, sourceConfigObj, driverOption);
   const normalizedIntentType = intent.type.trim().toLowerCase();
+  const recallBinding = resolveRecallBinding(sourceConfigObj);
+  if (
+    normalizedIntentType === "search" &&
+    recallBinding.enabled &&
+    recallQueries.length === 0
+  ) {
+    logger.warn("skip social source due empty recall queries and recall binding enabled", {
+      sourceId: source.id,
+      sourceName: source.name,
+    });
+    return [];
+  }
   const batchedQueries =
-    normalizedIntentType === "search" && recallQueries.length > 0
+    normalizedIntentType === "search" && recallBinding.enabled
       ? Array.from(new Set(recallQueries.map((query) => query.trim()).filter(Boolean)))
       : [""];
   const normalizedBatchedQueries = batchedQueries.length > 0 ? batchedQueries : [""];
   const normalizedItems: CleanItem[] = [];
+  const gatherMatchMode = mapQueryFilterModeToGatherMatchMode(
+    sourcePolicy?.contentFilterMode
+  );
 
   try {
     for (const recallQuery of normalizedBatchedQueries) {
-      const intentForRequest = injectRecallQueryIntoIntent(intent, recallQuery);
+      const intentForRequest = recallBinding.enabled
+        ? injectRecallQueryIntoIntent(intent, recallQuery, recallBinding.argKeys)
+        : intent;
       const driver: GatherDriverPayload =
         Object.keys(keywordFilterOptions).length > 0
           ? {
               name: gatherDriver,
               ...driverOption,
               script: intentForRequest,
-              filter: keywordFilterOptions,
+              filter: {
+                ...keywordFilterOptions,
+                ...(gatherMatchMode ? { matchMode: gatherMatchMode } : {}),
+              },
             }
           : {
               name: gatherDriver,
               ...driverOption,
               script: intentForRequest,
+              ...(gatherMatchMode ? { filter: { matchMode: gatherMatchMode } } : {}),
             };
 
       const response = await fetch(`${gatherUrl}/v3/fetch`, {
@@ -1828,7 +1880,8 @@ function resolveGatherIntent(
 
 function injectRecallQueryIntoIntent(
   intent: GatherIntentPayload,
-  recallQuery: string
+  recallQuery: string,
+  argKeys: string[]
 ): GatherIntentPayload {
   if (intent.type.trim().toLowerCase() !== "search") {
     return intent;
@@ -1841,9 +1894,31 @@ function injectRecallQueryIntoIntent(
     ...intent,
     args: {
       ...intent.args,
-      query: normalizedQuery,
+      [argKeys[0] ?? "query"]: normalizedQuery,
     },
   };
+}
+
+function resolveRecallBinding(
+  config: Record<string, unknown>
+): { enabled: boolean; argKeys: string[] } {
+  const intent = asObject(config.intent);
+  const recallBinding = asObject(intent.recallBinding);
+  const argKeys = normalizeStringArray(recallBinding.argKeys);
+  return {
+    enabled:
+      typeof recallBinding.enabled === "boolean" ? recallBinding.enabled : true,
+    argKeys: argKeys.length > 0 ? argKeys : ["query"],
+  };
+}
+
+function mapQueryFilterModeToGatherMatchMode(
+  mode?: QueryContentFilterMode
+): "term_and_word_boundary" | undefined {
+  if (mode === QueryContentFilterMode.TERM_AND_WORD_BOUNDARY) {
+    return "term_and_word_boundary";
+  }
+  return undefined;
 }
 
 function resolveGatherOutput(

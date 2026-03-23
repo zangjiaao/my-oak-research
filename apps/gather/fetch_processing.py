@@ -466,8 +466,14 @@ def _extract_keyword_filter_options(config: Dict[str, Any]) -> dict[str, Any]:
     if not isinstance(min_chars, int) or min_chars < 1:
         raise KeywordFilterConfigError("keyword filter minChars must be a positive integer")
     match_mode = raw_filter.get("matchMode", "smart")
-    if not isinstance(match_mode, str) or match_mode not in {"smart", "contains"}:
-        raise KeywordFilterConfigError("keyword filter matchMode must be one of: smart, contains")
+    if not isinstance(match_mode, str) or match_mode not in {
+        "smart",
+        "contains",
+        "term_and_word_boundary",
+    }:
+        raise KeywordFilterConfigError(
+            "keyword filter matchMode must be one of: smart, contains, term_and_word_boundary"
+        )
     include_url = raw_filter.get("includeUrl", False)
     if not isinstance(include_url, bool):
         raise KeywordFilterConfigError("keyword filter includeUrl must be boolean")
@@ -582,6 +588,14 @@ def _smart_match_keyword(keyword: str, haystack: str, options: dict[str, Any]) -
 
 
 def _match_keyword(keyword: str, haystack: str, options: dict[str, Any]) -> tuple[bool, Optional[str]]:
+    if options["match_mode"] == "term_and_word_boundary":
+        terms = [part.strip() for part in keyword.split() if part.strip()]
+        normalized_terms = terms if terms else [keyword]
+        for term in normalized_terms:
+            matched, _ = _smart_match_keyword(term, haystack, options)
+            if not matched:
+                return False, None
+        return True, "term-and-word-boundary"
     if options["match_mode"] == "contains":
         matched = keyword in haystack
         return matched, "contains" if matched else None
