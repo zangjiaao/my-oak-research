@@ -3,6 +3,7 @@
 import React from "react";
 import { useState } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Settings } from "lucide-react";
 import WebSiteSettingCard from "./WebSiteSettingCard";
 import SocialMediaSettingCard from "./SocialMediaSettingCard";
 import SearchEngineSettingCard from "./SearchEngineSettingCard";
@@ -30,6 +31,12 @@ const Sources = () => {
               <TabsTrigger value="search-engines">Retrieval</TabsTrigger>
             </TabsList>
             <TabsList>
+              <span
+                aria-hidden="true"
+                className="pointer-events-none inline-flex items-center px-2 text-muted-foreground"
+              >
+                <Settings className="size-4" />
+              </span>
               <TabsTrigger value="auth">Auth</TabsTrigger>
               <TabsTrigger value="proxy">Proxy</TabsTrigger>
             </TabsList>
