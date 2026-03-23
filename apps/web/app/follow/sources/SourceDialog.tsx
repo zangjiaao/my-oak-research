@@ -1070,7 +1070,7 @@ const SourceDialog = ({
       onSubmit={form.handleSubmit(onSubmit)}
     >
       <div ref={popoverContainerRef} className="grid gap-4">
-        <Card className="gap-4 bg-muted/30">
+        <Card className="gap-4 bg-background">
           <CardHeader>
             <CardTitle>Basic Info</CardTitle>
             <CardDescription>
@@ -1080,7 +1080,12 @@ const SourceDialog = ({
           <CardContent className="grid gap-4">
             <div className="grid gap-3">
               <Label htmlFor="name">Name</Label>
-              <Input id="name" placeholder="Name" {...form.register("name")} />
+              <Input
+                id="name"
+                placeholder="Name"
+                className="bg-background"
+                {...form.register("name")}
+              />
               <ErrorMessage>{form.formState.errors.name?.message?.toString()}</ErrorMessage>
             </div>
             <div className="grid gap-3">
@@ -1089,13 +1094,14 @@ const SourceDialog = ({
                 id="description"
                 placeholder="Description"
                 rows={3}
+                className="bg-background"
                 {...form.register("description")}
               />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="gap-4 bg-muted/30">
+        <Card className="gap-4 bg-background">
           <CardHeader>
             <CardTitle>Platform Selection</CardTitle>
             <CardDescription>
@@ -1197,7 +1203,7 @@ const SourceDialog = ({
           </CardContent>
         </Card>
 
-        <Card className="gap-4 bg-muted/30">
+        <Card className="gap-4 bg-background">
           <CardHeader>
             <CardTitle>Platform Config</CardTitle>
             <CardDescription>
@@ -1206,7 +1212,7 @@ const SourceDialog = ({
           </CardHeader>
           <CardContent className="grid gap-4">
             {authRequired ? (
-              <Card className="gap-3 border bg-background/70">
+              <Card className="gap-3 border bg-background">
                 <CardHeader className="pb-0">
                   <CardTitle className="text-base">Auth</CardTitle>
                   <CardDescription>Upload and verify platform credential.</CardDescription>
@@ -1274,7 +1280,7 @@ const SourceDialog = ({
               </Card>
             ) : null}
 
-            <Card className="gap-3 border bg-background/70">
+            <Card className="gap-3 border bg-background">
               <CardHeader className="pb-0">
                 <CardTitle className="text-base">Script</CardTitle>
                 <CardDescription>Choose script and configure args by key:value.</CardDescription>
@@ -1357,7 +1363,7 @@ const SourceDialog = ({
               </CardContent>
             </Card>
 
-            <Card className="gap-3 border bg-background/70">
+            <Card className="gap-3 border bg-background">
               <CardHeader className="pb-0">
                 <CardTitle className="text-base">Network</CardTitle>
                 <CardDescription>Select a proxy from proxy tab settings.</CardDescription>
@@ -1378,7 +1384,7 @@ const SourceDialog = ({
             </Card>
 
             <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>
-              <Card className="gap-3 border bg-background/70">
+              <Card className="gap-3 border bg-background">
                 <CardHeader className="pb-0">
                   <CollapsibleTrigger asChild>
                     <Button type="button" variant="ghost" className="h-auto justify-between p-0">
