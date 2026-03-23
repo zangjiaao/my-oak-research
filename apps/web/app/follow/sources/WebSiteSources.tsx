@@ -20,6 +20,23 @@ interface Props {
 
 type StreamSource = SourceWithRelations & Source;
 
+function getSourcePlatformLabel(source: StreamSource): string {
+  const search =
+    "search" in source
+      ? (source.search as unknown as { platform?: string; options?: unknown })
+      : null;
+  const provider =
+    search?.options && typeof search.options === "object"
+      ? (search.options as Record<string, unknown>).provider
+      : null;
+  const providerLabel =
+    typeof provider === "string" && provider.trim() ? provider.trim().toUpperCase() : null;
+  const platform = search?.platform ?? ("social" in source ? source.social?.platform : null);
+
+  if (platform === "CUSTOM" && providerLabel) return providerLabel;
+  return platform ?? "WEB";
+}
+
 const WebSites = ({ sources, proxies }: Props) => {
   const [editingSource, setEditingSource] = useState<SourceWithRelations | undefined>();
 
@@ -38,29 +55,22 @@ const WebSites = ({ sources, proxies }: Props) => {
       render: (source) => source.name,
     },
     {
-      key: "description",
-      label: "Description",
-      className: "max-w-[200px]",
-      render: (source) => <div className="truncate">{source.description}</div>,
+      key: "platform",
+      label: "Platform",
+      className: "max-w-xs",
+      render: (source) => (
+        <span className="text-sm break-all whitespace-normal">
+          {getSourcePlatformLabel(source)}
+        </span>
+      ),
     },
     {
-      key: "target",
-      label: "Target",
-      className: "max-w-[300px]",
-      render: (source) => {
-        const urls = "web" in source ? source.web?.url ?? [] : [];
-        const platform =
-          ("social" in source ? source.social?.platform : null) ??
-          ("search" in source ? source.search?.platform : null) ??
-          null;
-        const display = urls.length > 0 ? urls.join(", ") : platform || "-";
-        const tooltip = urls.length > 0 ? urls.join("\n") : undefined;
-        return (
-          <div className="truncate" title={tooltip}>
-            {display}
-          </div>
-        );
-      },
+      key: "description",
+      label: "Description",
+      className: "max-w-xs",
+      render: (source) => (
+        <div className="whitespace-normal">{source.description}</div>
+      ),
     },
     {
       key: "proxy",
