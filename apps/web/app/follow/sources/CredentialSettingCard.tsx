@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -82,13 +82,45 @@ export default function CredentialSettingCard() {
   }, [credentials, searchQuery]);
 
   const sourceOptions = useMemo(
-    () =>
-      sources.map((source) => ({
-        label: source.name,
-        value: source.id,
-      })),
-    [sources]
+    () => {
+      const kindPlatform = kindToPlatform(kind).toLowerCase();
+      return sources
+        .filter((source) => {
+          const socialPlatform =
+            "social" in source && source.social?.platform
+              ? String(source.social.platform).toLowerCase()
+              : "";
+          const searchPlatform =
+            "search" in source && source.search?.platform
+              ? String(source.search.platform).toLowerCase()
+              : "";
+          const searchProvider =
+            "search" in source &&
+            source.search?.options &&
+            typeof source.search.options === "object" &&
+            !Array.isArray(source.search.options)
+              ? String(
+                  (source.search.options as Record<string, unknown>).provider ?? ""
+                ).toLowerCase()
+              : "";
+
+          if (isApiKeyKind(kind)) {
+            return searchPlatform === kindPlatform || searchProvider === kindPlatform;
+          }
+          return socialPlatform === kindPlatform;
+        })
+        .map((source) => ({
+          label: source.name,
+          value: source.id,
+        }));
+    },
+    [kind, sources]
   );
+
+  useEffect(() => {
+    const allowedIds = new Set(sourceOptions.map((option) => option.value));
+    setSourceIds((prev) => prev.filter((id) => allowedIds.has(id)));
+  }, [sourceOptions]);
 
   const refresh = async () => {
     await queryClient.invalidateQueries({ queryKey: ["credentials"] });
