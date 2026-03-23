@@ -51,29 +51,28 @@ export async function GET(req: Request) {
       orderBy: { updatedAt: "desc" },
     });
 
-    const sourceUsageRows = await prisma.source.groupBy({
-      by: ["credentialId"],
+    const sourceUsageRows = await prisma.source.findMany({
       where: { credentialId: { not: null } },
-      _count: { _all: true },
+      select: { id: true, credentialId: true },
     });
-    const searchUsageRows = await prisma.searchEngineSourceConfig.groupBy({
-      by: ["credentialId"],
+    const searchUsageRows = await prisma.searchEngineSourceConfig.findMany({
       where: { credentialId: { not: null } },
-      _count: { _all: true },
+      select: { sourceId: true, credentialId: true },
     });
-    const socialUsageRows = await prisma.socialMediaSourceConfig.groupBy({
-      by: ["credentialId"],
+    const socialUsageRows = await prisma.socialMediaSourceConfig.findMany({
       where: { credentialId: { not: null } },
-      _count: { _all: true },
+      select: { sourceId: true, credentialId: true },
     });
-    const usageMap = new Map<string, number>();
-    const addUsage = (id: string | null, count: number) => {
-      if (!id) return;
-      usageMap.set(id, (usageMap.get(id) ?? 0) + count);
+    const usageMap = new Map<string, Set<string>>();
+    const addUsage = (credentialId: string | null, sourceId: string | null) => {
+      if (!credentialId || !sourceId) return;
+      const current = usageMap.get(credentialId) ?? new Set<string>();
+      current.add(sourceId);
+      usageMap.set(credentialId, current);
     };
-    sourceUsageRows.forEach((item) => addUsage(item.credentialId, item._count._all));
-    searchUsageRows.forEach((item) => addUsage(item.credentialId, item._count._all));
-    socialUsageRows.forEach((item) => addUsage(item.credentialId, item._count._all));
+    sourceUsageRows.forEach((item) => addUsage(item.credentialId, item.id));
+    searchUsageRows.forEach((item) => addUsage(item.credentialId, item.sourceId));
+    socialUsageRows.forEach((item) => addUsage(item.credentialId, item.sourceId));
 
     return json({
       credentials: credentials.map((credential) => {
@@ -93,7 +92,7 @@ export async function GET(req: Request) {
           platform: kindToPlatform(credential.kind),
           createdAt: credential.createdAt,
           updatedAt: credential.updatedAt,
-          usageCount: usageMap.get(credential.id) ?? 0,
+          usageCount: usageMap.get(credential.id)?.size ?? 0,
           authType,
           hasStorageObject: Boolean(storageKey),
           secretMasked: isApiKeyKind(credential.kind) ? "••••••••" : null,
