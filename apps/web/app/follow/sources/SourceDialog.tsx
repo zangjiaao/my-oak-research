@@ -1024,6 +1024,11 @@ const SourceDialog = ({
     if (selectedCapabilityEngine !== "gather_playwright") return null;
     const normalizedPlatform = normalizePlatform(selectedPlatform);
     if (!normalizedPlatform) return null;
+    const capabilityDriver =
+      typeof selectedCapability?.execution.driver === "string" &&
+      selectedCapability.execution.driver.trim()
+        ? selectedCapability.execution.driver.trim()
+        : "playwright";
     const rawOutputField = selectedCatalogItem?.sample?.outputField;
     const outputField =
       Array.isArray(rawOutputField)
@@ -1055,7 +1060,7 @@ const SourceDialog = ({
       platform: normalizedPlatform.toLowerCase(),
       keywords: [],
       driver: {
-        name: "playwright",
+        name: capabilityDriver,
         ...buildDriverConfig({
           intentType: selectedIntentType,
           intentArgs: scriptArgs,
@@ -1074,6 +1079,7 @@ const SourceDialog = ({
   }, [
     selectedCapabilityEngine,
     selectedPlatform,
+    selectedCapability?.execution.driver,
     selectedCatalogItem,
     currentSource?.id,
     selectedIntentType,
