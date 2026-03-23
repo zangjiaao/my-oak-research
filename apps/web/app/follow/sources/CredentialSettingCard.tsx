@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -65,6 +65,7 @@ export default function CredentialSettingCard() {
   const [editName, setEditName] = useState("");
   const [editSecret, setEditSecret] = useState("");
   const [editSourceIds, setEditSourceIds] = useState<string[]>([]);
+  const editDialogResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const credentialQuery = useQuery<{ credentials: CredentialListItem[] }>({
     queryKey: ["credentials", "all"],
@@ -130,6 +131,32 @@ export default function CredentialSettingCard() {
     const allowedIds = new Set(editSourceOptions.map((option) => option.value));
     setEditSourceIds((prev) => prev.filter((id) => allowedIds.has(id)));
   }, [editSourceOptions]);
+
+  useEffect(() => {
+    return () => {
+      if (editDialogResetTimerRef.current) {
+        clearTimeout(editDialogResetTimerRef.current);
+      }
+    };
+  }, []);
+
+  const resetEditDialogState = () => {
+    setEditingCredential(null);
+    setEditName("");
+    setEditSecret("");
+    setEditSourceIds([]);
+  };
+
+  const closeEditDialogWithAnimation = () => {
+    setEditDialogOpen(false);
+    if (editDialogResetTimerRef.current) {
+      clearTimeout(editDialogResetTimerRef.current);
+    }
+    editDialogResetTimerRef.current = setTimeout(() => {
+      resetEditDialogState();
+      editDialogResetTimerRef.current = null;
+    }, 220);
+  };
 
   const refresh = async () => {
     await queryClient.invalidateQueries({ queryKey: ["credentials"] });
@@ -254,11 +281,7 @@ export default function CredentialSettingCard() {
     },
     onSuccess: async () => {
       toast.success("Credential updated");
-      setEditDialogOpen(false);
-      setEditingCredential(null);
-      setEditName("");
-      setEditSecret("");
-      setEditSourceIds([]);
+      closeEditDialogWithAnimation();
       await refresh();
     },
     onError: (error) => {
@@ -470,12 +493,14 @@ export default function CredentialSettingCard() {
           open: editDialogOpen,
           onOpenChange: (open) => {
             setEditDialogOpen(open);
-            if (!open) {
-              setEditingCredential(null);
-              setEditName("");
-              setEditSecret("");
-              setEditSourceIds([]);
+            if (open) {
+              if (editDialogResetTimerRef.current) {
+                clearTimeout(editDialogResetTimerRef.current);
+                editDialogResetTimerRef.current = null;
+              }
+              return;
             }
+            closeEditDialogWithAnimation();
           },
         }}
         title="Edit Credential"
