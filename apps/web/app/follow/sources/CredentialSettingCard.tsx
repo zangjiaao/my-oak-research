@@ -54,11 +54,15 @@ export default function CredentialSettingCard() {
   const { sources } = useFollow();
   const [searchQuery, setSearchQuery] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingCredential, setEditingCredential] = useState<CredentialListItem | null>(null);
   const [kind, setKind] = useState("x-cookie");
   const [name, setName] = useState("");
   const [sourceId, setSourceId] = useState<string>("__none__");
   const [secret, setSecret] = useState("");
   const [file, setFile] = useState<File | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editSecret, setEditSecret] = useState("");
 
   const credentialQuery = useQuery<{ credentials: CredentialListItem[] }>({
     queryKey: ["credentials", "all"],
@@ -170,21 +174,44 @@ export default function CredentialSettingCard() {
     }
   };
 
-  const patchCredential = async (credential: CredentialListItem) => {
-    const nextName = window.prompt("Credential name", credential.name);
-    if (!nextName || nextName.trim() === credential.name) return;
-    try {
-      await apiFetcher(`/api/follow/credentials/${credential.id}`, {
+  const patchMutation = useMutation({
+    mutationFn: async () => {
+      if (!editingCredential) {
+        throw new Error("No credential selected");
+      }
+      const nextName = editName.trim();
+      if (!nextName) {
+        throw new Error("Credential name is required");
+      }
+      const payload: Record<string, string> = {};
+      if (nextName !== editingCredential.name) {
+        payload.name = nextName;
+      }
+      if (isApiKeyKind(editingCredential.kind) && editSecret.trim()) {
+        payload.secret = editSecret.trim();
+      }
+      if (Object.keys(payload).length === 0) {
+        throw new Error("No changes to update");
+      }
+
+      await apiFetcher(`/api/follow/credentials/${editingCredential.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: nextName.trim() }),
+        body: JSON.stringify(payload),
       });
+    },
+    onSuccess: async () => {
       toast.success("Credential updated");
+      setEditDialogOpen(false);
+      setEditingCredential(null);
+      setEditName("");
+      setEditSecret("");
       await refresh();
-    } catch (error) {
+    },
+    onError: (error) => {
       toast.error(error instanceof Error ? error.message : "Failed to update credential");
-    }
-  };
+    },
+  });
 
   const columns: DataTableColumn<CredentialListItem>[] = [
     { key: "name", label: "Name" },
@@ -218,7 +245,16 @@ export default function CredentialSettingCard() {
     {
       type: "edit",
       render: (item) => (
-        <Button size="sm" variant="outline" onClick={() => patchCredential(item)}>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => {
+            setEditingCredential(item);
+            setEditName(item.name);
+            setEditSecret("");
+            setEditDialogOpen(true);
+          }}
+        >
           <PencilIcon className="size-3" />
         </Button>
       ),
@@ -360,6 +396,72 @@ export default function CredentialSettingCard() {
             </CardContent>
           </Card>
         </div>
+      </SettingEditDialog>
+      <SettingEditDialog
+        props={{
+          open: editDialogOpen,
+          onOpenChange: (open) => {
+            setEditDialogOpen(open);
+            if (!open) {
+              setEditingCredential(null);
+              setEditName("");
+              setEditSecret("");
+            }
+          },
+        }}
+        title="Edit Credential"
+        description="Update credential alias or rotate API key."
+        triggerButton={<span className="hidden" />}
+        buttonText={patchMutation.isPending ? "Saving..." : "Save"}
+        onSubmit={(event) => {
+          event.preventDefault();
+          patchMutation.mutate();
+        }}
+      >
+        {editingCredential ? (
+          <div className="grid gap-4">
+            <Card className="gap-4 bg-muted/30">
+              <CardHeader>
+                <CardTitle>Basic Info</CardTitle>
+                <CardDescription>Update credential display name.</CardDescription>
+              </CardHeader>
+              <CardContent className="grid gap-4">
+                <div className="grid gap-2">
+                  <Label>Kind</Label>
+                  <Input className="bg-background" value={editingCredential.kind} disabled />
+                </div>
+                <div className="grid gap-2">
+                  <Label>Alias</Label>
+                  <Input
+                    className="bg-background"
+                    placeholder="Credential alias"
+                    value={editName}
+                    onChange={(event) => setEditName(event.target.value)}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+            {isApiKeyKind(editingCredential.kind) && (
+              <Card className="gap-4 bg-muted/30">
+                <CardHeader>
+                  <CardTitle>Rotate Secret</CardTitle>
+                  <CardDescription>
+                    Leave empty to keep current key, or input a new key to rotate.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="grid gap-2">
+                  <Label>New API Key</Label>
+                  <Input
+                    className="bg-background"
+                    placeholder="New API key (optional)"
+                    value={editSecret}
+                    onChange={(event) => setEditSecret(event.target.value)}
+                  />
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        ) : null}
       </SettingEditDialog>
     </div>
   );
