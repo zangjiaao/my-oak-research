@@ -4,7 +4,7 @@ import { type ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Check, ChevronDown, ChevronsUpDown, Loader2, Minus, Plus } from "lucide-react";
+import { Check, ChevronDown, ChevronsUpDown, Link2, Loader2, Minus, Plus, Unlink2 } from "lucide-react";
 
 import { SettingEditDialog } from "@/components/layout";
 import { Label } from "@/components/ui/label";
@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Switch } from "@/components/ui/switch";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   Collapsible,
   CollapsibleContent,
@@ -229,7 +230,6 @@ function getInitialScriptState(source?: SourceWithRelations): {
   platform: string;
   intentType: string;
   scriptArgs: Record<string, unknown>;
-  recallBindingEnabled: boolean;
   recallBindingArgKeys: string[];
   poolEnabled: boolean;
   poolIdleTimeoutMs: number;
@@ -243,7 +243,6 @@ function getInitialScriptState(source?: SourceWithRelations): {
       platform: "",
       intentType: "",
       scriptArgs: {},
-      recallBindingEnabled: true,
       recallBindingArgKeys: ["query"],
       poolEnabled: true,
       poolIdleTimeoutMs: 120000,
@@ -292,14 +291,14 @@ function getInitialScriptState(source?: SourceWithRelations): {
           ? String(script.type ?? intent.type)
           : "search",
       scriptArgs: intentArgs,
-      recallBindingEnabled:
-        typeof recallBinding.enabled === "boolean" ? recallBinding.enabled : true,
       recallBindingArgKeys:
-        Array.isArray(recallBinding.argKeys) && recallBinding.argKeys.length > 0
-          ? recallBinding.argKeys
-              .map((item) => String(item).trim())
-              .filter(Boolean)
-          : ["query"],
+        typeof recallBinding.enabled === "boolean" && recallBinding.enabled === false
+          ? []
+          : Array.isArray(recallBinding.argKeys) && recallBinding.argKeys.length > 0
+            ? recallBinding.argKeys
+                .map((item) => String(item).trim())
+                .filter(Boolean)
+            : ["query"],
       poolEnabled:
         typeof driver.poolEnabled === "boolean"
           ? driver.poolEnabled
@@ -341,7 +340,6 @@ function getInitialScriptState(source?: SourceWithRelations): {
       platform: String(options.provider ?? source.search.platform ?? ""),
       intentType: "search",
       scriptArgs: { query: source.search.objective ?? "" },
-      recallBindingEnabled: true,
       recallBindingArgKeys: ["query"],
       poolEnabled: true,
       poolIdleTimeoutMs: 120000,
@@ -372,7 +370,6 @@ function getInitialScriptState(source?: SourceWithRelations): {
         Object.keys(gatherIntentArgs).length > 0
           ? gatherIntentArgs
           : { url: source.web.url ?? [] },
-      recallBindingEnabled: true,
       recallBindingArgKeys: ["query"],
       poolEnabled: true,
       poolIdleTimeoutMs: 120000,
@@ -393,7 +390,6 @@ function getInitialScriptState(source?: SourceWithRelations): {
       platform: "DARKWEBGO",
       intentType: "search",
       scriptArgs: { url: source.darknet.url ?? [] },
-      recallBindingEnabled: true,
       recallBindingArgKeys: ["query"],
       poolEnabled: true,
       poolIdleTimeoutMs: 120000,
@@ -408,7 +404,6 @@ function getInitialScriptState(source?: SourceWithRelations): {
     platform: "",
     intentType: "",
     scriptArgs: {},
-    recallBindingEnabled: true,
     recallBindingArgKeys: ["query"],
     poolEnabled: true,
     poolIdleTimeoutMs: 120000,
@@ -425,7 +420,6 @@ function buildPayloadFromUnified(input: {
   platform: string;
   intentType: string;
   scriptArgs: Record<string, unknown>;
-  recallBindingEnabled: boolean;
   recallBindingArgKeys: string[];
   driverConfig: DriverConfigInput;
   selectedCapabilityEngine?: string | null;
@@ -437,7 +431,6 @@ function buildPayloadFromUnified(input: {
     platform,
     intentType,
     scriptArgs,
-    recallBindingEnabled,
     recallBindingArgKeys,
     driverConfig,
     selectedCapabilityEngine,
@@ -567,7 +560,7 @@ function buildPayloadFromUnified(input: {
       type: intentType || "search",
       args: intentArgs,
       recallBinding: {
-        enabled: recallBindingEnabled,
+        enabled: recallBindingArgKeys.length > 0,
         argKeys:
           recallBindingArgKeys.length > 0 ? recallBindingArgKeys : ["query"],
       },
@@ -656,11 +649,8 @@ const SourceDialog = ({
       return entries.length > 0 ? entries : [];
     })()
   );
-  const [recallBindingEnabled, setRecallBindingEnabled] = useState(
-    initialScriptState.recallBindingEnabled
-  );
-  const [recallBindingArgKeysInput, setRecallBindingArgKeysInput] = useState(
-    initialScriptState.recallBindingArgKeys.join("\n")
+  const [recallBindingArgKeys, setRecallBindingArgKeys] = useState<string[]>(
+    initialScriptState.recallBindingArgKeys
   );
   const [poolEnabled, setPoolEnabled] = useState(initialScriptState.poolEnabled);
   const [poolIdleTimeoutMs, setPoolIdleTimeoutMs] = useState(initialScriptState.poolIdleTimeoutMs);
@@ -683,8 +673,7 @@ const SourceDialog = ({
       const entries = toScriptArgEntries(initialScriptState.scriptArgs);
       return entries.length > 0 ? entries : [];
     });
-    setRecallBindingEnabled(initialScriptState.recallBindingEnabled);
-    setRecallBindingArgKeysInput(initialScriptState.recallBindingArgKeys.join("\n"));
+    setRecallBindingArgKeys(initialScriptState.recallBindingArgKeys);
     setPoolEnabled(initialScriptState.poolEnabled);
     setPoolIdleTimeoutMs(initialScriptState.poolIdleTimeoutMs);
     setHeadless(initialScriptState.headless);
@@ -864,15 +853,6 @@ const SourceDialog = ({
   }, [selectedCatalogItem, selectedIntentType, selectedPlatform]);
 
   const scriptArgs = useMemo(() => entriesToScriptArgs(scriptArgEntries), [scriptArgEntries]);
-  const recallBindingArgKeys = useMemo(() => {
-    const raw = recallBindingArgKeysInput.trim();
-    if (!raw) return ["query"];
-    const parts = raw
-      .split(/[\n\r,，;；\t]+/g)
-      .map((item) => item.trim())
-      .filter(Boolean);
-    return Array.from(new Set(parts));
-  }, [recallBindingArgKeysInput]);
 
   const {
     data: credentialData,
@@ -1040,7 +1020,6 @@ const SourceDialog = ({
       platform: selectedPlatform,
       intentType: selectedIntentType,
       scriptArgs,
-      recallBindingEnabled,
       recallBindingArgKeys,
       driverConfig: {
         poolEnabled,
@@ -1061,7 +1040,6 @@ const SourceDialog = ({
     selectedPlatform,
     selectedIntentType,
     scriptArgs,
-    recallBindingEnabled,
     recallBindingArgKeys,
     poolEnabled,
     poolIdleTimeoutMs,
@@ -1177,7 +1155,6 @@ const SourceDialog = ({
       platform: selectedPlatform,
       intentType: selectedIntentType,
       scriptArgs,
-      recallBindingEnabled,
       recallBindingArgKeys,
       driverConfig: {
         poolEnabled,
@@ -1453,18 +1430,34 @@ const SourceDialog = ({
                   {scriptArgEntries.map((entry, index) => (
                     <div
                       key={`${entry.key}-${index}`}
-                      className="grid grid-cols-[1fr_1fr_auto_auto] gap-2"
+                      className="grid grid-cols-[1fr_1fr_auto_auto_auto] gap-2"
                     >
                       <Input
                         placeholder="key"
                         value={entry.key}
-                        onChange={(event) =>
-                          setScriptArgEntries((prev) =>
-                            prev.map((item, itemIndex) =>
-                              itemIndex === index ? { ...item, key: event.target.value } : item
-                            )
-                          )
-                        }
+                        onChange={(event) => {
+                          const nextKey = event.target.value;
+                          setScriptArgEntries((prev) => {
+                            const oldKey = prev[index]?.key?.trim() ?? "";
+                            const normalizedNextKey = nextKey.trim();
+                            const next = prev.map((item, itemIndex) =>
+                              itemIndex === index ? { ...item, key: nextKey } : item
+                            );
+                            if (oldKey && recallBindingArgKeys.includes(oldKey)) {
+                              setRecallBindingArgKeys((current) =>
+                                Array.from(
+                                  new Set(
+                                    current
+                                      .map((key) => (key === oldKey ? normalizedNextKey : key))
+                                      .map((key) => key.trim())
+                                      .filter(Boolean)
+                                  )
+                                )
+                              );
+                            }
+                            return next;
+                          });
+                        }}
                       />
                       <Input
                         placeholder="value"
@@ -1477,6 +1470,62 @@ const SourceDialog = ({
                           )
                         }
                       />
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            type="button"
+                            variant={
+                              recallBindingArgKeys.includes(entry.key.trim())
+                                ? "default"
+                                : "outline"
+                            }
+                            size="icon"
+                            aria-label="Toggle recall binding"
+                            disabled={!entry.key.trim()}
+                            onClick={() => {
+                              const normalizedKey = entry.key.trim();
+                              if (!normalizedKey) return;
+                              setRecallBindingArgKeys((prev) =>
+                                prev.includes(normalizedKey)
+                                  ? prev.filter((key) => key !== normalizedKey)
+                                  : Array.from(new Set([...prev, normalizedKey]))
+                              );
+                            }}
+                          >
+                            {recallBindingArgKeys.includes(entry.key.trim()) ? (
+                              <Link2 className="size-4" />
+                            ) : (
+                              <Unlink2 className="size-4" />
+                            )}
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent sideOffset={6}>
+                          {recallBindingArgKeys.includes(entry.key.trim())
+                            ? "该参数已关联召回词（Query 运行时会注入）"
+                            : "关联召回词注入到该参数"}
+                        </TooltipContent>
+                      </Tooltip>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        aria-label="Remove arg row"
+                        disabled={scriptArgEntries.length <= 1}
+                        onClick={() =>
+                          setScriptArgEntries((prev) => {
+                            if (prev.length <= 1) return prev;
+                            const removingKey = prev[index]?.key?.trim();
+                            if (removingKey) {
+                              setRecallBindingArgKeys((current) =>
+                                current.filter((key) => key !== removingKey)
+                              );
+                            }
+                            return prev.filter((_, itemIndex) => itemIndex !== index);
+                          })
+                        }
+                      >
+                        <Minus className="size-4" />
+                      </Button>
                       <Button
                         type="button"
                         variant="outline"
@@ -1492,49 +1541,12 @@ const SourceDialog = ({
                       >
                         <Plus className="size-4" />
                       </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="icon"
-                        aria-label="Remove arg row"
-                        disabled={scriptArgEntries.length <= 1}
-                        onClick={() =>
-                          setScriptArgEntries((prev) => {
-                            if (prev.length <= 1) return prev;
-                            return prev.filter((_, itemIndex) => itemIndex !== index);
-                          })
-                        }
-                      >
-                        <Minus className="size-4" />
-                      </Button>
                     </div>
                   ))}
                 </div>
-                <div className="grid gap-3 rounded-md border p-3">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="recall-binding-switch">Recall Injection</Label>
-                    <Switch
-                      id="recall-binding-switch"
-                      checked={recallBindingEnabled}
-                      onCheckedChange={setRecallBindingEnabled}
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="recall-binding-arg-keys">Recall Arg Keys</Label>
-                    <Textarea
-                      id="recall-binding-arg-keys"
-                      rows={2}
-                      placeholder={"query"}
-                      value={recallBindingArgKeysInput}
-                      onChange={(event) =>
-                        setRecallBindingArgKeysInput(event.target.value)
-                      }
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      One key per line or comma-separated. Default: query.
-                    </p>
-                  </div>
-                </div>
+                <p className="text-xs text-muted-foreground">
+                  顺序：key | value | 召回词关联 | - | +。
+                </p>
               </CardContent>
             </Card>
 
