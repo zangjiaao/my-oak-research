@@ -74,7 +74,7 @@ type ScriptArgEntry = {
   key: string;
   value: string;
 };
-type BadgeFilterKey = "API" | "BROWSER" | "AUTH" | "DARKNET" | "EXISTS";
+type BadgeFilterKey = "API" | "BROWSER" | "AUTH" | "NO_AUTH" | "DARKNET" | "EXISTS";
 
 function isEmptyValue(value: unknown): boolean {
   if (value === null || value === undefined) return true;
@@ -205,6 +205,7 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
     API: false,
     BROWSER: false,
     AUTH: false,
+    NO_AUTH: false,
     DARKNET: false,
     EXISTS: false,
   });
@@ -257,7 +258,14 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
             if (allowBrowser && executionMode !== "Browser") return false;
           }
         }
-        if (badgeFilters.AUTH && !requiresAuth(item)) return false;
+        const hasAuth = requiresAuth(item);
+        if (badgeFilters.AUTH && badgeFilters.NO_AUTH) {
+          // both selected => no auth filter
+        } else if (badgeFilters.AUTH && !hasAuth) {
+          return false;
+        } else if (badgeFilters.NO_AUTH && hasAuth) {
+          return false;
+        }
         if (badgeFilters.DARKNET && !isDarknet(item)) return false;
         if (badgeFilters.EXISTS && !item.exists) return false;
         return true;
@@ -693,6 +701,14 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
                             className={badgeFilters.AUTH ? "" : "opacity-60"}
                           >
                             Auth
+                          </Badge>
+                        </button>
+                        <button type="button" onClick={() => toggleBadgeFilter("NO_AUTH")}>
+                          <Badge
+                            variant="secondary"
+                            className={badgeFilters.NO_AUTH ? "border-destructive/30 text-destructive" : "opacity-60"}
+                          >
+                            No Auth
                           </Badge>
                         </button>
                         <button type="button" onClick={() => toggleBadgeFilter("DARKNET")}>
