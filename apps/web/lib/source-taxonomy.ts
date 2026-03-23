@@ -33,7 +33,8 @@ function normalizeCategory(value: unknown): SourceCategory | null {
 }
 
 export function classifySourceCategory(source: {
-  type: Source["type"];
+  category: Source["category"];
+  isDarknet?: boolean | null;
   search?: Pick<SearchEngineSourceConfig, "options"> | null;
   social?: Pick<SocialMediaSourceConfig, "platform" | "config"> | null;
   searchPlatform?: string | null;
@@ -54,19 +55,19 @@ export function classifySourceCategory(source: {
     return searchCategory;
   }
 
-  if (source.type === "SOCIAL_MEDIA") return "INTERACTIVE";
-  if (source.type === "WEB") return "STREAM";
-  if (source.type === "DARKNET") return "RETRIEVAL";
-  if (source.type === "SEARCH_ENGINE") return "RETRIEVAL";
+  if (source.category === "INTERACTIVE") return "INTERACTIVE";
+  if (source.category === "STREAM") return "STREAM";
+  if (source.category === "RETRIEVAL") return "RETRIEVAL";
   return "RETRIEVAL";
 }
 
 export function detectDarknetTag(input: {
-  type: Source["type"];
+  category: Source["category"];
+  isDarknet?: boolean | null;
   search?: Pick<SearchEngineSourceConfig, "options"> | null;
 }): boolean {
-  if (input.type === "DARKNET") return true;
-  if (input.type !== "SEARCH_ENGINE") return false;
+  if (input.isDarknet) return true;
+  if (input.category !== "RETRIEVAL") return false;
   return hasDarknetProvider(input.search?.options);
 }
 

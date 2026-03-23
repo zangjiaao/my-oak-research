@@ -38,7 +38,7 @@ export async function GET(req: Request) {
     const items = await prisma.sourcePresetBinding.findMany({
       where,
       include: {
-        source: { select: { id: true, name: true, type: true } },
+        source: { select: { id: true, name: true, category: true, isDarknet: true } },
         preset: {
           select: {
             id: true,
@@ -88,7 +88,7 @@ export async function POST(req: Request) {
         enabled,
       },
       include: {
-        source: { select: { id: true, name: true, type: true } },
+        source: { select: { id: true, name: true, category: true, isDarknet: true } },
         preset: {
           select: {
             id: true,

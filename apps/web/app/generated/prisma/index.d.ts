@@ -163,14 +163,13 @@ export type KnowledgeChunk = $Result.DefaultSelection<Prisma.$KnowledgeChunkPayl
  * Enums
  */
 export namespace $Enums {
-  export const SourceType: {
-  WEB: 'WEB',
-  DARKNET: 'DARKNET',
-  SEARCH_ENGINE: 'SEARCH_ENGINE',
-  SOCIAL_MEDIA: 'SOCIAL_MEDIA'
+  export const SourceCategory: {
+  STREAM: 'STREAM',
+  INTERACTIVE: 'INTERACTIVE',
+  RETRIEVAL: 'RETRIEVAL'
 };
 
-export type SourceType = (typeof SourceType)[keyof typeof SourceType]
+export type SourceCategory = (typeof SourceCategory)[keyof typeof SourceCategory]
 
 
 export const BbPresetStatus: {
@@ -303,9 +302,9 @@ export type ReportStatus = (typeof ReportStatus)[keyof typeof ReportStatus]
 
 }
 
-export type SourceType = $Enums.SourceType
+export type SourceCategory = $Enums.SourceCategory
 
-export const SourceType: typeof $Enums.SourceType
+export const SourceCategory: typeof $Enums.SourceCategory
 
 export type BbPresetStatus = $Enums.BbPresetStatus
 
@@ -8804,7 +8803,8 @@ export namespace Prisma {
     id: string | null
     name: string | null
     description: string | null
-    type: $Enums.SourceType | null
+    category: $Enums.SourceCategory | null
+    isDarknet: boolean | null
     active: boolean | null
     rateLimit: number | null
     lastFetchedAt: Date | null
@@ -8819,7 +8819,8 @@ export namespace Prisma {
     id: string | null
     name: string | null
     description: string | null
-    type: $Enums.SourceType | null
+    category: $Enums.SourceCategory | null
+    isDarknet: boolean | null
     active: boolean | null
     rateLimit: number | null
     lastFetchedAt: Date | null
@@ -8834,7 +8835,8 @@ export namespace Prisma {
     id: number
     name: number
     description: number
-    type: number
+    category: number
+    isDarknet: number
     active: number
     rateLimit: number
     lastFetchedAt: number
@@ -8859,7 +8861,8 @@ export namespace Prisma {
     id?: true
     name?: true
     description?: true
-    type?: true
+    category?: true
+    isDarknet?: true
     active?: true
     rateLimit?: true
     lastFetchedAt?: true
@@ -8874,7 +8877,8 @@ export namespace Prisma {
     id?: true
     name?: true
     description?: true
-    type?: true
+    category?: true
+    isDarknet?: true
     active?: true
     rateLimit?: true
     lastFetchedAt?: true
@@ -8889,7 +8893,8 @@ export namespace Prisma {
     id?: true
     name?: true
     description?: true
-    type?: true
+    category?: true
+    isDarknet?: true
     active?: true
     rateLimit?: true
     lastFetchedAt?: true
@@ -8991,7 +8996,8 @@ export namespace Prisma {
     id: string
     name: string
     description: string | null
-    type: $Enums.SourceType
+    category: $Enums.SourceCategory
+    isDarknet: boolean
     active: boolean
     rateLimit: number | null
     lastFetchedAt: Date | null
@@ -9025,7 +9031,8 @@ export namespace Prisma {
     id?: boolean
     name?: boolean
     description?: boolean
-    type?: boolean
+    category?: boolean
+    isDarknet?: boolean
     active?: boolean
     rateLimit?: boolean
     lastFetchedAt?: boolean
@@ -9050,7 +9057,8 @@ export namespace Prisma {
     id?: boolean
     name?: boolean
     description?: boolean
-    type?: boolean
+    category?: boolean
+    isDarknet?: boolean
     active?: boolean
     rateLimit?: boolean
     lastFetchedAt?: boolean
@@ -9067,7 +9075,8 @@ export namespace Prisma {
     id?: boolean
     name?: boolean
     description?: boolean
-    type?: boolean
+    category?: boolean
+    isDarknet?: boolean
     active?: boolean
     rateLimit?: boolean
     lastFetchedAt?: boolean
@@ -9084,7 +9093,8 @@ export namespace Prisma {
     id?: boolean
     name?: boolean
     description?: boolean
-    type?: boolean
+    category?: boolean
+    isDarknet?: boolean
     active?: boolean
     rateLimit?: boolean
     lastFetchedAt?: boolean
@@ -9095,7 +9105,7 @@ export namespace Prisma {
     updatedAt?: boolean
   }
 
-  export type SourceOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "name" | "description" | "type" | "active" | "rateLimit" | "lastFetchedAt" | "lastStatus" | "proxyId" | "credentialId" | "createdAt" | "updatedAt", ExtArgs["result"]["source"]>
+  export type SourceOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "name" | "description" | "category" | "isDarknet" | "active" | "rateLimit" | "lastFetchedAt" | "lastStatus" | "proxyId" | "credentialId" | "createdAt" | "updatedAt", ExtArgs["result"]["source"]>
   export type SourceInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     proxy?: boolean | Source$proxyArgs<ExtArgs>
     credential?: boolean | Source$credentialArgs<ExtArgs>
@@ -9134,7 +9144,8 @@ export namespace Prisma {
       id: string
       name: string
       description: string | null
-      type: $Enums.SourceType
+      category: $Enums.SourceCategory
+      isDarknet: boolean
       active: boolean
       rateLimit: number | null
       lastFetchedAt: Date | null
@@ -9578,7 +9589,8 @@ export namespace Prisma {
     readonly id: FieldRef<"Source", 'String'>
     readonly name: FieldRef<"Source", 'String'>
     readonly description: FieldRef<"Source", 'String'>
-    readonly type: FieldRef<"Source", 'SourceType'>
+    readonly category: FieldRef<"Source", 'SourceCategory'>
+    readonly isDarknet: FieldRef<"Source", 'Boolean'>
     readonly active: FieldRef<"Source", 'Boolean'>
     readonly rateLimit: FieldRef<"Source", 'Int'>
     readonly lastFetchedAt: FieldRef<"Source", 'DateTime'>
@@ -10195,7 +10207,8 @@ export namespace Prisma {
   export type SourceIdentityMinAggregateOutputType = {
     id: string | null
     sourceId: string | null
-    type: $Enums.SourceType | null
+    category: $Enums.SourceCategory | null
+    isDarknet: boolean | null
     platform: string | null
     driver: string | null
     intentType: string | null
@@ -10207,7 +10220,8 @@ export namespace Prisma {
   export type SourceIdentityMaxAggregateOutputType = {
     id: string | null
     sourceId: string | null
-    type: $Enums.SourceType | null
+    category: $Enums.SourceCategory | null
+    isDarknet: boolean | null
     platform: string | null
     driver: string | null
     intentType: string | null
@@ -10219,7 +10233,8 @@ export namespace Prisma {
   export type SourceIdentityCountAggregateOutputType = {
     id: number
     sourceId: number
-    type: number
+    category: number
+    isDarknet: number
     platform: number
     driver: number
     intentType: number
@@ -10233,7 +10248,8 @@ export namespace Prisma {
   export type SourceIdentityMinAggregateInputType = {
     id?: true
     sourceId?: true
-    type?: true
+    category?: true
+    isDarknet?: true
     platform?: true
     driver?: true
     intentType?: true
@@ -10245,7 +10261,8 @@ export namespace Prisma {
   export type SourceIdentityMaxAggregateInputType = {
     id?: true
     sourceId?: true
-    type?: true
+    category?: true
+    isDarknet?: true
     platform?: true
     driver?: true
     intentType?: true
@@ -10257,7 +10274,8 @@ export namespace Prisma {
   export type SourceIdentityCountAggregateInputType = {
     id?: true
     sourceId?: true
-    type?: true
+    category?: true
+    isDarknet?: true
     platform?: true
     driver?: true
     intentType?: true
@@ -10342,7 +10360,8 @@ export namespace Prisma {
   export type SourceIdentityGroupByOutputType = {
     id: string
     sourceId: string
-    type: $Enums.SourceType
+    category: $Enums.SourceCategory
+    isDarknet: boolean
     platform: string
     driver: string
     intentType: string
@@ -10371,7 +10390,8 @@ export namespace Prisma {
   export type SourceIdentitySelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
     id?: boolean
     sourceId?: boolean
-    type?: boolean
+    category?: boolean
+    isDarknet?: boolean
     platform?: boolean
     driver?: boolean
     intentType?: boolean
@@ -10384,7 +10404,8 @@ export namespace Prisma {
   export type SourceIdentitySelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
     id?: boolean
     sourceId?: boolean
-    type?: boolean
+    category?: boolean
+    isDarknet?: boolean
     platform?: boolean
     driver?: boolean
     intentType?: boolean
@@ -10397,7 +10418,8 @@ export namespace Prisma {
   export type SourceIdentitySelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
     id?: boolean
     sourceId?: boolean
-    type?: boolean
+    category?: boolean
+    isDarknet?: boolean
     platform?: boolean
     driver?: boolean
     intentType?: boolean
@@ -10410,7 +10432,8 @@ export namespace Prisma {
   export type SourceIdentitySelectScalar = {
     id?: boolean
     sourceId?: boolean
-    type?: boolean
+    category?: boolean
+    isDarknet?: boolean
     platform?: boolean
     driver?: boolean
     intentType?: boolean
@@ -10419,7 +10442,7 @@ export namespace Prisma {
     updatedAt?: boolean
   }
 
-  export type SourceIdentityOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "sourceId" | "type" | "platform" | "driver" | "intentType" | "intentArgsHash" | "createdAt" | "updatedAt", ExtArgs["result"]["sourceIdentity"]>
+  export type SourceIdentityOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "sourceId" | "category" | "isDarknet" | "platform" | "driver" | "intentType" | "intentArgsHash" | "createdAt" | "updatedAt", ExtArgs["result"]["sourceIdentity"]>
   export type SourceIdentityInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     source?: boolean | SourceDefaultArgs<ExtArgs>
   }
@@ -10438,7 +10461,8 @@ export namespace Prisma {
     scalars: $Extensions.GetPayloadResult<{
       id: string
       sourceId: string
-      type: $Enums.SourceType
+      category: $Enums.SourceCategory
+      isDarknet: boolean
       platform: string
       driver: string
       intentType: string
@@ -10871,7 +10895,8 @@ export namespace Prisma {
   interface SourceIdentityFieldRefs {
     readonly id: FieldRef<"SourceIdentity", 'String'>
     readonly sourceId: FieldRef<"SourceIdentity", 'String'>
-    readonly type: FieldRef<"SourceIdentity", 'SourceType'>
+    readonly category: FieldRef<"SourceIdentity", 'SourceCategory'>
+    readonly isDarknet: FieldRef<"SourceIdentity", 'Boolean'>
     readonly platform: FieldRef<"SourceIdentity", 'String'>
     readonly driver: FieldRef<"SourceIdentity", 'String'>
     readonly intentType: FieldRef<"SourceIdentity", 'String'>
@@ -37341,7 +37366,8 @@ export namespace Prisma {
     id: 'id',
     name: 'name',
     description: 'description',
-    type: 'type',
+    category: 'category',
+    isDarknet: 'isDarknet',
     active: 'active',
     rateLimit: 'rateLimit',
     lastFetchedAt: 'lastFetchedAt',
@@ -37358,7 +37384,8 @@ export namespace Prisma {
   export const SourceIdentityScalarFieldEnum: {
     id: 'id',
     sourceId: 'sourceId',
-    type: 'type',
+    category: 'category',
+    isDarknet: 'isDarknet',
     platform: 'platform',
     driver: 'driver',
     intentType: 'intentType',
@@ -37818,16 +37845,16 @@ export namespace Prisma {
 
 
   /**
-   * Reference to a field of type 'SourceType'
+   * Reference to a field of type 'SourceCategory'
    */
-  export type EnumSourceTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'SourceType'>
+  export type EnumSourceCategoryFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'SourceCategory'>
     
 
 
   /**
-   * Reference to a field of type 'SourceType[]'
+   * Reference to a field of type 'SourceCategory[]'
    */
-  export type ListEnumSourceTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'SourceType[]'>
+  export type ListEnumSourceCategoryFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'SourceCategory[]'>
     
 
 
@@ -38336,7 +38363,8 @@ export namespace Prisma {
     id?: StringFilter<"Source"> | string
     name?: StringFilter<"Source"> | string
     description?: StringNullableFilter<"Source"> | string | null
-    type?: EnumSourceTypeFilter<"Source"> | $Enums.SourceType
+    category?: EnumSourceCategoryFilter<"Source"> | $Enums.SourceCategory
+    isDarknet?: BoolFilter<"Source"> | boolean
     active?: BoolFilter<"Source"> | boolean
     rateLimit?: IntNullableFilter<"Source"> | number | null
     lastFetchedAt?: DateTimeNullableFilter<"Source"> | Date | string | null
@@ -38360,7 +38388,8 @@ export namespace Prisma {
     id?: SortOrder
     name?: SortOrder
     description?: SortOrderInput | SortOrder
-    type?: SortOrder
+    category?: SortOrder
+    isDarknet?: SortOrder
     active?: SortOrder
     rateLimit?: SortOrderInput | SortOrder
     lastFetchedAt?: SortOrderInput | SortOrder
@@ -38387,7 +38416,8 @@ export namespace Prisma {
     OR?: SourceWhereInput[]
     NOT?: SourceWhereInput | SourceWhereInput[]
     description?: StringNullableFilter<"Source"> | string | null
-    type?: EnumSourceTypeFilter<"Source"> | $Enums.SourceType
+    category?: EnumSourceCategoryFilter<"Source"> | $Enums.SourceCategory
+    isDarknet?: BoolFilter<"Source"> | boolean
     active?: BoolFilter<"Source"> | boolean
     rateLimit?: IntNullableFilter<"Source"> | number | null
     lastFetchedAt?: DateTimeNullableFilter<"Source"> | Date | string | null
@@ -38411,7 +38441,8 @@ export namespace Prisma {
     id?: SortOrder
     name?: SortOrder
     description?: SortOrderInput | SortOrder
-    type?: SortOrder
+    category?: SortOrder
+    isDarknet?: SortOrder
     active?: SortOrder
     rateLimit?: SortOrderInput | SortOrder
     lastFetchedAt?: SortOrderInput | SortOrder
@@ -38434,7 +38465,8 @@ export namespace Prisma {
     id?: StringWithAggregatesFilter<"Source"> | string
     name?: StringWithAggregatesFilter<"Source"> | string
     description?: StringNullableWithAggregatesFilter<"Source"> | string | null
-    type?: EnumSourceTypeWithAggregatesFilter<"Source"> | $Enums.SourceType
+    category?: EnumSourceCategoryWithAggregatesFilter<"Source"> | $Enums.SourceCategory
+    isDarknet?: BoolWithAggregatesFilter<"Source"> | boolean
     active?: BoolWithAggregatesFilter<"Source"> | boolean
     rateLimit?: IntNullableWithAggregatesFilter<"Source"> | number | null
     lastFetchedAt?: DateTimeNullableWithAggregatesFilter<"Source"> | Date | string | null
@@ -38451,7 +38483,8 @@ export namespace Prisma {
     NOT?: SourceIdentityWhereInput | SourceIdentityWhereInput[]
     id?: StringFilter<"SourceIdentity"> | string
     sourceId?: StringFilter<"SourceIdentity"> | string
-    type?: EnumSourceTypeFilter<"SourceIdentity"> | $Enums.SourceType
+    category?: EnumSourceCategoryFilter<"SourceIdentity"> | $Enums.SourceCategory
+    isDarknet?: BoolFilter<"SourceIdentity"> | boolean
     platform?: StringFilter<"SourceIdentity"> | string
     driver?: StringFilter<"SourceIdentity"> | string
     intentType?: StringFilter<"SourceIdentity"> | string
@@ -38464,7 +38497,8 @@ export namespace Prisma {
   export type SourceIdentityOrderByWithRelationInput = {
     id?: SortOrder
     sourceId?: SortOrder
-    type?: SortOrder
+    category?: SortOrder
+    isDarknet?: SortOrder
     platform?: SortOrder
     driver?: SortOrder
     intentType?: SortOrder
@@ -38477,11 +38511,12 @@ export namespace Prisma {
   export type SourceIdentityWhereUniqueInput = Prisma.AtLeast<{
     id?: string
     sourceId?: string
-    type_platform_driver_intentType_intentArgsHash?: SourceIdentityTypePlatformDriverIntentTypeIntentArgsHashCompoundUniqueInput
+    category_isDarknet_platform_driver_intentType_intentArgsHash?: SourceIdentityCategoryIsDarknetPlatformDriverIntentTypeIntentArgsHashCompoundUniqueInput
     AND?: SourceIdentityWhereInput | SourceIdentityWhereInput[]
     OR?: SourceIdentityWhereInput[]
     NOT?: SourceIdentityWhereInput | SourceIdentityWhereInput[]
-    type?: EnumSourceTypeFilter<"SourceIdentity"> | $Enums.SourceType
+    category?: EnumSourceCategoryFilter<"SourceIdentity"> | $Enums.SourceCategory
+    isDarknet?: BoolFilter<"SourceIdentity"> | boolean
     platform?: StringFilter<"SourceIdentity"> | string
     driver?: StringFilter<"SourceIdentity"> | string
     intentType?: StringFilter<"SourceIdentity"> | string
@@ -38489,12 +38524,13 @@ export namespace Prisma {
     createdAt?: DateTimeFilter<"SourceIdentity"> | Date | string
     updatedAt?: DateTimeFilter<"SourceIdentity"> | Date | string
     source?: XOR<SourceScalarRelationFilter, SourceWhereInput>
-  }, "id" | "sourceId" | "type_platform_driver_intentType_intentArgsHash">
+  }, "id" | "sourceId" | "category_isDarknet_platform_driver_intentType_intentArgsHash">
 
   export type SourceIdentityOrderByWithAggregationInput = {
     id?: SortOrder
     sourceId?: SortOrder
-    type?: SortOrder
+    category?: SortOrder
+    isDarknet?: SortOrder
     platform?: SortOrder
     driver?: SortOrder
     intentType?: SortOrder
@@ -38512,7 +38548,8 @@ export namespace Prisma {
     NOT?: SourceIdentityScalarWhereWithAggregatesInput | SourceIdentityScalarWhereWithAggregatesInput[]
     id?: StringWithAggregatesFilter<"SourceIdentity"> | string
     sourceId?: StringWithAggregatesFilter<"SourceIdentity"> | string
-    type?: EnumSourceTypeWithAggregatesFilter<"SourceIdentity"> | $Enums.SourceType
+    category?: EnumSourceCategoryWithAggregatesFilter<"SourceIdentity"> | $Enums.SourceCategory
+    isDarknet?: BoolWithAggregatesFilter<"SourceIdentity"> | boolean
     platform?: StringWithAggregatesFilter<"SourceIdentity"> | string
     driver?: StringWithAggregatesFilter<"SourceIdentity"> | string
     intentType?: StringWithAggregatesFilter<"SourceIdentity"> | string
@@ -40598,7 +40635,8 @@ export namespace Prisma {
     id?: string
     name: string
     description?: string | null
-    type: $Enums.SourceType
+    category: $Enums.SourceCategory
+    isDarknet?: boolean
     active?: boolean
     rateLimit?: number | null
     lastFetchedAt?: Date | string | null
@@ -40620,7 +40658,8 @@ export namespace Prisma {
     id?: string
     name: string
     description?: string | null
-    type: $Enums.SourceType
+    category: $Enums.SourceCategory
+    isDarknet?: boolean
     active?: boolean
     rateLimit?: number | null
     lastFetchedAt?: Date | string | null
@@ -40642,7 +40681,8 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     description?: NullableStringFieldUpdateOperationsInput | string | null
-    type?: EnumSourceTypeFieldUpdateOperationsInput | $Enums.SourceType
+    category?: EnumSourceCategoryFieldUpdateOperationsInput | $Enums.SourceCategory
+    isDarknet?: BoolFieldUpdateOperationsInput | boolean
     active?: BoolFieldUpdateOperationsInput | boolean
     rateLimit?: NullableIntFieldUpdateOperationsInput | number | null
     lastFetchedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -40664,7 +40704,8 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     description?: NullableStringFieldUpdateOperationsInput | string | null
-    type?: EnumSourceTypeFieldUpdateOperationsInput | $Enums.SourceType
+    category?: EnumSourceCategoryFieldUpdateOperationsInput | $Enums.SourceCategory
+    isDarknet?: BoolFieldUpdateOperationsInput | boolean
     active?: BoolFieldUpdateOperationsInput | boolean
     rateLimit?: NullableIntFieldUpdateOperationsInput | number | null
     lastFetchedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -40686,7 +40727,8 @@ export namespace Prisma {
     id?: string
     name: string
     description?: string | null
-    type: $Enums.SourceType
+    category: $Enums.SourceCategory
+    isDarknet?: boolean
     active?: boolean
     rateLimit?: number | null
     lastFetchedAt?: Date | string | null
@@ -40701,7 +40743,8 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     description?: NullableStringFieldUpdateOperationsInput | string | null
-    type?: EnumSourceTypeFieldUpdateOperationsInput | $Enums.SourceType
+    category?: EnumSourceCategoryFieldUpdateOperationsInput | $Enums.SourceCategory
+    isDarknet?: BoolFieldUpdateOperationsInput | boolean
     active?: BoolFieldUpdateOperationsInput | boolean
     rateLimit?: NullableIntFieldUpdateOperationsInput | number | null
     lastFetchedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -40714,7 +40757,8 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     description?: NullableStringFieldUpdateOperationsInput | string | null
-    type?: EnumSourceTypeFieldUpdateOperationsInput | $Enums.SourceType
+    category?: EnumSourceCategoryFieldUpdateOperationsInput | $Enums.SourceCategory
+    isDarknet?: BoolFieldUpdateOperationsInput | boolean
     active?: BoolFieldUpdateOperationsInput | boolean
     rateLimit?: NullableIntFieldUpdateOperationsInput | number | null
     lastFetchedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -40727,7 +40771,8 @@ export namespace Prisma {
 
   export type SourceIdentityCreateInput = {
     id?: string
-    type: $Enums.SourceType
+    category: $Enums.SourceCategory
+    isDarknet?: boolean
     platform: string
     driver: string
     intentType: string
@@ -40740,7 +40785,8 @@ export namespace Prisma {
   export type SourceIdentityUncheckedCreateInput = {
     id?: string
     sourceId: string
-    type: $Enums.SourceType
+    category: $Enums.SourceCategory
+    isDarknet?: boolean
     platform: string
     driver: string
     intentType: string
@@ -40751,7 +40797,8 @@ export namespace Prisma {
 
   export type SourceIdentityUpdateInput = {
     id?: StringFieldUpdateOperationsInput | string
-    type?: EnumSourceTypeFieldUpdateOperationsInput | $Enums.SourceType
+    category?: EnumSourceCategoryFieldUpdateOperationsInput | $Enums.SourceCategory
+    isDarknet?: BoolFieldUpdateOperationsInput | boolean
     platform?: StringFieldUpdateOperationsInput | string
     driver?: StringFieldUpdateOperationsInput | string
     intentType?: StringFieldUpdateOperationsInput | string
@@ -40764,7 +40811,8 @@ export namespace Prisma {
   export type SourceIdentityUncheckedUpdateInput = {
     id?: StringFieldUpdateOperationsInput | string
     sourceId?: StringFieldUpdateOperationsInput | string
-    type?: EnumSourceTypeFieldUpdateOperationsInput | $Enums.SourceType
+    category?: EnumSourceCategoryFieldUpdateOperationsInput | $Enums.SourceCategory
+    isDarknet?: BoolFieldUpdateOperationsInput | boolean
     platform?: StringFieldUpdateOperationsInput | string
     driver?: StringFieldUpdateOperationsInput | string
     intentType?: StringFieldUpdateOperationsInput | string
@@ -40776,7 +40824,8 @@ export namespace Prisma {
   export type SourceIdentityCreateManyInput = {
     id?: string
     sourceId: string
-    type: $Enums.SourceType
+    category: $Enums.SourceCategory
+    isDarknet?: boolean
     platform: string
     driver: string
     intentType: string
@@ -40787,7 +40836,8 @@ export namespace Prisma {
 
   export type SourceIdentityUpdateManyMutationInput = {
     id?: StringFieldUpdateOperationsInput | string
-    type?: EnumSourceTypeFieldUpdateOperationsInput | $Enums.SourceType
+    category?: EnumSourceCategoryFieldUpdateOperationsInput | $Enums.SourceCategory
+    isDarknet?: BoolFieldUpdateOperationsInput | boolean
     platform?: StringFieldUpdateOperationsInput | string
     driver?: StringFieldUpdateOperationsInput | string
     intentType?: StringFieldUpdateOperationsInput | string
@@ -40799,7 +40849,8 @@ export namespace Prisma {
   export type SourceIdentityUncheckedUpdateManyInput = {
     id?: StringFieldUpdateOperationsInput | string
     sourceId?: StringFieldUpdateOperationsInput | string
-    type?: EnumSourceTypeFieldUpdateOperationsInput | $Enums.SourceType
+    category?: EnumSourceCategoryFieldUpdateOperationsInput | $Enums.SourceCategory
+    isDarknet?: BoolFieldUpdateOperationsInput | boolean
     platform?: StringFieldUpdateOperationsInput | string
     driver?: StringFieldUpdateOperationsInput | string
     intentType?: StringFieldUpdateOperationsInput | string
@@ -43077,11 +43128,11 @@ export namespace Prisma {
     _max?: NestedJsonFilter<$PrismaModel>
   }
 
-  export type EnumSourceTypeFilter<$PrismaModel = never> = {
-    equals?: $Enums.SourceType | EnumSourceTypeFieldRefInput<$PrismaModel>
-    in?: $Enums.SourceType[] | ListEnumSourceTypeFieldRefInput<$PrismaModel>
-    notIn?: $Enums.SourceType[] | ListEnumSourceTypeFieldRefInput<$PrismaModel>
-    not?: NestedEnumSourceTypeFilter<$PrismaModel> | $Enums.SourceType
+  export type EnumSourceCategoryFilter<$PrismaModel = never> = {
+    equals?: $Enums.SourceCategory | EnumSourceCategoryFieldRefInput<$PrismaModel>
+    in?: $Enums.SourceCategory[] | ListEnumSourceCategoryFieldRefInput<$PrismaModel>
+    notIn?: $Enums.SourceCategory[] | ListEnumSourceCategoryFieldRefInput<$PrismaModel>
+    not?: NestedEnumSourceCategoryFilter<$PrismaModel> | $Enums.SourceCategory
   }
 
   export type IntNullableFilter<$PrismaModel = never> = {
@@ -43155,7 +43206,8 @@ export namespace Prisma {
     id?: SortOrder
     name?: SortOrder
     description?: SortOrder
-    type?: SortOrder
+    category?: SortOrder
+    isDarknet?: SortOrder
     active?: SortOrder
     rateLimit?: SortOrder
     lastFetchedAt?: SortOrder
@@ -43174,7 +43226,8 @@ export namespace Prisma {
     id?: SortOrder
     name?: SortOrder
     description?: SortOrder
-    type?: SortOrder
+    category?: SortOrder
+    isDarknet?: SortOrder
     active?: SortOrder
     rateLimit?: SortOrder
     lastFetchedAt?: SortOrder
@@ -43189,7 +43242,8 @@ export namespace Prisma {
     id?: SortOrder
     name?: SortOrder
     description?: SortOrder
-    type?: SortOrder
+    category?: SortOrder
+    isDarknet?: SortOrder
     active?: SortOrder
     rateLimit?: SortOrder
     lastFetchedAt?: SortOrder
@@ -43204,14 +43258,14 @@ export namespace Prisma {
     rateLimit?: SortOrder
   }
 
-  export type EnumSourceTypeWithAggregatesFilter<$PrismaModel = never> = {
-    equals?: $Enums.SourceType | EnumSourceTypeFieldRefInput<$PrismaModel>
-    in?: $Enums.SourceType[] | ListEnumSourceTypeFieldRefInput<$PrismaModel>
-    notIn?: $Enums.SourceType[] | ListEnumSourceTypeFieldRefInput<$PrismaModel>
-    not?: NestedEnumSourceTypeWithAggregatesFilter<$PrismaModel> | $Enums.SourceType
+  export type EnumSourceCategoryWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: $Enums.SourceCategory | EnumSourceCategoryFieldRefInput<$PrismaModel>
+    in?: $Enums.SourceCategory[] | ListEnumSourceCategoryFieldRefInput<$PrismaModel>
+    notIn?: $Enums.SourceCategory[] | ListEnumSourceCategoryFieldRefInput<$PrismaModel>
+    not?: NestedEnumSourceCategoryWithAggregatesFilter<$PrismaModel> | $Enums.SourceCategory
     _count?: NestedIntFilter<$PrismaModel>
-    _min?: NestedEnumSourceTypeFilter<$PrismaModel>
-    _max?: NestedEnumSourceTypeFilter<$PrismaModel>
+    _min?: NestedEnumSourceCategoryFilter<$PrismaModel>
+    _max?: NestedEnumSourceCategoryFilter<$PrismaModel>
   }
 
   export type IntNullableWithAggregatesFilter<$PrismaModel = never> = {
@@ -43249,8 +43303,9 @@ export namespace Prisma {
     isNot?: SourceWhereInput
   }
 
-  export type SourceIdentityTypePlatformDriverIntentTypeIntentArgsHashCompoundUniqueInput = {
-    type: $Enums.SourceType
+  export type SourceIdentityCategoryIsDarknetPlatformDriverIntentTypeIntentArgsHashCompoundUniqueInput = {
+    category: $Enums.SourceCategory
+    isDarknet: boolean
     platform: string
     driver: string
     intentType: string
@@ -43260,7 +43315,8 @@ export namespace Prisma {
   export type SourceIdentityCountOrderByAggregateInput = {
     id?: SortOrder
     sourceId?: SortOrder
-    type?: SortOrder
+    category?: SortOrder
+    isDarknet?: SortOrder
     platform?: SortOrder
     driver?: SortOrder
     intentType?: SortOrder
@@ -43272,7 +43328,8 @@ export namespace Prisma {
   export type SourceIdentityMaxOrderByAggregateInput = {
     id?: SortOrder
     sourceId?: SortOrder
-    type?: SortOrder
+    category?: SortOrder
+    isDarknet?: SortOrder
     platform?: SortOrder
     driver?: SortOrder
     intentType?: SortOrder
@@ -43284,7 +43341,8 @@ export namespace Prisma {
   export type SourceIdentityMinOrderByAggregateInput = {
     id?: SortOrder
     sourceId?: SortOrder
-    type?: SortOrder
+    category?: SortOrder
+    isDarknet?: SortOrder
     platform?: SortOrder
     driver?: SortOrder
     intentType?: SortOrder
@@ -45195,8 +45253,8 @@ export namespace Prisma {
     connect?: QueryWhereUniqueInput | QueryWhereUniqueInput[]
   }
 
-  export type EnumSourceTypeFieldUpdateOperationsInput = {
-    set?: $Enums.SourceType
+  export type EnumSourceCategoryFieldUpdateOperationsInput = {
+    set?: $Enums.SourceCategory
   }
 
   export type NullableIntFieldUpdateOperationsInput = {
@@ -46710,11 +46768,11 @@ export namespace Prisma {
     not?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
   }
 
-  export type NestedEnumSourceTypeFilter<$PrismaModel = never> = {
-    equals?: $Enums.SourceType | EnumSourceTypeFieldRefInput<$PrismaModel>
-    in?: $Enums.SourceType[] | ListEnumSourceTypeFieldRefInput<$PrismaModel>
-    notIn?: $Enums.SourceType[] | ListEnumSourceTypeFieldRefInput<$PrismaModel>
-    not?: NestedEnumSourceTypeFilter<$PrismaModel> | $Enums.SourceType
+  export type NestedEnumSourceCategoryFilter<$PrismaModel = never> = {
+    equals?: $Enums.SourceCategory | EnumSourceCategoryFieldRefInput<$PrismaModel>
+    in?: $Enums.SourceCategory[] | ListEnumSourceCategoryFieldRefInput<$PrismaModel>
+    notIn?: $Enums.SourceCategory[] | ListEnumSourceCategoryFieldRefInput<$PrismaModel>
+    not?: NestedEnumSourceCategoryFilter<$PrismaModel> | $Enums.SourceCategory
   }
 
   export type NestedDateTimeNullableFilter<$PrismaModel = never> = {
@@ -46728,14 +46786,14 @@ export namespace Prisma {
     not?: NestedDateTimeNullableFilter<$PrismaModel> | Date | string | null
   }
 
-  export type NestedEnumSourceTypeWithAggregatesFilter<$PrismaModel = never> = {
-    equals?: $Enums.SourceType | EnumSourceTypeFieldRefInput<$PrismaModel>
-    in?: $Enums.SourceType[] | ListEnumSourceTypeFieldRefInput<$PrismaModel>
-    notIn?: $Enums.SourceType[] | ListEnumSourceTypeFieldRefInput<$PrismaModel>
-    not?: NestedEnumSourceTypeWithAggregatesFilter<$PrismaModel> | $Enums.SourceType
+  export type NestedEnumSourceCategoryWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: $Enums.SourceCategory | EnumSourceCategoryFieldRefInput<$PrismaModel>
+    in?: $Enums.SourceCategory[] | ListEnumSourceCategoryFieldRefInput<$PrismaModel>
+    notIn?: $Enums.SourceCategory[] | ListEnumSourceCategoryFieldRefInput<$PrismaModel>
+    not?: NestedEnumSourceCategoryWithAggregatesFilter<$PrismaModel> | $Enums.SourceCategory
     _count?: NestedIntFilter<$PrismaModel>
-    _min?: NestedEnumSourceTypeFilter<$PrismaModel>
-    _max?: NestedEnumSourceTypeFilter<$PrismaModel>
+    _min?: NestedEnumSourceCategoryFilter<$PrismaModel>
+    _max?: NestedEnumSourceCategoryFilter<$PrismaModel>
   }
 
   export type NestedIntNullableWithAggregatesFilter<$PrismaModel = never> = {
@@ -47363,7 +47421,8 @@ export namespace Prisma {
     id?: string
     name: string
     description?: string | null
-    type: $Enums.SourceType
+    category: $Enums.SourceCategory
+    isDarknet?: boolean
     active?: boolean
     rateLimit?: number | null
     lastFetchedAt?: Date | string | null
@@ -47384,7 +47443,8 @@ export namespace Prisma {
     id?: string
     name: string
     description?: string | null
-    type: $Enums.SourceType
+    category: $Enums.SourceCategory
+    isDarknet?: boolean
     active?: boolean
     rateLimit?: number | null
     lastFetchedAt?: Date | string | null
@@ -47530,7 +47590,8 @@ export namespace Prisma {
     id?: StringFilter<"Source"> | string
     name?: StringFilter<"Source"> | string
     description?: StringNullableFilter<"Source"> | string | null
-    type?: EnumSourceTypeFilter<"Source"> | $Enums.SourceType
+    category?: EnumSourceCategoryFilter<"Source"> | $Enums.SourceCategory
+    isDarknet?: BoolFilter<"Source"> | boolean
     active?: BoolFilter<"Source"> | boolean
     rateLimit?: IntNullableFilter<"Source"> | number | null
     lastFetchedAt?: DateTimeNullableFilter<"Source"> | Date | string | null
@@ -47638,7 +47699,8 @@ export namespace Prisma {
     id?: string
     name: string
     description?: string | null
-    type: $Enums.SourceType
+    category: $Enums.SourceCategory
+    isDarknet?: boolean
     active?: boolean
     rateLimit?: number | null
     lastFetchedAt?: Date | string | null
@@ -47659,7 +47721,8 @@ export namespace Prisma {
     id?: string
     name: string
     description?: string | null
-    type: $Enums.SourceType
+    category: $Enums.SourceCategory
+    isDarknet?: boolean
     active?: boolean
     rateLimit?: number | null
     lastFetchedAt?: Date | string | null
@@ -47984,7 +48047,8 @@ export namespace Prisma {
 
   export type SourceIdentityCreateWithoutSourceInput = {
     id?: string
-    type: $Enums.SourceType
+    category: $Enums.SourceCategory
+    isDarknet?: boolean
     platform: string
     driver: string
     intentType: string
@@ -47995,7 +48059,8 @@ export namespace Prisma {
 
   export type SourceIdentityUncheckedCreateWithoutSourceInput = {
     id?: string
-    type: $Enums.SourceType
+    category: $Enums.SourceCategory
+    isDarknet?: boolean
     platform: string
     driver: string
     intentType: string
@@ -48287,7 +48352,8 @@ export namespace Prisma {
 
   export type SourceIdentityUpdateWithoutSourceInput = {
     id?: StringFieldUpdateOperationsInput | string
-    type?: EnumSourceTypeFieldUpdateOperationsInput | $Enums.SourceType
+    category?: EnumSourceCategoryFieldUpdateOperationsInput | $Enums.SourceCategory
+    isDarknet?: BoolFieldUpdateOperationsInput | boolean
     platform?: StringFieldUpdateOperationsInput | string
     driver?: StringFieldUpdateOperationsInput | string
     intentType?: StringFieldUpdateOperationsInput | string
@@ -48298,7 +48364,8 @@ export namespace Prisma {
 
   export type SourceIdentityUncheckedUpdateWithoutSourceInput = {
     id?: StringFieldUpdateOperationsInput | string
-    type?: EnumSourceTypeFieldUpdateOperationsInput | $Enums.SourceType
+    category?: EnumSourceCategoryFieldUpdateOperationsInput | $Enums.SourceCategory
+    isDarknet?: BoolFieldUpdateOperationsInput | boolean
     platform?: StringFieldUpdateOperationsInput | string
     driver?: StringFieldUpdateOperationsInput | string
     intentType?: StringFieldUpdateOperationsInput | string
@@ -48356,7 +48423,8 @@ export namespace Prisma {
     id?: string
     name: string
     description?: string | null
-    type: $Enums.SourceType
+    category: $Enums.SourceCategory
+    isDarknet?: boolean
     active?: boolean
     rateLimit?: number | null
     lastFetchedAt?: Date | string | null
@@ -48377,7 +48445,8 @@ export namespace Prisma {
     id?: string
     name: string
     description?: string | null
-    type: $Enums.SourceType
+    category: $Enums.SourceCategory
+    isDarknet?: boolean
     active?: boolean
     rateLimit?: number | null
     lastFetchedAt?: Date | string | null
@@ -48414,7 +48483,8 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     description?: NullableStringFieldUpdateOperationsInput | string | null
-    type?: EnumSourceTypeFieldUpdateOperationsInput | $Enums.SourceType
+    category?: EnumSourceCategoryFieldUpdateOperationsInput | $Enums.SourceCategory
+    isDarknet?: BoolFieldUpdateOperationsInput | boolean
     active?: BoolFieldUpdateOperationsInput | boolean
     rateLimit?: NullableIntFieldUpdateOperationsInput | number | null
     lastFetchedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -48435,7 +48505,8 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     description?: NullableStringFieldUpdateOperationsInput | string | null
-    type?: EnumSourceTypeFieldUpdateOperationsInput | $Enums.SourceType
+    category?: EnumSourceCategoryFieldUpdateOperationsInput | $Enums.SourceCategory
+    isDarknet?: BoolFieldUpdateOperationsInput | boolean
     active?: BoolFieldUpdateOperationsInput | boolean
     rateLimit?: NullableIntFieldUpdateOperationsInput | number | null
     lastFetchedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -48500,7 +48571,8 @@ export namespace Prisma {
     id?: string
     name: string
     description?: string | null
-    type: $Enums.SourceType
+    category: $Enums.SourceCategory
+    isDarknet?: boolean
     active?: boolean
     rateLimit?: number | null
     lastFetchedAt?: Date | string | null
@@ -48521,7 +48593,8 @@ export namespace Prisma {
     id?: string
     name: string
     description?: string | null
-    type: $Enums.SourceType
+    category: $Enums.SourceCategory
+    isDarknet?: boolean
     active?: boolean
     rateLimit?: number | null
     lastFetchedAt?: Date | string | null
@@ -48599,7 +48672,8 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     description?: NullableStringFieldUpdateOperationsInput | string | null
-    type?: EnumSourceTypeFieldUpdateOperationsInput | $Enums.SourceType
+    category?: EnumSourceCategoryFieldUpdateOperationsInput | $Enums.SourceCategory
+    isDarknet?: BoolFieldUpdateOperationsInput | boolean
     active?: BoolFieldUpdateOperationsInput | boolean
     rateLimit?: NullableIntFieldUpdateOperationsInput | number | null
     lastFetchedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -48620,7 +48694,8 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     description?: NullableStringFieldUpdateOperationsInput | string | null
-    type?: EnumSourceTypeFieldUpdateOperationsInput | $Enums.SourceType
+    category?: EnumSourceCategoryFieldUpdateOperationsInput | $Enums.SourceCategory
+    isDarknet?: BoolFieldUpdateOperationsInput | boolean
     active?: BoolFieldUpdateOperationsInput | boolean
     rateLimit?: NullableIntFieldUpdateOperationsInput | number | null
     lastFetchedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -48688,7 +48763,8 @@ export namespace Prisma {
     id?: string
     name: string
     description?: string | null
-    type: $Enums.SourceType
+    category: $Enums.SourceCategory
+    isDarknet?: boolean
     active?: boolean
     rateLimit?: number | null
     lastFetchedAt?: Date | string | null
@@ -48709,7 +48785,8 @@ export namespace Prisma {
     id?: string
     name: string
     description?: string | null
-    type: $Enums.SourceType
+    category: $Enums.SourceCategory
+    isDarknet?: boolean
     active?: boolean
     rateLimit?: number | null
     lastFetchedAt?: Date | string | null
@@ -48777,7 +48854,8 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     description?: NullableStringFieldUpdateOperationsInput | string | null
-    type?: EnumSourceTypeFieldUpdateOperationsInput | $Enums.SourceType
+    category?: EnumSourceCategoryFieldUpdateOperationsInput | $Enums.SourceCategory
+    isDarknet?: BoolFieldUpdateOperationsInput | boolean
     active?: BoolFieldUpdateOperationsInput | boolean
     rateLimit?: NullableIntFieldUpdateOperationsInput | number | null
     lastFetchedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -48798,7 +48876,8 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     description?: NullableStringFieldUpdateOperationsInput | string | null
-    type?: EnumSourceTypeFieldUpdateOperationsInput | $Enums.SourceType
+    category?: EnumSourceCategoryFieldUpdateOperationsInput | $Enums.SourceCategory
+    isDarknet?: BoolFieldUpdateOperationsInput | boolean
     active?: BoolFieldUpdateOperationsInput | boolean
     rateLimit?: NullableIntFieldUpdateOperationsInput | number | null
     lastFetchedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -48856,7 +48935,8 @@ export namespace Prisma {
     id?: string
     name: string
     description?: string | null
-    type: $Enums.SourceType
+    category: $Enums.SourceCategory
+    isDarknet?: boolean
     active?: boolean
     rateLimit?: number | null
     lastFetchedAt?: Date | string | null
@@ -48877,7 +48957,8 @@ export namespace Prisma {
     id?: string
     name: string
     description?: string | null
-    type: $Enums.SourceType
+    category: $Enums.SourceCategory
+    isDarknet?: boolean
     active?: boolean
     rateLimit?: number | null
     lastFetchedAt?: Date | string | null
@@ -48945,7 +49026,8 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     description?: NullableStringFieldUpdateOperationsInput | string | null
-    type?: EnumSourceTypeFieldUpdateOperationsInput | $Enums.SourceType
+    category?: EnumSourceCategoryFieldUpdateOperationsInput | $Enums.SourceCategory
+    isDarknet?: BoolFieldUpdateOperationsInput | boolean
     active?: BoolFieldUpdateOperationsInput | boolean
     rateLimit?: NullableIntFieldUpdateOperationsInput | number | null
     lastFetchedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -48966,7 +49048,8 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     description?: NullableStringFieldUpdateOperationsInput | string | null
-    type?: EnumSourceTypeFieldUpdateOperationsInput | $Enums.SourceType
+    category?: EnumSourceCategoryFieldUpdateOperationsInput | $Enums.SourceCategory
+    isDarknet?: BoolFieldUpdateOperationsInput | boolean
     active?: BoolFieldUpdateOperationsInput | boolean
     rateLimit?: NullableIntFieldUpdateOperationsInput | number | null
     lastFetchedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -49024,7 +49107,8 @@ export namespace Prisma {
     id?: string
     name: string
     description?: string | null
-    type: $Enums.SourceType
+    category: $Enums.SourceCategory
+    isDarknet?: boolean
     active?: boolean
     rateLimit?: number | null
     lastFetchedAt?: Date | string | null
@@ -49045,7 +49129,8 @@ export namespace Prisma {
     id?: string
     name: string
     description?: string | null
-    type: $Enums.SourceType
+    category: $Enums.SourceCategory
+    isDarknet?: boolean
     active?: boolean
     rateLimit?: number | null
     lastFetchedAt?: Date | string | null
@@ -49109,7 +49194,8 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     description?: NullableStringFieldUpdateOperationsInput | string | null
-    type?: EnumSourceTypeFieldUpdateOperationsInput | $Enums.SourceType
+    category?: EnumSourceCategoryFieldUpdateOperationsInput | $Enums.SourceCategory
+    isDarknet?: BoolFieldUpdateOperationsInput | boolean
     active?: BoolFieldUpdateOperationsInput | boolean
     rateLimit?: NullableIntFieldUpdateOperationsInput | number | null
     lastFetchedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -49130,7 +49216,8 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     description?: NullableStringFieldUpdateOperationsInput | string | null
-    type?: EnumSourceTypeFieldUpdateOperationsInput | $Enums.SourceType
+    category?: EnumSourceCategoryFieldUpdateOperationsInput | $Enums.SourceCategory
+    isDarknet?: BoolFieldUpdateOperationsInput | boolean
     active?: BoolFieldUpdateOperationsInput | boolean
     rateLimit?: NullableIntFieldUpdateOperationsInput | number | null
     lastFetchedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -49184,7 +49271,8 @@ export namespace Prisma {
     id?: string
     name: string
     description?: string | null
-    type: $Enums.SourceType
+    category: $Enums.SourceCategory
+    isDarknet?: boolean
     active?: boolean
     rateLimit?: number | null
     lastFetchedAt?: Date | string | null
@@ -49205,7 +49293,8 @@ export namespace Prisma {
     id?: string
     name: string
     description?: string | null
-    type: $Enums.SourceType
+    category: $Enums.SourceCategory
+    isDarknet?: boolean
     active?: boolean
     rateLimit?: number | null
     lastFetchedAt?: Date | string | null
@@ -49300,7 +49389,8 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     description?: NullableStringFieldUpdateOperationsInput | string | null
-    type?: EnumSourceTypeFieldUpdateOperationsInput | $Enums.SourceType
+    category?: EnumSourceCategoryFieldUpdateOperationsInput | $Enums.SourceCategory
+    isDarknet?: BoolFieldUpdateOperationsInput | boolean
     active?: BoolFieldUpdateOperationsInput | boolean
     rateLimit?: NullableIntFieldUpdateOperationsInput | number | null
     lastFetchedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -49321,7 +49411,8 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     description?: NullableStringFieldUpdateOperationsInput | string | null
-    type?: EnumSourceTypeFieldUpdateOperationsInput | $Enums.SourceType
+    category?: EnumSourceCategoryFieldUpdateOperationsInput | $Enums.SourceCategory
+    isDarknet?: BoolFieldUpdateOperationsInput | boolean
     active?: BoolFieldUpdateOperationsInput | boolean
     rateLimit?: NullableIntFieldUpdateOperationsInput | number | null
     lastFetchedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -49453,7 +49544,8 @@ export namespace Prisma {
     id?: string
     name: string
     description?: string | null
-    type: $Enums.SourceType
+    category: $Enums.SourceCategory
+    isDarknet?: boolean
     active?: boolean
     rateLimit?: number | null
     lastFetchedAt?: Date | string | null
@@ -49474,7 +49566,8 @@ export namespace Prisma {
     id?: string
     name: string
     description?: string | null
-    type: $Enums.SourceType
+    category: $Enums.SourceCategory
+    isDarknet?: boolean
     active?: boolean
     rateLimit?: number | null
     lastFetchedAt?: Date | string | null
@@ -51532,7 +51625,8 @@ export namespace Prisma {
     id?: string
     name: string
     description?: string | null
-    type: $Enums.SourceType
+    category: $Enums.SourceCategory
+    isDarknet?: boolean
     active?: boolean
     rateLimit?: number | null
     lastFetchedAt?: Date | string | null
@@ -51579,7 +51673,8 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     description?: NullableStringFieldUpdateOperationsInput | string | null
-    type?: EnumSourceTypeFieldUpdateOperationsInput | $Enums.SourceType
+    category?: EnumSourceCategoryFieldUpdateOperationsInput | $Enums.SourceCategory
+    isDarknet?: BoolFieldUpdateOperationsInput | boolean
     active?: BoolFieldUpdateOperationsInput | boolean
     rateLimit?: NullableIntFieldUpdateOperationsInput | number | null
     lastFetchedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -51600,7 +51695,8 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     description?: NullableStringFieldUpdateOperationsInput | string | null
-    type?: EnumSourceTypeFieldUpdateOperationsInput | $Enums.SourceType
+    category?: EnumSourceCategoryFieldUpdateOperationsInput | $Enums.SourceCategory
+    isDarknet?: BoolFieldUpdateOperationsInput | boolean
     active?: BoolFieldUpdateOperationsInput | boolean
     rateLimit?: NullableIntFieldUpdateOperationsInput | number | null
     lastFetchedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -51621,7 +51717,8 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     description?: NullableStringFieldUpdateOperationsInput | string | null
-    type?: EnumSourceTypeFieldUpdateOperationsInput | $Enums.SourceType
+    category?: EnumSourceCategoryFieldUpdateOperationsInput | $Enums.SourceCategory
+    isDarknet?: BoolFieldUpdateOperationsInput | boolean
     active?: BoolFieldUpdateOperationsInput | boolean
     rateLimit?: NullableIntFieldUpdateOperationsInput | number | null
     lastFetchedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -51734,7 +51831,8 @@ export namespace Prisma {
     id?: string
     name: string
     description?: string | null
-    type: $Enums.SourceType
+    category: $Enums.SourceCategory
+    isDarknet?: boolean
     active?: boolean
     rateLimit?: number | null
     lastFetchedAt?: Date | string | null
@@ -51770,7 +51868,8 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     description?: NullableStringFieldUpdateOperationsInput | string | null
-    type?: EnumSourceTypeFieldUpdateOperationsInput | $Enums.SourceType
+    category?: EnumSourceCategoryFieldUpdateOperationsInput | $Enums.SourceCategory
+    isDarknet?: BoolFieldUpdateOperationsInput | boolean
     active?: BoolFieldUpdateOperationsInput | boolean
     rateLimit?: NullableIntFieldUpdateOperationsInput | number | null
     lastFetchedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -51791,7 +51890,8 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     description?: NullableStringFieldUpdateOperationsInput | string | null
-    type?: EnumSourceTypeFieldUpdateOperationsInput | $Enums.SourceType
+    category?: EnumSourceCategoryFieldUpdateOperationsInput | $Enums.SourceCategory
+    isDarknet?: BoolFieldUpdateOperationsInput | boolean
     active?: BoolFieldUpdateOperationsInput | boolean
     rateLimit?: NullableIntFieldUpdateOperationsInput | number | null
     lastFetchedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -51812,7 +51912,8 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     description?: NullableStringFieldUpdateOperationsInput | string | null
-    type?: EnumSourceTypeFieldUpdateOperationsInput | $Enums.SourceType
+    category?: EnumSourceCategoryFieldUpdateOperationsInput | $Enums.SourceCategory
+    isDarknet?: BoolFieldUpdateOperationsInput | boolean
     active?: BoolFieldUpdateOperationsInput | boolean
     rateLimit?: NullableIntFieldUpdateOperationsInput | number | null
     lastFetchedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -52068,7 +52169,8 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     description?: NullableStringFieldUpdateOperationsInput | string | null
-    type?: EnumSourceTypeFieldUpdateOperationsInput | $Enums.SourceType
+    category?: EnumSourceCategoryFieldUpdateOperationsInput | $Enums.SourceCategory
+    isDarknet?: BoolFieldUpdateOperationsInput | boolean
     active?: BoolFieldUpdateOperationsInput | boolean
     rateLimit?: NullableIntFieldUpdateOperationsInput | number | null
     lastFetchedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -52089,7 +52191,8 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     description?: NullableStringFieldUpdateOperationsInput | string | null
-    type?: EnumSourceTypeFieldUpdateOperationsInput | $Enums.SourceType
+    category?: EnumSourceCategoryFieldUpdateOperationsInput | $Enums.SourceCategory
+    isDarknet?: BoolFieldUpdateOperationsInput | boolean
     active?: BoolFieldUpdateOperationsInput | boolean
     rateLimit?: NullableIntFieldUpdateOperationsInput | number | null
     lastFetchedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -52110,7 +52213,8 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     description?: NullableStringFieldUpdateOperationsInput | string | null
-    type?: EnumSourceTypeFieldUpdateOperationsInput | $Enums.SourceType
+    category?: EnumSourceCategoryFieldUpdateOperationsInput | $Enums.SourceCategory
+    isDarknet?: BoolFieldUpdateOperationsInput | boolean
     active?: BoolFieldUpdateOperationsInput | boolean
     rateLimit?: NullableIntFieldUpdateOperationsInput | number | null
     lastFetchedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null

@@ -83,7 +83,7 @@ const WebSites = ({ sources, proxies }: Props) => {
       render: (source) => (
         <SourceDeleteAlert
           source={source}
-          queryKeyType="WEB"
+          queryKeyType="STREAM"
           triggerButton={
             <Button size="sm" variant="outline">
               <TrashIcon className="size-3" />
@@ -97,7 +97,7 @@ const WebSites = ({ sources, proxies }: Props) => {
   return (
     <>
       <SourceDialog
-        sourceType="WEB"
+        sourceType="STREAM"
         source={editingSource}
         proxies={proxies}
         open={!!editingSource}

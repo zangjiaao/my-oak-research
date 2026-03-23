@@ -11,7 +11,8 @@ export async function GET() {
     const [identities, sources, credentials] = await Promise.all([
       prisma.sourceIdentity.findMany({
         select: {
-          type: true,
+          category: true,
+          isDarknet: true,
           platform: true,
           driver: true,
           intentType: true,
@@ -20,7 +21,8 @@ export async function GET() {
       }),
       prisma.source.findMany({
         select: {
-          type: true,
+          category: true,
+          isDarknet: true,
           web: { select: { sourceId: true } },
           darknet: { select: { sourceId: true } },
           search: { select: { sourceId: true, platform: true, objective: true, options: true } },
@@ -44,7 +46,13 @@ export async function GET() {
 
     const scopedIdentitySet = new Set(
       identities.map((identity) =>
-        [identity.type, identity.platform, identity.driver, identity.intentType].join("|")
+        [
+          identity.category,
+          String(identity.isDarknet),
+          identity.platform,
+          identity.driver,
+          identity.intentType,
+        ].join("|")
       )
     );
 
@@ -53,7 +61,8 @@ export async function GET() {
       if (!fallbackIdentity) continue;
       scopedIdentitySet.add(
         [
-          fallbackIdentity.type,
+          fallbackIdentity.category,
+          String(fallbackIdentity.isDarknet),
           fallbackIdentity.platform,
           fallbackIdentity.driver,
           fallbackIdentity.intentType,
@@ -71,7 +80,8 @@ export async function GET() {
       );
 
       const scopedKey = [
-        template.type,
+        template.category,
+        String(template.isDarknet),
         template.platform,
         template.driver,
         template.intent.type,
@@ -79,8 +89,8 @@ export async function GET() {
 
       return {
         key: template.key,
-        type: template.type,
         category: template.category,
+        isDarknet: template.isDarknet,
         platform: template.platform,
         driver: template.driver,
         networkPolicy: template.networkPolicy,

@@ -34,7 +34,8 @@ const SocialMediaSettingCard = () => {
   const socialMediaSources =
     sources?.filter((source) =>
       classifySourceCategory({
-        type: source.type,
+        category: source.category,
+        isDarknet: source.isDarknet,
         social: "social" in source ? source.social : null,
         search: "search" in source ? source.search : null,
         searchPlatform: "search" in source ? source.search?.platform : null,
@@ -68,7 +69,7 @@ const SocialMediaSettingCard = () => {
         />
       </div>
       <SourceDialog
-        sourceType="SOCIAL_MEDIA"
+        sourceType="INTERACTIVE"
         proxies={proxies}
         open={isDialogOpen}
         onOpenChange={setDialogOpen}

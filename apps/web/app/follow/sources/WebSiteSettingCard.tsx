@@ -33,7 +33,8 @@ const WebSiteSettingCard = () => {
   const webSources =
     sources?.filter((source) =>
       classifySourceCategory({
-        type: source.type,
+        category: source.category,
+        isDarknet: source.isDarknet,
         social: "social" in source ? source.social : null,
         search: "search" in source ? source.search : null,
         searchPlatform: "search" in source ? source.search?.platform : null,
@@ -75,7 +76,7 @@ const WebSiteSettingCard = () => {
         />
       </div>
       <SourceDialog
-        sourceType="WEB"
+        sourceType="STREAM"
         proxies={proxies}
         open={isDialogOpen}
         onOpenChange={setDialogOpen}

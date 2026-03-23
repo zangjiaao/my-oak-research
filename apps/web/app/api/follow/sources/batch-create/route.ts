@@ -108,7 +108,8 @@ export async function POST(req: Request) {
     const [identityRows, sources] = await Promise.all([
       prisma.sourceIdentity.findMany({
         select: {
-          type: true,
+          category: true,
+          isDarknet: true,
           platform: true,
           driver: true,
           intentType: true,
@@ -117,7 +118,8 @@ export async function POST(req: Request) {
       }),
       prisma.source.findMany({
         select: {
-          type: true,
+          category: true,
+          isDarknet: true,
           web: { select: { sourceId: true } },
           darknet: { select: { sourceId: true } },
           search: { select: { sourceId: true, platform: true, objective: true, options: true } },
@@ -175,7 +177,8 @@ export async function POST(req: Request) {
               typeof createData.description === "string"
                 ? createData.description
                 : null,
-            type: template.type,
+            category: template.category,
+            isDarknet: template.isDarknet,
             active: Boolean(createData.active),
             rateLimit:
               typeof createData.rateLimit === "number" ? createData.rateLimit : null,
@@ -188,7 +191,7 @@ export async function POST(req: Request) {
           },
         });
 
-        if (template.type === "WEB") {
+        if (template.category === "STREAM") {
           const web = createData.web as Record<string, unknown>;
           await tx.webSourceConfig.create({
             data: {
@@ -202,7 +205,7 @@ export async function POST(req: Request) {
               proxyId: typeof web.proxyId === "string" ? web.proxyId : null,
             },
           });
-        } else if (template.type === "DARKNET") {
+        } else if (template.category === "RETRIEVAL" && template.isDarknet) {
           const darknet = createData.darknet as Record<string, unknown>;
           await tx.darknetSourceConfig.create({
             data: {
@@ -215,7 +218,7 @@ export async function POST(req: Request) {
               parseRules: (darknet.parseRules ?? null) as Prisma.InputJsonValue,
             },
           });
-        } else if (template.type === "SEARCH_ENGINE") {
+        } else if (template.category === "RETRIEVAL" && !template.isDarknet) {
           const search = createData.search as Record<string, unknown>;
           await tx.searchEngineSourceConfig.create({
             data: {
@@ -233,7 +236,7 @@ export async function POST(req: Request) {
               keywordStrategy: String(search.keywordStrategy ?? "AUTO") as any,
             },
           });
-        } else if (template.type === "SOCIAL_MEDIA") {
+        } else if (template.category === "INTERACTIVE") {
           const social = createData.social as Record<string, unknown>;
           await tx.socialMediaSourceConfig.create({
             data: {
@@ -257,7 +260,8 @@ export async function POST(req: Request) {
         await tx.sourceIdentity.create({
           data: {
             sourceId: base.id,
-            type: task.identity.type,
+            category: task.identity.category,
+            isDarknet: task.identity.isDarknet,
             platform: task.identity.platform,
             driver: task.identity.driver,
             intentType: task.identity.intentType,

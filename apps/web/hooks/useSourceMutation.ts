@@ -1,9 +1,9 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { SourceType } from "@/app/generated/prisma";
+import { SourceCategory } from "@/app/generated/prisma";
 
 // Helper to get the correct API endpoint based on source type
-const getApiEndpoint = (type: SourceType, id?: string) => {
+const getApiEndpoint = (_category: SourceCategory, id?: string) => {
   if (id) {
     // For updates, the endpoint is /api/follow/sources/{id}
     return `/api/follow/sources/${id}`;
@@ -16,7 +16,7 @@ const getApiEndpoint = (type: SourceType, id?: string) => {
 
 interface UseSourceMutationOptions {
   sourceId?: string;
-  sourceType: SourceType; // Make sourceType mandatory
+  sourceCategory: SourceCategory;
   onSuccess?: () => void;
 }
 
@@ -52,12 +52,12 @@ async function submitSource(data: {
 
 export function useSourceMutation({
   sourceId,
-  sourceType,
+  sourceCategory,
   onSuccess,
 }: UseSourceMutationOptions) {
   const queryClient = useQueryClient();
   const isUpdate = !!sourceId;
-  const endpoint = getApiEndpoint(sourceType, sourceId);
+  const endpoint = getApiEndpoint(sourceCategory, sourceId);
 
   return useMutation({
     mutationFn: (formData: Record<string, unknown>) =>

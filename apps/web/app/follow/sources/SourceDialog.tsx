@@ -39,7 +39,7 @@ import {
 import { ErrorMessage } from "@/components/business";
 import { apiFetcher } from "@/lib/fetcher";
 import type { Proxy } from "@/app/generated/prisma";
-import { SourceType } from "@/app/generated/prisma";
+import { SourceCategory } from "@/app/generated/prisma";
 import { SourceWithRelations } from "@/lib/types";
 import { useSourceMutation } from "@/hooks/useSourceMutation";
 import { type SourceCapability } from "@/lib/source-capabilities";
@@ -57,8 +57,6 @@ type SourceFormValues = {
 type SourceCapabilityResponse = {
   items: SourceCapability[];
 };
-
-type SourceCategory = "STREAM" | "INTERACTIVE" | "RETRIEVAL";
 
 type DriverConfigInput = {
   poolEnabled: boolean;
@@ -92,12 +90,6 @@ const SEARCH_PLATFORM_MAP: Record<string, "PARALLEL" | "TAVILY" | "ANSPIRE" | "C
 
 function normalizePlatform(value?: string | null): string {
   return String(value ?? "").trim().toUpperCase();
-}
-
-function inferCategoryFromSourceType(type: SourceType): SourceCategory {
-  if (type === "WEB") return "STREAM";
-  if (type === "SOCIAL_MEDIA") return "INTERACTIVE";
-  return "RETRIEVAL";
 }
 
 function getPlatformRegion(tags?: string[]): "国内" | "国外" | "未配置" {
@@ -239,7 +231,7 @@ function getInitialScriptState(source?: SourceWithRelations): {
     };
   }
 
-  if (source.type === "SOCIAL_MEDIA" && "social" in source && source.social) {
+  if (source.category === "INTERACTIVE" && "social" in source && source.social) {
     const config = (source.social.config as Record<string, unknown>) ?? {};
     const driver =
       config.driver && typeof config.driver === "object" && !Array.isArray(config.driver)
@@ -284,7 +276,12 @@ function getInitialScriptState(source?: SourceWithRelations): {
     };
   }
 
-  if (source.type === "SEARCH_ENGINE" && "search" in source && source.search) {
+  if (
+    source.category === "RETRIEVAL" &&
+    !source.isDarknet &&
+    "search" in source &&
+    source.search
+  ) {
     const options =
       source.search.options && typeof source.search.options === "object"
         ? (source.search.options as Record<string, unknown>)
@@ -302,7 +299,7 @@ function getInitialScriptState(source?: SourceWithRelations): {
     };
   }
 
-  if (source.type === "WEB" && "web" in source && source.web) {
+  if (source.category === "STREAM" && "web" in source && source.web) {
     return {
       category: "STREAM",
       platform: "BBC",
@@ -316,7 +313,12 @@ function getInitialScriptState(source?: SourceWithRelations): {
     };
   }
 
-  if (source.type === "DARKNET" && "darknet" in source && source.darknet) {
+  if (
+    source.category === "RETRIEVAL" &&
+    source.isDarknet &&
+    "darknet" in source &&
+    source.darknet
+  ) {
     return {
       category: "RETRIEVAL",
       platform: "DARKWEBGO",
@@ -344,35 +346,39 @@ function getInitialScriptState(source?: SourceWithRelations): {
 }
 
 function buildPayloadFromUnified(input: {
-  targetType: SourceType;
+  targetCategory: SourceCategory;
+  isDarknet: boolean;
   values: SourceFormValues;
   platform: string;
   intentType: string;
   scriptArgs: Record<string, unknown>;
   driverConfig: DriverConfigInput;
 }) {
-  const { targetType, values, platform, intentType, scriptArgs, driverConfig } = input;
+  const { targetCategory, isDarknet, values, platform, intentType, scriptArgs, driverConfig } =
+    input;
   const intentArgs = scriptArgs;
   const driver = buildDriverConfig({ intentType, intentArgs, config: driverConfig });
 
   const base = {
     name: values.name.trim(),
     description: values.description?.trim() ?? "",
-    type: targetType,
+    category: targetCategory,
+    isDarknet,
     active: values.active ?? true,
     rateLimit: values.rateLimit ?? 10,
     proxyId: values.proxyId ?? null,
     credentialId: values.credentialId ?? null,
   };
 
-  if (targetType === "WEB") {
+  if (targetCategory === "STREAM") {
     const urls = splitToUrls(
       intentArgs.url ?? intentArgs.urls ?? intentArgs.targetUrl ?? intentArgs.site
     );
     return {
       payload: {
         ...base,
-        type: "WEB" as const,
+        category: "STREAM" as const,
+        isDarknet: false,
         web: {
           url: urls,
           crawlerEngine: "FETCH" as const,
@@ -386,7 +392,7 @@ function buildPayloadFromUnified(input: {
     };
   }
 
-  if (targetType === "SEARCH_ENGINE") {
+  if (targetCategory === "RETRIEVAL" && !isDarknet) {
     const provider = normalizePlatform(platform);
     const objective = String(
       intentArgs.query ?? intentArgs.keyword ?? intentArgs.objective ?? ""
@@ -400,7 +406,8 @@ function buildPayloadFromUnified(input: {
     return {
       payload: {
         ...base,
-        type: "SEARCH_ENGINE" as const,
+        category: "RETRIEVAL" as const,
+        isDarknet: false,
         search: {
           platform: mappedPlatform,
           engine: "CUSTOM" as const,
@@ -419,7 +426,7 @@ function buildPayloadFromUnified(input: {
     };
   }
 
-  if (targetType === "DARKNET") {
+  if (targetCategory === "RETRIEVAL" && isDarknet) {
     const urls = splitToUrls(
       intentArgs.url ?? intentArgs.urls ?? intentArgs.targetUrl ?? intentArgs.site
     );
@@ -433,7 +440,8 @@ function buildPayloadFromUnified(input: {
     return {
       payload: {
         ...base,
-        type: "DARKNET" as const,
+        category: "RETRIEVAL" as const,
+        isDarknet: true,
         darknet: {
           url: urls,
           headers: null,
@@ -454,7 +462,8 @@ function buildPayloadFromUnified(input: {
   return {
     payload: {
       ...base,
-      type: "SOCIAL_MEDIA" as const,
+      category: "INTERACTIVE" as const,
+      isDarknet: false,
       social: {
         platform: normalizedPlatform,
         config: {
@@ -473,28 +482,34 @@ const SourceDialog = ({
   source: propSource,
   proxies,
   sourceType: propSourceType,
+  sourceIsDarknet: propSourceIsDarknet,
   onOpenChange,
   open,
 }: {
   triggerButton?: React.ReactNode;
   source?: SourceWithRelations;
   proxies: Proxy[];
-  sourceType?: SourceType;
+  sourceType?: SourceCategory;
+  sourceIsDarknet?: boolean;
   onOpenChange: (open: boolean) => void;
   open: boolean;
 }) => {
   const [currentSource, setCurrentSource] = useState<SourceWithRelations | undefined>(propSource);
   const [currentSourceType, setCurrentSourceType] = useState(propSourceType);
+  const [currentIsDarknet, setCurrentIsDarknet] = useState(Boolean(propSourceIsDarknet));
 
   useEffect(() => {
     if (open) {
       setCurrentSource(propSource);
       setCurrentSourceType(propSourceType);
+      setCurrentIsDarknet(Boolean(propSourceIsDarknet));
     }
-  }, [open, propSource, propSourceType]);
+  }, [open, propSource, propSourceType, propSourceIsDarknet]);
 
   const isUpdate = !!currentSource;
-  const effectiveType: SourceType = currentSourceType || currentSource?.type || "SOCIAL_MEDIA";
+  const effectiveCategory: SourceCategory =
+    currentSourceType || currentSource?.category || "INTERACTIVE";
+  const effectiveIsDarknet = currentSource?.isDarknet ?? currentIsDarknet;
 
   const initialScriptState = useMemo(() => getInitialScriptState(currentSource), [currentSource]);
 
@@ -608,29 +623,28 @@ const SourceDialog = ({
     });
   }, [open, currentSource, form]);
 
-  const expectedCategory = inferCategoryFromSourceType(effectiveType);
+  const expectedCategory = effectiveCategory;
   const normalizedSelectedPlatform = normalizePlatform(selectedPlatform);
-  const targetType: SourceType = useMemo(() => {
-    if (currentSource?.type) return currentSource.type;
+  const targetCategory: SourceCategory = useMemo(() => {
+    if (currentSource?.category) return currentSource.category;
     if (selectedCapabilityEngine === "worker_api") {
-      return expectedCategory === "RETRIEVAL" ? "SEARCH_ENGINE" : effectiveType;
+      return "RETRIEVAL";
     }
     if (normalizedSelectedPlatform && gatherPlatforms.has(normalizedSelectedPlatform)) {
-      return "SOCIAL_MEDIA";
+      return "INTERACTIVE";
     }
-    return effectiveType;
+    return effectiveCategory;
   }, [
-    currentSource?.type,
+    currentSource?.category,
     selectedCapabilityEngine,
-    expectedCategory,
-    effectiveType,
+    effectiveCategory,
     normalizedSelectedPlatform,
     gatherPlatforms,
   ]);
 
   const mutation = useSourceMutation({
     sourceId: currentSource?.id,
-    sourceType: targetType,
+    sourceCategory: targetCategory,
     onSuccess: () => {
       onOpenChange(false);
       if (!isUpdate) {
@@ -859,7 +873,8 @@ const SourceDialog = ({
 
   const sourceApiPreview = useMemo(() => {
     const built = buildPayloadFromUnified({
-      targetType,
+      targetCategory,
+      isDarknet: effectiveIsDarknet,
       values: watchedValues,
       platform: selectedPlatform,
       intentType: selectedIntentType,
@@ -876,7 +891,8 @@ const SourceDialog = ({
     if ("error" in built) return { error: built.error } as const;
     return built.payload;
   }, [
-    targetType,
+    targetCategory,
+    effectiveIsDarknet,
     watchedValues,
     selectedPlatform,
     selectedIntentType,
@@ -895,7 +911,7 @@ const SourceDialog = ({
     !!sourceApiPreviewError && /\brequires?\b|\brequired\b/i.test(sourceApiPreviewError);
 
   const gatherRequestPreview = useMemo(() => {
-    if (targetType !== "SOCIAL_MEDIA") return null;
+    if (targetCategory !== "INTERACTIVE") return null;
     const normalizedPlatform = normalizePlatform(selectedPlatform);
     if (!normalizedPlatform) return null;
     return {
@@ -916,7 +932,7 @@ const SourceDialog = ({
       }),
     };
   }, [
-    targetType,
+    targetCategory,
     selectedPlatform,
     currentSource?.id,
     selectedIntentType,
@@ -952,7 +968,8 @@ const SourceDialog = ({
     }
 
     const built = buildPayloadFromUnified({
-      targetType,
+      targetCategory,
+      isDarknet: effectiveIsDarknet,
       values,
       platform: selectedPlatform,
       intentType: selectedIntentType,

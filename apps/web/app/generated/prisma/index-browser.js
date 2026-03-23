@@ -167,7 +167,8 @@ exports.Prisma.SourceScalarFieldEnum = {
   id: 'id',
   name: 'name',
   description: 'description',
-  type: 'type',
+  category: 'category',
+  isDarknet: 'isDarknet',
   active: 'active',
   rateLimit: 'rateLimit',
   lastFetchedAt: 'lastFetchedAt',
@@ -181,7 +182,8 @@ exports.Prisma.SourceScalarFieldEnum = {
 exports.Prisma.SourceIdentityScalarFieldEnum = {
   id: 'id',
   sourceId: 'sourceId',
-  type: 'type',
+  category: 'category',
+  isDarknet: 'isDarknet',
   platform: 'platform',
   driver: 'driver',
   intentType: 'intentType',
@@ -489,11 +491,10 @@ exports.ProxyType = exports.$Enums.ProxyType = {
   TOR: 'TOR'
 };
 
-exports.SourceType = exports.$Enums.SourceType = {
-  WEB: 'WEB',
-  DARKNET: 'DARKNET',
-  SEARCH_ENGINE: 'SEARCH_ENGINE',
-  SOCIAL_MEDIA: 'SOCIAL_MEDIA'
+exports.SourceCategory = exports.$Enums.SourceCategory = {
+  STREAM: 'STREAM',
+  INTERACTIVE: 'INTERACTIVE',
+  RETRIEVAL: 'RETRIEVAL'
 };
 
 exports.BbPresetStatus = exports.$Enums.BbPresetStatus = {

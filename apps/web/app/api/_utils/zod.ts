@@ -112,11 +112,10 @@ export const KeywordQuerySchema = z.object({
 
 export type KeywordQuery = z.infer<typeof KeywordQuerySchema>;
 
-export const SourceTypeEnum = z.enum([
-  "WEB",
-  "DARKNET",
-  "SEARCH_ENGINE",
-  "SOCIAL_MEDIA",
+export const SourceCategoryEnum = z.enum([
+  "STREAM",
+  "INTERACTIVE",
+  "RETRIEVAL",
 ]);
 export const CrawlerEngineEnum = z.enum([
   "FETCH",
@@ -384,7 +383,8 @@ export const SocialConfigByPlatform = z
 export const SourceBaseCreate = z.object({
   name: z.string().min(1).max(64),
   description: z.string().optional().nullable(),
-  type: SourceTypeEnum,
+  category: SourceCategoryEnum,
+  isDarknet: z.boolean().optional().default(false),
   active: z.boolean().optional().default(true),
   rateLimit: z.number().int().min(1).max(600).optional().nullable(),
   proxyId: cuidOpt,
@@ -392,26 +392,28 @@ export const SourceBaseCreate = z.object({
 });
 
 export const WebSourceCreateSchema = SourceBaseCreate.extend({
-  type: z.literal("WEB"),
+  category: z.literal("STREAM"),
   web: WebConfigInput,
 });
 
 export const DarknetSourceCreateSchema = SourceBaseCreate.extend({
-  type: z.literal("DARKNET"),
+  category: z.literal("RETRIEVAL"),
+  isDarknet: z.literal(true),
   darknet: DarknetConfigInput,
 });
 
 export const SearchEngineSourceCreateSchema = SourceBaseCreate.extend({
-  type: z.literal("SEARCH_ENGINE"),
+  category: z.literal("RETRIEVAL"),
+  isDarknet: z.literal(false).optional().default(false),
   search: SearchEngineConfigInput,
 });
 
 export const SocialMediaSourceCreateSchema = SourceBaseCreate.extend({
-  type: z.literal("SOCIAL_MEDIA"),
+  category: z.literal("INTERACTIVE"),
   social: SocialConfigByPlatform,
 });
 
-export const SourceCreateSchema = z.discriminatedUnion("type", [
+export const SourceCreateSchema = z.union([
   WebSourceCreateSchema,
   DarknetSourceCreateSchema,
   SearchEngineSourceCreateSchema,
@@ -448,7 +450,8 @@ export const SourceUpdateSchema = z.object({
 
 export const SourceQuerySchema = z.object({
   q: z.string().optional(),
-  type: SourceTypeEnum.optional(),
+  category: SourceCategoryEnum.optional(),
+  isDarknet: z.enum(["true", "false"]).optional(),
   active: z.enum(["true", "false"]).optional(),
   page: z.coerce.number().min(1).default(1),
   pageSize: z.coerce.number().min(1).max(100).default(20),

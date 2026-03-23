@@ -145,8 +145,11 @@ const QueryDialog = ({
     value: k.id,
   }));
   const availableSources = sources.map((s) => {
-    const category = classifySourceCategory({ type: s.type });
-    const darknet = detectDarknetTag({ type: s.type });
+    const category = classifySourceCategory({ category: s.category });
+    const darknet = detectDarknetTag({
+      category: s.category,
+      isDarknet: s.isDarknet,
+    });
     const prefix = `[${displayCategoryLabel(category)}${darknet ? "/Darknet" : ""}]`;
     return { label: `${prefix} ${s.name}`, value: s.id };
   });

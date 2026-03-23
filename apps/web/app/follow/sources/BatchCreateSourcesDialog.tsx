@@ -33,8 +33,8 @@ import { apiFetcher } from "@/lib/fetcher";
 
 type BatchTemplate = {
   key: string;
-  type: "WEB" | "DARKNET" | "SEARCH_ENGINE" | "SOCIAL_MEDIA";
   category: "STREAM" | "INTERACTIVE" | "RETRIEVAL";
+  isDarknet: boolean;
   platform: string;
   driver: string;
   networkPolicy: "DEFAULT" | "TOR_SOCKS5H";

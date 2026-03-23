@@ -81,7 +81,7 @@ const DarknetSources = ({ sources, proxies }: Props) => {
       render: (source) => (
         <SourceDeleteAlert
           source={source}
-          queryKeyType="DARKNET"
+          queryKeyType="RETRIEVAL"
           triggerButton={
             <Button size="sm" variant="outline">
               <TrashIcon className="size-3" />
@@ -95,7 +95,8 @@ const DarknetSources = ({ sources, proxies }: Props) => {
   return (
     <>
       <SourceDialog
-        sourceType="DARKNET"
+        sourceType="RETRIEVAL"
+        sourceIsDarknet
         source={editingSource}
         proxies={proxies}
         open={!!editingSource}

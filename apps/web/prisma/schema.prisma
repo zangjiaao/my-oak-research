@@ -50,11 +50,10 @@ model Keyword {
   @@unique([name])
 }
 
-enum SourceType {
-  WEB
-  DARKNET
-  SEARCH_ENGINE
-  SOCIAL_MEDIA
+enum SourceCategory {
+  STREAM
+  INTERACTIVE
+  RETRIEVAL
 }
 
 enum BbPresetStatus {
@@ -152,7 +151,8 @@ model Source {
   id            String     @id @default(cuid())
   name          String
   description   String?
-  type          SourceType
+  category      SourceCategory
+  isDarknet     Boolean    @default(false)
   active        Boolean    @default(true)
   rateLimit     Int? // req/min
   lastFetchedAt DateTime?
@@ -178,14 +178,16 @@ model Source {
   queries Query[]
 
   @@unique([name])
-  @@index([type])
+  @@index([category])
+  @@index([isDarknet])
 }
 
 model SourceIdentity {
   id             String   @id @default(cuid())
   sourceId       String   @unique
   source         Source   @relation(fields: [sourceId], references: [id], onDelete: Cascade)
-  type           SourceType
+  category       SourceCategory
+  isDarknet      Boolean        @default(false)
   platform       String
   driver         String
   intentType     String
@@ -193,8 +195,8 @@ model SourceIdentity {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  @@unique([type, platform, driver, intentType, intentArgsHash])
-  @@index([type, platform, driver, intentType])
+  @@unique([category, isDarknet, platform, driver, intentType, intentArgsHash])
+  @@index([category, isDarknet, platform, driver, intentType])
 }
 
 model BbPreset {

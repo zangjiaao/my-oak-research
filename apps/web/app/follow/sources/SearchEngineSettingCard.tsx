@@ -60,7 +60,8 @@ const SearchEngineSettingCard = () => {
   const searchEngineSources =
     sources?.filter((source) =>
       classifySourceCategory({
-        type: source.type,
+        category: source.category,
+        isDarknet: source.isDarknet,
         social: "social" in source ? source.social : null,
         search: "search" in source ? source.search : null,
         searchPlatform: "search" in source ? source.search?.platform : null,
@@ -139,7 +140,7 @@ const SearchEngineSettingCard = () => {
       render: (source) => (
         <SourceDeleteAlert
           source={source}
-          queryKeyType="SEARCH_ENGINE"
+          queryKeyType="RETRIEVAL"
           triggerButton={
             <Button size="sm" variant="outline">
               <TrashIcon className="size-3" />
@@ -176,7 +177,8 @@ const SearchEngineSettingCard = () => {
       filterComponent={filterComponent}
     >
       <SourceDialog
-        sourceType="SEARCH_ENGINE"
+        sourceType="RETRIEVAL"
+        sourceIsDarknet={false}
         source={editingSource}
         proxies={proxies}
         open={isDialogOpen}

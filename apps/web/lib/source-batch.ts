@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 
-import { Prisma, SourceType } from "@/app/generated/prisma";
-import type { SourceCategory, SourceNetworkPolicy } from "@/lib/source-taxonomy";
+import { Prisma, SourceCategory } from "@/app/generated/prisma";
+import type { SourceNetworkPolicy } from "@/lib/source-taxonomy";
 import {
   type SourceCapability,
   buildGatherCapabilities,
@@ -18,8 +18,8 @@ export type BatchCredentialRequirement = {
 
 export type BatchTemplate = {
   key: string;
-  type: SourceType;
   category: SourceCategory;
+  isDarknet: boolean;
   platform: string;
   driver: string;
   networkPolicy: SourceNetworkPolicy;
@@ -36,7 +36,8 @@ export type BatchTemplate = {
 };
 
 export type BatchIdentity = {
-  type: SourceType;
+  category: SourceCategory;
+  isDarknet: boolean;
   platform: string;
   driver: string;
   intentType: string;
@@ -96,9 +97,9 @@ function inferNetworkPolicy(tags: string[]): SourceNetworkPolicy {
   return "DEFAULT";
 }
 
-function inferTemplateType(capability: SourceCapability): SourceType {
-  if (capability.execution.engine === "worker_api") return "SEARCH_ENGINE";
-  return "SOCIAL_MEDIA";
+function inferTemplateCategory(capability: SourceCapability): SourceCategory {
+  if (capability.execution.engine === "worker_api") return "RETRIEVAL";
+  return "INTERACTIVE";
 }
 
 function inferRequiredIntentFields(args: Record<string, unknown>): string[] {
@@ -135,7 +136,8 @@ function buildTemplateFromCapabilityIntent(
     !Array.isArray(intent.sample.intentArgs)
       ? (intent.sample.intentArgs as Record<string, unknown>)
       : {};
-  const templateType = inferTemplateType(capability);
+  const templateCategory = inferTemplateCategory(capability);
+  const isDarknet = inferNetworkPolicy(capability.tags) === "TOR_SOCKS5H";
   const intentType = intent.sample?.intentType ?? intent.intent;
   const title = intent.title?.trim()
     ? intent.title.trim()
@@ -145,11 +147,11 @@ function buildTemplateFromCapabilityIntent(
     : `Collect ${capability.platform} (${intent.intent}) via ${capability.execution.engine}.`;
   const requiredFields = inferRequiredIntentFields(args);
 
-  if (templateType === "SEARCH_ENGINE") {
+  if (templateCategory === "RETRIEVAL") {
     return {
       key: intent.key,
-      type: "SEARCH_ENGINE",
-      category: capability.category,
+      category: "RETRIEVAL",
+      isDarknet,
       platform: capability.platform,
       driver: capability.execution.driver,
       networkPolicy: inferNetworkPolicy(capability.tags),
@@ -176,8 +178,8 @@ function buildTemplateFromCapabilityIntent(
 
   return {
     key: intent.key,
-    type: "SOCIAL_MEDIA",
-    category: capability.category,
+    category: "INTERACTIVE",
+    isDarknet: false,
     platform: capability.platform,
     driver: capability.execution.driver,
     networkPolicy: inferNetworkPolicy(capability.tags),
@@ -349,7 +351,8 @@ export function buildIdentity(
   const intentArgs = asRecord(intent.args);
 
   return {
-    type: template.type,
+    category: template.category,
+    isDarknet: template.isDarknet,
     platform: template.platform,
     driver: template.driver,
     intentType,
@@ -462,14 +465,15 @@ export function buildSourceCreateData(input: {
   const base = {
     name: `${template.title} (${identity.intentArgsHash.slice(0, 6)})`,
     description: template.description,
-    type: template.type,
+    category: template.category,
+    isDarknet: template.isDarknet,
     active: defaults?.active ?? true,
     rateLimit: null,
     proxyId: resolvedProxyId,
     credentialId: resolvedCredentialId,
   };
 
-  if (template.type === "WEB") {
+  if (template.category === "STREAM") {
     return {
       ...base,
       web: {
@@ -486,7 +490,7 @@ export function buildSourceCreateData(input: {
     };
   }
 
-  if (template.type === "DARKNET") {
+  if (template.category === "RETRIEVAL" && template.isDarknet) {
     return {
       ...base,
       darknet: {
@@ -501,7 +505,7 @@ export function buildSourceCreateData(input: {
     };
   }
 
-  if (template.type === "SEARCH_ENGINE") {
+  if (template.category === "RETRIEVAL" && !template.isDarknet) {
     const rawIntent = asRecord(config.intent);
     const intentArgs = asRecord(rawIntent.args);
     const query =
@@ -590,7 +594,8 @@ export function isUniqueViolation(error: unknown): boolean {
 }
 
 export function sourceIdentityFromSource(source: {
-  type: SourceType;
+  category: SourceCategory;
+  isDarknet: boolean;
   web?: { sourceId: string } | null;
   darknet?: { sourceId: string } | null;
   search?: {
@@ -605,11 +610,12 @@ export function sourceIdentityFromSource(source: {
     sourceId: string;
   } | null;
 }): BatchIdentity | null {
-  if (source.type === "SOCIAL_MEDIA" && source.social) {
+  if (source.category === "INTERACTIVE" && source.social) {
     const config = asRecord(source.social.config);
     const intent = asRecord(config.intent);
     return {
-      type: "SOCIAL_MEDIA",
+      category: "INTERACTIVE",
+      isDarknet: false,
       platform: source.social.platform,
       driver: "playwright",
       intentType:
@@ -620,7 +626,7 @@ export function sourceIdentityFromSource(source: {
     };
   }
 
-  if (source.type === "SEARCH_ENGINE" && source.search) {
+  if (source.category === "RETRIEVAL" && !source.isDarknet && source.search) {
     const searchOptions = asRecord((source.search as { options?: unknown }).options);
     const provider = String(searchOptions.provider ?? "").trim().toLowerCase();
     const driver =
@@ -628,7 +634,8 @@ export function sourceIdentityFromSource(source: {
         ? "http"
         : "playwright";
     return {
-      type: "SEARCH_ENGINE",
+      category: "RETRIEVAL",
+      isDarknet: false,
       platform: source.search.platform,
       driver,
       intentType: "search",
@@ -639,9 +646,10 @@ export function sourceIdentityFromSource(source: {
     };
   }
 
-  if (source.type === "WEB") {
+  if (source.category === "STREAM") {
     return {
-      type: "WEB",
+      category: "STREAM",
+      isDarknet: false,
       platform: "WEB",
       driver: "playwright",
       intentType: "crawl",
@@ -649,9 +657,10 @@ export function sourceIdentityFromSource(source: {
     };
   }
 
-  if (source.type === "DARKNET") {
+  if (source.category === "RETRIEVAL" && source.isDarknet) {
     return {
-      type: "DARKNET",
+      category: "RETRIEVAL",
+      isDarknet: true,
       platform: "DARKNET",
       driver: "playwright",
       intentType: "crawl",
@@ -664,7 +673,8 @@ export function sourceIdentityFromSource(source: {
 
 export function identityKey(identity: BatchIdentity): string {
   return [
-    identity.type,
+    identity.category,
+    String(identity.isDarknet),
     identity.platform,
     identity.driver,
     identity.intentType,

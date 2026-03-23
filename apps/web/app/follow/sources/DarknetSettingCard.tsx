@@ -14,7 +14,10 @@ import { DarknetSource, SourceWithRelations } from "@/lib/types";
 const isDarknetSource = (
   source: SourceWithRelations
 ): source is DarknetSource =>
-  source.type === "DARKNET" && "darknet" in source && Boolean(source.darknet);
+  source.category === "RETRIEVAL" &&
+  source.isDarknet &&
+  "darknet" in source &&
+  Boolean(source.darknet);
 
 const DarknetSettingCard = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -63,7 +66,8 @@ const DarknetSettingCard = () => {
         />
       </div>
       <SourceDialog
-        sourceType="DARKNET"
+        sourceType="RETRIEVAL"
+        sourceIsDarknet
         proxies={proxies}
         open={isDialogOpen}
         onOpenChange={setDialogOpen}

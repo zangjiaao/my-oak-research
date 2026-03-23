@@ -5,7 +5,7 @@ import { createHash } from "crypto";
 import prisma from "@/lib/prisma";
 import {
   Prisma,
-  SourceType,
+  SourceCategory,
   ContentType,
   CrawlerEngine,
   KeywordStrategy,
@@ -45,7 +45,8 @@ type CleanItem = {
   url?: string;
   time?: Date;
   sourceId: string;
-  sourceType: SourceType;
+  sourceType: SourceCategory;
+  sourceIsDarknet?: boolean;
   normalizedText?: string;
   fingerprint?: string;
   driver?: string;
@@ -113,11 +114,11 @@ let gatherOutputFieldRuleCacheExpireAt = 0;
 const runSearchSignatureCache = new Map<string, Set<string>>();
 
 function isWebSource(source: SourceWithRelations): source is WebSource {
-  return source.type === SourceType.WEB;
+  return source.category === "STREAM";
 }
 
 function isDarknetSource(source: SourceWithRelations): source is DarknetSource {
-  return source.type === SourceType.DARKNET;
+  return source.category === "RETRIEVAL" && source.isDarknet;
 }
 
 function stripNullBytes(value: string): string {
@@ -272,19 +273,20 @@ export async function runFocusCollector(runId: string, queryId: string) {
   await send({ type: "fetch", message: "拉取数据中" });
   const normalizedSources: SourceWithRelations[] = [];
   query.sources.forEach((source) => {
-    switch (source.type) {
-      case SourceType.WEB:
-        if (source.web) normalizedSources.push(source as WebSource);
-        break;
-      case SourceType.DARKNET:
-        if (source.darknet) normalizedSources.push(source as DarknetSource);
-        break;
-      case SourceType.SEARCH_ENGINE:
-        if (source.search) normalizedSources.push(source as SearchEngineSource);
-        break;
-      case SourceType.SOCIAL_MEDIA:
-        if (source.social) normalizedSources.push(source as SocialMediaSource);
-        break;
+    if (source.category === "STREAM" && source.web) {
+      normalizedSources.push(source as WebSource);
+      return;
+    }
+    if (source.category === "RETRIEVAL" && source.isDarknet && source.darknet) {
+      normalizedSources.push(source as DarknetSource);
+      return;
+    }
+    if (source.category === "RETRIEVAL" && !source.isDarknet && source.search) {
+      normalizedSources.push(source as SearchEngineSource);
+      return;
+    }
+    if (source.category === "INTERACTIVE" && source.social) {
+      normalizedSources.push(source as SocialMediaSource);
     }
   });
   const rawItems = await fetchBySources(
@@ -298,7 +300,7 @@ export async function runFocusCollector(runId: string, queryId: string) {
     string,
     {
       sourceName: string;
-      sourceType: SourceType;
+      sourceType: SourceCategory;
       fetched: number;
       cleaned: number;
       dedupSkipped: number;
@@ -308,7 +310,7 @@ export async function runFocusCollector(runId: string, queryId: string) {
   for (const source of normalizedSources) {
     sourceStats.set(source.id, {
       sourceName: source.name,
-      sourceType: source.type,
+      sourceType: source.category,
       fetched: 0,
       cleaned: 0,
       dedupSkipped: 0,
@@ -426,7 +428,7 @@ export async function runFocusCollector(runId: string, queryId: string) {
         summary: sanitizedSummary,
         markdown: sanitizedMarkdown,
         platform: sanitizedPlatform,
-        type: mapContentType(item.sourceType),
+        type: mapContentType(item.sourceType, item.sourceIsDarknet),
         time: contentTime,
         url: sanitizedUrl,
         meta: {
@@ -541,13 +543,11 @@ export async function runFocusCollector(runId: string, queryId: string) {
   }
 }
 
-function mapContentType(sourceType: SourceType): ContentType {
-  switch (sourceType) {
-    case SourceType.DARKNET:
-      return ContentType.Darknet;
-    default:
-      return ContentType.Web;
+function mapContentType(sourceType: SourceCategory, isDarknet?: boolean): ContentType {
+  if (sourceType === "RETRIEVAL" && isDarknet) {
+    return ContentType.Darknet;
   }
+  return ContentType.Web;
 }
 
 function buildKeywordFilterTerms(
@@ -565,12 +565,12 @@ function buildKeywordFilterTerms(
 }
 
 function resolveKeywordStrategy(source: SourceWithRelations): KeywordStrategy {
-  if (source.type === SourceType.SEARCH_ENGINE) {
+  if (source.category === "RETRIEVAL" && !source.isDarknet) {
     const configured =
       (source as SearchEngineSource).search?.keywordStrategy ?? KeywordStrategy.AUTO;
     return configured === KeywordStrategy.AUTO ? KeywordStrategy.HYBRID : configured;
   }
-  if (source.type === SourceType.SOCIAL_MEDIA) {
+  if (source.category === "INTERACTIVE") {
     const socialSource = source as SocialMediaSource;
     const configured = socialSource.social?.keywordStrategy ?? KeywordStrategy.AUTO;
     if (configured !== KeywordStrategy.AUTO) {
@@ -653,7 +653,7 @@ async function fetchBySources(
     sourceConcurrency,
     async (source): Promise<CleanItem[]> => {
       console.log(
-        `[collector] fetchBySources start ${source.name} (${source.type})`
+        `[collector] fetchBySources start ${source.name} (${source.category})`
       );
       const driver = resolveFetchDriver(source);
       await publishTaskEvent(runId, {
@@ -843,29 +843,30 @@ async function fetchWithDefaultSource(
   objectiveFallback?: string
 ): Promise<CleanItem[]> {
   console.log(
-    `[collector] fetchWithDefaultSource ${source.name} (${source.type})`
+    `[collector] fetchWithDefaultSource ${source.name} (${source.category})`
   );
-  switch (source.type) {
-    case SourceType.WEB:
-      return fetchHtmlSource(source as WebSource);
-    case SourceType.DARKNET:
-      return fetchHtmlSource(source as DarknetSource);
-    case SourceType.SEARCH_ENGINE:
-      return fetchSearchSource(source as SearchEngineSource, {
-        runId,
-        queryId,
-        recallQueries,
-        objectiveFallback,
-      });
-    case SourceType.SOCIAL_MEDIA:
-      return fetchSocialSource(
-        source as SocialMediaSource,
-        keywordFilterTerms,
-        recallQueries
-      );
-    default:
-      return [];
+  if (source.category === "STREAM") {
+    return fetchHtmlSource(source as WebSource);
   }
+  if (source.category === "RETRIEVAL" && source.isDarknet) {
+    return fetchHtmlSource(source as DarknetSource);
+  }
+  if (source.category === "RETRIEVAL" && !source.isDarknet) {
+    return fetchSearchSource(source as SearchEngineSource, {
+      runId,
+      queryId,
+      recallQueries,
+      objectiveFallback,
+    });
+  }
+  if (source.category === "INTERACTIVE") {
+    return fetchSocialSource(
+      source as SocialMediaSource,
+      keywordFilterTerms,
+      recallQueries
+    );
+  }
+  return [];
 }
 
 async function fetchPlaywrightSource(
@@ -907,7 +908,8 @@ async function fetchBrowserSource(
         url,
         time: new Date(),
         sourceId: source.id,
-        sourceType: source.type,
+        sourceType: source.category,
+        sourceIsDarknet: source.isDarknet,
       });
     } catch (error) {
       console.error(`[collector] fetchBrowserSource error: ${url}`, error);
@@ -930,7 +932,7 @@ async function fetchAICrawlerSource(
     );
     return fetchBrowserSource(source);
   }
-  if (source.type === SourceType.SEARCH_ENGINE) {
+  if (source.category === "RETRIEVAL" && !source.isDarknet) {
     console.log(
       `[collector] fetchAICrawlerSource -> fetchSearchSource ${source.name}`
     );
@@ -993,7 +995,8 @@ async function fetchHtmlSource(
         url,
         time: new Date(),
         sourceId: source.id,
-        sourceType: source.type,
+        sourceType: source.category,
+        sourceIsDarknet: source.isDarknet,
       });
     } catch (error) {
       console.error(`[collector] fetchHtmlSource error: ${url}`, error);
@@ -1109,7 +1112,8 @@ async function fetchSearchSource(
           platform: source.name,
           time: new Date(),
           sourceId: source.id,
-          sourceType: source.type,
+          sourceType: source.category,
+          sourceIsDarknet: source.isDarknet,
         },
       ];
     }
@@ -1170,7 +1174,8 @@ async function fetchSearchSource(
           url: item.url,
           time: item.time ? new Date(item.time) : new Date(),
           sourceId: source.id,
-          sourceType: source.type,
+          sourceType: source.category,
+          sourceIsDarknet: source.isDarknet,
           sourceRequestId: parsedResult.requestId,
         }))
       );
@@ -1236,7 +1241,8 @@ async function fetchSearchSource(
         platform: source.name,
         time: new Date(),
         sourceId: source.id,
-        sourceType: source.type,
+        sourceType: source.category,
+        sourceIsDarknet: source.isDarknet,
       },
     ];
   }
@@ -1951,7 +1957,8 @@ function normalizeGatherItems(
           ? parsedTime
           : new Date(),
       sourceId: source.id,
-      sourceType: source.type,
+      sourceType: source.category,
+      sourceIsDarknet: source.isDarknet,
       driver: typeof row.driver === "string" ? row.driver : "python-gather",
       matchedKeywords: Array.isArray(row.matchedKeywords)
         ? row.matchedKeywords.filter((entry): entry is string => typeof entry === "string")

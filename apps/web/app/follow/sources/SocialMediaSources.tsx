@@ -77,7 +77,7 @@ const SocialMediaSources = ({ sources, proxies }: Props) => {
       render: (source) => (
         <SourceDeleteAlert
           source={source}
-          queryKeyType="SOCIAL_MEDIA"
+          queryKeyType="INTERACTIVE"
           triggerButton={
             <Button size="sm" variant="outline">
               <TrashIcon className="size-3" />
@@ -91,7 +91,7 @@ const SocialMediaSources = ({ sources, proxies }: Props) => {
   return (
     <>
       <SourceDialog
-        sourceType="SOCIAL_MEDIA"
+        sourceType="INTERACTIVE"
         source={editingSource}
         proxies={proxies}
         open={!!editingSource}
