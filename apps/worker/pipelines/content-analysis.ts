@@ -1989,6 +1989,21 @@ function normalizeStringArray(value: unknown): string[] {
   return [];
 }
 
+function escapeRegexTerm(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function matchTermInContent(contentLower: string, term: string): boolean {
+  const normalizedTerm = term.trim().toLowerCase();
+  if (!normalizedTerm) return false;
+  const isAsciiWord = /^[a-z0-9_]+$/i.test(normalizedTerm);
+  if (isAsciiWord && normalizedTerm.length <= 3) {
+    const boundaryPattern = new RegExp(`\\b${escapeRegexTerm(normalizedTerm)}\\b`, "i");
+    return boundaryPattern.test(contentLower);
+  }
+  return contentLower.includes(normalizedTerm);
+}
+
 function pickFallbackText(recordContent: Record<string, unknown>): string {
   const directKeys = ["title", "content", "summary", "description", "author"];
   for (const key of directKeys) {
@@ -2098,6 +2113,7 @@ async function upsertContentSubjectMatches(input: {
   keywords: QueryKeyword[];
 }): Promise<void> {
   const { contentId, contentText, item, keywords } = input;
+  const normalizedContentText = contentText.toLowerCase();
   for (const keyword of keywords) {
     const recallTerms = normalizeStringArray(
       keyword.includes.length > 0 ? keyword.includes : [keyword.name]
@@ -2111,13 +2127,13 @@ async function upsertContentSubjectMatches(input: {
     );
     const excludes = normalizeStringArray(keyword.excludes);
     const matchedRecallTerms = recallTerms.filter((term) =>
-      contentText.toLowerCase().includes(term.toLowerCase())
+      matchTermInContent(normalizedContentText, term)
     );
     const matchedScoringTerms = scoringTerms.filter((term) =>
-      contentText.toLowerCase().includes(term.toLowerCase())
+      matchTermInContent(normalizedContentText, term)
     );
     const matchedExcludes = excludes.filter((term) =>
-      contentText.toLowerCase().includes(term.toLowerCase())
+      matchTermInContent(normalizedContentText, term)
     );
     const ruleScore = calculateRuleScore({
       recallTerms,
@@ -2217,11 +2233,15 @@ function calculateRuleScore(input: {
     excludes.length > 0 ? matchedExcludes.length / excludes.length : 0;
   const gatherBoost =
     typeof gatherScore === "number" ? Math.min(1, Math.max(0, gatherScore)) : 0;
-  const gatherMatched = gatherMatchedKeywords.length > 0 ? 1 : 0;
+  const normalizedContentText = contentText.toLowerCase();
+  const validatedGatherMatches = gatherMatchedKeywords.filter((term) =>
+    matchTermInContent(normalizedContentText, term)
+  );
+  const gatherMatched = validatedGatherMatches.length > 0 ? 1 : 0;
   const titleText = contentText.split("\n")[0]?.toLowerCase() ?? "";
   const titleAnchorMatch =
     recallTerms.length > 0 &&
-    recallTerms.some((term) => titleText.includes(term.toLowerCase()))
+    recallTerms.some((term) => matchTermInContent(titleText, term))
       ? 1
       : 0;
   const evidenceMatch = matchedScoringTerms.length > 0 ? 1 : 0;
