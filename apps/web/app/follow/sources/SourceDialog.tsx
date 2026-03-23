@@ -1432,9 +1432,17 @@ const SourceDialog = ({
                       key={`${entry.key}-${index}`}
                       className="grid grid-cols-[1fr_1fr_auto_auto_auto] gap-2"
                     >
+                      {(() => {
+                        const normalizedEntryKey = entry.key.trim();
+                        const isRecallBound =
+                          normalizedEntryKey.length > 0 &&
+                          recallBindingArgKeys.includes(normalizedEntryKey);
+                        return (
+                          <>
                       <Input
                         placeholder="key"
                         value={entry.key}
+                        disabled={isRecallBound}
                         onChange={(event) => {
                           const nextKey = event.target.value;
                           setScriptArgEntries((prev) => {
@@ -1462,6 +1470,7 @@ const SourceDialog = ({
                       <Input
                         placeholder="value"
                         value={entry.value}
+                        disabled={isRecallBound}
                         onChange={(event) =>
                           setScriptArgEntries((prev) =>
                             prev.map((item, itemIndex) =>
@@ -1474,16 +1483,12 @@ const SourceDialog = ({
                         <TooltipTrigger asChild>
                           <Button
                             type="button"
-                            variant={
-                              recallBindingArgKeys.includes(entry.key.trim())
-                                ? "default"
-                                : "outline"
-                            }
+                            variant={isRecallBound ? "default" : "outline"}
                             size="icon"
                             aria-label="Toggle recall binding"
-                            disabled={!entry.key.trim()}
+                            disabled={!normalizedEntryKey}
                             onClick={() => {
-                              const normalizedKey = entry.key.trim();
+                              const normalizedKey = normalizedEntryKey;
                               if (!normalizedKey) return;
                               setRecallBindingArgKeys((prev) =>
                                 prev.includes(normalizedKey)
@@ -1492,7 +1497,7 @@ const SourceDialog = ({
                               );
                             }}
                           >
-                            {recallBindingArgKeys.includes(entry.key.trim()) ? (
+                            {isRecallBound ? (
                               <Link2 className="size-4" />
                             ) : (
                               <Unlink2 className="size-4" />
@@ -1500,11 +1505,26 @@ const SourceDialog = ({
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent sideOffset={6}>
-                          {recallBindingArgKeys.includes(entry.key.trim())
+                          {isRecallBound
                             ? "该参数已关联召回词（Query 运行时会注入）"
                             : "关联召回词注入到该参数"}
                         </TooltipContent>
                       </Tooltip>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        aria-label="Add arg row"
+                        onClick={() =>
+                          setScriptArgEntries((prev) => {
+                            const next = [...prev];
+                            next.splice(index + 1, 0, { ...EMPTY_ARG_ENTRY });
+                            return next;
+                          })
+                        }
+                      >
+                        <Plus className="size-4" />
+                      </Button>
                       <Button
                         type="button"
                         variant="outline"
@@ -1526,21 +1546,9 @@ const SourceDialog = ({
                       >
                         <Minus className="size-4" />
                       </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="icon"
-                        aria-label="Add arg row"
-                        onClick={() =>
-                          setScriptArgEntries((prev) => {
-                            const next = [...prev];
-                            next.splice(index + 1, 0, { ...EMPTY_ARG_ENTRY });
-                            return next;
-                          })
-                        }
-                      >
-                        <Plus className="size-4" />
-                      </Button>
+                          </>
+                        );
+                      })()}
                     </div>
                   ))}
                 </div>
