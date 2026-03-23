@@ -1070,7 +1070,7 @@ const SourceDialog = ({
       onSubmit={form.handleSubmit(onSubmit)}
     >
       <div ref={popoverContainerRef} className="grid gap-4">
-        <Card className="gap-4 bg-background">
+        <Card className="gap-4 bg-muted/30">
           <CardHeader>
             <CardTitle>Basic Info</CardTitle>
             <CardDescription>
@@ -1101,7 +1101,7 @@ const SourceDialog = ({
           </CardContent>
         </Card>
 
-        <Card className="gap-4 bg-background">
+        <Card className="gap-4 bg-muted/30">
           <CardHeader>
             <CardTitle>Platform Selection</CardTitle>
             <CardDescription>
@@ -1203,7 +1203,7 @@ const SourceDialog = ({
           </CardContent>
         </Card>
 
-        <Card className="gap-4 bg-background">
+        <Card className="gap-4 bg-muted/30">
           <CardHeader>
             <CardTitle>Platform Config</CardTitle>
             <CardDescription>
