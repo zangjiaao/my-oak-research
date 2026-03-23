@@ -1054,18 +1054,21 @@ const SourceDialog = ({
       sourceId: currentSource?.id ?? "__SOURCE_ID__",
       platform: normalizedPlatform.toLowerCase(),
       keywords: [],
-      driver: buildDriverConfig({
-        intentType: selectedIntentType,
-        intentArgs: scriptArgs,
-        config: {
-          poolEnabled,
-          poolIdleTimeoutMs,
-          headless,
-          stateFile: resolvedStateFile,
-          filterMinChars,
-          proxy: selectedProxy,
-        },
-      }),
+      driver: {
+        name: "playwright",
+        ...buildDriverConfig({
+          intentType: selectedIntentType,
+          intentArgs: scriptArgs,
+          config: {
+            poolEnabled,
+            poolIdleTimeoutMs,
+            headless,
+            stateFile: resolvedStateFile,
+            filterMinChars,
+            proxy: selectedProxy,
+          },
+        }),
+      },
       ...(output ? { output } : {}),
     };
   }, [
