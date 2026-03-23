@@ -24,6 +24,14 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { Button } from "@/components/ui/button";
+import { ChevronDown } from "lucide-react";
+import { cn } from "@/lib/utils";
+import {
   classifySourceCategory,
   detectDarknetTag,
   displayCategoryLabel,
@@ -282,49 +290,59 @@ const QueryDialog = ({
             </div>
 
             {(sourcePolicies ?? []).length > 0 && (
-              <div className="grid gap-3 rounded-md border p-3">
-                <Label>Source Content Filter</Label>
-                <p className="text-xs text-muted-foreground">
+              <Collapsible className="rounded-md border p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <Label>Source Content Filter</Label>
+                  <CollapsibleTrigger asChild>
+                    <Button type="button" variant="ghost" size="sm" className="group">
+                      <span>展开配置</span>
+                      <ChevronDown className={cn("ml-1 size-4 transition group-data-[state=open]:rotate-180")} />
+                    </Button>
+                  </CollapsibleTrigger>
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">
                   控制每个 Source 是否启用内容过滤。关闭后该 Source 只做采集，不做关键词内容过滤；开启后按过滤模式执行。
                 </p>
-                {(sourcePolicies ?? []).map((policy, index) => (
-                  <div
-                    key={policy.sourceId}
-                    className="grid gap-3 rounded-md border bg-background p-3"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium">
-                        {sourceNameById.get(policy.sourceId) ?? policy.sourceId}
-                      </span>
+                <CollapsibleContent className="mt-3 grid gap-3">
+                  {(sourcePolicies ?? []).map((policy, index) => (
+                    <div
+                      key={policy.sourceId}
+                      className="grid gap-3 rounded-md border bg-background p-3"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium">
+                          {sourceNameById.get(policy.sourceId) ?? policy.sourceId}
+                        </span>
+                        <Controller
+                          name={`sourcePolicies.${index}.contentFilterEnabled`}
+                          control={control}
+                          render={({ field }) => (
+                            <Switch
+                              checked={Boolean(field.value)}
+                              onCheckedChange={field.onChange}
+                            />
+                          )}
+                        />
+                      </div>
                       <Controller
-                        name={`sourcePolicies.${index}.contentFilterEnabled`}
+                        name={`sourcePolicies.${index}.contentFilterMode`}
                         control={control}
                         render={({ field }) => (
-                          <Switch
-                            checked={Boolean(field.value)}
-                            onCheckedChange={field.onChange}
-                          />
+                          <ControlledSelect
+                            value={field.value}
+                            onValueChange={field.onChange}
+                            placeholder="Select filter mode"
+                          >
+                            <SelectItem value="TERM_AND_WORD_BOUNDARY">
+                              TERM_AND_WORD_BOUNDARY
+                            </SelectItem>
+                          </ControlledSelect>
                         )}
                       />
                     </div>
-                    <Controller
-                      name={`sourcePolicies.${index}.contentFilterMode`}
-                      control={control}
-                      render={({ field }) => (
-                        <ControlledSelect
-                          value={field.value}
-                          onValueChange={field.onChange}
-                          placeholder="Select filter mode"
-                        >
-                          <SelectItem value="TERM_AND_WORD_BOUNDARY">
-                            TERM_AND_WORD_BOUNDARY
-                          </SelectItem>
-                        </ControlledSelect>
-                      )}
-                    />
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </CollapsibleContent>
+              </Collapsible>
             )}
           </CardContent>
         </Card>
