@@ -2331,23 +2331,48 @@ async function findExistingContentBySourceRecord(
   item: CleanItem
 ): Promise<{ id: string } | null> {
   if (item.recordId) {
+    const recordWhere =
+      typeof item.recordIndex === "number" && Number.isFinite(item.recordIndex)
+        ? {
+            AND: [
+              {
+                meta: {
+                  path: ["sourceId"],
+                  equals: item.sourceId,
+                },
+              },
+              {
+                meta: {
+                  path: ["recordId"],
+                  equals: item.recordId,
+                },
+              },
+              {
+                meta: {
+                  path: ["recordIndex"],
+                  equals: item.recordIndex,
+                },
+              },
+            ],
+          }
+        : {
+            AND: [
+              {
+                meta: {
+                  path: ["sourceId"],
+                  equals: item.sourceId,
+                },
+              },
+              {
+                meta: {
+                  path: ["recordId"],
+                  equals: item.recordId,
+                },
+              },
+            ],
+          };
     const existingByRecordId = await prisma.content.findFirst({
-      where: {
-        AND: [
-          {
-            meta: {
-              path: ["sourceId"],
-              equals: item.sourceId,
-            },
-          },
-          {
-            meta: {
-              path: ["recordId"],
-              equals: item.recordId,
-            },
-          },
-        ],
-      },
+      where: recordWhere,
       select: { id: true },
     });
     if (existingByRecordId) return existingByRecordId;
