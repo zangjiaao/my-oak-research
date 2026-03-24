@@ -10,8 +10,14 @@
       "env": ["DOTENV_KEY", "DOTENV_PRIVATE_KEY"]
     },
     "web#build": {
+      "dependsOn": ["^build"],
+      "inputs": ["$TURBO_DEFAULT$", ".env*"],
+      "outputs": [".next/**", "!.next/cache/**"],
       "env": [
         "NEXT_PUBLIC_*",
+        "DEFAULT_USER_ID",
+        "PRISMA_ACCELERATE_URL",
+        "WEB_DERIVE_*",
         "DATABASE_URL",
         "DIRECT_URL",
         "REDIS_*",
@@ -26,19 +32,18 @@
         "GOOGLE_GENERATIVE_AI_API_KEY",
         "LLM_DEFAULT_MODEL",
         "EMBEDDING_MODEL",
-        "DEFAULT_USER_ID",
-        "PRISMA_ACCELERATE_URL",
         "QUERY_SCHEDULE_TZ",
-        "LOG_*",
-        "WEB_DERIVE_*"
+        "LOG_*"
       ]
     },
     "worker#build": {
+      "dependsOn": ["^build"],
+      "inputs": ["$TURBO_DEFAULT$", ".env*"],
+      "outputs": [],
       "env": [
         "DATABASE_URL",
         "DIRECT_URL",
         "REDIS_*",
-        "MINIO_*",
         "CREDENTIAL_ENCRYPTION_KEY",
         "GATHER_SERVICE_URL",
         "WORKER_SERVICE_URL",
@@ -56,6 +61,9 @@
       ]
     },
     "gather#build": {
+      "dependsOn": ["^build"],
+      "inputs": ["$TURBO_DEFAULT$", ".env*"],
+      "outputs": ["scripts-dist/**"],
       "env": ["GATHER_*", "AGENT_BROWSER_BIN"]
     },
     "test": {
@@ -64,8 +72,14 @@
       "env": ["DOTENV_KEY", "DOTENV_PRIVATE_KEY"]
     },
     "web#test": {
+      "dependsOn": ["^test"],
+      "inputs": ["$TURBO_DEFAULT$", ".env*"],
+      "outputs": [],
       "env": [
         "NEXT_PUBLIC_*",
+        "DEFAULT_USER_ID",
+        "PRISMA_ACCELERATE_URL",
+        "WEB_DERIVE_*",
         "DATABASE_URL",
         "DIRECT_URL",
         "REDIS_*",
@@ -80,19 +94,18 @@
         "GOOGLE_GENERATIVE_AI_API_KEY",
         "LLM_DEFAULT_MODEL",
         "EMBEDDING_MODEL",
-        "DEFAULT_USER_ID",
-        "PRISMA_ACCELERATE_URL",
         "QUERY_SCHEDULE_TZ",
-        "LOG_*",
-        "WEB_DERIVE_*"
+        "LOG_*"
       ]
     },
     "worker#test": {
+      "dependsOn": ["^test"],
+      "inputs": ["$TURBO_DEFAULT$", ".env*"],
+      "outputs": [],
       "env": [
         "DATABASE_URL",
         "DIRECT_URL",
         "REDIS_*",
-        "MINIO_*",
         "CREDENTIAL_ENCRYPTION_KEY",
         "GATHER_SERVICE_URL",
         "WORKER_SERVICE_URL",
