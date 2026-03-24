@@ -350,7 +350,9 @@ for item in fetch_resp.json().get("items", []):
 
 ```text
 apps/gather/
-├── api/app.py                     # FastAPI 服务入口
+├── api/app.py                     # FastAPI 装配入口（include routers）
+├── api/routes/                    # 按 endpoint/domain 拆分路由
+├── api/services/runtime_service.py# fetch/auth/catalog 运行时服务
 ├── schemas.py                     # 请求/响应模型
 ├── libs/auth_verify.py            # 认证校验探针
 ├── libs/fetch_processing.py       # 输出映射与关键词过滤
@@ -367,7 +369,7 @@ apps/gather/
 1. 在 `scripts/<platform>/<intent>.ts` 增加脚本
 2. 确认脚本可被 `ScriptRegistry` 识别并出现在 `/v1/scripts/catalog`
 3. 如需认证探针，在 `libs/auth_verify.py` 增加平台校验逻辑
-4. 在 `api/app.py` 增加对应 intent 路由映射（如需 `intercept-*`）
+4. 在 `api/services/runtime_service.py` 增加对应 intent 执行映射（如需 `intercept-*`）
 5. 补充/更新对应测试用例
 
 ## 注意事项
