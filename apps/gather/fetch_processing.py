@@ -449,9 +449,9 @@ def _extract_keyword_filter_options(config: Dict[str, Any]) -> dict[str, Any]:
     if raw_filter is None:
         return {
             "min_chars": 1,
-            "scope_fields": [],
+            "include_fields": [],
+            "exclude_fields": ["url"],
             "match_mode": "smart",
-            "include_url": False,
             "min_cjk_term_chars": 2,
         }
     if not isinstance(raw_filter, dict):
@@ -466,29 +466,45 @@ def _extract_keyword_filter_options(config: Dict[str, Any]) -> dict[str, Any]:
     if not isinstance(min_chars, int) or min_chars < 1:
         raise KeywordFilterConfigError("keyword filter minChars must be a positive integer")
     match_mode = raw_filter.get("matchMode", "smart")
-    if not isinstance(match_mode, str) or match_mode not in {"smart", "contains"}:
-        raise KeywordFilterConfigError("keyword filter matchMode must be one of: smart, contains")
-    include_url = raw_filter.get("includeUrl", False)
-    if not isinstance(include_url, bool):
-        raise KeywordFilterConfigError("keyword filter includeUrl must be boolean")
+    if not isinstance(match_mode, str) or match_mode not in {
+        "smart",
+        "contains",
+        "term_and_word_boundary",
+    }:
+        raise KeywordFilterConfigError(
+            "keyword filter matchMode must be one of: smart, contains, term_and_word_boundary"
+        )
     min_cjk_term_chars = raw_filter.get("minCjkTermChars", 2)
     if not isinstance(min_cjk_term_chars, int) or min_cjk_term_chars < 1:
         raise KeywordFilterConfigError("keyword filter minCjkTermChars must be a positive integer")
-    raw_scope_fields = raw_filter.get("scopeFields", raw_filter.get("keywordScope"))
-    scope_fields: list[str] = []
-    if raw_scope_fields is not None:
-        if not isinstance(raw_scope_fields, list):
-            raise KeywordFilterConfigError("keyword filter scopeFields must be a string array")
-        for index, value in enumerate(raw_scope_fields):
+    raw_include_fields = raw_filter.get("includeFields", raw_filter.get("scopeFields", raw_filter.get("keywordScope")))
+    raw_exclude_fields = raw_filter.get("excludeFields")
+    include_fields: list[str] = []
+    exclude_fields: list[str] = []
+    if raw_include_fields is not None:
+        if not isinstance(raw_include_fields, list):
+            raise KeywordFilterConfigError("keyword filter includeFields must be a string array")
+        for index, value in enumerate(raw_include_fields):
             if not isinstance(value, str) or not value.strip():
-                raise KeywordFilterConfigError(f"keyword filter scopeFields[{index}] must be non-empty string")
-            scope_fields.append(value.strip())
+                raise KeywordFilterConfigError(f"keyword filter includeFields[{index}] must be non-empty string")
+            include_fields.append(value.strip())
+    if raw_exclude_fields is not None:
+        if not isinstance(raw_exclude_fields, list):
+            raise KeywordFilterConfigError("keyword filter excludeFields must be a string array")
+        for index, value in enumerate(raw_exclude_fields):
+            if not isinstance(value, str) or not value.strip():
+                raise KeywordFilterConfigError(f"keyword filter excludeFields[{index}] must be non-empty string")
+            exclude_fields.append(value.strip())
+
+    if not exclude_fields and not include_fields:
+        # default keep existing behavior: URL excluded
+        exclude_fields = ["url"]
 
     return {
         "min_chars": min_chars,
-        "scope_fields": scope_fields,
+        "include_fields": include_fields,
+        "exclude_fields": exclude_fields,
         "match_mode": match_mode,
-        "include_url": include_url,
         "min_cjk_term_chars": min_cjk_term_chars,
     }
 
@@ -512,21 +528,47 @@ def _is_ascii_word(value: str) -> bool:
     return bool(re.fullmatch(r"[a-z0-9_]+", value))
 
 
-def _collect_record_content_strings(value: Any, include_url: bool) -> list[str]:
+def _collect_record_content_strings(
+    value: Any,
+    path_prefix: Optional[list[str]] = None,
+    exclude_field_paths: Optional[set[str]] = None,
+    exclude_field_names: Optional[set[str]] = None,
+) -> list[str]:
+    path_prefix = path_prefix or []
+    exclude_field_paths = exclude_field_paths or set()
+    exclude_field_names = exclude_field_names or set()
     if isinstance(value, str):
         stripped = value.strip()
         return [stripped] if stripped else []
     if isinstance(value, dict):
         collected: list[str] = []
         for key, nested in value.items():
-            if not include_url and isinstance(key, str) and key.strip().lower() == "url":
+            key_normalized = key.strip().lower() if isinstance(key, str) else ""
+            if not key_normalized:
                 continue
-            collected.extend(_collect_record_content_strings(nested, include_url))
+            field_path = ".".join([*path_prefix, key_normalized])
+            if key_normalized in exclude_field_names or field_path in exclude_field_paths:
+                continue
+            collected.extend(
+                _collect_record_content_strings(
+                    nested,
+                    path_prefix=[*path_prefix, key_normalized],
+                    exclude_field_paths=exclude_field_paths,
+                    exclude_field_names=exclude_field_names,
+                )
+            )
         return collected
     if isinstance(value, list):
         collected: list[str] = []
         for nested in value:
-            collected.extend(_collect_record_content_strings(nested, include_url))
+            collected.extend(
+                _collect_record_content_strings(
+                    nested,
+                    path_prefix=path_prefix,
+                    exclude_field_paths=exclude_field_paths,
+                    exclude_field_names=exclude_field_names,
+                )
+            )
         return collected
     return []
 
@@ -540,22 +582,33 @@ def _read_nested_value(payload: dict[str, Any], path: list[str]) -> Any:
     return current
 
 
-def _keyword_filter_text(item: CleanItem, scope_fields: list[str], include_url: bool) -> str:
+def _keyword_filter_text(
+    item: CleanItem,
+    include_fields: list[str],
+    exclude_fields: list[str],
+) -> str:
     record_content = item.recordContent if isinstance(item.recordContent, dict) else {}
-    if scope_fields:
+    if include_fields:
         parts: list[str] = []
-        for field in scope_fields:
+        for field in include_fields:
             path = [segment for segment in field.split(".") if segment]
             if not path:
-                continue
-            if (not include_url) and path[-1].strip().lower() == "url":
                 continue
             value = _read_nested_value(record_content, path)
             if value is None:
                 continue
-            parts.extend(_collect_record_content_strings(value, include_url=True))
+            parts.extend(_collect_record_content_strings(value))
     else:
-        parts = _collect_record_content_strings(record_content, include_url=include_url)
+        normalized_exclude_fields = [field.strip().lower() for field in exclude_fields if field.strip()]
+        exclude_field_paths = set(normalized_exclude_fields)
+        exclude_field_names = set(
+            field.split(".")[-1] for field in normalized_exclude_fields if field
+        )
+        parts = _collect_record_content_strings(
+            record_content,
+            exclude_field_paths=exclude_field_paths,
+            exclude_field_names=exclude_field_names,
+        )
     return _normalize_keyword_filter_text(" ".join(parts))
 
 
@@ -582,6 +635,14 @@ def _smart_match_keyword(keyword: str, haystack: str, options: dict[str, Any]) -
 
 
 def _match_keyword(keyword: str, haystack: str, options: dict[str, Any]) -> tuple[bool, Optional[str]]:
+    if options["match_mode"] == "term_and_word_boundary":
+        terms = [part.strip() for part in keyword.split() if part.strip()]
+        normalized_terms = terms if terms else [keyword]
+        for term in normalized_terms:
+            matched, _ = _smart_match_keyword(term, haystack, options)
+            if not matched:
+                return False, None
+        return True, "term-and-word-boundary"
     if options["match_mode"] == "contains":
         matched = keyword in haystack
         return matched, "contains" if matched else None
@@ -609,8 +670,8 @@ def apply_keyword_hard_filter(request: FetchRequest, items: List[CleanItem]) -> 
     for item in items:
         haystack = _keyword_filter_text(
             item,
-            options["scope_fields"],
-            include_url=options["include_url"],
+            options["include_fields"],
+            options["exclude_fields"],
         )
         if len(haystack.strip()) < options["min_chars"]:
             miss += 1
@@ -645,6 +706,6 @@ def apply_keyword_hard_filter(request: FetchRequest, items: List[CleanItem]) -> 
 
     print(
         f"[gather][keyword-filter][metrics] "
-        f"{json.dumps({'sourceId': request.source_id, 'platform': request.platform, 'fetched': fetched, 'hit': hit, 'miss': miss, 'persisted': len(filtered), 'minChars': options['min_chars'], 'scopeFields': options['scope_fields'], 'matchMode': options['match_mode'], 'includeUrl': options['include_url']}, ensure_ascii=False)}"
+        f"{json.dumps({'sourceId': request.source_id, 'platform': request.platform, 'fetched': fetched, 'hit': hit, 'miss': miss, 'persisted': len(filtered), 'minChars': options['min_chars'], 'includeFields': options['include_fields'], 'excludeFields': options['exclude_fields'], 'matchMode': options['match_mode']}, ensure_ascii=False)}"
     )
     return filtered

@@ -13,9 +13,24 @@ import { Switch } from "@/components/ui/switch";
 import { ControlledSelect } from "@/components/ui/controlled-select";
 import { SelectItem } from "@/components/ui/select";
 import { ErrorMessage } from "@/components/business";
-import { Query, Keyword, Source } from "@/app/generated/prisma";
+import { Query, Keyword, Source, QueryContentFilterMode } from "@/app/generated/prisma";
 import { useQueryMutation } from "@/hooks/useQueryMutation";
 import { MultiSelect } from "@/components/common/multi-select";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { Button } from "@/components/ui/button";
+import { ChevronDown } from "lucide-react";
+import { cn } from "@/lib/utils";
 import {
   classifySourceCategory,
   detectDarknetTag,
@@ -28,6 +43,11 @@ interface Props {
   query?: Query & {
     keywords?: Keyword[];
     sources?: Source[];
+    sourcePolicies?: Array<{
+      sourceId: string;
+      contentFilterEnabled: boolean;
+      contentFilterMode: QueryContentFilterMode;
+    }>;
   };
   keywords: Keyword[];
   sources: Source[];
@@ -44,6 +64,12 @@ const QueryDialog = ({
   open,
   onOpenChange,
 }: Props) => {
+  const filterModeDescriptions: Record<QueryContentFilterMode, string> = {
+    TERM_AND_WORD_BOUNDARY: "整词匹配（英文按单词边界），精准度最高，误匹配最少。",
+    CONTAINS: "子串包含匹配，只要包含关键词就命中，召回更高但噪声更多。",
+    SMART: "智能模式：中文偏向包含匹配，英文偏向整词匹配，兼顾召回与精度。",
+  };
+
   const isUpdate = !!query;
 
   const formResolver = useMemo<Resolver<QueryFormValues>>(
@@ -57,20 +83,21 @@ const QueryDialog = ({
     control,
     watch,
     reset,
-    setError,
+    setValue,
     formState: { errors },
   } = useForm<QueryFormValues>({
     resolver: formResolver,
     defaultValues: {
       name: query?.name || "",
       description: query?.description || "",
+      rateLimit: query?.rateLimit ?? null,
       frequency: query?.frequency || "MANUAL",
       cronSchedule: query?.cronSchedule || "",
       enabled: query?.enabled ?? true,
       // Make sure query.keywords and query.sources are always arrays before mapping
       keywordIds: query?.keywords?.map((k) => k.id) || [],
       sourceIds: query?.sources?.map((s) => s.id) || [],
-      rules: query?.rules ? JSON.stringify(query.rules, null, 2) : undefined,
+      sourcePolicies: query?.sourcePolicies ?? [],
     },
   });
 
@@ -85,27 +112,62 @@ const QueryDialog = ({
       reset({
         name: query?.name || "",
         description: query?.description || "",
+        rateLimit: query?.rateLimit ?? null,
         frequency: query?.frequency || "MANUAL",
         cronSchedule: query?.cronSchedule || "",
         enabled: query?.enabled ?? true,
         keywordIds: query?.keywords?.map((k) => k.id) || [],
         sourceIds: query?.sources?.map((s) => s.id) || [],
-        rules: query?.rules ? JSON.stringify(query.rules, null, 2) : undefined,
+        sourcePolicies: query?.sourcePolicies ?? [],
       });
     } else {
       // When dialog opens for create, reset to empty values
       reset({
         name: "",
         description: "",
+        rateLimit: null,
         frequency: "MANUAL",
         cronSchedule: "",
         enabled: true,
         keywordIds: [],
         sourceIds: [],
-        rules: undefined,
+        sourcePolicies: [],
       });
     }
   }, [open, isUpdate, query, reset]);
+
+  const selectedSourceIds = watch("sourceIds");
+  const sourcePolicies = watch("sourcePolicies");
+
+  useEffect(() => {
+    const selectedIds = selectedSourceIds ?? [];
+    const policyMap = new Map((sourcePolicies ?? []).map((item) => [item.sourceId, item]));
+    const normalizedPolicies = selectedIds.map((sourceId) => {
+      const existingPolicy = policyMap.get(sourceId);
+      if (existingPolicy) return existingPolicy;
+      return {
+        sourceId,
+        contentFilterEnabled: true,
+        contentFilterMode: "TERM_AND_WORD_BOUNDARY" as const,
+      };
+    });
+    const hasDiff =
+      normalizedPolicies.length !== (sourcePolicies ?? []).length ||
+      normalizedPolicies.some((item, index) => {
+        const current = sourcePolicies?.[index];
+        return (
+          !current ||
+          current.sourceId !== item.sourceId ||
+          current.contentFilterEnabled !== item.contentFilterEnabled ||
+          current.contentFilterMode !== item.contentFilterMode
+        );
+      });
+    if (hasDiff) {
+      setValue("sourcePolicies", normalizedPolicies, {
+        shouldDirty: false,
+      });
+    }
+  }, [selectedSourceIds, setValue, sourcePolicies]);
 
   const mutation = useQueryMutation({
     queryId: query?.id,
@@ -115,29 +177,7 @@ const QueryDialog = ({
   });
 
   const onSubmit: SubmitHandler<QueryFormValues> = (data) => {
-    let parsedRules: QueryFormValues["rules"] = undefined;
-    if (data.rules) {
-      if (typeof data.rules === "string") {
-        try {
-          parsedRules = JSON.parse(data.rules);
-        } catch (err) {
-          setError("rules", {
-            type: "manual",
-            message: "Rules must be valid JSON.",
-          });
-          return;
-        }
-      } else {
-        parsedRules = data.rules;
-      }
-    }
-    const submittedData = {
-      ...data,
-      rules: parsedRules,
-      // keywords and sources should be connect operations, not just IDs
-      // Backend API expects keywordIds and sourceIds for connect, so no change needed here.
-    };
-    mutation.mutate(submittedData);
+    mutation.mutate(data);
   };
 
   const availableKeywords = keywords.map((k) => ({
@@ -153,6 +193,10 @@ const QueryDialog = ({
     const prefix = `[${displayCategoryLabel(category)}${darknet ? "/Darknet" : ""}]`;
     return { label: `${prefix} ${s.name}`, value: s.id };
   });
+  const sourceNameById = useMemo(
+    () => new Map(sources.map((source) => [source.id, source.name] as const)),
+    [sources]
+  );
 
   return (
     <SettingEditDialog
@@ -174,114 +218,252 @@ const QueryDialog = ({
       onSubmit={handleSubmit(onSubmit)}
     >
       <div className="grid gap-4">
-        <div className="grid gap-3">
-          <Label htmlFor="name">Name</Label>
-          <Input id="name" placeholder="Query Name" {...register("name")} />
-          <ErrorMessage>{errors.name?.message?.toString()}</ErrorMessage>
-        </div>
+        <Card className="gap-4 bg-muted/30">
+          <CardHeader className="flex flex-row items-start justify-between gap-3">
+            <div className="space-y-1.5">
+              <CardTitle>Basic Info</CardTitle>
+              <CardDescription>
+                填写 Query 基本信息。
+              </CardDescription>
+            </div>
+            <div className="flex items-center gap-2">
+              <Label htmlFor="enabled" className="cursor-pointer">
+                Enabled
+              </Label>
+              <Controller
+                name="enabled"
+                control={control}
+                render={({ field }) => (
+                  <Switch
+                    id="enabled"
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                )}
+              />
+            </div>
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            <div className="grid gap-3">
+              <Label htmlFor="name">Name</Label>
+              <Input
+                id="name"
+                placeholder="Query Name"
+                className="bg-background"
+                {...register("name")}
+              />
+              <ErrorMessage>{errors.name?.message?.toString()}</ErrorMessage>
+            </div>
 
-        <div className="grid gap-3">
-          <Label htmlFor="description">Description</Label>
-          <Textarea
-            id="description"
-            placeholder="Description"
-            rows={3}
-            {...register("description")}
-          />
-          <ErrorMessage>{errors.description?.message?.toString()}</ErrorMessage>
-        </div>
+            <div className="grid gap-3">
+              <Label htmlFor="description">Description</Label>
+              <Textarea
+                id="description"
+                placeholder="Description"
+                rows={3}
+                className="bg-background"
+                {...register("description")}
+              />
+              <ErrorMessage>{errors.description?.message?.toString()}</ErrorMessage>
+            </div>
+          </CardContent>
+        </Card>
 
-        <div className="grid gap-3">
-          <Label htmlFor="frequency">Frequency</Label>
-          <Controller
-            name="frequency"
-            control={control}
-            render={({ field }) => (
-              <ControlledSelect
-                value={field.value}
-                onValueChange={field.onChange}
-                placeholder="Select frequency"
-              >
-                {Object.values(QueryFrequencyEnum.enum).map((freq) => (
-                  <SelectItem key={freq} value={freq}>
-                    {freq}
-                  </SelectItem>
-                ))}
-              </ControlledSelect>
-            )}
-          />
-          <ErrorMessage>{errors.frequency?.message?.toString()}</ErrorMessage>
-        </div>
-
-        {watch("frequency") === "CRONTAB" && (
-          <div className="grid gap-3">
-            <Label htmlFor="cronSchedule">Cron Schedule</Label>
-            <Input
-              id="cronSchedule"
-              placeholder="e.g., 0 0 * * * (daily at midnight)"
-              {...register("cronSchedule")}
+        <Card className="gap-4 bg-muted/30">
+          <CardHeader>
+            <CardTitle>Keywords</CardTitle>
+            <CardDescription>
+              选择该 Query 绑定的关键词。
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-3">
+            <Label htmlFor="keywordIds">Keywords</Label>
+            <Controller
+              name="keywordIds"
+              control={control}
+              render={({ field }) => (
+                <MultiSelect
+                  options={availableKeywords}
+                  value={field.value}
+                  onValueChange={field.onChange}
+                  placeholder="Select keywords..."
+                />
+              )}
             />
-            <ErrorMessage>
-              {errors.cronSchedule?.message?.toString()}
-            </ErrorMessage>
-          </div>
-        )}
+            <ErrorMessage>{errors.keywordIds?.message?.toString()}</ErrorMessage>
+          </CardContent>
+        </Card>
 
-        <div className="flex items-center justify-between">
-          <Label htmlFor="enabled">Enabled</Label>
-          <Controller
-            name="enabled"
-            control={control}
-            render={({ field }) => (
-              <Switch checked={field.value} onCheckedChange={field.onChange} />
-            )}
-          />
-        </div>
-
-        <div className="grid gap-3">
-          <Label htmlFor="keywordIds">Keywords</Label>
-          <Controller
-            name="keywordIds"
-            control={control}
-            render={({ field }) => (
-              <MultiSelect
-                options={availableKeywords}
-                value={field.value}
-                onValueChange={field.onChange}
-                placeholder="Select keywords..."
+        <Card className="gap-4 bg-muted/30">
+          <CardHeader>
+            <CardTitle>Sources</CardTitle>
+            <CardDescription>
+              选择 Sources 并配置每个 Source 的内容过滤策略。
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            <div className="grid gap-3">
+              <Label htmlFor="sourceIds">Sources</Label>
+              <Controller
+                name="sourceIds"
+                control={control}
+                render={({ field }) => (
+                  <MultiSelect
+                    options={availableSources}
+                    value={field.value}
+                    onValueChange={field.onChange}
+                    placeholder="Select sources..."
+                  />
+                )}
               />
-            )}
-          />
-          <ErrorMessage>{errors.keywordIds?.message?.toString()}</ErrorMessage>
-        </div>
+              <ErrorMessage>{errors.sourceIds?.message?.toString()}</ErrorMessage>
+            </div>
 
-        <div className="grid gap-3">
-          <Label htmlFor="sourceIds">Sources</Label>
-          <Controller
-            name="sourceIds"
-            control={control}
-            render={({ field }) => (
-              <MultiSelect
-                options={availableSources}
-                value={field.value}
-                onValueChange={field.onChange}
-                placeholder="Select sources..."
+            {(sourcePolicies ?? []).length > 0 && (
+              <Collapsible className="rounded-md border p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <Label>Source Content Filter</Label>
+                  <CollapsibleTrigger asChild>
+                    <Button type="button" variant="ghost" size="sm" className="group">
+                      <span>展开配置</span>
+                      <ChevronDown className={cn("ml-1 size-4 transition group-data-[state=open]:rotate-180")} />
+                    </Button>
+                  </CollapsibleTrigger>
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  控制每个 Source 是否启用内容过滤。关闭后该 Source 只做采集，不做关键词内容过滤；开启后按过滤模式执行。
+                </p>
+                <CollapsibleContent className="mt-3 grid gap-3">
+                  {(sourcePolicies ?? []).map((policy, index) => (
+                    <div
+                      key={policy.sourceId}
+                      className="grid gap-3 rounded-md border bg-background p-3"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium">
+                          {sourceNameById.get(policy.sourceId) ?? policy.sourceId}
+                        </span>
+                        <Controller
+                          name={`sourcePolicies.${index}.contentFilterEnabled`}
+                          control={control}
+                          render={({ field }) => (
+                            <Switch
+                              checked={Boolean(field.value)}
+                              onCheckedChange={field.onChange}
+                            />
+                          )}
+                        />
+                      </div>
+                      <Controller
+                        name={`sourcePolicies.${index}.contentFilterMode`}
+                        control={control}
+                        render={({ field }) => (
+                          <div className="grid gap-1.5">
+                            <Label className="text-xs text-muted-foreground">
+                              Content Filter Mode
+                            </Label>
+                            <ControlledSelect
+                              value={field.value}
+                              onValueChange={field.onChange}
+                              placeholder="Select filter mode"
+                            >
+                              <SelectItem value="TERM_AND_WORD_BOUNDARY">
+                                TERM_AND_WORD_BOUNDARY（精准）
+                              </SelectItem>
+                              <SelectItem value="CONTAINS">
+                                CONTAINS（高召回）
+                              </SelectItem>
+                              <SelectItem value="SMART">
+                                SMART（平衡）
+                              </SelectItem>
+                            </ControlledSelect>
+                            <p className="text-xs text-muted-foreground">
+                              {filterModeDescriptions[
+                                (field.value ?? "TERM_AND_WORD_BOUNDARY") as QueryContentFilterMode
+                              ]}
+                            </p>
+                          </div>
+                        )}
+                      />
+                    </div>
+                  ))}
+                </CollapsibleContent>
+              </Collapsible>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="gap-4 bg-muted/30">
+          <CardHeader>
+            <CardTitle>Execution</CardTitle>
+            <CardDescription>
+              设定执行频率和 rate limit。
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            <div className="grid gap-3">
+              <Label htmlFor="frequency">Frequency</Label>
+              <Controller
+                name="frequency"
+                control={control}
+                render={({ field }) => (
+                  <ControlledSelect
+                    value={field.value}
+                    onValueChange={field.onChange}
+                    placeholder="Select frequency"
+                  >
+                    {Object.values(QueryFrequencyEnum.enum).map((freq) => (
+                      <SelectItem key={freq} value={freq}>
+                        {freq}
+                      </SelectItem>
+                    ))}
+                  </ControlledSelect>
+                )}
               />
-            )}
-          />
-          <ErrorMessage>{errors.sourceIds?.message?.toString()}</ErrorMessage>
-        </div>
+              <ErrorMessage>{errors.frequency?.message?.toString()}</ErrorMessage>
+            </div>
 
-        <div className="grid gap-3">
-          <Label htmlFor="rules">Rules (JSON)</Label>
-          <Textarea
-            id="rules"
-            placeholder={'{"key":"value"}'}
-            rows={5}
-            {...register("rules")}
-          />
-          <ErrorMessage>{errors.rules?.message?.toString()}</ErrorMessage>
-        </div>
+            {watch("frequency") === "CRONTAB" && (
+              <div className="grid gap-3">
+                <Label htmlFor="cronSchedule">Cron Schedule</Label>
+                <Input
+                  id="cronSchedule"
+                  placeholder="e.g., 0 0 * * * (daily at midnight)"
+                  className="bg-background"
+                  {...register("cronSchedule")}
+                />
+                <ErrorMessage>
+                  {errors.cronSchedule?.message?.toString()}
+                </ErrorMessage>
+              </div>
+            )}
+
+            <div className="grid gap-3">
+              <Label htmlFor="rateLimit">Rate Limit (req/min)</Label>
+              <Controller
+                name="rateLimit"
+                control={control}
+                render={({ field }) => (
+                  <Input
+                    id="rateLimit"
+                    type="number"
+                    min={1}
+                    max={600}
+                    placeholder="e.g. 60"
+                    className="bg-background"
+                    value={field.value ?? ""}
+                    onChange={(event) => {
+                      const raw = event.target.value.trim();
+                      field.onChange(raw === "" ? null : Number(raw));
+                    }}
+                  />
+                )}
+              />
+              <ErrorMessage>{errors.rateLimit?.message?.toString()}</ErrorMessage>
+            </div>
+
+          </CardContent>
+        </Card>
       </div>
     </SettingEditDialog>
   );

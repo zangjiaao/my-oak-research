@@ -290,12 +290,34 @@ const PlaywrightConfigInput = z.object({
 const GatherIntentInput = z.object({
   type: z.string().trim().min(1).default("search"),
   args: z.preprocess((val) => parseJson(val), z.record(z.string(), z.unknown()).default({})),
+  recallBinding: z
+    .object({
+      enabled: z.boolean().optional().default(true),
+      argKeys: delimitedStringArray({
+        itemMin: 1,
+        itemMax: 64,
+        totalMax: 8,
+        minItems: 1,
+      }).default(["query"]),
+    })
+    .optional()
+    .default({
+      enabled: true,
+      argKeys: ["query"],
+    }),
 });
 
 const SocialConfigInput = z
   .object({
     driver: SocialDriverEnum.optional(),
-    intent: GatherIntentInput.default({ type: "search", args: {} }),
+    intent: GatherIntentInput.default({
+      type: "search",
+      args: {},
+      recallBinding: {
+        enabled: true,
+        argKeys: ["query"],
+      },
+    }),
     responseFormats: GatherResponseFormatsInput,
     keywordFilter: KeywordFilterInput,
     playwright: PlaywrightConfigInput.optional(),
@@ -496,6 +518,18 @@ export const QueryFrequencyEnum = z.enum([
   "CRONTAB",
 ]);
 
+export const QueryContentFilterModeEnum = z.enum([
+  "TERM_AND_WORD_BOUNDARY",
+  "CONTAINS",
+  "SMART",
+]);
+
+const QuerySourcePolicyInput = z.object({
+  sourceId: z.string().cuid(),
+  contentFilterEnabled: z.boolean().optional().default(true),
+  contentFilterMode: QueryContentFilterModeEnum.optional().default("TERM_AND_WORD_BOUNDARY"),
+});
+
 
 export const QueryCreateSchema = z.object({
   name: z.string().min(1, "Name is required").max(64),
@@ -505,6 +539,7 @@ export const QueryCreateSchema = z.object({
     .optional()
     .nullable(),
   frequency: QueryFrequencyEnum.optional().default("MANUAL"),
+  rateLimit: z.number().int().min(1).max(600).optional().nullable(),
   cronSchedule: z.string().optional().nullable(),
   enabled: z.boolean().optional().default(true),
   keywordIds: z.preprocess(
@@ -526,6 +561,10 @@ export const QueryCreateSchema = z.object({
     z.array(z.string().cuid()).optional().default([])
   ),
   rules: z.preprocess((val) => parseJson(val), z.any().optional().nullable()),
+  sourcePolicies: z.preprocess(
+    (val) => parseJson(val),
+    z.array(QuerySourcePolicyInput).optional().default([])
+  ),
 }).superRefine((data, ctx) => {
   if (data.frequency === "CRONTAB" && !data.cronSchedule) {
     ctx.addIssue({

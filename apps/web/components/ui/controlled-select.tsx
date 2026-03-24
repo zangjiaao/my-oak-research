@@ -12,6 +12,7 @@ interface ControlledSelectProps {
   placeholder?: string;
   children: React.ReactNode;
   nullValue?: string;
+  nullLabel?: string;
 }
 
 export const ControlledSelect = ({
@@ -20,6 +21,7 @@ export const ControlledSelect = ({
   placeholder,
   children,
   nullValue = "",
+  nullLabel = "None",
 }: ControlledSelectProps) => {
   return (
     <Select
@@ -30,7 +32,7 @@ export const ControlledSelect = ({
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
       <SelectContent>
-        {nullValue && <SelectItem value={nullValue}>None</SelectItem>}
+        {nullValue && <SelectItem value={nullValue}>{nullLabel}</SelectItem>}
         {children}
       </SelectContent>
     </Select>

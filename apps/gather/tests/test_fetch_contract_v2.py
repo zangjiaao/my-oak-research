@@ -162,6 +162,35 @@ class StubResultsMappingDriver(BaseDriver):
         ]
 
 
+class StubListMappingNoIdDriver(BaseDriver):
+    async def verify_auth(self, _request):
+        return {"valid": True}
+
+    async def fetch(self, request):
+        return [
+            CleanItem(
+                platform=request.platform,
+                sourceId=request.source_id,
+                sourceType="SOCIAL_MEDIA",
+                recordId=f"{request.source_id}:base",
+                recordContent={
+                    "results": [
+                        {
+                            "title": "Without explicit id 1",
+                            "url": "https://example.com/no-id-1",
+                            "snippet": "first row",
+                        },
+                        {
+                            "title": "Without explicit id 2",
+                            "url": "https://example.com/no-id-2",
+                            "snippet": "second row",
+                        },
+                    ],
+                },
+            )
+        ]
+
+
 def _client_with_stub_driver(monkeypatch) -> TestClient:
     registry = DriverRegistry(default_driver="playwright")
     registry.register("playwright", StubFetchDriver())
@@ -193,6 +222,13 @@ def _client_with_flat_row_mapping_driver(monkeypatch) -> TestClient:
 def _client_with_results_mapping_driver(monkeypatch) -> TestClient:
     registry = DriverRegistry(default_driver="playwright")
     registry.register("playwright", StubResultsMappingDriver())
+    monkeypatch.setattr(main, "driver_registry", registry)
+    return TestClient(main.app)
+
+
+def _client_with_no_id_mapping_driver(monkeypatch) -> TestClient:
+    registry = DriverRegistry(default_driver="playwright")
+    registry.register("playwright", StubListMappingNoIdDriver())
     monkeypatch.setattr(main, "driver_registry", registry)
     return TestClient(main.app)
 
@@ -493,7 +529,6 @@ def test_fetch_v2_output_field_mapping_maps_items_alias_to_results_list(monkeypa
                     "url": "items.url",
                     "snippet": "items.snippet",
                 },
-                "type": "google-search",
             },
         },
     )
@@ -503,6 +538,34 @@ def test_fetch_v2_output_field_mapping_maps_items_alias_to_results_list(monkeypa
     assert len(items) == 2
     assert items[0]["recordContent"]["title"] == "OpenAI launches model"
     assert items[1]["recordContent"]["url"] == "https://example.com/ai-search"
+
+
+def test_fetch_v2_output_field_mapping_expands_list_records_without_id_generates_unique_record_id(
+    monkeypatch,
+):
+    response = _client_with_no_id_mapping_driver(monkeypatch).post(
+        "/v2/fetch",
+        json={
+            "platform": "google",
+            "sourceId": "source-google-001",
+            "keywords": [],
+            "driver": {"name": "playwright", "option": {}},
+            "output": {
+                "field": {
+                    "title": "items.title",
+                    "url": "items.url",
+                    "snippet": "items.snippet",
+                },
+            },
+        },
+    )
+
+    assert response.status_code == 200
+    items = response.json()
+    assert len(items) == 2
+    assert items[0]["recordId"] != items[1]["recordId"]
+    assert items[0]["recordId"].endswith(":1")
+    assert items[1]["recordId"].endswith(":2")
 
 
 def test_fetch_v2_rejects_nested_playwright_option(monkeypatch):

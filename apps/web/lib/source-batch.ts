@@ -85,6 +85,8 @@ const REQUIRED_INTENT_ARGS = new Set([
   "uid",
 ]);
 
+const DEFAULT_RECALL_BINDING_ARG_KEYS = ["query"];
+
 function hasTag(tags: string[], value: string): boolean {
   const lower = value.toLowerCase();
   return tags.some((tag) => tag.toLowerCase() === lower);
@@ -236,14 +238,18 @@ function buildTemplateFromCapabilityIntent(
     },
     title,
     description,
-      defaultConfig: {
-        intent: {
-          type: intentType,
-          args,
+    defaultConfig: {
+      intent: {
+        type: intentType,
+        args,
+        recallBinding: {
+          enabled: true,
+          argKeys: DEFAULT_RECALL_BINDING_ARG_KEYS,
         },
-        networkPolicy: inferredNetworkPolicy,
-        driver: capability.execution.driver,
-        keywordStrategy: "AUTO",
+      },
+      networkPolicy: inferredNetworkPolicy,
+      driver: capability.execution.driver,
+      keywordStrategy: "AUTO",
       },
     requiredFields,
     credentialRequirements: buildCredentialRequirements(capability),
@@ -610,13 +616,31 @@ export function buildSourceCreateData(input: {
   }
 
   const rawIntent = asRecord(config.intent);
-  const intent = {
+  const recallBinding = asRecord(rawIntent.recallBinding);
+  const recallBindingArgKeys = toStringArray(recallBinding.argKeys);
+  const intent: Record<string, unknown> = {
     type:
       typeof rawIntent.type === "string" && rawIntent.type.trim()
         ? rawIntent.type.trim()
         : template.intent.type,
     args: asRecord(rawIntent.args),
   };
+  if (typeof recallBinding.enabled === "boolean" && recallBinding.enabled === false) {
+    intent.recallBinding = {
+      enabled: false,
+      argKeys: [],
+    };
+  } else if (recallBindingArgKeys.length > 0) {
+    intent.recallBinding = {
+      enabled: true,
+      argKeys: recallBindingArgKeys,
+    };
+  } else {
+    intent.recallBinding = {
+      enabled: true,
+      argKeys: DEFAULT_RECALL_BINDING_ARG_KEYS,
+    };
+  }
   const effectiveNetworkPolicy =
     typeof config.networkPolicy === "string" &&
     (config.networkPolicy === "DEFAULT" || config.networkPolicy === "TOR_SOCKS5H")

@@ -1,0 +1,3 @@
+-- AlterEnum
+ALTER TYPE "QueryContentFilterMode" ADD VALUE IF NOT EXISTS 'CONTAINS';
+ALTER TYPE "QueryContentFilterMode" ADD VALUE IF NOT EXISTS 'SMART';

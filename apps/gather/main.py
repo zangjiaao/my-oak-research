@@ -11,6 +11,7 @@ import hashlib
 import subprocess
 import shutil
 import zipfile
+import traceback
 from contextlib import asynccontextmanager, suppress
 from pathlib import Path
 from urllib.parse import quote, urlparse, urlunparse
@@ -69,6 +70,18 @@ _V3_DRIVER_STRATEGIES: dict[str, list[str]] = {
 # Load environment variables from .env file
 load_dotenv()
 
+try:
+    import playwright.async_api as _playwright_async_api
+    if not hasattr(_playwright_async_api, "TimeoutError"):
+        try:
+            from playwright._impl._errors import TimeoutError as _PlaywrightTimeoutError
+
+            setattr(_playwright_async_api, "TimeoutError", _PlaywrightTimeoutError)
+        except Exception:
+            setattr(_playwright_async_api, "TimeoutError", TimeoutError)
+except Exception:
+    pass
+
 
 @asynccontextmanager
 async def _app_lifespan(_app: FastAPI):
@@ -101,6 +114,7 @@ def _env_flag(name: str, default: bool = False) -> bool:
 
 
 _API_IO_LOG_ENABLED = _env_flag("GATHER_API_IO_LOG_ENABLED", False)
+_EXPOSE_INTERNAL_ERROR = _env_flag("GATHER_EXPOSE_INTERNAL_ERROR", False)
 _OPENCLI_BRIDGE_ENABLED = _env_flag("GATHER_OPENCLI_BRIDGE_ENABLED", False)
 _SEARCH_ALIAS_COMPAT_ENABLED = _env_flag("GATHER_SEARCH_ALIAS_COMPAT_ENABLED", True)
 _OPENCLI_BIN = os.getenv("GATHER_OPENCLI_BIN", "opencli").strip() or "opencli"
@@ -247,6 +261,30 @@ def _log_api_io(route: str, request_body: Any, response_body: Any, status_code: 
             f.write("\n")
     except Exception as error:  # pragma: no cover - logging must never break api
         print(f"[gather] failed to write api io log for {route}: {error}")
+
+
+def _log_internal_fetch_error(route: str, payload: Dict[str, Any], error: Exception) -> None:
+    try:
+        print(
+            json.dumps(
+                {
+                    "time": datetime.now(timezone.utc).isoformat(),
+                    "level": "error",
+                    "route": route,
+                    "message": "Unhandled gather fetch exception",
+                    "errorType": type(error).__name__,
+                    "errorMessage": str(error),
+                    "traceback": traceback.format_exc(),
+                    "request": _truncate_for_log(
+                        _redact_sensitive_for_log(payload),
+                        _API_IO_LOG_MAX_CHARS,
+                    ),
+                },
+                ensure_ascii=False,
+            )
+        )
+    except Exception as log_error:  # pragma: no cover - logging must never break api
+        print(f"[gather] failed to emit internal error log for {route}: {log_error}")
 
 
 _BB_SITE_PLATFORM_ALIAS = {
@@ -1394,7 +1432,7 @@ async def _run_playwright_intercept_x_intent(request: FetchRequest, intent_type:
 
     if normalized_intent == "search" and not query:
         raise HTTPException(status_code=400, detail="config.playwright.args.query is required for intercept-x-search mode")
-    if normalized_intent in {"profile", "followers", "following"} and not username:
+    if normalized_intent in {"profile", "followers", "following", "tweets"} and not username:
         raise HTTPException(
             status_code=400,
             detail=f"config.playwright.args.username is required for intercept-x-{normalized_intent} mode",
@@ -1405,7 +1443,9 @@ async def _run_playwright_intercept_x_intent(request: FetchRequest, intent_type:
             detail=f"config.playwright.args.tweet_id is required for intercept-x-{normalized_intent} mode",
         )
 
-    raw_count = args_obj.get("count", 30)
+    raw_count = args_obj.get("count")
+    if raw_count is None:
+        raw_count = args_obj.get("limit", 30)
     try:
         count = int(raw_count)
     except (TypeError, ValueError):
@@ -1422,6 +1462,8 @@ async def _run_playwright_intercept_x_intent(request: FetchRequest, intent_type:
         target_url = f"https://x.com/{quote(username)}/followers"
     elif normalized_intent == "following":
         target_url = f"https://x.com/{quote(username)}/following"
+    elif normalized_intent == "tweets":
+        target_url = f"https://x.com/{quote(username)}"
     elif normalized_intent == "bookmarks":
         target_url = "https://x.com/i/bookmarks"
     elif normalized_intent == "notifications":
@@ -2660,6 +2702,13 @@ def _apply_output_field_map(item: CleanItem, source: dict[str, Any], output_fiel
                 mapped_id = mapped_content.get("id")
                 if isinstance(mapped_id, str) and mapped_id.strip():
                     cloned.recordId = mapped_id.strip()
+                else:
+                    base_record_id = (
+                        cloned.recordId.strip()
+                        if isinstance(cloned.recordId, str) and cloned.recordId.strip()
+                        else item.sourceId
+                    )
+                    cloned.recordId = f"{base_record_id}:{index}"
                 mapped_time = mapped_content.get("time", mapped_content.get("created_at"))
                 parsed_time = _parse_record_time(mapped_time)
                 if parsed_time is not None:
@@ -2967,7 +3016,11 @@ def _merge_v3_intent_into_driver_option(
 
     if driver_name in {"playwright", "agent-browser"}:
         args = merged_option.get("args")
-        args_obj = dict(args) if isinstance(args, dict) else {}
+        args_obj: dict[str, Any] = {}
+        if isinstance(intent_args, dict):
+            args_obj.update(intent_args)
+        if isinstance(args, dict):
+            args_obj.update(args)
         if intent_type == "search":
             if normalized_query and (not isinstance(args_obj.get("query"), str) or not args_obj.get("query")):
                 args_obj["query"] = normalized_query
@@ -3005,7 +3058,7 @@ def _merge_v3_intent_into_driver_option(
                 args_obj["subreddit"] = normalized_subreddit
             if normalized_subreddit and (not isinstance(args_obj.get("name"), str) or not args_obj.get("name")):
                 args_obj["name"] = normalized_subreddit
-        if intent_type in {"profile", "followers", "following"}:
+        if intent_type in {"profile", "followers", "following", "tweets"}:
             if normalized_username and (not isinstance(args_obj.get("username"), str) or not args_obj.get("username")):
                 args_obj["username"] = normalized_username
         if intent_type == "user":
@@ -3364,11 +3417,16 @@ async def fetch_data_v2(payload: Dict[str, Any]):
         )
         _log_api_io("/v2/fetch", payload, response.body.decode("utf-8"), status_code)
         return response
-    except Exception:
+    except Exception as error:
+        _log_internal_fetch_error("/v2/fetch", payload, error)
         response = build_error_response(
             status_code=500,
             code="FETCH_INTERNAL_ERROR",
-            message="Internal server error",
+            message=(
+                f"Internal server error: {type(error).__name__}: {error}"
+                if _EXPOSE_INTERNAL_ERROR
+                else "Internal server error"
+            ),
             retryable=True,
         )
         _log_api_io("/v2/fetch", payload, response.body.decode("utf-8"), 500)
@@ -3422,11 +3480,16 @@ async def fetch_data_v3(payload: Dict[str, Any]):
         )
         _log_api_io("/v3/fetch", payload, response.body.decode("utf-8"), status_code)
         return response
-    except Exception:
+    except Exception as error:
+        _log_internal_fetch_error("/v3/fetch", payload, error)
         response = build_error_response(
             status_code=500,
             code="FETCH_INTERNAL_ERROR",
-            message="Internal server error",
+            message=(
+                f"Internal server error: {type(error).__name__}: {error}"
+                if _EXPOSE_INTERNAL_ERROR
+                else "Internal server error"
+            ),
             retryable=True,
         )
         _log_api_io("/v3/fetch", payload, response.body.decode("utf-8"), 500)

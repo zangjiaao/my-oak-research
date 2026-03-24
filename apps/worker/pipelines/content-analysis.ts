@@ -10,6 +10,7 @@ import {
   CrawlerEngine,
   KeywordStrategy,
   ContentSubjectMatchSource,
+  QueryContentFilterMode,
 } from "@/app/generated/prisma";
 import {
   SourceWithRelations,
@@ -94,6 +95,10 @@ type GatherOutputPayload = {
 type GatherIntentPayload = {
   type: string;
   args: Record<string, unknown>;
+};
+type SourceRuntimePolicy = {
+  contentFilterEnabled: boolean;
+  contentFilterMode: QueryContentFilterMode;
 };
 type GatherDriverPayload = {
   name: GatherSocialDriver;
@@ -250,6 +255,7 @@ export async function runFocusCollector(runId: string, queryId: string) {
     where: { id: queryId },
     include: {
       keywords: true,
+      sourcePolicies: true,
       sources: {
         include: {
           web: true,
@@ -299,7 +305,16 @@ export async function runFocusCollector(runId: string, queryId: string) {
     normalizedSources,
     runId,
     queryId,
-    query.keywords
+    query.keywords,
+    new Map(
+      query.sourcePolicies.map((item) => [
+        item.sourceId,
+        {
+          contentFilterEnabled: item.contentFilterEnabled,
+          contentFilterMode: item.contentFilterMode,
+        } satisfies SourceRuntimePolicy,
+      ])
+    )
   );
   const cleaned = await cleanAndDedup(rawItems, runId);
   const sourceStats = new Map<
@@ -695,7 +710,8 @@ async function fetchBySources(
   sources: SourceWithRelations[],
   runId: string,
   queryId: string,
-  keywords: QueryKeyword[]
+  keywords: QueryKeyword[],
+  sourcePolicyBySourceId: Map<string, SourceRuntimePolicy>
 ): Promise<CleanItem[]> {
   const sourceConcurrency = resolveSourceFetchConcurrency();
   const recallQueryLimit = resolveRecallQueryLimit();
@@ -714,9 +730,14 @@ async function fetchBySources(
         driver,
       });
       try {
+        const sourcePolicy = sourcePolicyBySourceId.get(source.id) ?? {
+          contentFilterEnabled: true,
+          contentFilterMode: QueryContentFilterMode.TERM_AND_WORD_BOUNDARY,
+        };
         const strategy = resolveKeywordStrategy(source);
         const keywordFilterTerms =
-          strategy === "PRECISION_ONLY" || strategy === "HYBRID"
+          sourcePolicy.contentFilterEnabled &&
+          (strategy === "PRECISION_ONLY" || strategy === "HYBRID")
             ? buildKeywordFilterTerms(keywords)
             : [];
         const rawRecallQueries =
@@ -749,7 +770,8 @@ async function fetchBySources(
           queryId,
           keywordFilterTerms,
           recallQueries,
-          objectiveFallback
+          objectiveFallback,
+          sourcePolicy
         );
         console.log(
           `[collector] fetched ${fetched.length} items from ${source.name}`
@@ -854,14 +876,16 @@ async function executeFetchDriver(
   queryId: string,
   keywordFilterTerms: string[],
   recallQueries: string[],
-  objectiveFallback?: string
+  objectiveFallback?: string,
+  sourcePolicy?: SourceRuntimePolicy
 ): Promise<CleanItem[]> {
   const gatherDispatchSource = resolveGatherDispatchSource(source);
   if (gatherDispatchSource) {
     return fetchSocialSource(
       gatherDispatchSource,
       keywordFilterTerms,
-      recallQueries
+      recallQueries,
+      sourcePolicy
     );
   }
 
@@ -880,17 +904,19 @@ async function executeFetchDriver(
         runId,
         queryId,
         keywordFilterTerms,
-        recallQueries
+        recallQueries,
+        sourcePolicy
       );
     default:
       return fetchWithDefaultSource(
         source,
         runId,
         queryId,
-        keywordFilterTerms,
-        recallQueries,
-        objectiveFallback
-      );
+      keywordFilterTerms,
+      recallQueries,
+      objectiveFallback,
+      sourcePolicy
+    );
   }
 }
 
@@ -900,7 +926,8 @@ async function fetchWithDefaultSource(
   queryId: string,
   keywordFilterTerms: string[],
   recallQueries: string[],
-  objectiveFallback?: string
+  objectiveFallback?: string,
+  sourcePolicy?: SourceRuntimePolicy
 ): Promise<CleanItem[]> {
   console.log(
     `[collector] fetchWithDefaultSource ${source.name} (${source.category})`
@@ -923,7 +950,8 @@ async function fetchWithDefaultSource(
     return fetchSocialSource(
       source as SocialMediaSource,
       keywordFilterTerms,
-      recallQueries
+      recallQueries,
+      sourcePolicy
     );
   }
   return [];
@@ -1056,7 +1084,8 @@ async function fetchAICrawlerSource(
   runId: string,
   queryId: string,
   keywordFilterTerms: string[],
-  recallQueries: string[]
+  recallQueries: string[],
+  sourcePolicy?: SourceRuntimePolicy
 ): Promise<CleanItem[]> {
   if (isWebSource(source) || isDarknetSource(source)) {
     console.log(
@@ -1080,7 +1109,8 @@ async function fetchAICrawlerSource(
   return fetchSocialSource(
     source as SocialMediaSource,
     keywordFilterTerms,
-    recallQueries
+    recallQueries,
+    sourcePolicy
   );
 }
 
@@ -1405,7 +1435,8 @@ async function fetchSearchSource(
 async function fetchSocialSource(
   source: SocialMediaSource,
   keywordFilterTerms: string[],
-  recallQueries: string[]
+  recallQueries: string[],
+  sourcePolicy?: SourceRuntimePolicy
 ): Promise<CleanItem[]> {
   console.log(`[collector] fetchSocialSource ${source.name} via Python Gather`);
 
@@ -1444,34 +1475,69 @@ async function fetchSocialSource(
     ensuredCredentialStateFile
   );
   const baseConfig = applyGatherProxyConfig(normalizedSocialConfig, proxyUrl);
+  const configuredDriverFilter = resolveGatherDriverFilter(sourceConfigObj);
   const existingKeywordFilter = resolveGatherKeywordFilter(baseConfig, gatherDriver);
-  const keywordFilterOptions = { ...existingKeywordFilter };
+  const keywordFilterOptions = {
+    ...configuredDriverFilter,
+    ...existingKeywordFilter,
+  };
+  normalizeKeywordFilterFields(keywordFilterOptions);
   delete keywordFilterOptions.keywords;
   const driverOption = normalizeGatherDriverOption(baseConfig, gatherDriver);
   const gatherUserId = resolveGatherPoolUserId(source, sourceConfigObj, driverOption);
   const normalizedIntentType = intent.type.trim().toLowerCase();
+  const recallBinding = resolveRecallBinding(sourceConfigObj);
+  const fallbackRecallQueries = Array.from(
+    new Set(keywordFilterTerms.map((term) => term.trim()).filter(Boolean))
+  );
+  const effectiveRecallQueries =
+    recallQueries.length > 0 ? recallQueries : fallbackRecallQueries;
+  if (
+    normalizedIntentType === "search" &&
+    recallBinding.enabled &&
+    effectiveRecallQueries.length === 0
+  ) {
+    logger.warn("skip social source due empty recall queries and recall binding enabled", {
+      sourceId: source.id,
+      sourceName: source.name,
+      keywordFilterTermsCount: keywordFilterTerms.length,
+      recallQueriesCount: recallQueries.length,
+    });
+    return [];
+  }
   const batchedQueries =
-    normalizedIntentType === "search" && recallQueries.length > 0
-      ? Array.from(new Set(recallQueries.map((query) => query.trim()).filter(Boolean)))
+    normalizedIntentType === "search" && recallBinding.enabled
+      ? Array.from(
+          new Set(effectiveRecallQueries.map((query) => query.trim()).filter(Boolean))
+        )
       : [""];
   const normalizedBatchedQueries = batchedQueries.length > 0 ? batchedQueries : [""];
   const normalizedItems: CleanItem[] = [];
+  const gatherMatchMode = mapQueryFilterModeToGatherMatchMode(
+    sourcePolicy?.contentFilterMode
+  );
 
   try {
     for (const recallQuery of normalizedBatchedQueries) {
-      const intentForRequest = injectRecallQueryIntoIntent(intent, recallQuery);
+      const intentForRequest = recallBinding.enabled
+        ? injectRecallQueryIntoIntent(intent, recallQuery, recallBinding.argKeys)
+        : intent;
       const driver: GatherDriverPayload =
         Object.keys(keywordFilterOptions).length > 0
           ? {
               name: gatherDriver,
               ...driverOption,
               script: intentForRequest,
-              filter: keywordFilterOptions,
+              filter: {
+                ...keywordFilterOptions,
+                ...(gatherMatchMode ? { matchMode: gatherMatchMode } : {}),
+              },
             }
           : {
               name: gatherDriver,
               ...driverOption,
               script: intentForRequest,
+              ...(gatherMatchMode ? { filter: { matchMode: gatherMatchMode } } : {}),
             };
 
       const response = await fetch(`${gatherUrl}/v3/fetch`, {
@@ -1552,6 +1618,18 @@ function normalizeGatherSocialConfig(
     headless:
       typeof playwright.headless === "boolean" ? playwright.headless : false,
   };
+  if (typeof playwright.poolEnabled === "boolean") {
+    normalizedPlaywright.poolEnabled = playwright.poolEnabled;
+  }
+  if (
+    typeof playwright.poolIdleTimeoutMs === "number" &&
+    Number.isFinite(playwright.poolIdleTimeoutMs)
+  ) {
+    normalizedPlaywright.poolIdleTimeoutMs = Math.max(
+      1000,
+      Math.trunc(playwright.poolIdleTimeoutMs)
+    );
+  }
 
   if (typeof playwright.stateFile === "string" && playwright.stateFile.trim()) {
     normalizedPlaywright.stateFile = playwright.stateFile;
@@ -1570,6 +1648,26 @@ async function ensureGatherStateFileFromStorage(
   gatherUrl: string,
   gatherPlatform: string
 ): Promise<string | null> {
+  const verifyStateFile = async (stateFilePath: string): Promise<boolean> => {
+    const verifyResp = await fetch(`${gatherUrl}/verify-auth`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        platform: gatherPlatform,
+        state_file: stateFilePath,
+        headless: true,
+      }),
+    });
+    if (!verifyResp.ok) return false;
+    const verifyPayload = await verifyResp.json().catch(() => ({}));
+    return !!verifyPayload?.valid;
+  };
+
+  const restoreAlias =
+    source.social?.credentialId?.trim() ||
+    source.credentialId?.trim() ||
+    gatherPlatform;
+
   const credentialCandidates = [source.social?.credential?.data, source.credential?.data];
   for (const rawCandidate of credentialCandidates) {
     const decrypted = unwrapCredentialPayload(rawCandidate);
@@ -1582,20 +1680,8 @@ async function ensureGatherStateFileFromStorage(
     if (!stateFile || !storageKey) continue;
 
     try {
-      const verifyResp = await fetch(`${gatherUrl}/verify-auth`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          platform: gatherPlatform,
-          state_file: stateFile,
-          headless: true,
-        }),
-      });
-      if (verifyResp.ok) {
-        const verifyPayload = await verifyResp.json().catch(() => ({}));
-        if (verifyPayload?.valid) {
-          return stateFile;
-        }
+      if (await verifyStateFile(stateFile)) {
+        return stateFile;
       }
     } catch {
       // continue to restore from storage
@@ -1609,7 +1695,7 @@ async function ensureGatherStateFileFromStorage(
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           platform: gatherPlatform,
-          name: source.name,
+          name: restoreAlias,
           auth_data: authData,
         }),
       });
@@ -1619,13 +1705,22 @@ async function ensureGatherStateFileFromStorage(
         typeof restorePayload?.stateFile === "string"
           ? restorePayload.stateFile.trim()
           : "";
-      if (restoredStateFile) return restoredStateFile;
+      if (!restoredStateFile) {
+        throw new Error("gather auth restore succeeded but stateFile is empty");
+      }
+      if (!(await verifyStateFile(restoredStateFile))) {
+        throw new Error(`restored stateFile is still invalid: ${restoredStateFile}`);
+      }
+      return restoredStateFile;
     } catch (error) {
       logger.warn("failed to restore gather state file from storage", {
         sourceId: source.id,
         storageKey,
         error: logger.normalizeError(error),
       });
+      throw new Error(
+        `invalid auth state for source ${source.id}: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   }
   return null;
@@ -1828,7 +1923,8 @@ function resolveGatherIntent(
 
 function injectRecallQueryIntoIntent(
   intent: GatherIntentPayload,
-  recallQuery: string
+  recallQuery: string,
+  argKeys: string[]
 ): GatherIntentPayload {
   if (intent.type.trim().toLowerCase() !== "search") {
     return intent;
@@ -1841,9 +1937,37 @@ function injectRecallQueryIntoIntent(
     ...intent,
     args: {
       ...intent.args,
-      query: normalizedQuery,
+      [argKeys[0] ?? "query"]: normalizedQuery,
     },
   };
+}
+
+function resolveRecallBinding(
+  config: Record<string, unknown>
+): { enabled: boolean; argKeys: string[] } {
+  const intent = asObject(config.intent);
+  const recallBinding = asObject(intent.recallBinding);
+  const argKeys = normalizeStringArray(recallBinding.argKeys);
+  return {
+    enabled:
+      typeof recallBinding.enabled === "boolean" ? recallBinding.enabled : true,
+    argKeys: argKeys.length > 0 ? argKeys : ["query"],
+  };
+}
+
+function mapQueryFilterModeToGatherMatchMode(
+  mode?: QueryContentFilterMode
+): "term_and_word_boundary" | "contains" | "smart" | undefined {
+  if (mode === QueryContentFilterMode.TERM_AND_WORD_BOUNDARY) {
+    return "term_and_word_boundary";
+  }
+  if (mode === QueryContentFilterMode.CONTAINS) {
+    return "contains";
+  }
+  if (mode === QueryContentFilterMode.SMART) {
+    return "smart";
+  }
+  return undefined;
 }
 
 function resolveGatherOutput(
@@ -2058,6 +2182,22 @@ function resolveGatherKeywordFilter(
   return asObject(filters.keyword);
 }
 
+function resolveGatherDriverFilter(
+  config: Record<string, unknown>
+): Record<string, unknown> {
+  const topLevelFilter = asObject(config.filter);
+  if (Object.keys(topLevelFilter).length > 0) {
+    return topLevelFilter;
+  }
+  const driverConfig = asObject(config.driver);
+  const legacyDriverFilter = asObject(driverConfig.filter);
+  if (Object.keys(legacyDriverFilter).length > 0) {
+    return legacyDriverFilter;
+  }
+  const playwrightConfig = asObject(config.playwright);
+  return asObject(playwrightConfig.filter);
+}
+
 function normalizeGatherDriverOption(
   config: Record<string, unknown>,
   driver: GatherSocialDriver
@@ -2076,6 +2216,34 @@ function normalizeGatherDriverOption(
     ...playwright,
     ...rest,
   };
+}
+
+function normalizeKeywordFilterFields(
+  filter: Record<string, unknown>
+): void {
+  const includeFields = normalizeStringArray(filter.includeFields);
+  const excludeFields = normalizeStringArray(filter.excludeFields);
+  const legacyScopeFields = normalizeStringArray(filter.scopeFields);
+  const legacyIncludeUrl = typeof filter.includeUrl === "boolean" ? filter.includeUrl : null;
+
+  if (includeFields.length > 0) {
+    filter.includeFields = includeFields;
+  } else if (legacyScopeFields.length > 0) {
+    filter.includeFields = legacyScopeFields;
+  } else {
+    delete filter.includeFields;
+  }
+
+  if (excludeFields.length > 0) {
+    filter.excludeFields = excludeFields;
+  } else if (legacyIncludeUrl === false) {
+    filter.excludeFields = ["url"];
+  } else {
+    delete filter.excludeFields;
+  }
+
+  delete filter.scopeFields;
+  delete filter.includeUrl;
 }
 
 function applyGatherProxyConfig(

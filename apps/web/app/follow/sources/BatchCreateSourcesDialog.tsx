@@ -2,7 +2,7 @@
 
 import { type ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Minus, Plus, PlusIcon, X } from "lucide-react";
+import { Link2, Loader2, Minus, Plus, PlusIcon, Unlink2, X } from "lucide-react";
 import { toast } from "sonner";
 
 import type { Proxy } from "@/app/generated/prisma";
@@ -131,6 +131,23 @@ function toScriptArgs(entries: ScriptArgEntry[]): Record<string, string> {
     .map((entry) => ({ key: entry.key.trim(), value: entry.value.trim() }))
     .filter((entry) => entry.key.length > 0);
   return Object.fromEntries(pairs.map((entry) => [entry.key, entry.value]));
+}
+
+function normalizeBindingArgKeys(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return Array.from(
+    new Set(
+      value
+        .map((item) => String(item ?? "").trim())
+        .filter(Boolean)
+    )
+  );
+}
+
+function getRecallBindingArgKeys(config: Record<string, unknown>): string[] {
+  const enabled = getByPath(config, "intent.recallBinding.enabled");
+  if (enabled === false) return [];
+  return normalizeBindingArgKeys(getByPath(config, "intent.recallBinding.argKeys"));
 }
 
 function groupedByCategory(templates: BatchTemplate[]) {
@@ -1020,29 +1037,60 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
                                         (entry, index, list) => (
                                           <div
                                             key={`${template.key}-arg-${index}`}
-                                            className="grid grid-cols-[1fr_1fr_auto_auto] gap-2"
+                                            className="grid grid-cols-[1fr_1fr_auto_auto_auto] gap-2"
                                           >
                                             <Input
                                               placeholder="key"
                                               value={entry.key}
                                               onChange={(event) => {
+                                                const currentConfig = getCurrentConfig(template);
+                                                const currentBoundKeys =
+                                                  getRecallBindingArgKeys(currentConfig);
                                                 const next = toScriptArgEntries(
-                                                  getByPath(getCurrentConfig(template), "intent.args")
+                                                  getByPath(currentConfig, "intent.args")
                                                 );
+                                                const oldKey = next[index]?.key.trim();
+                                                const newKey = event.target.value;
                                                 next[index] = {
                                                   ...next[index],
-                                                  key: event.target.value,
+                                                  key: newKey,
                                                 };
                                                 handleConfigChange(
                                                   template.key,
                                                   "intent.args",
                                                   toScriptArgs(next)
                                                 );
+                                                if (oldKey && currentBoundKeys.includes(oldKey)) {
+                                                  const mapped = currentBoundKeys
+                                                    .map((item) =>
+                                                      item === oldKey ? newKey.trim() : item
+                                                    )
+                                                    .filter(Boolean);
+                                                  const nextKeys = Array.from(new Set(mapped));
+                                                  handleConfigChange(
+                                                    template.key,
+                                                    "intent.recallBinding.argKeys",
+                                                    nextKeys
+                                                  );
+                                                  handleConfigChange(
+                                                    template.key,
+                                                    "intent.recallBinding.enabled",
+                                                    nextKeys.length > 0
+                                                  );
+                                                }
                                               }}
                                             />
                                             <Input
                                               placeholder="value"
                                               value={entry.value}
+                                              disabled={(() => {
+                                                const normalizedEntryKey = entry.key.trim();
+                                                if (!normalizedEntryKey) return false;
+                                                const boundKeys = getRecallBindingArgKeys(
+                                                  getCurrentConfig(template)
+                                                );
+                                                return boundKeys.includes(normalizedEntryKey);
+                                              })()}
                                               onChange={(event) => {
                                                 const next = toScriptArgEntries(
                                                   getByPath(getCurrentConfig(template), "intent.args")
@@ -1058,6 +1106,61 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
                                                 );
                                               }}
                                             />
+                                            {(() => {
+                                              const normalizedEntryKey = entry.key.trim();
+                                              const boundKeys = getRecallBindingArgKeys(
+                                                getCurrentConfig(template)
+                                              );
+                                              const isBound =
+                                                normalizedEntryKey.length > 0 &&
+                                                boundKeys.includes(normalizedEntryKey);
+                                              return (
+                                                <Button
+                                                  type="button"
+                                                  variant={isBound ? "default" : "outline"}
+                                                  size="icon"
+                                                  aria-label="Toggle recall binding"
+                                                  title={
+                                                    isBound
+                                                      ? "已绑定召回词，点击解除"
+                                                      : "绑定召回词"
+                                                  }
+                                                  disabled={!normalizedEntryKey}
+                                                  onClick={() => {
+                                                    if (!normalizedEntryKey) return;
+                                                    const currentBound = getRecallBindingArgKeys(
+                                                      getCurrentConfig(template)
+                                                    );
+                                                    const nextKeys = isBound
+                                                      ? currentBound.filter(
+                                                          (item) => item !== normalizedEntryKey
+                                                        )
+                                                      : Array.from(
+                                                          new Set([
+                                                            ...currentBound,
+                                                            normalizedEntryKey,
+                                                          ])
+                                                        );
+                                                    handleConfigChange(
+                                                      template.key,
+                                                      "intent.recallBinding.argKeys",
+                                                      nextKeys
+                                                    );
+                                                    handleConfigChange(
+                                                      template.key,
+                                                      "intent.recallBinding.enabled",
+                                                      nextKeys.length > 0
+                                                    );
+                                                  }}
+                                                >
+                                                  {isBound ? (
+                                                    <Link2 className="size-4" />
+                                                  ) : (
+                                                    <Unlink2 className="size-4" />
+                                                  )}
+                                                </Button>
+                                              );
+                                            })()}
                                             <Button
                                               type="button"
                                               variant="outline"
@@ -1085,14 +1188,37 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
                                               disabled={list.length <= 1}
                                               onClick={() => {
                                                 if (list.length <= 1) return;
-                                                const next = toScriptArgEntries(
-                                                  getByPath(getCurrentConfig(template), "intent.args")
-                                                ).filter((_, itemIndex) => itemIndex !== index);
+                                                const currentConfig = getCurrentConfig(template);
+                                                const currentBoundKeys =
+                                                  getRecallBindingArgKeys(currentConfig);
+                                                const currentArgs = toScriptArgEntries(
+                                                  getByPath(currentConfig, "intent.args")
+                                                );
+                                                const removingKey =
+                                                  currentArgs[index]?.key.trim();
+                                                const next = currentArgs.filter(
+                                                  (_, itemIndex) => itemIndex !== index
+                                                );
                                                 handleConfigChange(
                                                   template.key,
                                                   "intent.args",
                                                   toScriptArgs(next)
                                                 );
+                                                if (removingKey && currentBoundKeys.includes(removingKey)) {
+                                                  const nextKeys = currentBoundKeys.filter(
+                                                    (item) => item !== removingKey
+                                                  );
+                                                  handleConfigChange(
+                                                    template.key,
+                                                    "intent.recallBinding.argKeys",
+                                                    nextKeys
+                                                  );
+                                                  handleConfigChange(
+                                                    template.key,
+                                                    "intent.recallBinding.enabled",
+                                                    nextKeys.length > 0
+                                                  );
+                                                }
                                               }}
                                             >
                                               <Minus className="size-4" />
@@ -1101,6 +1227,9 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
                                         )
                                       )}
                                     </div>
+                                    <p className="text-xs text-muted-foreground">
+                                      顺序：key | value | 召回词关联 | + | -（绑定状态下 value 不可编辑）。
+                                    </p>
                                   </div>
 
                                 </div>

@@ -16,6 +16,13 @@ type KeywordWithCategory = Prisma.KeywordGetPayload<{
   include: { category: true };
 }>;
 
+const LANGUAGE_LABELS: Record<string, string> = {
+  zh: "Chinese (zh)",
+  en: "English (en)",
+  ja: "Japanese (ja)",
+  auto: "Auto (auto)",
+};
+
 const KeywordsTable = ({
   keywords,
   categories,
@@ -31,14 +38,39 @@ const KeywordsTable = ({
       render: (keyword) => keyword.name,
     },
     {
-      key: "lang",
-      label: "Lang",
-      render: (keyword) => <Badge variant="outline">{keyword.lang}</Badge>,
-    },
-    {
       key: "category",
       label: "Category",
       render: (keyword) => keyword.category?.name || "-",
+    },
+    {
+      key: "description",
+      label: "Description",
+      className: "max-w-xs",
+      render: (keyword) => (
+        <div className="whitespace-normal">{keyword.description || "-"}</div>
+      ),
+    },
+    {
+      key: "lang",
+      label: "Lang",
+      className: "max-w-xs",
+      render: (keyword) => (
+        <div className="flex flex-wrap gap-1">
+          {(keyword.deriveLanguages ?? []).length > 0 ? (
+            keyword.deriveLanguages.map((language) => (
+              <Badge key={language} variant="outline">
+                {LANGUAGE_LABELS[language] ?? language}
+              </Badge>
+            ))
+          ) : keyword.lang ? (
+            <Badge variant="outline">
+              {LANGUAGE_LABELS[keyword.lang] ?? keyword.lang}
+            </Badge>
+          ) : (
+            <span className="text-muted-foreground">-</span>
+          )}
+        </div>
+      ),
     },
     {
       key: "includes",
@@ -48,35 +80,6 @@ const KeywordsTable = ({
           {keyword.includes.map((include) => (
             <Badge key={include} variant="outline">
               {include}
-            </Badge>
-          ))}
-        </div>
-      ),
-    },
-    {
-      key: "synonyms",
-      label: "Scoring Terms",
-      render: (keyword) => (
-        <div className="flex flex-wrap gap-1 max-w-md">
-          {keyword.synonyms.map((synonym) => (
-            <Badge key={synonym} variant="secondary">
-              {synonym}
-            </Badge>
-          ))}
-          {keyword.enableAiExpand ? (
-            <Badge variant="outline">AI Expand On</Badge>
-          ) : null}
-        </div>
-      ),
-    },
-    {
-      key: "excludes",
-      label: "Exclusion Terms",
-      render: (keyword) => (
-        <div className="flex flex-wrap gap-1 max-w-2xl">
-          {keyword.excludes.map((exclude) => (
-            <Badge key={exclude} variant="outline">
-              {exclude}
             </Badge>
           ))}
         </div>
