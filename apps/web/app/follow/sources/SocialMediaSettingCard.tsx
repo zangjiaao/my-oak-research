@@ -98,7 +98,11 @@ const SocialMediaSettingCard = () => {
           <Skeleton className="h-12 w-full" />
         </div>
       ) : (
-        <SocialMediaSources sources={dataForTable} proxies={proxies} />
+        <SocialMediaSources
+          sources={dataForTable}
+          proxies={proxies}
+          allSourceNames={socialMediaSources.map((source) => source.name)}
+        />
       )}
     </SettingCard>
   );

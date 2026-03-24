@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { PencilIcon, TrashIcon, PlusIcon, Search } from "lucide-react";
+import { Copy, PencilIcon, TrashIcon, PlusIcon, Search } from "lucide-react";
 import {
   SettingCard,
   DataTable,
@@ -16,6 +16,7 @@ import { useFollow } from "@/hooks/useFollow";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SourceWithRelations } from "@/lib/types";
 import { classifySourceCategory } from "@/lib/source-taxonomy";
+import { reserveCopySourceName } from "./source-copy-name";
 
 const SEARCH_PLATFORM_LABELS: Record<string, string> = {
   PARALLEL: "Parallel.ai",
@@ -57,17 +58,28 @@ const SearchEngineSettingCard = () => {
   const [editingSource, setEditingSource] = useState<
     RetrievalSource | undefined
   >(undefined);
+  const [duplicatingSource, setDuplicatingSource] = useState<
+    RetrievalSource | undefined
+  >(undefined);
 
   const { sources, proxies, sourcesQuery } = useFollow();
   const { isLoading, error } = sourcesQuery;
 
   const handleEdit = (source: RetrievalSource) => {
+    setDuplicatingSource(undefined);
     setEditingSource(source);
+    setDialogOpen(true);
+  };
+
+  const handleDuplicate = (source: RetrievalSource) => {
+    setEditingSource(undefined);
+    setDuplicatingSource(source);
     setDialogOpen(true);
   };
 
   const handleAdd = () => {
     setEditingSource(undefined);
+    setDuplicatingSource(undefined);
     setDialogOpen(true);
   };
 
@@ -110,6 +122,12 @@ const SearchEngineSettingCard = () => {
         .toLowerCase()
         .includes(searchQuery.toLowerCase())
   );
+  const duplicateName = duplicatingSource
+    ? reserveCopySourceName(
+        duplicatingSource.name,
+        searchEngineSources.map((source) => source.name)
+      )
+    : undefined;
 
   const columns: DataTableColumn<RetrievalSource>[] = [
     {
@@ -143,6 +161,14 @@ const SearchEngineSettingCard = () => {
   ];
 
   const actions: DataTableAction<RetrievalSource>[] = [
+    {
+      type: "custom",
+      render: (source) => (
+        <Button size="sm" variant="outline" onClick={() => handleDuplicate(source)}>
+          <Copy className="size-3" />
+        </Button>
+      ),
+    },
     {
       type: "edit",
       render: (source) => (
@@ -196,13 +222,16 @@ const SearchEngineSettingCard = () => {
       <SourceDialog
         sourceType="RETRIEVAL"
         sourceIsDarknet={false}
-        source={editingSource}
+        source={duplicatingSource ?? editingSource}
+        mode={duplicatingSource ? "duplicate" : "auto"}
+        duplicateName={duplicateName}
         proxies={proxies}
         open={isDialogOpen}
         onOpenChange={(open) => {
           setDialogOpen(open);
           if (!open) {
             setEditingSource(undefined);
+            setDuplicatingSource(undefined);
           }
         }}
       />
