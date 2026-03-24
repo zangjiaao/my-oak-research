@@ -2698,6 +2698,13 @@ def _apply_output_field_map(item: CleanItem, source: dict[str, Any], output_fiel
                 mapped_id = mapped_content.get("id")
                 if isinstance(mapped_id, str) and mapped_id.strip():
                     cloned.recordId = mapped_id.strip()
+                else:
+                    base_record_id = (
+                        cloned.recordId.strip()
+                        if isinstance(cloned.recordId, str) and cloned.recordId.strip()
+                        else item.sourceId
+                    )
+                    cloned.recordId = f"{base_record_id}:{index}"
                 mapped_time = mapped_content.get("time", mapped_content.get("created_at"))
                 parsed_time = _parse_record_time(mapped_time)
                 if parsed_time is not None:
