@@ -59,15 +59,14 @@ npm --workspace worker run check-types
 
 ## 3) Environment and Data Setup
 
-- Use shared env directory via `OAK_ENV_DIR` (for example `D:\Coding\my-oak-research-env`).
-- Canonical env examples live in `config/env`.
-- Store app env files there:
-  - `.env.common`
-  - `.env.apps.web`
-  - `.env.apps.worker`
-  - (optional) `.env.apps.gather`
-- Use `npm run env:init` to initialize shared env files from `config/env`.
-- Runtime env loading is done by `dotenvx` through `scripts/run-with-dotenvx.mjs`.
+- Canonical env examples live in each workspace:
+  - `apps/web/.env.example`
+  - `apps/worker/.env.example`
+  - `apps/gather/.env.example`
+- Create app env files by copying examples to `.env` in each workspace.
+- Runtime env loading is done inside workspace scripts via `dotenvx run -- ...`.
+- Recommended security hardening: encrypt each app `.env` with dotenvx (`dotenvx encrypt -f apps/<app>/.env`).
+- Never commit `.env.keys`; keep dotenvx private keys in secure local/CI secret storage.
 - Local DB/Redis/MinIO values should match `docker/local/docker-compose.dev.yml`.
 - Prisma operations should run from repo root:
 

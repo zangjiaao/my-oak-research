@@ -3886,12 +3886,14 @@ export namespace Prisma {
   export type SourceCountOutputType = {
     presetBindings: number
     queries: number
+    derivedKeywords: number
     querySourcePolicies: number
   }
 
   export type SourceCountOutputTypeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     presetBindings?: boolean | SourceCountOutputTypeCountPresetBindingsArgs
     queries?: boolean | SourceCountOutputTypeCountQueriesArgs
+    derivedKeywords?: boolean | SourceCountOutputTypeCountDerivedKeywordsArgs
     querySourcePolicies?: boolean | SourceCountOutputTypeCountQuerySourcePoliciesArgs
   }
 
@@ -3918,6 +3920,13 @@ export namespace Prisma {
    */
   export type SourceCountOutputTypeCountQueriesArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     where?: QueryWhereInput
+  }
+
+  /**
+   * SourceCountOutputType without action
+   */
+  export type SourceCountOutputTypeCountDerivedKeywordsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: KeywordWhereInput
   }
 
   /**
@@ -5353,6 +5362,7 @@ export namespace Prisma {
     categoryId: string | null
     enableAiExpand: boolean | null
     active: boolean | null
+    deriveSourceId: string | null
     createdAt: Date | null
     updatedAt: Date | null
   }
@@ -5365,6 +5375,7 @@ export namespace Prisma {
     categoryId: string | null
     enableAiExpand: boolean | null
     active: boolean | null
+    deriveSourceId: string | null
     createdAt: Date | null
     updatedAt: Date | null
   }
@@ -5381,6 +5392,7 @@ export namespace Prisma {
     enableAiExpand: number
     synonyms: number
     active: number
+    deriveSourceId: number
     createdAt: number
     updatedAt: number
     _all: number
@@ -5395,6 +5407,7 @@ export namespace Prisma {
     categoryId?: true
     enableAiExpand?: true
     active?: true
+    deriveSourceId?: true
     createdAt?: true
     updatedAt?: true
   }
@@ -5407,6 +5420,7 @@ export namespace Prisma {
     categoryId?: true
     enableAiExpand?: true
     active?: true
+    deriveSourceId?: true
     createdAt?: true
     updatedAt?: true
   }
@@ -5423,6 +5437,7 @@ export namespace Prisma {
     enableAiExpand?: true
     synonyms?: true
     active?: true
+    deriveSourceId?: true
     createdAt?: true
     updatedAt?: true
     _all?: true
@@ -5512,6 +5527,7 @@ export namespace Prisma {
     enableAiExpand: boolean
     synonyms: string[]
     active: boolean
+    deriveSourceId: string | null
     createdAt: Date
     updatedAt: Date
     _count: KeywordCountAggregateOutputType | null
@@ -5545,9 +5561,11 @@ export namespace Prisma {
     enableAiExpand?: boolean
     synonyms?: boolean
     active?: boolean
+    deriveSourceId?: boolean
     createdAt?: boolean
     updatedAt?: boolean
     category?: boolean | Keyword$categoryArgs<ExtArgs>
+    deriveSource?: boolean | Keyword$deriveSourceArgs<ExtArgs>
     queries?: boolean | Keyword$queriesArgs<ExtArgs>
     contentKeywords?: boolean | Keyword$contentKeywordsArgs<ExtArgs>
     contentSubjectMatches?: boolean | Keyword$contentSubjectMatchesArgs<ExtArgs>
@@ -5566,9 +5584,11 @@ export namespace Prisma {
     enableAiExpand?: boolean
     synonyms?: boolean
     active?: boolean
+    deriveSourceId?: boolean
     createdAt?: boolean
     updatedAt?: boolean
     category?: boolean | Keyword$categoryArgs<ExtArgs>
+    deriveSource?: boolean | Keyword$deriveSourceArgs<ExtArgs>
   }, ExtArgs["result"]["keyword"]>
 
   export type KeywordSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
@@ -5583,9 +5603,11 @@ export namespace Prisma {
     enableAiExpand?: boolean
     synonyms?: boolean
     active?: boolean
+    deriveSourceId?: boolean
     createdAt?: boolean
     updatedAt?: boolean
     category?: boolean | Keyword$categoryArgs<ExtArgs>
+    deriveSource?: boolean | Keyword$deriveSourceArgs<ExtArgs>
   }, ExtArgs["result"]["keyword"]>
 
   export type KeywordSelectScalar = {
@@ -5600,13 +5622,15 @@ export namespace Prisma {
     enableAiExpand?: boolean
     synonyms?: boolean
     active?: boolean
+    deriveSourceId?: boolean
     createdAt?: boolean
     updatedAt?: boolean
   }
 
-  export type KeywordOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "name" | "description" | "lang" | "categoryId" | "includes" | "excludes" | "deriveLanguages" | "enableAiExpand" | "synonyms" | "active" | "createdAt" | "updatedAt", ExtArgs["result"]["keyword"]>
+  export type KeywordOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "name" | "description" | "lang" | "categoryId" | "includes" | "excludes" | "deriveLanguages" | "enableAiExpand" | "synonyms" | "active" | "deriveSourceId" | "createdAt" | "updatedAt", ExtArgs["result"]["keyword"]>
   export type KeywordInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     category?: boolean | Keyword$categoryArgs<ExtArgs>
+    deriveSource?: boolean | Keyword$deriveSourceArgs<ExtArgs>
     queries?: boolean | Keyword$queriesArgs<ExtArgs>
     contentKeywords?: boolean | Keyword$contentKeywordsArgs<ExtArgs>
     contentSubjectMatches?: boolean | Keyword$contentSubjectMatchesArgs<ExtArgs>
@@ -5614,15 +5638,18 @@ export namespace Prisma {
   }
   export type KeywordIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     category?: boolean | Keyword$categoryArgs<ExtArgs>
+    deriveSource?: boolean | Keyword$deriveSourceArgs<ExtArgs>
   }
   export type KeywordIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     category?: boolean | Keyword$categoryArgs<ExtArgs>
+    deriveSource?: boolean | Keyword$deriveSourceArgs<ExtArgs>
   }
 
   export type $KeywordPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     name: "Keyword"
     objects: {
       category: Prisma.$CategoryPayload<ExtArgs> | null
+      deriveSource: Prisma.$SourcePayload<ExtArgs> | null
       queries: Prisma.$QueryPayload<ExtArgs>[]
       contentKeywords: Prisma.$ContentKeywordPayload<ExtArgs>[]
       contentSubjectMatches: Prisma.$ContentSubjectMatchPayload<ExtArgs>[]
@@ -5639,6 +5666,7 @@ export namespace Prisma {
       enableAiExpand: boolean
       synonyms: string[]
       active: boolean
+      deriveSourceId: string | null
       createdAt: Date
       updatedAt: Date
     }, ExtArgs["result"]["keyword"]>
@@ -6036,6 +6064,7 @@ export namespace Prisma {
   export interface Prisma__KeywordClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
     readonly [Symbol.toStringTag]: "PrismaPromise"
     category<T extends Keyword$categoryArgs<ExtArgs> = {}>(args?: Subset<T, Keyword$categoryArgs<ExtArgs>>): Prisma__CategoryClient<$Result.GetResult<Prisma.$CategoryPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+    deriveSource<T extends Keyword$deriveSourceArgs<ExtArgs> = {}>(args?: Subset<T, Keyword$deriveSourceArgs<ExtArgs>>): Prisma__SourceClient<$Result.GetResult<Prisma.$SourcePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
     queries<T extends Keyword$queriesArgs<ExtArgs> = {}>(args?: Subset<T, Keyword$queriesArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$QueryPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     contentKeywords<T extends Keyword$contentKeywordsArgs<ExtArgs> = {}>(args?: Subset<T, Keyword$contentKeywordsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ContentKeywordPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     contentSubjectMatches<T extends Keyword$contentSubjectMatchesArgs<ExtArgs> = {}>(args?: Subset<T, Keyword$contentSubjectMatchesArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ContentSubjectMatchPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
@@ -6079,6 +6108,7 @@ export namespace Prisma {
     readonly enableAiExpand: FieldRef<"Keyword", 'Boolean'>
     readonly synonyms: FieldRef<"Keyword", 'String[]'>
     readonly active: FieldRef<"Keyword", 'Boolean'>
+    readonly deriveSourceId: FieldRef<"Keyword", 'String'>
     readonly createdAt: FieldRef<"Keyword", 'DateTime'>
     readonly updatedAt: FieldRef<"Keyword", 'DateTime'>
   }
@@ -6493,6 +6523,25 @@ export namespace Prisma {
      */
     include?: CategoryInclude<ExtArgs> | null
     where?: CategoryWhereInput
+  }
+
+  /**
+   * Keyword.deriveSource
+   */
+  export type Keyword$deriveSourceArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Source
+     */
+    select?: SourceSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Source
+     */
+    omit?: SourceOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: SourceInclude<ExtArgs> | null
+    where?: SourceWhereInput
   }
 
   /**
@@ -9172,6 +9221,7 @@ export namespace Prisma {
     identity?: boolean | Source$identityArgs<ExtArgs>
     presetBindings?: boolean | Source$presetBindingsArgs<ExtArgs>
     queries?: boolean | Source$queriesArgs<ExtArgs>
+    derivedKeywords?: boolean | Source$derivedKeywordsArgs<ExtArgs>
     querySourcePolicies?: boolean | Source$querySourcePoliciesArgs<ExtArgs>
     _count?: boolean | SourceCountOutputTypeDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["source"]>
@@ -9239,6 +9289,7 @@ export namespace Prisma {
     identity?: boolean | Source$identityArgs<ExtArgs>
     presetBindings?: boolean | Source$presetBindingsArgs<ExtArgs>
     queries?: boolean | Source$queriesArgs<ExtArgs>
+    derivedKeywords?: boolean | Source$derivedKeywordsArgs<ExtArgs>
     querySourcePolicies?: boolean | Source$querySourcePoliciesArgs<ExtArgs>
     _count?: boolean | SourceCountOutputTypeDefaultArgs<ExtArgs>
   }
@@ -9263,6 +9314,7 @@ export namespace Prisma {
       identity: Prisma.$SourceIdentityPayload<ExtArgs> | null
       presetBindings: Prisma.$SourcePresetBindingPayload<ExtArgs>[]
       queries: Prisma.$QueryPayload<ExtArgs>[]
+      derivedKeywords: Prisma.$KeywordPayload<ExtArgs>[]
       querySourcePolicies: Prisma.$QuerySourcePolicyPayload<ExtArgs>[]
     }
     scalars: $Extensions.GetPayloadResult<{
@@ -9682,6 +9734,7 @@ export namespace Prisma {
     identity<T extends Source$identityArgs<ExtArgs> = {}>(args?: Subset<T, Source$identityArgs<ExtArgs>>): Prisma__SourceIdentityClient<$Result.GetResult<Prisma.$SourceIdentityPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
     presetBindings<T extends Source$presetBindingsArgs<ExtArgs> = {}>(args?: Subset<T, Source$presetBindingsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SourcePresetBindingPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     queries<T extends Source$queriesArgs<ExtArgs> = {}>(args?: Subset<T, Source$queriesArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$QueryPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    derivedKeywords<T extends Source$derivedKeywordsArgs<ExtArgs> = {}>(args?: Subset<T, Source$derivedKeywordsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$KeywordPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     querySourcePolicies<T extends Source$querySourcePoliciesArgs<ExtArgs> = {}>(args?: Subset<T, Source$querySourcePoliciesArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$QuerySourcePolicyPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
@@ -10299,6 +10352,30 @@ export namespace Prisma {
     take?: number
     skip?: number
     distinct?: QueryScalarFieldEnum | QueryScalarFieldEnum[]
+  }
+
+  /**
+   * Source.derivedKeywords
+   */
+  export type Source$derivedKeywordsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Keyword
+     */
+    select?: KeywordSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Keyword
+     */
+    omit?: KeywordOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: KeywordInclude<ExtArgs> | null
+    where?: KeywordWhereInput
+    orderBy?: KeywordOrderByWithRelationInput | KeywordOrderByWithRelationInput[]
+    cursor?: KeywordWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: KeywordScalarFieldEnum | KeywordScalarFieldEnum[]
   }
 
   /**
@@ -38647,6 +38724,7 @@ export namespace Prisma {
     enableAiExpand: 'enableAiExpand',
     synonyms: 'synonyms',
     active: 'active',
+    deriveSourceId: 'deriveSourceId',
     createdAt: 'createdAt',
     updatedAt: 'updatedAt'
   };
@@ -39472,9 +39550,11 @@ export namespace Prisma {
     enableAiExpand?: BoolFilter<"Keyword"> | boolean
     synonyms?: StringNullableListFilter<"Keyword">
     active?: BoolFilter<"Keyword"> | boolean
+    deriveSourceId?: StringNullableFilter<"Keyword"> | string | null
     createdAt?: DateTimeFilter<"Keyword"> | Date | string
     updatedAt?: DateTimeFilter<"Keyword"> | Date | string
     category?: XOR<CategoryNullableScalarRelationFilter, CategoryWhereInput> | null
+    deriveSource?: XOR<SourceNullableScalarRelationFilter, SourceWhereInput> | null
     queries?: QueryListRelationFilter
     contentKeywords?: ContentKeywordListRelationFilter
     contentSubjectMatches?: ContentSubjectMatchListRelationFilter
@@ -39492,9 +39572,11 @@ export namespace Prisma {
     enableAiExpand?: SortOrder
     synonyms?: SortOrder
     active?: SortOrder
+    deriveSourceId?: SortOrderInput | SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
     category?: CategoryOrderByWithRelationInput
+    deriveSource?: SourceOrderByWithRelationInput
     queries?: QueryOrderByRelationAggregateInput
     contentKeywords?: ContentKeywordOrderByRelationAggregateInput
     contentSubjectMatches?: ContentSubjectMatchOrderByRelationAggregateInput
@@ -39515,9 +39597,11 @@ export namespace Prisma {
     enableAiExpand?: BoolFilter<"Keyword"> | boolean
     synonyms?: StringNullableListFilter<"Keyword">
     active?: BoolFilter<"Keyword"> | boolean
+    deriveSourceId?: StringNullableFilter<"Keyword"> | string | null
     createdAt?: DateTimeFilter<"Keyword"> | Date | string
     updatedAt?: DateTimeFilter<"Keyword"> | Date | string
     category?: XOR<CategoryNullableScalarRelationFilter, CategoryWhereInput> | null
+    deriveSource?: XOR<SourceNullableScalarRelationFilter, SourceWhereInput> | null
     queries?: QueryListRelationFilter
     contentKeywords?: ContentKeywordListRelationFilter
     contentSubjectMatches?: ContentSubjectMatchListRelationFilter
@@ -39535,6 +39619,7 @@ export namespace Prisma {
     enableAiExpand?: SortOrder
     synonyms?: SortOrder
     active?: SortOrder
+    deriveSourceId?: SortOrderInput | SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
     _count?: KeywordCountOrderByAggregateInput
@@ -39557,6 +39642,7 @@ export namespace Prisma {
     enableAiExpand?: BoolWithAggregatesFilter<"Keyword"> | boolean
     synonyms?: StringNullableListFilter<"Keyword">
     active?: BoolWithAggregatesFilter<"Keyword"> | boolean
+    deriveSourceId?: StringNullableWithAggregatesFilter<"Keyword"> | string | null
     createdAt?: DateTimeWithAggregatesFilter<"Keyword"> | Date | string
     updatedAt?: DateTimeWithAggregatesFilter<"Keyword"> | Date | string
   }
@@ -39727,6 +39813,7 @@ export namespace Prisma {
     identity?: XOR<SourceIdentityNullableScalarRelationFilter, SourceIdentityWhereInput> | null
     presetBindings?: SourcePresetBindingListRelationFilter
     queries?: QueryListRelationFilter
+    derivedKeywords?: KeywordListRelationFilter
     querySourcePolicies?: QuerySourcePolicyListRelationFilter
   }
 
@@ -39753,6 +39840,7 @@ export namespace Prisma {
     identity?: SourceIdentityOrderByWithRelationInput
     presetBindings?: SourcePresetBindingOrderByRelationAggregateInput
     queries?: QueryOrderByRelationAggregateInput
+    derivedKeywords?: KeywordOrderByRelationAggregateInput
     querySourcePolicies?: QuerySourcePolicyOrderByRelationAggregateInput
   }
 
@@ -39782,6 +39870,7 @@ export namespace Prisma {
     identity?: XOR<SourceIdentityNullableScalarRelationFilter, SourceIdentityWhereInput> | null
     presetBindings?: SourcePresetBindingListRelationFilter
     queries?: QueryListRelationFilter
+    derivedKeywords?: KeywordListRelationFilter
     querySourcePolicies?: QuerySourcePolicyListRelationFilter
   }, "id" | "name">
 
@@ -41788,6 +41877,7 @@ export namespace Prisma {
     createdAt?: Date | string
     updatedAt?: Date | string
     category?: CategoryCreateNestedOneWithoutKeywordsInput
+    deriveSource?: SourceCreateNestedOneWithoutDerivedKeywordsInput
     queries?: QueryCreateNestedManyWithoutKeywordsInput
     contentKeywords?: ContentKeywordCreateNestedManyWithoutKeywordInput
     contentSubjectMatches?: ContentSubjectMatchCreateNestedManyWithoutKeywordInput
@@ -41805,6 +41895,7 @@ export namespace Prisma {
     enableAiExpand?: boolean
     synonyms?: KeywordCreatesynonymsInput | string[]
     active?: boolean
+    deriveSourceId?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
     queries?: QueryUncheckedCreateNestedManyWithoutKeywordsInput
@@ -41826,6 +41917,7 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     category?: CategoryUpdateOneWithoutKeywordsNestedInput
+    deriveSource?: SourceUpdateOneWithoutDerivedKeywordsNestedInput
     queries?: QueryUpdateManyWithoutKeywordsNestedInput
     contentKeywords?: ContentKeywordUpdateManyWithoutKeywordNestedInput
     contentSubjectMatches?: ContentSubjectMatchUpdateManyWithoutKeywordNestedInput
@@ -41843,6 +41935,7 @@ export namespace Prisma {
     enableAiExpand?: BoolFieldUpdateOperationsInput | boolean
     synonyms?: KeywordUpdatesynonymsInput | string[]
     active?: BoolFieldUpdateOperationsInput | boolean
+    deriveSourceId?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     queries?: QueryUncheckedUpdateManyWithoutKeywordsNestedInput
@@ -41862,6 +41955,7 @@ export namespace Prisma {
     enableAiExpand?: boolean
     synonyms?: KeywordCreatesynonymsInput | string[]
     active?: boolean
+    deriveSourceId?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
   }
@@ -41893,6 +41987,7 @@ export namespace Prisma {
     enableAiExpand?: BoolFieldUpdateOperationsInput | boolean
     synonyms?: KeywordUpdatesynonymsInput | string[]
     active?: BoolFieldUpdateOperationsInput | boolean
+    deriveSourceId?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -42079,6 +42174,7 @@ export namespace Prisma {
     identity?: SourceIdentityCreateNestedOneWithoutSourceInput
     presetBindings?: SourcePresetBindingCreateNestedManyWithoutSourceInput
     queries?: QueryCreateNestedManyWithoutSourcesInput
+    derivedKeywords?: KeywordCreateNestedManyWithoutDeriveSourceInput
     querySourcePolicies?: QuerySourcePolicyCreateNestedManyWithoutSourceInput
   }
 
@@ -42103,6 +42199,7 @@ export namespace Prisma {
     identity?: SourceIdentityUncheckedCreateNestedOneWithoutSourceInput
     presetBindings?: SourcePresetBindingUncheckedCreateNestedManyWithoutSourceInput
     queries?: QueryUncheckedCreateNestedManyWithoutSourcesInput
+    derivedKeywords?: KeywordUncheckedCreateNestedManyWithoutDeriveSourceInput
     querySourcePolicies?: QuerySourcePolicyUncheckedCreateNestedManyWithoutSourceInput
   }
 
@@ -42127,6 +42224,7 @@ export namespace Prisma {
     identity?: SourceIdentityUpdateOneWithoutSourceNestedInput
     presetBindings?: SourcePresetBindingUpdateManyWithoutSourceNestedInput
     queries?: QueryUpdateManyWithoutSourcesNestedInput
+    derivedKeywords?: KeywordUpdateManyWithoutDeriveSourceNestedInput
     querySourcePolicies?: QuerySourcePolicyUpdateManyWithoutSourceNestedInput
   }
 
@@ -42151,6 +42249,7 @@ export namespace Prisma {
     identity?: SourceIdentityUncheckedUpdateOneWithoutSourceNestedInput
     presetBindings?: SourcePresetBindingUncheckedUpdateManyWithoutSourceNestedInput
     queries?: QueryUncheckedUpdateManyWithoutSourcesNestedInput
+    derivedKeywords?: KeywordUncheckedUpdateManyWithoutDeriveSourceNestedInput
     querySourcePolicies?: QuerySourcePolicyUncheckedUpdateManyWithoutSourceNestedInput
   }
 
@@ -44389,6 +44488,11 @@ export namespace Prisma {
     isNot?: CategoryWhereInput | null
   }
 
+  export type SourceNullableScalarRelationFilter = {
+    is?: SourceWhereInput | null
+    isNot?: SourceWhereInput | null
+  }
+
   export type QueryListRelationFilter = {
     every?: QueryWhereInput
     some?: QueryWhereInput
@@ -44431,6 +44535,7 @@ export namespace Prisma {
     enableAiExpand?: SortOrder
     synonyms?: SortOrder
     active?: SortOrder
+    deriveSourceId?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
   }
@@ -44443,6 +44548,7 @@ export namespace Prisma {
     categoryId?: SortOrder
     enableAiExpand?: SortOrder
     active?: SortOrder
+    deriveSourceId?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
   }
@@ -44455,6 +44561,7 @@ export namespace Prisma {
     categoryId?: SortOrder
     enableAiExpand?: SortOrder
     active?: SortOrder
+    deriveSourceId?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
   }
@@ -46284,6 +46391,12 @@ export namespace Prisma {
     connect?: CategoryWhereUniqueInput
   }
 
+  export type SourceCreateNestedOneWithoutDerivedKeywordsInput = {
+    create?: XOR<SourceCreateWithoutDerivedKeywordsInput, SourceUncheckedCreateWithoutDerivedKeywordsInput>
+    connectOrCreate?: SourceCreateOrConnectWithoutDerivedKeywordsInput
+    connect?: SourceWhereUniqueInput
+  }
+
   export type QueryCreateNestedManyWithoutKeywordsInput = {
     create?: XOR<QueryCreateWithoutKeywordsInput, QueryUncheckedCreateWithoutKeywordsInput> | QueryCreateWithoutKeywordsInput[] | QueryUncheckedCreateWithoutKeywordsInput[]
     connectOrCreate?: QueryCreateOrConnectWithoutKeywordsInput | QueryCreateOrConnectWithoutKeywordsInput[]
@@ -46356,6 +46469,16 @@ export namespace Prisma {
     delete?: CategoryWhereInput | boolean
     connect?: CategoryWhereUniqueInput
     update?: XOR<XOR<CategoryUpdateToOneWithWhereWithoutKeywordsInput, CategoryUpdateWithoutKeywordsInput>, CategoryUncheckedUpdateWithoutKeywordsInput>
+  }
+
+  export type SourceUpdateOneWithoutDerivedKeywordsNestedInput = {
+    create?: XOR<SourceCreateWithoutDerivedKeywordsInput, SourceUncheckedCreateWithoutDerivedKeywordsInput>
+    connectOrCreate?: SourceCreateOrConnectWithoutDerivedKeywordsInput
+    upsert?: SourceUpsertWithoutDerivedKeywordsInput
+    disconnect?: SourceWhereInput | boolean
+    delete?: SourceWhereInput | boolean
+    connect?: SourceWhereUniqueInput
+    update?: XOR<XOR<SourceUpdateToOneWithWhereWithoutDerivedKeywordsInput, SourceUpdateWithoutDerivedKeywordsInput>, SourceUncheckedUpdateWithoutDerivedKeywordsInput>
   }
 
   export type QueryUpdateManyWithoutKeywordsNestedInput = {
@@ -46793,6 +46916,13 @@ export namespace Prisma {
     connect?: QueryWhereUniqueInput | QueryWhereUniqueInput[]
   }
 
+  export type KeywordCreateNestedManyWithoutDeriveSourceInput = {
+    create?: XOR<KeywordCreateWithoutDeriveSourceInput, KeywordUncheckedCreateWithoutDeriveSourceInput> | KeywordCreateWithoutDeriveSourceInput[] | KeywordUncheckedCreateWithoutDeriveSourceInput[]
+    connectOrCreate?: KeywordCreateOrConnectWithoutDeriveSourceInput | KeywordCreateOrConnectWithoutDeriveSourceInput[]
+    createMany?: KeywordCreateManyDeriveSourceInputEnvelope
+    connect?: KeywordWhereUniqueInput | KeywordWhereUniqueInput[]
+  }
+
   export type QuerySourcePolicyCreateNestedManyWithoutSourceInput = {
     create?: XOR<QuerySourcePolicyCreateWithoutSourceInput, QuerySourcePolicyUncheckedCreateWithoutSourceInput> | QuerySourcePolicyCreateWithoutSourceInput[] | QuerySourcePolicyUncheckedCreateWithoutSourceInput[]
     connectOrCreate?: QuerySourcePolicyCreateOrConnectWithoutSourceInput | QuerySourcePolicyCreateOrConnectWithoutSourceInput[]
@@ -46841,6 +46971,13 @@ export namespace Prisma {
     create?: XOR<QueryCreateWithoutSourcesInput, QueryUncheckedCreateWithoutSourcesInput> | QueryCreateWithoutSourcesInput[] | QueryUncheckedCreateWithoutSourcesInput[]
     connectOrCreate?: QueryCreateOrConnectWithoutSourcesInput | QueryCreateOrConnectWithoutSourcesInput[]
     connect?: QueryWhereUniqueInput | QueryWhereUniqueInput[]
+  }
+
+  export type KeywordUncheckedCreateNestedManyWithoutDeriveSourceInput = {
+    create?: XOR<KeywordCreateWithoutDeriveSourceInput, KeywordUncheckedCreateWithoutDeriveSourceInput> | KeywordCreateWithoutDeriveSourceInput[] | KeywordUncheckedCreateWithoutDeriveSourceInput[]
+    connectOrCreate?: KeywordCreateOrConnectWithoutDeriveSourceInput | KeywordCreateOrConnectWithoutDeriveSourceInput[]
+    createMany?: KeywordCreateManyDeriveSourceInputEnvelope
+    connect?: KeywordWhereUniqueInput | KeywordWhereUniqueInput[]
   }
 
   export type QuerySourcePolicyUncheckedCreateNestedManyWithoutSourceInput = {
@@ -46963,6 +47100,20 @@ export namespace Prisma {
     deleteMany?: QueryScalarWhereInput | QueryScalarWhereInput[]
   }
 
+  export type KeywordUpdateManyWithoutDeriveSourceNestedInput = {
+    create?: XOR<KeywordCreateWithoutDeriveSourceInput, KeywordUncheckedCreateWithoutDeriveSourceInput> | KeywordCreateWithoutDeriveSourceInput[] | KeywordUncheckedCreateWithoutDeriveSourceInput[]
+    connectOrCreate?: KeywordCreateOrConnectWithoutDeriveSourceInput | KeywordCreateOrConnectWithoutDeriveSourceInput[]
+    upsert?: KeywordUpsertWithWhereUniqueWithoutDeriveSourceInput | KeywordUpsertWithWhereUniqueWithoutDeriveSourceInput[]
+    createMany?: KeywordCreateManyDeriveSourceInputEnvelope
+    set?: KeywordWhereUniqueInput | KeywordWhereUniqueInput[]
+    disconnect?: KeywordWhereUniqueInput | KeywordWhereUniqueInput[]
+    delete?: KeywordWhereUniqueInput | KeywordWhereUniqueInput[]
+    connect?: KeywordWhereUniqueInput | KeywordWhereUniqueInput[]
+    update?: KeywordUpdateWithWhereUniqueWithoutDeriveSourceInput | KeywordUpdateWithWhereUniqueWithoutDeriveSourceInput[]
+    updateMany?: KeywordUpdateManyWithWhereWithoutDeriveSourceInput | KeywordUpdateManyWithWhereWithoutDeriveSourceInput[]
+    deleteMany?: KeywordScalarWhereInput | KeywordScalarWhereInput[]
+  }
+
   export type QuerySourcePolicyUpdateManyWithoutSourceNestedInput = {
     create?: XOR<QuerySourcePolicyCreateWithoutSourceInput, QuerySourcePolicyUncheckedCreateWithoutSourceInput> | QuerySourcePolicyCreateWithoutSourceInput[] | QuerySourcePolicyUncheckedCreateWithoutSourceInput[]
     connectOrCreate?: QuerySourcePolicyCreateOrConnectWithoutSourceInput | QuerySourcePolicyCreateOrConnectWithoutSourceInput[]
@@ -47052,6 +47203,20 @@ export namespace Prisma {
     update?: QueryUpdateWithWhereUniqueWithoutSourcesInput | QueryUpdateWithWhereUniqueWithoutSourcesInput[]
     updateMany?: QueryUpdateManyWithWhereWithoutSourcesInput | QueryUpdateManyWithWhereWithoutSourcesInput[]
     deleteMany?: QueryScalarWhereInput | QueryScalarWhereInput[]
+  }
+
+  export type KeywordUncheckedUpdateManyWithoutDeriveSourceNestedInput = {
+    create?: XOR<KeywordCreateWithoutDeriveSourceInput, KeywordUncheckedCreateWithoutDeriveSourceInput> | KeywordCreateWithoutDeriveSourceInput[] | KeywordUncheckedCreateWithoutDeriveSourceInput[]
+    connectOrCreate?: KeywordCreateOrConnectWithoutDeriveSourceInput | KeywordCreateOrConnectWithoutDeriveSourceInput[]
+    upsert?: KeywordUpsertWithWhereUniqueWithoutDeriveSourceInput | KeywordUpsertWithWhereUniqueWithoutDeriveSourceInput[]
+    createMany?: KeywordCreateManyDeriveSourceInputEnvelope
+    set?: KeywordWhereUniqueInput | KeywordWhereUniqueInput[]
+    disconnect?: KeywordWhereUniqueInput | KeywordWhereUniqueInput[]
+    delete?: KeywordWhereUniqueInput | KeywordWhereUniqueInput[]
+    connect?: KeywordWhereUniqueInput | KeywordWhereUniqueInput[]
+    update?: KeywordUpdateWithWhereUniqueWithoutDeriveSourceInput | KeywordUpdateWithWhereUniqueWithoutDeriveSourceInput[]
+    updateMany?: KeywordUpdateManyWithWhereWithoutDeriveSourceInput | KeywordUpdateManyWithWhereWithoutDeriveSourceInput[]
+    deleteMany?: KeywordScalarWhereInput | KeywordScalarWhereInput[]
   }
 
   export type QuerySourcePolicyUncheckedUpdateManyWithoutSourceNestedInput = {
@@ -48836,6 +49001,7 @@ export namespace Prisma {
     active?: boolean
     createdAt?: Date | string
     updatedAt?: Date | string
+    deriveSource?: SourceCreateNestedOneWithoutDerivedKeywordsInput
     queries?: QueryCreateNestedManyWithoutKeywordsInput
     contentKeywords?: ContentKeywordCreateNestedManyWithoutKeywordInput
     contentSubjectMatches?: ContentSubjectMatchCreateNestedManyWithoutKeywordInput
@@ -48852,6 +49018,7 @@ export namespace Prisma {
     enableAiExpand?: boolean
     synonyms?: KeywordCreatesynonymsInput | string[]
     active?: boolean
+    deriveSourceId?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
     queries?: QueryUncheckedCreateNestedManyWithoutKeywordsInput
@@ -48900,6 +49067,7 @@ export namespace Prisma {
     enableAiExpand?: BoolFilter<"Keyword"> | boolean
     synonyms?: StringNullableListFilter<"Keyword">
     active?: BoolFilter<"Keyword"> | boolean
+    deriveSourceId?: StringNullableFilter<"Keyword"> | string | null
     createdAt?: DateTimeFilter<"Keyword"> | Date | string
     updatedAt?: DateTimeFilter<"Keyword"> | Date | string
   }
@@ -48923,6 +49091,59 @@ export namespace Prisma {
   export type CategoryCreateOrConnectWithoutKeywordsInput = {
     where: CategoryWhereUniqueInput
     create: XOR<CategoryCreateWithoutKeywordsInput, CategoryUncheckedCreateWithoutKeywordsInput>
+  }
+
+  export type SourceCreateWithoutDerivedKeywordsInput = {
+    id?: string
+    name: string
+    description?: string | null
+    category: $Enums.SourceCategory
+    isDarknet?: boolean
+    active?: boolean
+    rateLimit?: number | null
+    lastFetchedAt?: Date | string | null
+    lastStatus?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    proxy?: ProxyCreateNestedOneWithoutSourcesInput
+    credential?: CredentialCreateNestedOneWithoutSourcesInput
+    web?: WebSourceConfigCreateNestedOneWithoutSourceInput
+    darknet?: DarknetSourceConfigCreateNestedOneWithoutSourceInput
+    search?: SearchEngineSourceConfigCreateNestedOneWithoutSourceInput
+    social?: SocialMediaSourceConfigCreateNestedOneWithoutSourceInput
+    identity?: SourceIdentityCreateNestedOneWithoutSourceInput
+    presetBindings?: SourcePresetBindingCreateNestedManyWithoutSourceInput
+    queries?: QueryCreateNestedManyWithoutSourcesInput
+    querySourcePolicies?: QuerySourcePolicyCreateNestedManyWithoutSourceInput
+  }
+
+  export type SourceUncheckedCreateWithoutDerivedKeywordsInput = {
+    id?: string
+    name: string
+    description?: string | null
+    category: $Enums.SourceCategory
+    isDarknet?: boolean
+    active?: boolean
+    rateLimit?: number | null
+    lastFetchedAt?: Date | string | null
+    lastStatus?: string | null
+    proxyId?: string | null
+    credentialId?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    web?: WebSourceConfigUncheckedCreateNestedOneWithoutSourceInput
+    darknet?: DarknetSourceConfigUncheckedCreateNestedOneWithoutSourceInput
+    search?: SearchEngineSourceConfigUncheckedCreateNestedOneWithoutSourceInput
+    social?: SocialMediaSourceConfigUncheckedCreateNestedOneWithoutSourceInput
+    identity?: SourceIdentityUncheckedCreateNestedOneWithoutSourceInput
+    presetBindings?: SourcePresetBindingUncheckedCreateNestedManyWithoutSourceInput
+    queries?: QueryUncheckedCreateNestedManyWithoutSourcesInput
+    querySourcePolicies?: QuerySourcePolicyUncheckedCreateNestedManyWithoutSourceInput
+  }
+
+  export type SourceCreateOrConnectWithoutDerivedKeywordsInput = {
+    where: SourceWhereUniqueInput
+    create: XOR<SourceCreateWithoutDerivedKeywordsInput, SourceUncheckedCreateWithoutDerivedKeywordsInput>
   }
 
   export type QueryCreateWithoutKeywordsInput = {
@@ -49047,6 +49268,65 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
+  export type SourceUpsertWithoutDerivedKeywordsInput = {
+    update: XOR<SourceUpdateWithoutDerivedKeywordsInput, SourceUncheckedUpdateWithoutDerivedKeywordsInput>
+    create: XOR<SourceCreateWithoutDerivedKeywordsInput, SourceUncheckedCreateWithoutDerivedKeywordsInput>
+    where?: SourceWhereInput
+  }
+
+  export type SourceUpdateToOneWithWhereWithoutDerivedKeywordsInput = {
+    where?: SourceWhereInput
+    data: XOR<SourceUpdateWithoutDerivedKeywordsInput, SourceUncheckedUpdateWithoutDerivedKeywordsInput>
+  }
+
+  export type SourceUpdateWithoutDerivedKeywordsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    category?: EnumSourceCategoryFieldUpdateOperationsInput | $Enums.SourceCategory
+    isDarknet?: BoolFieldUpdateOperationsInput | boolean
+    active?: BoolFieldUpdateOperationsInput | boolean
+    rateLimit?: NullableIntFieldUpdateOperationsInput | number | null
+    lastFetchedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    lastStatus?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    proxy?: ProxyUpdateOneWithoutSourcesNestedInput
+    credential?: CredentialUpdateOneWithoutSourcesNestedInput
+    web?: WebSourceConfigUpdateOneWithoutSourceNestedInput
+    darknet?: DarknetSourceConfigUpdateOneWithoutSourceNestedInput
+    search?: SearchEngineSourceConfigUpdateOneWithoutSourceNestedInput
+    social?: SocialMediaSourceConfigUpdateOneWithoutSourceNestedInput
+    identity?: SourceIdentityUpdateOneWithoutSourceNestedInput
+    presetBindings?: SourcePresetBindingUpdateManyWithoutSourceNestedInput
+    queries?: QueryUpdateManyWithoutSourcesNestedInput
+    querySourcePolicies?: QuerySourcePolicyUpdateManyWithoutSourceNestedInput
+  }
+
+  export type SourceUncheckedUpdateWithoutDerivedKeywordsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    category?: EnumSourceCategoryFieldUpdateOperationsInput | $Enums.SourceCategory
+    isDarknet?: BoolFieldUpdateOperationsInput | boolean
+    active?: BoolFieldUpdateOperationsInput | boolean
+    rateLimit?: NullableIntFieldUpdateOperationsInput | number | null
+    lastFetchedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    lastStatus?: NullableStringFieldUpdateOperationsInput | string | null
+    proxyId?: NullableStringFieldUpdateOperationsInput | string | null
+    credentialId?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    web?: WebSourceConfigUncheckedUpdateOneWithoutSourceNestedInput
+    darknet?: DarknetSourceConfigUncheckedUpdateOneWithoutSourceNestedInput
+    search?: SearchEngineSourceConfigUncheckedUpdateOneWithoutSourceNestedInput
+    social?: SocialMediaSourceConfigUncheckedUpdateOneWithoutSourceNestedInput
+    identity?: SourceIdentityUncheckedUpdateOneWithoutSourceNestedInput
+    presetBindings?: SourcePresetBindingUncheckedUpdateManyWithoutSourceNestedInput
+    queries?: QueryUncheckedUpdateManyWithoutSourcesNestedInput
+    querySourcePolicies?: QuerySourcePolicyUncheckedUpdateManyWithoutSourceNestedInput
+  }
+
   export type QueryUpsertWithWhereUniqueWithoutKeywordsInput = {
     where: QueryWhereUniqueInput
     update: XOR<QueryUpdateWithoutKeywordsInput, QueryUncheckedUpdateWithoutKeywordsInput>
@@ -49158,6 +49438,7 @@ export namespace Prisma {
     identity?: SourceIdentityCreateNestedOneWithoutSourceInput
     presetBindings?: SourcePresetBindingCreateNestedManyWithoutSourceInput
     queries?: QueryCreateNestedManyWithoutSourcesInput
+    derivedKeywords?: KeywordCreateNestedManyWithoutDeriveSourceInput
     querySourcePolicies?: QuerySourcePolicyCreateNestedManyWithoutSourceInput
   }
 
@@ -49181,6 +49462,7 @@ export namespace Prisma {
     identity?: SourceIdentityUncheckedCreateNestedOneWithoutSourceInput
     presetBindings?: SourcePresetBindingUncheckedCreateNestedManyWithoutSourceInput
     queries?: QueryUncheckedCreateNestedManyWithoutSourcesInput
+    derivedKeywords?: KeywordUncheckedCreateNestedManyWithoutDeriveSourceInput
     querySourcePolicies?: QuerySourcePolicyUncheckedCreateNestedManyWithoutSourceInput
   }
 
@@ -49438,6 +49720,7 @@ export namespace Prisma {
     identity?: SourceIdentityCreateNestedOneWithoutSourceInput
     presetBindings?: SourcePresetBindingCreateNestedManyWithoutSourceInput
     queries?: QueryCreateNestedManyWithoutSourcesInput
+    derivedKeywords?: KeywordCreateNestedManyWithoutDeriveSourceInput
     querySourcePolicies?: QuerySourcePolicyCreateNestedManyWithoutSourceInput
   }
 
@@ -49461,6 +49744,7 @@ export namespace Prisma {
     identity?: SourceIdentityUncheckedCreateNestedOneWithoutSourceInput
     presetBindings?: SourcePresetBindingUncheckedCreateNestedManyWithoutSourceInput
     queries?: QueryUncheckedCreateNestedManyWithoutSourcesInput
+    derivedKeywords?: KeywordUncheckedCreateNestedManyWithoutDeriveSourceInput
     querySourcePolicies?: QuerySourcePolicyUncheckedCreateNestedManyWithoutSourceInput
   }
 
@@ -49864,6 +50148,54 @@ export namespace Prisma {
     create: XOR<QueryCreateWithoutSourcesInput, QueryUncheckedCreateWithoutSourcesInput>
   }
 
+  export type KeywordCreateWithoutDeriveSourceInput = {
+    id?: string
+    name: string
+    description?: string | null
+    lang?: string | null
+    includes?: KeywordCreateincludesInput | string[]
+    excludes?: KeywordCreateexcludesInput | string[]
+    deriveLanguages?: KeywordCreatederiveLanguagesInput | string[]
+    enableAiExpand?: boolean
+    synonyms?: KeywordCreatesynonymsInput | string[]
+    active?: boolean
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    category?: CategoryCreateNestedOneWithoutKeywordsInput
+    queries?: QueryCreateNestedManyWithoutKeywordsInput
+    contentKeywords?: ContentKeywordCreateNestedManyWithoutKeywordInput
+    contentSubjectMatches?: ContentSubjectMatchCreateNestedManyWithoutKeywordInput
+  }
+
+  export type KeywordUncheckedCreateWithoutDeriveSourceInput = {
+    id?: string
+    name: string
+    description?: string | null
+    lang?: string | null
+    categoryId?: string | null
+    includes?: KeywordCreateincludesInput | string[]
+    excludes?: KeywordCreateexcludesInput | string[]
+    deriveLanguages?: KeywordCreatederiveLanguagesInput | string[]
+    enableAiExpand?: boolean
+    synonyms?: KeywordCreatesynonymsInput | string[]
+    active?: boolean
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    queries?: QueryUncheckedCreateNestedManyWithoutKeywordsInput
+    contentKeywords?: ContentKeywordUncheckedCreateNestedManyWithoutKeywordInput
+    contentSubjectMatches?: ContentSubjectMatchUncheckedCreateNestedManyWithoutKeywordInput
+  }
+
+  export type KeywordCreateOrConnectWithoutDeriveSourceInput = {
+    where: KeywordWhereUniqueInput
+    create: XOR<KeywordCreateWithoutDeriveSourceInput, KeywordUncheckedCreateWithoutDeriveSourceInput>
+  }
+
+  export type KeywordCreateManyDeriveSourceInputEnvelope = {
+    data: KeywordCreateManyDeriveSourceInput | KeywordCreateManyDeriveSourceInput[]
+    skipDuplicates?: boolean
+  }
+
   export type QuerySourcePolicyCreateWithoutSourceInput = {
     id?: string
     contentFilterEnabled?: boolean
@@ -50176,6 +50508,22 @@ export namespace Prisma {
     data: XOR<QueryUpdateManyMutationInput, QueryUncheckedUpdateManyWithoutSourcesInput>
   }
 
+  export type KeywordUpsertWithWhereUniqueWithoutDeriveSourceInput = {
+    where: KeywordWhereUniqueInput
+    update: XOR<KeywordUpdateWithoutDeriveSourceInput, KeywordUncheckedUpdateWithoutDeriveSourceInput>
+    create: XOR<KeywordCreateWithoutDeriveSourceInput, KeywordUncheckedCreateWithoutDeriveSourceInput>
+  }
+
+  export type KeywordUpdateWithWhereUniqueWithoutDeriveSourceInput = {
+    where: KeywordWhereUniqueInput
+    data: XOR<KeywordUpdateWithoutDeriveSourceInput, KeywordUncheckedUpdateWithoutDeriveSourceInput>
+  }
+
+  export type KeywordUpdateManyWithWhereWithoutDeriveSourceInput = {
+    where: KeywordScalarWhereInput
+    data: XOR<KeywordUpdateManyMutationInput, KeywordUncheckedUpdateManyWithoutDeriveSourceInput>
+  }
+
   export type QuerySourcePolicyUpsertWithWhereUniqueWithoutSourceInput = {
     where: QuerySourcePolicyWhereUniqueInput
     update: XOR<QuerySourcePolicyUpdateWithoutSourceInput, QuerySourcePolicyUncheckedUpdateWithoutSourceInput>
@@ -50225,6 +50573,7 @@ export namespace Prisma {
     social?: SocialMediaSourceConfigCreateNestedOneWithoutSourceInput
     presetBindings?: SourcePresetBindingCreateNestedManyWithoutSourceInput
     queries?: QueryCreateNestedManyWithoutSourcesInput
+    derivedKeywords?: KeywordCreateNestedManyWithoutDeriveSourceInput
     querySourcePolicies?: QuerySourcePolicyCreateNestedManyWithoutSourceInput
   }
 
@@ -50248,6 +50597,7 @@ export namespace Prisma {
     social?: SocialMediaSourceConfigUncheckedCreateNestedOneWithoutSourceInput
     presetBindings?: SourcePresetBindingUncheckedCreateNestedManyWithoutSourceInput
     queries?: QueryUncheckedCreateNestedManyWithoutSourcesInput
+    derivedKeywords?: KeywordUncheckedCreateNestedManyWithoutDeriveSourceInput
     querySourcePolicies?: QuerySourcePolicyUncheckedCreateNestedManyWithoutSourceInput
   }
 
@@ -50287,6 +50637,7 @@ export namespace Prisma {
     social?: SocialMediaSourceConfigUpdateOneWithoutSourceNestedInput
     presetBindings?: SourcePresetBindingUpdateManyWithoutSourceNestedInput
     queries?: QueryUpdateManyWithoutSourcesNestedInput
+    derivedKeywords?: KeywordUpdateManyWithoutDeriveSourceNestedInput
     querySourcePolicies?: QuerySourcePolicyUpdateManyWithoutSourceNestedInput
   }
 
@@ -50310,6 +50661,7 @@ export namespace Prisma {
     social?: SocialMediaSourceConfigUncheckedUpdateOneWithoutSourceNestedInput
     presetBindings?: SourcePresetBindingUncheckedUpdateManyWithoutSourceNestedInput
     queries?: QueryUncheckedUpdateManyWithoutSourcesNestedInput
+    derivedKeywords?: KeywordUncheckedUpdateManyWithoutDeriveSourceNestedInput
     querySourcePolicies?: QuerySourcePolicyUncheckedUpdateManyWithoutSourceNestedInput
   }
 
@@ -50377,6 +50729,7 @@ export namespace Prisma {
     social?: SocialMediaSourceConfigCreateNestedOneWithoutSourceInput
     identity?: SourceIdentityCreateNestedOneWithoutSourceInput
     queries?: QueryCreateNestedManyWithoutSourcesInput
+    derivedKeywords?: KeywordCreateNestedManyWithoutDeriveSourceInput
     querySourcePolicies?: QuerySourcePolicyCreateNestedManyWithoutSourceInput
   }
 
@@ -50400,6 +50753,7 @@ export namespace Prisma {
     social?: SocialMediaSourceConfigUncheckedCreateNestedOneWithoutSourceInput
     identity?: SourceIdentityUncheckedCreateNestedOneWithoutSourceInput
     queries?: QueryUncheckedCreateNestedManyWithoutSourcesInput
+    derivedKeywords?: KeywordUncheckedCreateNestedManyWithoutDeriveSourceInput
     querySourcePolicies?: QuerySourcePolicyUncheckedCreateNestedManyWithoutSourceInput
   }
 
@@ -50480,6 +50834,7 @@ export namespace Prisma {
     social?: SocialMediaSourceConfigUpdateOneWithoutSourceNestedInput
     identity?: SourceIdentityUpdateOneWithoutSourceNestedInput
     queries?: QueryUpdateManyWithoutSourcesNestedInput
+    derivedKeywords?: KeywordUpdateManyWithoutDeriveSourceNestedInput
     querySourcePolicies?: QuerySourcePolicyUpdateManyWithoutSourceNestedInput
   }
 
@@ -50503,6 +50858,7 @@ export namespace Prisma {
     social?: SocialMediaSourceConfigUncheckedUpdateOneWithoutSourceNestedInput
     identity?: SourceIdentityUncheckedUpdateOneWithoutSourceNestedInput
     queries?: QueryUncheckedUpdateManyWithoutSourcesNestedInput
+    derivedKeywords?: KeywordUncheckedUpdateManyWithoutDeriveSourceNestedInput
     querySourcePolicies?: QuerySourcePolicyUncheckedUpdateManyWithoutSourceNestedInput
   }
 
@@ -50573,6 +50929,7 @@ export namespace Prisma {
     identity?: SourceIdentityCreateNestedOneWithoutSourceInput
     presetBindings?: SourcePresetBindingCreateNestedManyWithoutSourceInput
     queries?: QueryCreateNestedManyWithoutSourcesInput
+    derivedKeywords?: KeywordCreateNestedManyWithoutDeriveSourceInput
     querySourcePolicies?: QuerySourcePolicyCreateNestedManyWithoutSourceInput
   }
 
@@ -50596,6 +50953,7 @@ export namespace Prisma {
     identity?: SourceIdentityUncheckedCreateNestedOneWithoutSourceInput
     presetBindings?: SourcePresetBindingUncheckedCreateNestedManyWithoutSourceInput
     queries?: QueryUncheckedCreateNestedManyWithoutSourcesInput
+    derivedKeywords?: KeywordUncheckedCreateNestedManyWithoutDeriveSourceInput
     querySourcePolicies?: QuerySourcePolicyUncheckedCreateNestedManyWithoutSourceInput
   }
 
@@ -50666,6 +51024,7 @@ export namespace Prisma {
     identity?: SourceIdentityUpdateOneWithoutSourceNestedInput
     presetBindings?: SourcePresetBindingUpdateManyWithoutSourceNestedInput
     queries?: QueryUpdateManyWithoutSourcesNestedInput
+    derivedKeywords?: KeywordUpdateManyWithoutDeriveSourceNestedInput
     querySourcePolicies?: QuerySourcePolicyUpdateManyWithoutSourceNestedInput
   }
 
@@ -50689,6 +51048,7 @@ export namespace Prisma {
     identity?: SourceIdentityUncheckedUpdateOneWithoutSourceNestedInput
     presetBindings?: SourcePresetBindingUncheckedUpdateManyWithoutSourceNestedInput
     queries?: QueryUncheckedUpdateManyWithoutSourcesNestedInput
+    derivedKeywords?: KeywordUncheckedUpdateManyWithoutDeriveSourceNestedInput
     querySourcePolicies?: QuerySourcePolicyUncheckedUpdateManyWithoutSourceNestedInput
   }
 
@@ -50749,6 +51109,7 @@ export namespace Prisma {
     identity?: SourceIdentityCreateNestedOneWithoutSourceInput
     presetBindings?: SourcePresetBindingCreateNestedManyWithoutSourceInput
     queries?: QueryCreateNestedManyWithoutSourcesInput
+    derivedKeywords?: KeywordCreateNestedManyWithoutDeriveSourceInput
     querySourcePolicies?: QuerySourcePolicyCreateNestedManyWithoutSourceInput
   }
 
@@ -50772,6 +51133,7 @@ export namespace Prisma {
     identity?: SourceIdentityUncheckedCreateNestedOneWithoutSourceInput
     presetBindings?: SourcePresetBindingUncheckedCreateNestedManyWithoutSourceInput
     queries?: QueryUncheckedCreateNestedManyWithoutSourcesInput
+    derivedKeywords?: KeywordUncheckedCreateNestedManyWithoutDeriveSourceInput
     querySourcePolicies?: QuerySourcePolicyUncheckedCreateNestedManyWithoutSourceInput
   }
 
@@ -50842,6 +51204,7 @@ export namespace Prisma {
     identity?: SourceIdentityUpdateOneWithoutSourceNestedInput
     presetBindings?: SourcePresetBindingUpdateManyWithoutSourceNestedInput
     queries?: QueryUpdateManyWithoutSourcesNestedInput
+    derivedKeywords?: KeywordUpdateManyWithoutDeriveSourceNestedInput
     querySourcePolicies?: QuerySourcePolicyUpdateManyWithoutSourceNestedInput
   }
 
@@ -50865,6 +51228,7 @@ export namespace Prisma {
     identity?: SourceIdentityUncheckedUpdateOneWithoutSourceNestedInput
     presetBindings?: SourcePresetBindingUncheckedUpdateManyWithoutSourceNestedInput
     queries?: QueryUncheckedUpdateManyWithoutSourcesNestedInput
+    derivedKeywords?: KeywordUncheckedUpdateManyWithoutDeriveSourceNestedInput
     querySourcePolicies?: QuerySourcePolicyUncheckedUpdateManyWithoutSourceNestedInput
   }
 
@@ -50925,6 +51289,7 @@ export namespace Prisma {
     identity?: SourceIdentityCreateNestedOneWithoutSourceInput
     presetBindings?: SourcePresetBindingCreateNestedManyWithoutSourceInput
     queries?: QueryCreateNestedManyWithoutSourcesInput
+    derivedKeywords?: KeywordCreateNestedManyWithoutDeriveSourceInput
     querySourcePolicies?: QuerySourcePolicyCreateNestedManyWithoutSourceInput
   }
 
@@ -50948,6 +51313,7 @@ export namespace Prisma {
     identity?: SourceIdentityUncheckedCreateNestedOneWithoutSourceInput
     presetBindings?: SourcePresetBindingUncheckedCreateNestedManyWithoutSourceInput
     queries?: QueryUncheckedCreateNestedManyWithoutSourcesInput
+    derivedKeywords?: KeywordUncheckedCreateNestedManyWithoutDeriveSourceInput
     querySourcePolicies?: QuerySourcePolicyUncheckedCreateNestedManyWithoutSourceInput
   }
 
@@ -51014,6 +51380,7 @@ export namespace Prisma {
     identity?: SourceIdentityUpdateOneWithoutSourceNestedInput
     presetBindings?: SourcePresetBindingUpdateManyWithoutSourceNestedInput
     queries?: QueryUpdateManyWithoutSourcesNestedInput
+    derivedKeywords?: KeywordUpdateManyWithoutDeriveSourceNestedInput
     querySourcePolicies?: QuerySourcePolicyUpdateManyWithoutSourceNestedInput
   }
 
@@ -51037,6 +51404,7 @@ export namespace Prisma {
     identity?: SourceIdentityUncheckedUpdateOneWithoutSourceNestedInput
     presetBindings?: SourcePresetBindingUncheckedUpdateManyWithoutSourceNestedInput
     queries?: QueryUncheckedUpdateManyWithoutSourcesNestedInput
+    derivedKeywords?: KeywordUncheckedUpdateManyWithoutDeriveSourceNestedInput
     querySourcePolicies?: QuerySourcePolicyUncheckedUpdateManyWithoutSourceNestedInput
   }
 
@@ -51093,6 +51461,7 @@ export namespace Prisma {
     identity?: SourceIdentityCreateNestedOneWithoutSourceInput
     presetBindings?: SourcePresetBindingCreateNestedManyWithoutSourceInput
     queries?: QueryCreateNestedManyWithoutSourcesInput
+    derivedKeywords?: KeywordCreateNestedManyWithoutDeriveSourceInput
     querySourcePolicies?: QuerySourcePolicyCreateNestedManyWithoutSourceInput
   }
 
@@ -51116,6 +51485,7 @@ export namespace Prisma {
     identity?: SourceIdentityUncheckedCreateNestedOneWithoutSourceInput
     presetBindings?: SourcePresetBindingUncheckedCreateNestedManyWithoutSourceInput
     queries?: QueryUncheckedCreateNestedManyWithoutSourcesInput
+    derivedKeywords?: KeywordUncheckedCreateNestedManyWithoutDeriveSourceInput
     querySourcePolicies?: QuerySourcePolicyUncheckedCreateNestedManyWithoutSourceInput
   }
 
@@ -51213,6 +51583,7 @@ export namespace Prisma {
     identity?: SourceIdentityUpdateOneWithoutSourceNestedInput
     presetBindings?: SourcePresetBindingUpdateManyWithoutSourceNestedInput
     queries?: QueryUpdateManyWithoutSourcesNestedInput
+    derivedKeywords?: KeywordUpdateManyWithoutDeriveSourceNestedInput
     querySourcePolicies?: QuerySourcePolicyUpdateManyWithoutSourceNestedInput
   }
 
@@ -51236,6 +51607,7 @@ export namespace Prisma {
     identity?: SourceIdentityUncheckedUpdateOneWithoutSourceNestedInput
     presetBindings?: SourcePresetBindingUncheckedUpdateManyWithoutSourceNestedInput
     queries?: QueryUncheckedUpdateManyWithoutSourcesNestedInput
+    derivedKeywords?: KeywordUncheckedUpdateManyWithoutDeriveSourceNestedInput
     querySourcePolicies?: QuerySourcePolicyUncheckedUpdateManyWithoutSourceNestedInput
   }
 
@@ -51323,6 +51695,7 @@ export namespace Prisma {
     createdAt?: Date | string
     updatedAt?: Date | string
     category?: CategoryCreateNestedOneWithoutKeywordsInput
+    deriveSource?: SourceCreateNestedOneWithoutDerivedKeywordsInput
     contentKeywords?: ContentKeywordCreateNestedManyWithoutKeywordInput
     contentSubjectMatches?: ContentSubjectMatchCreateNestedManyWithoutKeywordInput
   }
@@ -51339,6 +51712,7 @@ export namespace Prisma {
     enableAiExpand?: boolean
     synonyms?: KeywordCreatesynonymsInput | string[]
     active?: boolean
+    deriveSourceId?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
     contentKeywords?: ContentKeywordUncheckedCreateNestedManyWithoutKeywordInput
@@ -51370,6 +51744,7 @@ export namespace Prisma {
     social?: SocialMediaSourceConfigCreateNestedOneWithoutSourceInput
     identity?: SourceIdentityCreateNestedOneWithoutSourceInput
     presetBindings?: SourcePresetBindingCreateNestedManyWithoutSourceInput
+    derivedKeywords?: KeywordCreateNestedManyWithoutDeriveSourceInput
     querySourcePolicies?: QuerySourcePolicyCreateNestedManyWithoutSourceInput
   }
 
@@ -51393,6 +51768,7 @@ export namespace Prisma {
     social?: SocialMediaSourceConfigUncheckedCreateNestedOneWithoutSourceInput
     identity?: SourceIdentityUncheckedCreateNestedOneWithoutSourceInput
     presetBindings?: SourcePresetBindingUncheckedCreateNestedManyWithoutSourceInput
+    derivedKeywords?: KeywordUncheckedCreateNestedManyWithoutDeriveSourceInput
     querySourcePolicies?: QuerySourcePolicyUncheckedCreateNestedManyWithoutSourceInput
   }
 
@@ -51603,6 +51979,7 @@ export namespace Prisma {
     identity?: SourceIdentityCreateNestedOneWithoutSourceInput
     presetBindings?: SourcePresetBindingCreateNestedManyWithoutSourceInput
     queries?: QueryCreateNestedManyWithoutSourcesInput
+    derivedKeywords?: KeywordCreateNestedManyWithoutDeriveSourceInput
   }
 
   export type SourceUncheckedCreateWithoutQuerySourcePoliciesInput = {
@@ -51626,6 +52003,7 @@ export namespace Prisma {
     identity?: SourceIdentityUncheckedCreateNestedOneWithoutSourceInput
     presetBindings?: SourcePresetBindingUncheckedCreateNestedManyWithoutSourceInput
     queries?: QueryUncheckedCreateNestedManyWithoutSourcesInput
+    derivedKeywords?: KeywordUncheckedCreateNestedManyWithoutDeriveSourceInput
   }
 
   export type SourceCreateOrConnectWithoutQuerySourcePoliciesInput = {
@@ -51708,6 +52086,7 @@ export namespace Prisma {
     identity?: SourceIdentityUpdateOneWithoutSourceNestedInput
     presetBindings?: SourcePresetBindingUpdateManyWithoutSourceNestedInput
     queries?: QueryUpdateManyWithoutSourcesNestedInput
+    derivedKeywords?: KeywordUpdateManyWithoutDeriveSourceNestedInput
   }
 
   export type SourceUncheckedUpdateWithoutQuerySourcePoliciesInput = {
@@ -51731,6 +52110,7 @@ export namespace Prisma {
     identity?: SourceIdentityUncheckedUpdateOneWithoutSourceNestedInput
     presetBindings?: SourcePresetBindingUncheckedUpdateManyWithoutSourceNestedInput
     queries?: QueryUncheckedUpdateManyWithoutSourcesNestedInput
+    derivedKeywords?: KeywordUncheckedUpdateManyWithoutDeriveSourceNestedInput
   }
 
   export type QueryCreateWithoutQueryRunsInput = {
@@ -52172,6 +52552,7 @@ export namespace Prisma {
     createdAt?: Date | string
     updatedAt?: Date | string
     category?: CategoryCreateNestedOneWithoutKeywordsInput
+    deriveSource?: SourceCreateNestedOneWithoutDerivedKeywordsInput
     queries?: QueryCreateNestedManyWithoutKeywordsInput
     contentSubjectMatches?: ContentSubjectMatchCreateNestedManyWithoutKeywordInput
   }
@@ -52188,6 +52569,7 @@ export namespace Prisma {
     enableAiExpand?: boolean
     synonyms?: KeywordCreatesynonymsInput | string[]
     active?: boolean
+    deriveSourceId?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
     queries?: QueryUncheckedCreateNestedManyWithoutKeywordsInput
@@ -52271,6 +52653,7 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     category?: CategoryUpdateOneWithoutKeywordsNestedInput
+    deriveSource?: SourceUpdateOneWithoutDerivedKeywordsNestedInput
     queries?: QueryUpdateManyWithoutKeywordsNestedInput
     contentSubjectMatches?: ContentSubjectMatchUpdateManyWithoutKeywordNestedInput
   }
@@ -52287,6 +52670,7 @@ export namespace Prisma {
     enableAiExpand?: BoolFieldUpdateOperationsInput | boolean
     synonyms?: KeywordUpdatesynonymsInput | string[]
     active?: BoolFieldUpdateOperationsInput | boolean
+    deriveSourceId?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     queries?: QueryUncheckedUpdateManyWithoutKeywordsNestedInput
@@ -52348,6 +52732,7 @@ export namespace Prisma {
     createdAt?: Date | string
     updatedAt?: Date | string
     category?: CategoryCreateNestedOneWithoutKeywordsInput
+    deriveSource?: SourceCreateNestedOneWithoutDerivedKeywordsInput
     queries?: QueryCreateNestedManyWithoutKeywordsInput
     contentKeywords?: ContentKeywordCreateNestedManyWithoutKeywordInput
   }
@@ -52364,6 +52749,7 @@ export namespace Prisma {
     enableAiExpand?: boolean
     synonyms?: KeywordCreatesynonymsInput | string[]
     active?: boolean
+    deriveSourceId?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
     queries?: QueryUncheckedCreateNestedManyWithoutKeywordsInput
@@ -52447,6 +52833,7 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     category?: CategoryUpdateOneWithoutKeywordsNestedInput
+    deriveSource?: SourceUpdateOneWithoutDerivedKeywordsNestedInput
     queries?: QueryUpdateManyWithoutKeywordsNestedInput
     contentKeywords?: ContentKeywordUpdateManyWithoutKeywordNestedInput
   }
@@ -52463,6 +52850,7 @@ export namespace Prisma {
     enableAiExpand?: BoolFieldUpdateOperationsInput | boolean
     synonyms?: KeywordUpdatesynonymsInput | string[]
     active?: BoolFieldUpdateOperationsInput | boolean
+    deriveSourceId?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     queries?: QueryUncheckedUpdateManyWithoutKeywordsNestedInput
@@ -53502,6 +53890,7 @@ export namespace Prisma {
     enableAiExpand?: boolean
     synonyms?: KeywordCreatesynonymsInput | string[]
     active?: boolean
+    deriveSourceId?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
   }
@@ -53519,6 +53908,7 @@ export namespace Prisma {
     active?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    deriveSource?: SourceUpdateOneWithoutDerivedKeywordsNestedInput
     queries?: QueryUpdateManyWithoutKeywordsNestedInput
     contentKeywords?: ContentKeywordUpdateManyWithoutKeywordNestedInput
     contentSubjectMatches?: ContentSubjectMatchUpdateManyWithoutKeywordNestedInput
@@ -53535,6 +53925,7 @@ export namespace Prisma {
     enableAiExpand?: BoolFieldUpdateOperationsInput | boolean
     synonyms?: KeywordUpdatesynonymsInput | string[]
     active?: BoolFieldUpdateOperationsInput | boolean
+    deriveSourceId?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     queries?: QueryUncheckedUpdateManyWithoutKeywordsNestedInput
@@ -53553,6 +53944,7 @@ export namespace Prisma {
     enableAiExpand?: BoolFieldUpdateOperationsInput | boolean
     synonyms?: KeywordUpdatesynonymsInput | string[]
     active?: BoolFieldUpdateOperationsInput | boolean
+    deriveSourceId?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -53746,6 +54138,7 @@ export namespace Prisma {
     identity?: SourceIdentityUpdateOneWithoutSourceNestedInput
     presetBindings?: SourcePresetBindingUpdateManyWithoutSourceNestedInput
     queries?: QueryUpdateManyWithoutSourcesNestedInput
+    derivedKeywords?: KeywordUpdateManyWithoutDeriveSourceNestedInput
     querySourcePolicies?: QuerySourcePolicyUpdateManyWithoutSourceNestedInput
   }
 
@@ -53769,6 +54162,7 @@ export namespace Prisma {
     identity?: SourceIdentityUncheckedUpdateOneWithoutSourceNestedInput
     presetBindings?: SourcePresetBindingUncheckedUpdateManyWithoutSourceNestedInput
     queries?: QueryUncheckedUpdateManyWithoutSourcesNestedInput
+    derivedKeywords?: KeywordUncheckedUpdateManyWithoutDeriveSourceNestedInput
     querySourcePolicies?: QuerySourcePolicyUncheckedUpdateManyWithoutSourceNestedInput
   }
 
@@ -53943,6 +54337,7 @@ export namespace Prisma {
     identity?: SourceIdentityUpdateOneWithoutSourceNestedInput
     presetBindings?: SourcePresetBindingUpdateManyWithoutSourceNestedInput
     queries?: QueryUpdateManyWithoutSourcesNestedInput
+    derivedKeywords?: KeywordUpdateManyWithoutDeriveSourceNestedInput
     querySourcePolicies?: QuerySourcePolicyUpdateManyWithoutSourceNestedInput
   }
 
@@ -53966,6 +54361,7 @@ export namespace Prisma {
     identity?: SourceIdentityUncheckedUpdateOneWithoutSourceNestedInput
     presetBindings?: SourcePresetBindingUncheckedUpdateManyWithoutSourceNestedInput
     queries?: QueryUncheckedUpdateManyWithoutSourcesNestedInput
+    derivedKeywords?: KeywordUncheckedUpdateManyWithoutDeriveSourceNestedInput
     querySourcePolicies?: QuerySourcePolicyUncheckedUpdateManyWithoutSourceNestedInput
   }
 
@@ -54059,6 +54455,22 @@ export namespace Prisma {
     updatedAt?: Date | string
   }
 
+  export type KeywordCreateManyDeriveSourceInput = {
+    id?: string
+    name: string
+    description?: string | null
+    lang?: string | null
+    categoryId?: string | null
+    includes?: KeywordCreateincludesInput | string[]
+    excludes?: KeywordCreateexcludesInput | string[]
+    deriveLanguages?: KeywordCreatederiveLanguagesInput | string[]
+    enableAiExpand?: boolean
+    synonyms?: KeywordCreatesynonymsInput | string[]
+    active?: boolean
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
   export type QuerySourcePolicyCreateManySourceInput = {
     id?: string
     queryId: string
@@ -54136,6 +54548,60 @@ export namespace Prisma {
     frequency?: EnumQueryFrequencyFieldUpdateOperationsInput | $Enums.QueryFrequency
     cronSchedule?: NullableStringFieldUpdateOperationsInput | string | null
     rules?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type KeywordUpdateWithoutDeriveSourceInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    lang?: NullableStringFieldUpdateOperationsInput | string | null
+    includes?: KeywordUpdateincludesInput | string[]
+    excludes?: KeywordUpdateexcludesInput | string[]
+    deriveLanguages?: KeywordUpdatederiveLanguagesInput | string[]
+    enableAiExpand?: BoolFieldUpdateOperationsInput | boolean
+    synonyms?: KeywordUpdatesynonymsInput | string[]
+    active?: BoolFieldUpdateOperationsInput | boolean
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    category?: CategoryUpdateOneWithoutKeywordsNestedInput
+    queries?: QueryUpdateManyWithoutKeywordsNestedInput
+    contentKeywords?: ContentKeywordUpdateManyWithoutKeywordNestedInput
+    contentSubjectMatches?: ContentSubjectMatchUpdateManyWithoutKeywordNestedInput
+  }
+
+  export type KeywordUncheckedUpdateWithoutDeriveSourceInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    lang?: NullableStringFieldUpdateOperationsInput | string | null
+    categoryId?: NullableStringFieldUpdateOperationsInput | string | null
+    includes?: KeywordUpdateincludesInput | string[]
+    excludes?: KeywordUpdateexcludesInput | string[]
+    deriveLanguages?: KeywordUpdatederiveLanguagesInput | string[]
+    enableAiExpand?: BoolFieldUpdateOperationsInput | boolean
+    synonyms?: KeywordUpdatesynonymsInput | string[]
+    active?: BoolFieldUpdateOperationsInput | boolean
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    queries?: QueryUncheckedUpdateManyWithoutKeywordsNestedInput
+    contentKeywords?: ContentKeywordUncheckedUpdateManyWithoutKeywordNestedInput
+    contentSubjectMatches?: ContentSubjectMatchUncheckedUpdateManyWithoutKeywordNestedInput
+  }
+
+  export type KeywordUncheckedUpdateManyWithoutDeriveSourceInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    lang?: NullableStringFieldUpdateOperationsInput | string | null
+    categoryId?: NullableStringFieldUpdateOperationsInput | string | null
+    includes?: KeywordUpdateincludesInput | string[]
+    excludes?: KeywordUpdateexcludesInput | string[]
+    deriveLanguages?: KeywordUpdatederiveLanguagesInput | string[]
+    enableAiExpand?: BoolFieldUpdateOperationsInput | boolean
+    synonyms?: KeywordUpdatesynonymsInput | string[]
+    active?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -54238,6 +54704,7 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     category?: CategoryUpdateOneWithoutKeywordsNestedInput
+    deriveSource?: SourceUpdateOneWithoutDerivedKeywordsNestedInput
     contentKeywords?: ContentKeywordUpdateManyWithoutKeywordNestedInput
     contentSubjectMatches?: ContentSubjectMatchUpdateManyWithoutKeywordNestedInput
   }
@@ -54254,6 +54721,7 @@ export namespace Prisma {
     enableAiExpand?: BoolFieldUpdateOperationsInput | boolean
     synonyms?: KeywordUpdatesynonymsInput | string[]
     active?: BoolFieldUpdateOperationsInput | boolean
+    deriveSourceId?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     contentKeywords?: ContentKeywordUncheckedUpdateManyWithoutKeywordNestedInput
@@ -54272,6 +54740,7 @@ export namespace Prisma {
     enableAiExpand?: BoolFieldUpdateOperationsInput | boolean
     synonyms?: KeywordUpdatesynonymsInput | string[]
     active?: BoolFieldUpdateOperationsInput | boolean
+    deriveSourceId?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -54296,6 +54765,7 @@ export namespace Prisma {
     social?: SocialMediaSourceConfigUpdateOneWithoutSourceNestedInput
     identity?: SourceIdentityUpdateOneWithoutSourceNestedInput
     presetBindings?: SourcePresetBindingUpdateManyWithoutSourceNestedInput
+    derivedKeywords?: KeywordUpdateManyWithoutDeriveSourceNestedInput
     querySourcePolicies?: QuerySourcePolicyUpdateManyWithoutSourceNestedInput
   }
 
@@ -54319,6 +54789,7 @@ export namespace Prisma {
     social?: SocialMediaSourceConfigUncheckedUpdateOneWithoutSourceNestedInput
     identity?: SourceIdentityUncheckedUpdateOneWithoutSourceNestedInput
     presetBindings?: SourcePresetBindingUncheckedUpdateManyWithoutSourceNestedInput
+    derivedKeywords?: KeywordUncheckedUpdateManyWithoutDeriveSourceNestedInput
     querySourcePolicies?: QuerySourcePolicyUncheckedUpdateManyWithoutSourceNestedInput
   }
 

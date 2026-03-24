@@ -6,10 +6,11 @@ import { ControlledSelect } from "@/components/ui/controlled-select";
 import { Controller } from "react-hook-form";
 import { Switch } from "@/components/ui/switch";
 import { KeywordUpdateSchema, KeywordCreateSchema } from "@/app/api/_utils/zod";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { useQuery } from "@tanstack/react-query";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -29,6 +30,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { SourceWithRelations } from "@/lib/types";
 
 type KeywordWithCategory = Prisma.KeywordGetPayload<{
   include: { category: true };
@@ -73,6 +75,78 @@ const LANGUAGE_OPTIONS = [
   { label: "Russian (ru)", value: "ru" },
 ];
 
+type DeriveSourceOption = {
+  id: string;
+  name: string;
+  platform: string;
+  hasCredential: boolean;
+};
+
+function asObject(value: unknown): Record<string, unknown> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return {};
+  }
+  return value as Record<string, unknown>;
+}
+
+function pickString(...values: unknown[]): string | undefined {
+  for (const value of values) {
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
+  }
+  return undefined;
+}
+
+function hasInlineSearchApiKey(options: unknown): boolean {
+  const row = asObject(options);
+  return Boolean(
+    pickString(row.apiKey, row.api_key, row.token, row.key, row.secret)
+  );
+}
+
+function toDeriveSourceOption(source: SourceWithRelations): DeriveSourceOption | null {
+  if (
+    source.category !== "RETRIEVAL" ||
+    source.isDarknet ||
+    !source.active ||
+    !("search" in source) ||
+    !source.search
+  ) {
+    return null;
+  }
+  const hasCredential = Boolean(
+    source.search.credentialId ||
+    source.credentialId ||
+    source.search.credential?.id ||
+    source.credential?.id ||
+    hasInlineSearchApiKey(source.search.options)
+  );
+  const platform =
+    String(source.search.platform ?? "")
+      .trim()
+      .toUpperCase() || "CUSTOM";
+
+  return {
+    id: source.id,
+    name: source.name,
+    platform,
+    hasCredential,
+  };
+}
+
+async function fetchDeriveSources(): Promise<SourceWithRelations[]> {
+  const response = await fetch(
+    "/api/follow/sources?includeRelations=true&category=RETRIEVAL&isDarknet=false&active=true",
+    { cache: "no-store" }
+  );
+  if (!response.ok) {
+    throw new Error("Failed to fetch sources");
+  }
+  const data = await response.json();
+  return Array.isArray(data?.items) ? data.items : [];
+}
+
 function parseTerms(input: unknown): string[] {
   if (Array.isArray(input)) {
     return input.map((item) => String(item).trim()).filter(Boolean);
@@ -113,6 +187,21 @@ const EditKeywordDialog = ({
   const [open, setOpen] = useState(false);
   const [isDeriving, setIsDeriving] = useState(false);
   const [deriveMeta, setDeriveMeta] = useState<DeriveMeta | null>(null);
+  const { data: deriveSourceItems = [] } = useQuery<SourceWithRelations[]>({
+    queryKey: ["sources", "derive-candidates"],
+    queryFn: fetchDeriveSources,
+    enabled: open,
+    staleTime: 30_000,
+  });
+  const deriveSourceOptions = useMemo(
+    () =>
+      deriveSourceItems
+        .map((item) => toDeriveSourceOption(item))
+        .filter(
+          (item): item is DeriveSourceOption => Boolean(item && item.hasCredential)
+        ),
+    [deriveSourceItems]
+  );
 
   const mutation = useKeywordMutation({
     keywordId: keyword?.id,
@@ -154,6 +243,7 @@ const EditKeywordDialog = ({
           ? keyword.deriveLanguages
           : DEFAULT_DERIVE_LANGUAGES,
       enableAiExpand: keyword?.enableAiExpand || false,
+      deriveSourceId: keyword?.deriveSourceId || null,
       lang: (keyword?.lang as "auto" | "zh" | "en" | "ja") || "auto",
       active: keyword?.active ?? true,
     },
@@ -188,6 +278,10 @@ const EditKeywordDialog = ({
     }
     setIsDeriving(true);
     try {
+      const deriveSourceId =
+        typeof values.deriveSourceId === "string" && values.deriveSourceId
+          ? values.deriveSourceId
+          : null;
       const response = await fetch("/api/follow/keywords/derive", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -210,6 +304,8 @@ const EditKeywordDialog = ({
             : DEFAULT_DERIVE_LANGUAGES,
           persistedLanguages: keyword?.deriveLanguages ?? DEFAULT_DERIVE_LANGUAGES,
           lang: values.lang,
+          deriveSourceId,
+          calibration: Boolean(deriveSourceId),
         }),
       });
 
@@ -353,6 +449,32 @@ const EditKeywordDialog = ({
                 Defaults to Chinese and English. Add more languages for multilingual term generation.
               </p>
               <ErrorMessage>{errors.deriveLanguages?.message}</ErrorMessage>
+            </div>
+            <div className="grid gap-3">
+              <Label htmlFor="deriveSourceId">Calibration Source</Label>
+              <Controller
+                name="deriveSourceId"
+                control={control}
+                render={({ field }) => (
+                  <ControlledSelect
+                    value={field.value}
+                    onValueChange={field.onChange}
+                    placeholder="Select a retrieval source"
+                    nullValue="none"
+                    nullLabel="LLM only (no search calibration)"
+                  >
+                    {deriveSourceOptions.map((source) => (
+                      <SelectItem key={source.id} value={source.id}>
+                        {source.name} ({source.platform})
+                      </SelectItem>
+                    ))}
+                  </ControlledSelect>
+                )}
+              />
+              <p className="text-xs text-muted-foreground">
+                Keyword calibration uses the selected retrieval source. Choose LLM only to skip search calibration.
+              </p>
+              <ErrorMessage>{errors.deriveSourceId?.message}</ErrorMessage>
             </div>
           </CardContent>
         </Card>

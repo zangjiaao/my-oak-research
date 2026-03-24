@@ -2,9 +2,11 @@
   "name": "web",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
+    "dev": "dotenvx run -- next dev",
+    "build": "dotenvx run -- next build",
+    "start": "dotenvx run -- next start",
+    "db:migrate": "dotenvx run -- prisma migrate deploy",
+    "db:seed": "dotenvx run -- prisma db seed",
     "lint": "next lint",
     "test": "vitest run",
     "check-types": "tsc -p tsconfig.json --noEmit"
@@ -61,6 +63,7 @@
     "zod": "^4.1.11"
   },
   "devDependencies": {
+    "@dotenvx/dotenvx": "^1.57.2",
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4",
     "@tailwindcss/typography": "^0.5.16",

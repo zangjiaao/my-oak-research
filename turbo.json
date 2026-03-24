@@ -1,20 +1,132 @@
 {
   "$schema": "https://turborepo.com/schema.json",
-  "globalEnv": [
-    "DATABASE_URL"
-  ],
+  "globalEnv": ["NODE_ENV", "CI"],
   "ui": "tui",
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
-      "outputs": ["apps/**/.next/**", "apps/**/dist/**", "!apps/**/.next/cache/**"]
+      "outputs": ["apps/**/.next/**", "apps/**/dist/**", "!apps/**/.next/cache/**"],
+      "env": ["DOTENV_KEY", "DOTENV_PRIVATE_KEY"]
+    },
+    "web#build": {
+      "dependsOn": ["^build"],
+      "inputs": ["$TURBO_DEFAULT$", ".env*"],
+      "outputs": [".next/**", "!.next/cache/**"],
+      "env": [
+        "NEXT_PUBLIC_*",
+        "DEFAULT_USER_ID",
+        "PRISMA_ACCELERATE_URL",
+        "WEB_DERIVE_*",
+        "DATABASE_URL",
+        "DIRECT_URL",
+        "REDIS_*",
+        "MINIO_*",
+        "S3_*",
+        "CREDENTIAL_ENCRYPTION_KEY",
+        "GATHER_SERVICE_URL",
+        "WORKER_SERVICE_URL",
+        "OPENAI_API_KEY",
+        "OPEN_API_BASE_URL",
+        "DEEPSEEK_*",
+        "GOOGLE_GENERATIVE_AI_API_KEY",
+        "LLM_DEFAULT_MODEL",
+        "EMBEDDING_MODEL",
+        "QUERY_SCHEDULE_TZ",
+        "LOG_*"
+      ]
+    },
+    "worker#build": {
+      "dependsOn": ["^build"],
+      "inputs": ["$TURBO_DEFAULT$", ".env*"],
+      "outputs": [],
+      "env": [
+        "DATABASE_URL",
+        "DIRECT_URL",
+        "REDIS_*",
+        "CREDENTIAL_ENCRYPTION_KEY",
+        "GATHER_SERVICE_URL",
+        "WORKER_SERVICE_URL",
+        "OPENAI_API_KEY",
+        "OPEN_API_BASE_URL",
+        "DEEPSEEK_*",
+        "GOOGLE_GENERATIVE_AI_API_KEY",
+        "LLM_DEFAULT_MODEL",
+        "EMBEDDING_MODEL",
+        "QUERY_SCHEDULE_TZ",
+        "LOG_*",
+        "WORKER_*",
+        "COLLECT_*",
+        "COLLECTOR_*"
+      ]
+    },
+    "gather#build": {
+      "dependsOn": ["^build"],
+      "inputs": ["$TURBO_DEFAULT$", ".env*"],
+      "outputs": ["scripts-dist/**"],
+      "env": ["GATHER_*", "AGENT_BROWSER_BIN"]
+    },
+    "test": {
+      "dependsOn": ["^test"],
+      "inputs": ["$TURBO_DEFAULT$", ".env*"],
+      "env": ["DOTENV_KEY", "DOTENV_PRIVATE_KEY"]
+    },
+    "web#test": {
+      "dependsOn": ["^test"],
+      "inputs": ["$TURBO_DEFAULT$", ".env*"],
+      "outputs": [],
+      "env": [
+        "NEXT_PUBLIC_*",
+        "DEFAULT_USER_ID",
+        "PRISMA_ACCELERATE_URL",
+        "WEB_DERIVE_*",
+        "DATABASE_URL",
+        "DIRECT_URL",
+        "REDIS_*",
+        "MINIO_*",
+        "S3_*",
+        "CREDENTIAL_ENCRYPTION_KEY",
+        "GATHER_SERVICE_URL",
+        "WORKER_SERVICE_URL",
+        "OPENAI_API_KEY",
+        "OPEN_API_BASE_URL",
+        "DEEPSEEK_*",
+        "GOOGLE_GENERATIVE_AI_API_KEY",
+        "LLM_DEFAULT_MODEL",
+        "EMBEDDING_MODEL",
+        "QUERY_SCHEDULE_TZ",
+        "LOG_*"
+      ]
+    },
+    "worker#test": {
+      "dependsOn": ["^test"],
+      "inputs": ["$TURBO_DEFAULT$", ".env*"],
+      "outputs": [],
+      "env": [
+        "DATABASE_URL",
+        "DIRECT_URL",
+        "REDIS_*",
+        "CREDENTIAL_ENCRYPTION_KEY",
+        "GATHER_SERVICE_URL",
+        "WORKER_SERVICE_URL",
+        "OPENAI_API_KEY",
+        "OPEN_API_BASE_URL",
+        "DEEPSEEK_*",
+        "GOOGLE_GENERATIVE_AI_API_KEY",
+        "LLM_DEFAULT_MODEL",
+        "EMBEDDING_MODEL",
+        "QUERY_SCHEDULE_TZ",
+        "LOG_*",
+        "WORKER_*",
+        "COLLECT_*",
+        "COLLECTOR_*"
+      ]
     },
     "lint": {
       "dependsOn": ["^lint"]
     },
-    "test": {
-      "dependsOn": ["^test"]
+    "check-types": {
+      "dependsOn": ["^check-types"]
     },
     "dev": {
       "cache": false,

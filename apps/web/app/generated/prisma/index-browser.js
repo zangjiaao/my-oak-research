@@ -140,6 +140,7 @@ exports.Prisma.KeywordScalarFieldEnum = {
   enableAiExpand: 'enableAiExpand',
   synonyms: 'synonyms',
   active: 'active',
+  deriveSourceId: 'deriveSourceId',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 };
