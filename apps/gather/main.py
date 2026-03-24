@@ -1432,7 +1432,7 @@ async def _run_playwright_intercept_x_intent(request: FetchRequest, intent_type:
 
     if normalized_intent == "search" and not query:
         raise HTTPException(status_code=400, detail="config.playwright.args.query is required for intercept-x-search mode")
-    if normalized_intent in {"profile", "followers", "following"} and not username:
+    if normalized_intent in {"profile", "followers", "following", "tweets"} and not username:
         raise HTTPException(
             status_code=400,
             detail=f"config.playwright.args.username is required for intercept-x-{normalized_intent} mode",
@@ -1460,6 +1460,8 @@ async def _run_playwright_intercept_x_intent(request: FetchRequest, intent_type:
         target_url = f"https://x.com/{quote(username)}/followers"
     elif normalized_intent == "following":
         target_url = f"https://x.com/{quote(username)}/following"
+    elif normalized_intent == "tweets":
+        target_url = f"https://x.com/{quote(username)}"
     elif normalized_intent == "bookmarks":
         target_url = "https://x.com/i/bookmarks"
     elif normalized_intent == "notifications":
