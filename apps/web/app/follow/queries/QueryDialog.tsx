@@ -64,6 +64,12 @@ const QueryDialog = ({
   open,
   onOpenChange,
 }: Props) => {
+  const filterModeDescriptions: Record<QueryContentFilterMode, string> = {
+    TERM_AND_WORD_BOUNDARY: "整词匹配（英文按单词边界），精准度最高，误匹配最少。",
+    CONTAINS: "子串包含匹配，只要包含关键词就命中，召回更高但噪声更多。",
+    SMART: "智能模式：中文偏向包含匹配，英文偏向整词匹配，兼顾召回与精度。",
+  };
+
   const isUpdate = !!query;
 
   const formResolver = useMemo<Resolver<QueryFormValues>>(
@@ -352,21 +358,31 @@ const QueryDialog = ({
                         name={`sourcePolicies.${index}.contentFilterMode`}
                         control={control}
                         render={({ field }) => (
-                          <ControlledSelect
-                            value={field.value}
-                            onValueChange={field.onChange}
-                            placeholder="Select filter mode"
-                          >
-                            <SelectItem value="TERM_AND_WORD_BOUNDARY">
-                              TERM_AND_WORD_BOUNDARY
-                            </SelectItem>
-                            <SelectItem value="CONTAINS">
-                              CONTAINS
-                            </SelectItem>
-                            <SelectItem value="SMART">
-                              SMART
-                            </SelectItem>
-                          </ControlledSelect>
+                          <div className="grid gap-1.5">
+                            <Label className="text-xs text-muted-foreground">
+                              Content Filter Mode
+                            </Label>
+                            <ControlledSelect
+                              value={field.value}
+                              onValueChange={field.onChange}
+                              placeholder="Select filter mode"
+                            >
+                              <SelectItem value="TERM_AND_WORD_BOUNDARY">
+                                TERM_AND_WORD_BOUNDARY（精准）
+                              </SelectItem>
+                              <SelectItem value="CONTAINS">
+                                CONTAINS（高召回）
+                              </SelectItem>
+                              <SelectItem value="SMART">
+                                SMART（平衡）
+                              </SelectItem>
+                            </ControlledSelect>
+                            <p className="text-xs text-muted-foreground">
+                              {filterModeDescriptions[
+                                (field.value ?? "TERM_AND_WORD_BOUNDARY") as QueryContentFilterMode
+                              ]}
+                            </p>
+                          </div>
                         )}
                       />
                     </div>
