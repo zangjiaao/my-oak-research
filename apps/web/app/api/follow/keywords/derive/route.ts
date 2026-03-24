@@ -1,6 +1,8 @@
 import { llmGateway } from "@oak/agents/llm-gateway";
 import { json, badRequest, serverError } from "@/app/api/_utils/http";
 import { logger } from "@/lib/logger";
+import prisma from "@/lib/prisma";
+import { unwrapCredentialPayload } from "@/lib/credential-secret";
 import {
   isWebDeriveIoLogEnabled,
   writeWebDeriveIoLog,
@@ -13,11 +15,13 @@ const DEFAULT_RECALL_SOFT_LIMIT = 64;
 const DEFAULT_SCORING_SOFT_LIMIT = 120;
 const DEFAULT_EXCLUSION_SOFT_LIMIT = 80;
 const DEFAULT_QUERY_PER_LANGUAGE_LIMIT = 2;
-const DEFAULT_SEARCH_ENGINE = "auto";
 
 type SearchProvider = "anspire" | "tavily" | "parallel";
 type CalibrationReason =
   | "calibration_disabled"
+  | "source_not_selected"
+  | "selected_source_unavailable"
+  | "selected_source_not_configured"
   | "no_search_provider_configured"
   | "provider_request_failed"
   | null;
@@ -43,13 +47,18 @@ type QueryDiagnostics = {
   topicHitCount: number;
 };
 
-const SEARCH_PROVIDER_ENDPOINTS: Record<SearchProvider, string> = {
-  parallel:
-    process.env.PARALLEL_API_ENDPOINT || "https://api.parallel.ai/v1beta/search",
-  tavily: process.env.TAVILY_API_ENDPOINT || "https://api.tavily.com/search",
-  anspire:
-    process.env.ANSPIRE_API_ENDPOINT ||
-    "https://plugin.anspire.cn/api/ntsearch/prosearch",
+const SEARCH_PROVIDER_DEFAULT_ENDPOINTS: Record<SearchProvider, string> = {
+  parallel: "https://api.parallel.ai/v1beta/search",
+  tavily: "https://api.tavily.com/search",
+  anspire: "https://plugin.anspire.cn/api/ntsearch/prosearch",
+};
+
+type SelectedSearchSource = {
+  id: string;
+  name: string;
+  provider: SearchProvider;
+  apiEndpoint: string;
+  apiKey: string;
 };
 
 const DeriveSchema = z.object({
@@ -62,6 +71,7 @@ const DeriveSchema = z.object({
   persistedLanguages: z.array(z.string()).optional(),
   recallBudget: z.number().int().positive().optional(),
   calibration: z.boolean().optional().default(true),
+  deriveSourceId: z.string().cuid().optional().nullable(),
   lang: z.string().optional().default("auto"),
 });
 
@@ -120,6 +130,116 @@ function pickString(...values: unknown[]): string | undefined {
   return undefined;
 }
 
+function pickApiKeyFromOptions(options: unknown): string | undefined {
+  const row = asObject(options);
+  return pickString(row.apiKey, row.api_key, row.token, row.key, row.secret);
+}
+
+function pickApiKeyFromCredentialPayload(payload: unknown): string | undefined {
+  if (!payload) return undefined;
+  const unwrapped = unwrapCredentialPayload(payload);
+  const row = asObject(unwrapped);
+  return pickString(
+    row.secret,
+    row.apiKey,
+    row.api_key,
+    row.token,
+    row.key
+  );
+}
+
+function detectProviderFromSource(input: {
+  platform?: string | null;
+  apiEndpoint?: string | null;
+  options?: unknown;
+}): SearchProvider | null {
+  const platform = String(input.platform ?? "")
+    .trim()
+    .toLowerCase();
+  if (platform === "parallel") return "parallel";
+  if (platform === "tavily") return "tavily";
+  if (platform === "anspire") return "anspire";
+
+  const options = asObject(input.options);
+  const explicitProvider = String(options.provider ?? options.platform ?? "")
+    .trim()
+    .toLowerCase();
+  if (explicitProvider.includes("parallel")) return "parallel";
+  if (explicitProvider.includes("tavily")) return "tavily";
+  if (explicitProvider.includes("anspire")) return "anspire";
+
+  const endpoint = String(input.apiEndpoint ?? "").toLowerCase();
+  if (endpoint.includes("parallel.ai")) return "parallel";
+  if (endpoint.includes("tavily.com")) return "tavily";
+  if (endpoint.includes("anspire.cn")) return "anspire";
+  return null;
+}
+
+async function resolveSelectedSearchSource(
+  deriveSourceId: string | null | undefined
+): Promise<{
+  source: SelectedSearchSource | null;
+  reason: CalibrationReason;
+}> {
+  if (!deriveSourceId) {
+    return { source: null, reason: "source_not_selected" };
+  }
+
+  const row = await prisma.source.findFirst({
+    where: {
+      id: deriveSourceId,
+      category: "RETRIEVAL",
+      isDarknet: false,
+      active: true,
+      search: { isNot: null },
+    },
+    include: {
+      credential: true,
+      search: {
+        include: {
+          credential: true,
+        },
+      },
+    },
+  });
+  if (!row?.search) {
+    return { source: null, reason: "selected_source_unavailable" };
+  }
+
+  const provider = detectProviderFromSource({
+    platform: row.search.platform,
+    apiEndpoint: row.search.apiEndpoint,
+    options: row.search.options,
+  });
+  if (!provider) {
+    return { source: null, reason: "selected_source_not_configured" };
+  }
+
+  const apiKey = pickString(
+    pickApiKeyFromOptions(row.search.options),
+    pickApiKeyFromCredentialPayload(row.search.credential?.data),
+    pickApiKeyFromCredentialPayload(row.credential?.data)
+  );
+  if (!apiKey) {
+    return { source: null, reason: "selected_source_not_configured" };
+  }
+
+  const apiEndpoint =
+    pickString(row.search.apiEndpoint) ??
+    SEARCH_PROVIDER_DEFAULT_ENDPOINTS[provider];
+
+  return {
+    source: {
+      id: row.id,
+      name: row.name,
+      provider,
+      apiEndpoint,
+      apiKey,
+    },
+    reason: null,
+  };
+}
+
 function mergeLanguagePreferences(input: {
   languages?: string[];
   persistedLanguages?: string[];
@@ -160,16 +280,6 @@ function extractTopicTermsFromText(...inputs: Array<string | null | undefined>):
     }
   }
   return Array.from(set);
-}
-
-function resolveSearchProviderOrder(rawPreference: string | undefined): SearchProvider[] {
-  const normalized = String(rawPreference ?? DEFAULT_SEARCH_ENGINE)
-    .trim()
-    .toLowerCase();
-  if (normalized === "anspire") return ["anspire"];
-  if (normalized === "tavily") return ["tavily"];
-  if (normalized === "parallel") return ["parallel"];
-  return ["anspire", "tavily", "parallel"];
 }
 
 function resolveRecallSoftLimit(rawBudget?: number): number {
@@ -222,12 +332,6 @@ function resolveQueryPerLanguageLimit(): number {
     "WEB_DERIVE_QUERY_PER_LANGUAGE_LIMIT",
     DEFAULT_QUERY_PER_LANGUAGE_LIMIT
   );
-}
-
-function isProviderConfigured(provider: SearchProvider): boolean {
-  if (provider === "anspire") return Boolean(process.env.ANSPIRE_API_KEY);
-  if (provider === "tavily") return Boolean(process.env.TAVILY_API_KEY);
-  return Boolean(process.env.PARALLEL_API_KEY);
 }
 
 function splitSearchTokens(input: string): string[] {
@@ -772,24 +876,23 @@ async function fetchJsonWithTimeout(
 }
 
 async function searchWithProvider(
-  provider: SearchProvider,
+  searchSource: SelectedSearchSource,
   query: string,
   options?: { relaxed?: boolean }
 ): Promise<SearchCallResult> {
   const relaxed = options?.relaxed === true;
   const freshnessQuery = toFreshnessQuery(query);
+  const provider = searchSource.provider;
   if (provider === "anspire") {
-    const apiKey = process.env.ANSPIRE_API_KEY;
-    if (!apiKey) throw new Error("ANSPIRE_API_KEY missing");
     const params = new URLSearchParams({
       query: freshnessQuery,
       top_k: "8",
       sort: "latest",
     });
-    const url = `${SEARCH_PROVIDER_ENDPOINTS.anspire}?${params.toString()}`;
+    const url = `${searchSource.apiEndpoint}?${params.toString()}`;
     const method = "GET";
     const headers = {
-      Authorization: `Bearer ${apiKey}`,
+      Authorization: `Bearer ${searchSource.apiKey}`,
       "Content-Type": "application/json",
     };
     const response = await fetchJsonWithTimeout(
@@ -809,13 +912,11 @@ async function searchWithProvider(
   }
 
   if (provider === "tavily") {
-    const apiKey = process.env.TAVILY_API_KEY;
-    if (!apiKey) throw new Error("TAVILY_API_KEY missing");
-    const url = SEARCH_PROVIDER_ENDPOINTS.tavily;
+    const url = searchSource.apiEndpoint;
     const method = "POST";
     const headers = { "Content-Type": "application/json" };
     const body = JSON.stringify({
-      api_key: apiKey,
+      api_key: searchSource.apiKey,
       query: freshnessQuery,
       max_results: relaxed ? 6 : 10,
       search_depth: relaxed ? "basic" : "advanced",
@@ -841,13 +942,11 @@ async function searchWithProvider(
     };
   }
 
-  const apiKey = process.env.PARALLEL_API_KEY;
-  if (!apiKey) throw new Error("PARALLEL_API_KEY missing");
-  const url = SEARCH_PROVIDER_ENDPOINTS.parallel;
+  const url = searchSource.apiEndpoint;
   const method = "POST";
   const headers = {
     "Content-Type": "application/json",
-    "x-api-key": apiKey,
+    "x-api-key": searchSource.apiKey,
   };
   const body = JSON.stringify({
     mode: "one-shot",
@@ -878,7 +977,7 @@ async function searchWithProvider(
 
 async function collectCalibrationDocs(
   seedQueries: string[],
-  providerOrder: SearchProvider[],
+  searchSource: SelectedSearchSource | null,
   requestId: string,
   topicTerms: string[]
 ): Promise<{
@@ -889,10 +988,7 @@ async function collectCalibrationDocs(
   reason: CalibrationReason;
   triedProviders: SearchProvider[];
 }> {
-  const configuredProviders = providerOrder.filter((provider) =>
-    isProviderConfigured(provider)
-  );
-  if (configuredProviders.length === 0) {
+  if (!searchSource) {
     return {
       docs: [],
       diagnostics: [],
@@ -902,121 +998,130 @@ async function collectCalibrationDocs(
     };
   }
 
+  const provider = searchSource.provider;
+  const docs: CalibrationDoc[] = [];
+  const diagnostics: QueryDiagnostics[] = [];
   let hadRequestError = false;
-  for (const provider of configuredProviders) {
-    const docs: CalibrationDoc[] = [];
-    const diagnostics: QueryDiagnostics[] = [];
-    for (const query of seedQueries) {
-      try {
-        const result = await searchWithProvider(provider, query);
-        const topicHitCount = countTopicHits(result.docs, topicTerms);
-        docs.push(...result.docs);
-        diagnostics.push({
-          query,
+  for (const query of seedQueries) {
+    try {
+      const result = await searchWithProvider(searchSource, query);
+      const topicHitCount = countTopicHits(result.docs, topicTerms);
+      docs.push(...result.docs);
+      diagnostics.push({
+        query,
+        parsedCount: result.docs.length,
+        topicHitCount,
+      });
+      writeWebDeriveIoLog({
+        event: "derive-search-request-response",
+        requestId,
+        provider,
+        query,
+        url: result.request.url,
+        method: result.request.method,
+        statusCode: result.statusCode,
+        request: {
+          headers: result.request.headers,
+          body: result.request.body ?? null,
+        },
+        response: result.responseBody,
+        details: {
           parsedCount: result.docs.length,
           topicHitCount,
-        });
-        writeWebDeriveIoLog({
-          event: "derive-search-request-response",
-          requestId,
-          provider,
-          query,
-          url: result.request.url,
-          method: result.request.method,
-          statusCode: result.statusCode,
-          request: {
-            headers: result.request.headers,
-            body: result.request.body ?? null,
-          },
-          response: result.responseBody,
-          details: { parsedCount: result.docs.length, topicHitCount },
-        });
-      } catch (error) {
-        const firstError =
-          error instanceof Error ? error.message : "unknown error";
-        let retried = false;
-        if (provider === "tavily") {
-          try {
-            retried = true;
-            const fallbackResult = await searchWithProvider(provider, query, {
-              relaxed: true,
-            });
-            const topicHitCount = countTopicHits(fallbackResult.docs, topicTerms);
-            docs.push(...fallbackResult.docs);
-            diagnostics.push({
-              query,
+          sourceId: searchSource.id,
+          sourceName: searchSource.name,
+        },
+      });
+    } catch (error) {
+      const firstError =
+        error instanceof Error ? error.message : "unknown error";
+      let retried = false;
+      if (provider === "tavily") {
+        try {
+          retried = true;
+          const fallbackResult = await searchWithProvider(searchSource, query, {
+            relaxed: true,
+          });
+          const topicHitCount = countTopicHits(fallbackResult.docs, topicTerms);
+          docs.push(...fallbackResult.docs);
+          diagnostics.push({
+            query,
+            parsedCount: fallbackResult.docs.length,
+            topicHitCount,
+          });
+          writeWebDeriveIoLog({
+            event: "derive-search-request-response",
+            requestId,
+            provider,
+            query,
+            url: fallbackResult.request.url,
+            method: fallbackResult.request.method,
+            statusCode: fallbackResult.statusCode,
+            request: {
+              headers: fallbackResult.request.headers,
+              body: fallbackResult.request.body ?? null,
+            },
+            response: fallbackResult.responseBody,
+            details: {
               parsedCount: fallbackResult.docs.length,
               topicHitCount,
-            });
-            writeWebDeriveIoLog({
-              event: "derive-search-request-response",
-              requestId,
-              provider,
-              query,
-              url: fallbackResult.request.url,
-              method: fallbackResult.request.method,
-              statusCode: fallbackResult.statusCode,
-              request: {
-                headers: fallbackResult.request.headers,
-                body: fallbackResult.request.body ?? null,
-              },
-              response: fallbackResult.responseBody,
-              details: {
-                parsedCount: fallbackResult.docs.length,
-                topicHitCount,
-                fallbackMode: "relaxed",
-                previousError: firstError,
-              },
-            });
-            continue;
-          } catch (fallbackError) {
-            logger.warn("keyword derive calibration query retry failed", {
-              provider,
-              query,
-              error: logger.normalizeError(fallbackError),
-            });
-          }
+              fallbackMode: "relaxed",
+              previousError: firstError,
+              sourceId: searchSource.id,
+              sourceName: searchSource.name,
+            },
+          });
+          continue;
+        } catch (fallbackError) {
+          logger.warn("keyword derive calibration query retry failed", {
+            provider,
+            query,
+            error: logger.normalizeError(fallbackError),
+          });
         }
-        hadRequestError = true;
-        logger.warn("keyword derive calibration query failed", {
-          provider,
-          query,
-          retried,
-          error: logger.normalizeError(error),
-        });
-        writeWebDeriveIoLog({
-          event: "derive-search-request-response",
-          requestId,
-          provider,
-          query,
-          error: firstError,
-          details: {
-            retried,
-          },
-        });
       }
-    }
-    if (docs.length > 0) {
-      const totalTopicHitCount = diagnostics.reduce(
-        (sum, item) => sum + item.topicHitCount,
-        0
-      );
-      return {
+      hadRequestError = true;
+      logger.warn("keyword derive calibration query failed", {
         provider,
-        docs: docs.slice(0, 24),
-        diagnostics,
-        topicHitCount: totalTopicHitCount,
-        reason: null,
-        triedProviders: configuredProviders,
-      };
+        query,
+        retried,
+        sourceId: searchSource.id,
+        error: logger.normalizeError(error),
+      });
+      writeWebDeriveIoLog({
+        event: "derive-search-request-response",
+        requestId,
+        provider,
+        query,
+        error: firstError,
+        details: {
+          retried,
+          sourceId: searchSource.id,
+          sourceName: searchSource.name,
+        },
+      });
     }
+  }
+  if (docs.length > 0) {
+    const totalTopicHitCount = diagnostics.reduce(
+      (sum, item) => sum + item.topicHitCount,
+      0
+    );
+    return {
+      provider,
+      docs: docs.slice(0, 24),
+      diagnostics,
+      topicHitCount: totalTopicHitCount,
+      reason: null,
+      triedProviders: [provider],
+    };
   }
   return {
     docs: [],
     diagnostics: [],
     topicHitCount: 0,
     reason: hadRequestError ? "provider_request_failed" : null,
-    triedProviders: configuredProviders,
+    triedProviders: [provider],
   };
 }
 
@@ -1279,6 +1384,7 @@ export async function POST(req: Request) {
       persistedLanguages,
       recallBudget,
       calibration,
+      deriveSourceId,
     } = parsed.data;
     const recallSoftLimit = resolveRecallSoftLimit(recallBudget);
     const scoringSoftLimit = resolveScoringSoftLimit();
@@ -1320,26 +1426,28 @@ export async function POST(req: Request) {
       ...baseSeedQueries,
       ...multilingualSeed.seedQueries,
     ]);
-    const providerOrder = resolveSearchProviderOrder(process.env.SEARCH_ENGINE);
+    const selectedSearchSource = await resolveSelectedSearchSource(deriveSourceId);
+    const calibrationEnabled =
+      calibration !== false && Boolean(selectedSearchSource.source);
     const calibrationResult =
-      calibration === false
+      !calibrationEnabled
         ? {
             docs: [] as CalibrationDoc[],
             diagnostics: [] as QueryDiagnostics[],
             topicHitCount: 0,
             provider: undefined as SearchProvider | undefined,
-            reason: "calibration_disabled" as CalibrationReason,
+            reason: (calibration === false
+              ? "calibration_disabled"
+              : selectedSearchSource.reason) as CalibrationReason,
             triedProviders: [] as SearchProvider[],
           }
         : await collectCalibrationDocs(
             seedQueries,
-            providerOrder,
+            selectedSearchSource.source,
             requestId,
             inputTopicTerms
           );
-    const degraded =
-      calibrationResult.reason === "no_search_provider_configured" ||
-      calibrationResult.reason === "provider_request_failed";
+    const degraded = calibrationResult.reason !== null;
     const discoveredAtomicTermsHop1 = await extractAtomicTermsFromDocs({
       name,
       description,
@@ -1354,10 +1462,10 @@ export async function POST(req: Request) {
       inputTopicTerms
     );
     const hop2Result =
-      calibration !== false && hop2Queries.length > 0
+      calibrationEnabled && hop2Queries.length > 0
         ? await collectCalibrationDocs(
             hop2Queries,
-            providerOrder,
+            selectedSearchSource.source,
             requestId,
             inputTopicTerms
           )
@@ -1501,6 +1609,8 @@ export async function POST(req: Request) {
       requestId,
       name,
       provider: calibrationResult.provider ?? "none",
+      deriveSourceId: selectedSearchSource.source?.id ?? null,
+      deriveSourceName: selectedSearchSource.source?.name ?? null,
       degraded,
       reason: calibrationResult.reason,
       seedQueryCount: seedQueries.length,
@@ -1532,6 +1642,8 @@ export async function POST(req: Request) {
         requestId,
         searchProvider: calibrationResult.provider ?? null,
         searchedProviders: calibrationResult.triedProviders,
+        deriveSourceId: selectedSearchSource.source?.id ?? null,
+        deriveSourceName: selectedSearchSource.source?.name ?? null,
         degraded,
         reason: calibrationResult.reason,
         primaryNoun: nounPlan.primaryNoun,

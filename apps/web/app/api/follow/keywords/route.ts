@@ -25,6 +25,23 @@ function ensureDeriveLanguages<T extends { deriveLanguages?: string[] | null }>(
   };
 }
 
+async function resolveValidDeriveSourceId(
+  deriveSourceId: string | null | undefined
+): Promise<string | null> {
+  if (!deriveSourceId) return null;
+  const source = await prisma.source.findFirst({
+    where: {
+      id: deriveSourceId,
+      category: "RETRIEVAL",
+      isDarknet: false,
+      active: true,
+      search: { isNot: null },
+    },
+    select: { id: true },
+  });
+  return source?.id ?? null;
+}
+
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
@@ -89,6 +106,13 @@ export async function POST(req: Request) {
         });
       }
     }
+    const deriveSourceId = await resolveValidDeriveSourceId(data.deriveSourceId);
+    if (data.deriveSourceId && !deriveSourceId) {
+      return badRequest("Invalid deriveSourceId", {
+        message: "Derive source must be an active retrieval source with search config",
+        field: "deriveSourceId",
+      });
+    }
     const includes = normalizeTokens(data.includes);
     const excludes = normalizeTokens(data.excludes);
     const deriveLanguages = normalizeTokens(data.deriveLanguages ?? []);
@@ -107,6 +131,7 @@ export async function POST(req: Request) {
         description: data.description ?? undefined,
         lang: data.lang,
         categoryId: data.categoryId ?? undefined,
+        deriveSourceId,
         includes: includesClean,
         excludes,
         deriveLanguages:

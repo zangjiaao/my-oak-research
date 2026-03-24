@@ -10,6 +10,12 @@ type VerifyResponse = {
   details?: Record<string, unknown>;
 };
 
+const DEFAULT_ENDPOINTS = {
+  parallel: "https://api.parallel.ai/v1beta/search",
+  tavily: "https://api.tavily.com/search",
+  anspire: "https://plugin.anspire.cn/api/ntsearch/prosearch",
+} as const;
+
 function extractObject(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     return {};
@@ -27,7 +33,7 @@ async function verifyApiKey(platform: string, secret: string): Promise<VerifyRes
   try {
     if (platform === "parallel") {
       const response = await fetch(
-        process.env.PARALLEL_API_ENDPOINT || "https://api.parallel.ai/v1beta/search",
+        DEFAULT_ENDPOINTS.parallel,
         {
           method: "POST",
           headers: {
@@ -49,7 +55,7 @@ async function verifyApiKey(platform: string, secret: string): Promise<VerifyRes
     }
     if (platform === "tavily") {
       const response = await fetch(
-        process.env.TAVILY_API_ENDPOINT || "https://api.tavily.com/search",
+        DEFAULT_ENDPOINTS.tavily,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -66,9 +72,7 @@ async function verifyApiKey(platform: string, secret: string): Promise<VerifyRes
       };
     }
     if (platform === "anspire") {
-      const endpoint =
-        process.env.ANSPIRE_API_ENDPOINT ||
-        "https://plugin.anspire.cn/api/ntsearch/prosearch";
+      const endpoint = DEFAULT_ENDPOINTS.anspire;
       const url = new URL(endpoint);
       url.searchParams.set("query", "auth health check");
       const response = await fetch(url, {

@@ -35,6 +35,23 @@ function ensureDeriveLanguages<T extends { deriveLanguages?: string[] | null }>(
   };
 }
 
+async function resolveValidDeriveSourceId(
+  deriveSourceId: string | null | undefined
+): Promise<string | null> {
+  if (!deriveSourceId) return null;
+  const source = await prisma.source.findFirst({
+    where: {
+      id: deriveSourceId,
+      category: "RETRIEVAL",
+      isDarknet: false,
+      active: true,
+      search: { isNot: null },
+    },
+    select: { id: true },
+  });
+  return source?.id ?? null;
+}
+
 export async function GET(
   _: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -76,6 +93,7 @@ export async function PATCH(
     const hasExcludes = bodyHas("excludes");
     const hasSynonyms = bodyHas("synonyms");
     const hasDeriveLanguages = bodyHas("deriveLanguages");
+    const hasDeriveSourceId = bodyHas("deriveSourceId");
 
     const includes = hasIncludes ? normalizeTokens(data.includes) : undefined;
     const excludes = hasExcludes ? normalizeTokens(data.excludes) : undefined;
@@ -83,6 +101,19 @@ export async function PATCH(
     const deriveLanguages = hasDeriveLanguages
       ? normalizeTokens(data.deriveLanguages)
       : undefined;
+    const deriveSourceId = hasDeriveSourceId
+      ? await resolveValidDeriveSourceId(data.deriveSourceId)
+      : undefined;
+    if (
+      hasDeriveSourceId &&
+      data.deriveSourceId &&
+      !deriveSourceId
+    ) {
+      return badRequest("Invalid deriveSourceId", {
+        message: "Derive source must be an active retrieval source with search config",
+        field: "deriveSourceId",
+      });
+    }
 
     // 交叉去重（仅在提供时处理）
     let includesClean = includes;
@@ -117,6 +148,7 @@ export async function PATCH(
                   : [...DEFAULT_DERIVE_LANGUAGES],
             }
           : {}),
+        ...(hasDeriveSourceId ? { deriveSourceId: deriveSourceId ?? null } : {}),
         ...("active" in data ? { active: !!data.active } : {}),
         ...("enableAiExpand" in data
           ? { enableAiExpand: !!data.enableAiExpand }

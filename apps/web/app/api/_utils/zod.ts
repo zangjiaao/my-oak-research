@@ -83,6 +83,7 @@ export const KeywordCreateSchema = z.object({
     .nullable(),
   lang: LangEnum,
   categoryId: cuidOpt,
+  deriveSourceId: cuidOpt,
   includes: delimitedStringArray({ minItems: 1, itemMax: 40, totalMax: 200 }),
   excludes: delimitedStringArray({ minItems: 0, itemMax: 40, totalMax: 200 }),
   deriveLanguages: delimitedStringArray({

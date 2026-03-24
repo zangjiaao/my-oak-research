@@ -521,8 +521,7 @@ export const SearchEngineFields = ({
               {searchErrors.search?.platform?.message?.toString()}
             </ErrorMessage>
             <p className="text-xs text-muted-foreground">
-              API key 可通过 `search.options.apiKey` 或环境变量提供
-              (`PARALLEL_API_KEY` / `TAVILY_API_KEY` / `ANSPIRE_API_KEY`)。
+              API key 建议通过 Credential 绑定或 `search.options.apiKey` 提供。
             </p>
           </div>
         </CardContent>

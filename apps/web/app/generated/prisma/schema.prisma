@@ -40,6 +40,8 @@ model Keyword {
   enableAiExpand  Boolean  @default(false)
   synonyms        String[]
   active          Boolean  @default(true)
+  deriveSourceId  String?
+  deriveSource    Source?  @relation("KeywordDeriveSource", fields: [deriveSourceId], references: [id])
 
   createdAt             DateTime              @default(now())
   updatedAt             DateTime              @updatedAt
@@ -176,6 +178,7 @@ model Source {
   identity            SourceIdentity?
   presetBindings      SourcePresetBinding[]
   queries             Query[]
+  derivedKeywords     Keyword[]                 @relation("KeywordDeriveSource")
   querySourcePolicies QuerySourcePolicy[]
 
   @@unique([name])
