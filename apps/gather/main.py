@@ -1443,7 +1443,9 @@ async def _run_playwright_intercept_x_intent(request: FetchRequest, intent_type:
             detail=f"config.playwright.args.tweet_id is required for intercept-x-{normalized_intent} mode",
         )
 
-    raw_count = args_obj.get("count", 30)
+    raw_count = args_obj.get("count")
+    if raw_count is None:
+        raw_count = args_obj.get("limit", 30)
     try:
         count = int(raw_count)
     except (TypeError, ValueError):
