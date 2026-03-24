@@ -1945,8 +1945,10 @@ const SourceDialog = ({
                   <p className="text-xs font-medium text-muted-foreground">Gather Request Payload</p>
                   <Button
                     type="button"
-                    variant="outline"
-                    size="sm"
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                    aria-label="Copy gather request payload"
                     onClick={async () => {
                       try {
                         await navigator.clipboard.writeText(
@@ -1958,8 +1960,7 @@ const SourceDialog = ({
                       }
                     }}
                   >
-                    <Copy className="mr-1 size-3.5" />
-                    Copy
+                    <Copy className="size-3.5" />
                   </Button>
                 </div>
                 <pre className="max-h-64 overflow-auto rounded-md bg-background p-3 text-xs leading-5">
