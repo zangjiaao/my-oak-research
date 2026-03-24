@@ -63,8 +63,13 @@ type DriverConfigInput = {
   poolEnabled: boolean;
   poolIdleTimeoutMs: number;
   headless: boolean;
+  userId: string;
+  navigationTimeoutMs: number;
   stateFile: string;
   filterMinChars: number;
+  filterMatchMode: "smart" | "contains" | "term_and_word_boundary";
+  filterIncludeUrl: boolean;
+  filterScopeFields: string[];
   proxy?: Proxy | null;
 };
 
@@ -116,6 +121,29 @@ function splitToUrls(value: unknown): string[] {
 function parseNumber(value: unknown, fallback: number): number {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function normalizeStringArray(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return Array.from(
+      new Set(
+        value
+          .map((item) => String(item ?? "").trim())
+          .filter(Boolean)
+      )
+    );
+  }
+  if (typeof value === "string") {
+    return Array.from(
+      new Set(
+        value
+          .split(/[\n\r,，;；\t]+/g)
+          .map((item) => item.trim())
+          .filter(Boolean)
+      )
+    );
+  }
+  return [];
 }
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -207,6 +235,11 @@ function buildDriverConfig(input: {
     poolEnabled: config.poolEnabled,
     poolIdleTimeoutMs: parseNumber(config.poolIdleTimeoutMs, 120000),
     headless: config.headless,
+    ...(config.userId.trim() ? { userId: config.userId.trim() } : {}),
+    navigationTimeoutMs: Math.max(
+      1000,
+      parseNumber(config.navigationTimeoutMs, 30000)
+    ),
     stateFile: config.stateFile.trim() || undefined,
     script: {
       type: intentType || "search",
@@ -214,6 +247,11 @@ function buildDriverConfig(input: {
     },
     filter: {
       minChars: parseNumber(config.filterMinChars, 8),
+      matchMode: config.filterMatchMode,
+      includeUrl: config.filterIncludeUrl,
+      ...(config.filterScopeFields.length > 0
+        ? { scopeFields: config.filterScopeFields }
+        : {}),
     },
     ...(proxy
       ? {
@@ -234,8 +272,13 @@ function getInitialScriptState(source?: SourceWithRelations): {
   poolEnabled: boolean;
   poolIdleTimeoutMs: number;
   headless: boolean;
+  userId: string;
+  navigationTimeoutMs: number;
   stateFile: string;
   filterMinChars: number;
+  filterMatchMode: "smart" | "contains" | "term_and_word_boundary";
+  filterIncludeUrl: boolean;
+  filterScopeFields: string[];
 } {
   if (!source) {
     return {
@@ -247,8 +290,13 @@ function getInitialScriptState(source?: SourceWithRelations): {
       poolEnabled: true,
       poolIdleTimeoutMs: 120000,
       headless: false,
+      userId: "",
+      navigationTimeoutMs: 30000,
       stateFile: "",
       filterMinChars: 8,
+      filterMatchMode: "smart",
+      filterIncludeUrl: false,
+      filterScopeFields: [],
     };
   }
 
@@ -271,10 +319,18 @@ function getInitialScriptState(source?: SourceWithRelations): {
       !Array.isArray(intent.recallBinding)
         ? (intent.recallBinding as Record<string, unknown>)
         : {};
-    const filter =
+    const topLevelFilter = asRecord(config.filter);
+    const runtimeFilter =
       driver.filter && typeof driver.filter === "object" && !Array.isArray(driver.filter)
         ? (driver.filter as Record<string, unknown>)
         : {};
+    const playwrightFilter = asRecord(playwright.filter);
+    const filter =
+      Object.keys(topLevelFilter).length > 0
+        ? topLevelFilter
+        : Object.keys(runtimeFilter).length > 0
+          ? runtimeFilter
+          : playwrightFilter;
     const intentArgs =
       script.args && typeof script.args === "object" && !Array.isArray(script.args)
         ? (script.args as Record<string, unknown>)
@@ -315,6 +371,18 @@ function getInitialScriptState(source?: SourceWithRelations): {
           : typeof playwright.headless === "boolean"
             ? playwright.headless
             : false,
+      userId:
+        typeof driver.userId === "string" && driver.userId.trim()
+          ? driver.userId
+          : typeof config.userId === "string" && config.userId.trim()
+            ? String(config.userId)
+            : typeof playwright.userId === "string" && playwright.userId.trim()
+              ? String(playwright.userId)
+              : "",
+      navigationTimeoutMs: parseNumber(
+        driver.navigationTimeoutMs ?? playwright.navigationTimeoutMs,
+        30000
+      ),
       stateFile:
         typeof driver.stateFile === "string" && driver.stateFile.trim()
           ? driver.stateFile
@@ -322,6 +390,14 @@ function getInitialScriptState(source?: SourceWithRelations): {
             ? String(playwright.stateFile)
           : "",
       filterMinChars: parseNumber(filter.minChars, 8),
+      filterMatchMode:
+        filter.matchMode === "contains" ||
+        filter.matchMode === "term_and_word_boundary" ||
+        filter.matchMode === "smart"
+          ? filter.matchMode
+          : "smart",
+      filterIncludeUrl: Boolean(filter.includeUrl),
+      filterScopeFields: normalizeStringArray(filter.scopeFields),
     };
   }
 
@@ -344,8 +420,13 @@ function getInitialScriptState(source?: SourceWithRelations): {
       poolEnabled: true,
       poolIdleTimeoutMs: 120000,
       headless: false,
+      userId: "",
+      navigationTimeoutMs: 30000,
       stateFile: "",
       filterMinChars: 8,
+      filterMatchMode: "smart",
+      filterIncludeUrl: false,
+      filterScopeFields: [],
     };
   }
 
@@ -374,8 +455,13 @@ function getInitialScriptState(source?: SourceWithRelations): {
       poolEnabled: true,
       poolIdleTimeoutMs: 120000,
       headless: false,
+      userId: "",
+      navigationTimeoutMs: 30000,
       stateFile: "",
       filterMinChars: 8,
+      filterMatchMode: "smart",
+      filterIncludeUrl: false,
+      filterScopeFields: [],
     };
   }
 
@@ -394,8 +480,13 @@ function getInitialScriptState(source?: SourceWithRelations): {
       poolEnabled: true,
       poolIdleTimeoutMs: 120000,
       headless: false,
+      userId: "",
+      navigationTimeoutMs: 30000,
       stateFile: "",
       filterMinChars: 8,
+      filterMatchMode: "smart",
+      filterIncludeUrl: false,
+      filterScopeFields: [],
     };
   }
 
@@ -408,8 +499,13 @@ function getInitialScriptState(source?: SourceWithRelations): {
     poolEnabled: true,
     poolIdleTimeoutMs: 120000,
     headless: false,
+    userId: "",
+    navigationTimeoutMs: 30000,
     stateFile: "",
     filterMinChars: 8,
+    filterMatchMode: "smart",
+    filterIncludeUrl: false,
+    filterScopeFields: [],
   };
 }
 
@@ -570,12 +666,28 @@ function buildPayloadFromUnified(input: {
       headless: driverConfig.headless,
       poolEnabled: driverConfig.poolEnabled,
       poolIdleTimeoutMs: parseNumber(driverConfig.poolIdleTimeoutMs, 120000),
+      ...(driverConfig.userId.trim() ? { userId: driverConfig.userId.trim() } : {}),
+      navigationTimeoutMs: Math.max(
+        1000,
+        parseNumber(driverConfig.navigationTimeoutMs, 30000)
+      ),
+      filter: {
+        minChars: parseNumber(driverConfig.filterMinChars, 8),
+        matchMode: driverConfig.filterMatchMode,
+        includeUrl: driverConfig.filterIncludeUrl,
+        ...(driverConfig.filterScopeFields.length > 0
+          ? { scopeFields: driverConfig.filterScopeFields }
+          : {}),
+      },
       args: Object.fromEntries(
         Object.entries(intentArgs).map(([key, value]) => [key, String(value ?? "")])
       ),
     },
     runtime: driver,
   };
+  if (driverConfig.userId.trim()) {
+    socialConfig.userId = driverConfig.userId.trim();
+  }
 
   const query = String(intentArgs.query ?? "").trim();
   const userId = String(intentArgs.userId ?? "").trim();
@@ -655,8 +767,19 @@ const SourceDialog = ({
   const [poolEnabled, setPoolEnabled] = useState(initialScriptState.poolEnabled);
   const [poolIdleTimeoutMs, setPoolIdleTimeoutMs] = useState(initialScriptState.poolIdleTimeoutMs);
   const [headless, setHeadless] = useState(initialScriptState.headless);
+  const [runtimeUserId, setRuntimeUserId] = useState(initialScriptState.userId);
+  const [navigationTimeoutMs, setNavigationTimeoutMs] = useState(
+    initialScriptState.navigationTimeoutMs
+  );
   const [stateFile, setStateFile] = useState(initialScriptState.stateFile);
   const [filterMinChars, setFilterMinChars] = useState(initialScriptState.filterMinChars);
+  const [filterMatchMode, setFilterMatchMode] = useState(initialScriptState.filterMatchMode);
+  const [filterIncludeUrl, setFilterIncludeUrl] = useState(
+    initialScriptState.filterIncludeUrl
+  );
+  const [filterScopeFieldsText, setFilterScopeFieldsText] = useState(
+    initialScriptState.filterScopeFields.join(", ")
+  );
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [authBusy, setAuthBusy] = useState(false);
@@ -677,8 +800,13 @@ const SourceDialog = ({
     setPoolEnabled(initialScriptState.poolEnabled);
     setPoolIdleTimeoutMs(initialScriptState.poolIdleTimeoutMs);
     setHeadless(initialScriptState.headless);
+    setRuntimeUserId(initialScriptState.userId);
+    setNavigationTimeoutMs(initialScriptState.navigationTimeoutMs);
     setStateFile(initialScriptState.stateFile);
     setFilterMinChars(initialScriptState.filterMinChars);
+    setFilterMatchMode(initialScriptState.filterMatchMode);
+    setFilterIncludeUrl(initialScriptState.filterIncludeUrl);
+    setFilterScopeFieldsText(initialScriptState.filterScopeFields.join(", "));
     setAdvancedOpen(false);
     setAuthStatus(null);
   }, [open, initialScriptState]);
@@ -1025,8 +1153,13 @@ const SourceDialog = ({
         poolEnabled,
         poolIdleTimeoutMs,
         headless,
+        userId: runtimeUserId,
+        navigationTimeoutMs,
         stateFile: resolvedStateFile,
         filterMinChars,
+        filterMatchMode,
+        filterIncludeUrl,
+        filterScopeFields: normalizeStringArray(filterScopeFieldsText),
         proxy: selectedProxy,
       },
       selectedCapabilityEngine,
@@ -1044,9 +1177,15 @@ const SourceDialog = ({
     poolEnabled,
     poolIdleTimeoutMs,
     headless,
+    runtimeUserId,
+    navigationTimeoutMs,
     resolvedStateFile,
     filterMinChars,
+    filterMatchMode,
+    filterIncludeUrl,
+    filterScopeFieldsText,
     selectedProxy,
+    selectedCapabilityEngine,
   ]);
 
   const sourceApiPreviewError =
@@ -1089,24 +1228,38 @@ const SourceDialog = ({
         (typeof outputField === "object" && Object.keys(outputField).length > 0))
         ? { field: outputField }
         : undefined;
+    const sourceIdPreview = currentSource?.id ?? "<source_id>";
+    const driverPreview = buildDriverConfig({
+      intentType: selectedIntentType,
+      intentArgs: scriptArgs,
+      config: {
+        poolEnabled,
+        poolIdleTimeoutMs,
+        headless,
+        userId: runtimeUserId,
+        navigationTimeoutMs,
+        stateFile: resolvedStateFile,
+        filterMinChars,
+        filterMatchMode,
+        filterIncludeUrl,
+        filterScopeFields: normalizeStringArray(filterScopeFieldsText),
+        proxy: selectedProxy,
+      },
+    });
+    const effectiveUserId =
+      typeof driverPreview.userId === "string" && driverPreview.userId.trim()
+        ? driverPreview.userId.trim()
+        : currentSource?.id
+          ? `source:${currentSource.id}`
+          : "<默认: source:<source_id>>";
     return {
-      sourceId: currentSource?.id ?? "__SOURCE_ID__",
+      sourceId: sourceIdPreview,
       platform: normalizedPlatform.toLowerCase(),
-      keywords: [],
+      userId: effectiveUserId,
+      keywords: ["<由 Query Keywords 注入>"],
       driver: {
         name: capabilityDriver,
-        ...buildDriverConfig({
-          intentType: selectedIntentType,
-          intentArgs: scriptArgs,
-          config: {
-            poolEnabled,
-            poolIdleTimeoutMs,
-            headless,
-            stateFile: resolvedStateFile,
-            filterMinChars,
-            proxy: selectedProxy,
-          },
-        }),
+        ...driverPreview,
       },
       ...(output ? { output } : {}),
     };
@@ -1121,8 +1274,13 @@ const SourceDialog = ({
     poolEnabled,
     poolIdleTimeoutMs,
     headless,
+    runtimeUserId,
+    navigationTimeoutMs,
     resolvedStateFile,
     filterMinChars,
+    filterMatchMode,
+    filterIncludeUrl,
+    filterScopeFieldsText,
     selectedProxy,
   ]);
 
@@ -1160,8 +1318,13 @@ const SourceDialog = ({
         poolEnabled,
         poolIdleTimeoutMs,
         headless,
+        userId: runtimeUserId,
+        navigationTimeoutMs,
         stateFile: resolvedStateFile,
         filterMinChars,
+        filterMatchMode,
+        filterIncludeUrl,
+        filterScopeFields: normalizeStringArray(filterScopeFieldsText),
         proxy: selectedProxy,
       },
       selectedCapabilityEngine,
@@ -1587,13 +1750,42 @@ const SourceDialog = ({
                       <ChevronDown className={cn("size-4 transition", advancedOpen ? "rotate-180" : "")} />
                     </Button>
                   </CollapsibleTrigger>
-                  <CardDescription>Headless, pool, and filter settings.</CardDescription>
+                  <CardDescription>
+                    Configure gather playwright runtime and filter fields.
+                  </CardDescription>
                 </CardHeader>
                 <CollapsibleContent>
                   <CardContent className="grid gap-4">
                     <div className="flex items-center justify-between rounded-md border p-3">
                       <Label htmlFor="headless-switch">Headless</Label>
                       <Switch id="headless-switch" checked={headless} onCheckedChange={setHeadless} />
+                    </div>
+
+                    <div className="grid gap-3 rounded-md border p-3">
+                      <p className="text-sm font-medium">Runtime</p>
+                      <div className="grid gap-2">
+                        <Label>User ID (optional)</Label>
+                        <Input
+                          placeholder="e.g. source:cmxxxx or custom-owner"
+                          value={runtimeUserId}
+                          onChange={(event) => setRuntimeUserId(event.target.value)}
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          对齐 gather 顶层 `userId`，留空则默认使用 `source:&lt;sourceId&gt;`。
+                        </p>
+                      </div>
+                      <div className="grid gap-2">
+                        <Label>Navigation Timeout (ms)</Label>
+                        <Input
+                          type="number"
+                          min={1000}
+                          step={1000}
+                          value={navigationTimeoutMs}
+                          onChange={(event) =>
+                            setNavigationTimeoutMs(parseNumber(event.target.value, 30000))
+                          }
+                        />
+                      </div>
                     </div>
 
                     <div className="grid gap-3 rounded-md border p-3">
@@ -1629,6 +1821,42 @@ const SourceDialog = ({
                           }
                         />
                       </div>
+                      <div className="grid gap-2">
+                        <Label>Match Mode</Label>
+                        <ControlledSelect
+                          value={filterMatchMode}
+                          onValueChange={(value) =>
+                            setFilterMatchMode(
+                              (value as "smart" | "contains" | "term_and_word_boundary") ?? "smart"
+                            )
+                          }
+                          placeholder="Select match mode"
+                        >
+                          <SelectItem value="smart">smart</SelectItem>
+                          <SelectItem value="contains">contains</SelectItem>
+                          <SelectItem value="term_and_word_boundary">
+                            term_and_word_boundary
+                          </SelectItem>
+                        </ControlledSelect>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="filter-include-url-switch">Include URL</Label>
+                        <Switch
+                          id="filter-include-url-switch"
+                          checked={filterIncludeUrl}
+                          onCheckedChange={setFilterIncludeUrl}
+                        />
+                      </div>
+                      <div className="grid gap-2">
+                        <Label>Scope Fields (comma separated)</Label>
+                        <Input
+                          placeholder="title, snippet, content"
+                          value={filterScopeFieldsText}
+                          onChange={(event) =>
+                            setFilterScopeFieldsText(event.target.value)
+                          }
+                        />
+                      </div>
                     </div>
 
                   </CardContent>
@@ -1642,7 +1870,7 @@ const SourceDialog = ({
           <CardHeader>
             <CardTitle>Preview</CardTitle>
             <CardDescription>
-              Review request payloads before saving.
+              Review payloads before saving. Runtime-injected fields use placeholders.
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4">
