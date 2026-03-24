@@ -85,6 +85,8 @@ const REQUIRED_INTENT_ARGS = new Set([
   "uid",
 ]);
 
+const DEFAULT_RECALL_BINDING_ARG_KEYS = ["query"];
+
 function hasTag(tags: string[], value: string): boolean {
   const lower = value.toLowerCase();
   return tags.some((tag) => tag.toLowerCase() === lower);
@@ -236,14 +238,18 @@ function buildTemplateFromCapabilityIntent(
     },
     title,
     description,
-      defaultConfig: {
-        intent: {
-          type: intentType,
-          args,
+    defaultConfig: {
+      intent: {
+        type: intentType,
+        args,
+        recallBinding: {
+          enabled: true,
+          argKeys: DEFAULT_RECALL_BINDING_ARG_KEYS,
         },
-        networkPolicy: inferredNetworkPolicy,
-        driver: capability.execution.driver,
-        keywordStrategy: "AUTO",
+      },
+      networkPolicy: inferredNetworkPolicy,
+      driver: capability.execution.driver,
+      keywordStrategy: "AUTO",
       },
     requiredFields,
     credentialRequirements: buildCredentialRequirements(capability),
@@ -628,6 +634,11 @@ export function buildSourceCreateData(input: {
     intent.recallBinding = {
       enabled: true,
       argKeys: recallBindingArgKeys,
+    };
+  } else {
+    intent.recallBinding = {
+      enabled: true,
+      argKeys: DEFAULT_RECALL_BINDING_ARG_KEYS,
     };
   }
   const effectiveNetworkPolicy =
