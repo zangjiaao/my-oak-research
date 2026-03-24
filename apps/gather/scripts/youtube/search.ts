@@ -1,4 +1,4 @@
-// Sample /v3/fetch key parts
+// Sample /v1/fetch key parts
 // intent.type: search
 // intent.args: {"query":"openai","limit":20}
 // output.field: {"rank":"videos.rank","title":"videos.title","channel":"videos.channel","views":"videos.views","duration":"videos.duration","url":"videos.url"}

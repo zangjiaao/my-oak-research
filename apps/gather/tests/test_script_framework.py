@@ -6,7 +6,7 @@ import pytest
 
 sys.path.append(str(Path(__file__).resolve().parents[1]))
 
-from script_framework import ScriptContext, ScriptRegistry, build_x_intent_script, build_x_search_intercept_script  # noqa: E402
+from libs.script_framework import ScriptContext, ScriptRegistry, build_x_intent_script, build_x_search_intercept_script  # noqa: E402
 
 
 def test_script_registry_resolve_x_search_intercept():

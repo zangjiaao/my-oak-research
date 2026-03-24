@@ -144,8 +144,8 @@ export const KeywordStrategyEnum = z.enum([
   "PRECISION_ONLY",
   "HYBRID",
 ]);
-export const SocialPlatformEnum = z.enum(["X", "TELEGRAM", "REDDIT", "XIAOHONGSHU", "DOUYIN", "TIKTOK", "WEIBO", "WHATSAPP", "INSTAGRAM", "FACEBOOK"]);
-export const SocialDriverEnum = z.enum(["xhttp", "playwright", "agent-browser"]);
+export const SocialPlatformEnum = z.enum(["X", "REDDIT", "XIAOHONGSHU", "DOUYIN", "TIKTOK", "WEIBO", "WHATSAPP", "INSTAGRAM", "FACEBOOK"]);
+export const SocialDriverEnum = z.enum(["xhttp", "playwright"]);
 const GatherResponseFormatEnum = z.enum(["text", "markdown"]);
 const GatherResponseFormatsInput = z
   .array(GatherResponseFormatEnum)
@@ -163,39 +163,6 @@ const KeywordFilterInput = z
     matchScope: z.enum(["segment", "full"]).optional(),
     splitMode: z.enum(["line", "paragraph", "auto"]).optional(),
     minSegmentChars: z.number().int().min(0).optional(),
-  })
-  .optional()
-  .nullable();
-
-const AgentBrowserScriptStepInput = z.record(z.string(), z.any());
-
-const AgentBrowserConfigInput = z
-  .object({
-    ownerId: z.string().optional().nullable(),
-    sessionKey: z.string().optional().nullable(),
-    headed: z.boolean().optional().default(true),
-    closeOnComplete: z.boolean().optional().default(false),
-    script: z.array(AgentBrowserScriptStepInput).default([]),
-    recordSchema: z
-      .object({
-        format: z.enum(["auto", "jsonl", "tagged", "structured"]).optional(),
-      })
-      .optional()
-      .nullable(),
-    captureFilter: z
-      .object({
-        keys: delimitedStringArray({
-          itemMin: 1,
-          itemMax: 64,
-          totalMax: 64,
-          minItems: 0,
-        }).default([]),
-        perLine: z.boolean().optional(),
-        dedupe: z.boolean().optional(),
-        minChars: z.number().int().min(0).optional(),
-      })
-      .optional()
-      .nullable(),
   })
   .optional()
   .nullable();
@@ -322,7 +289,6 @@ const SocialConfigInput = z
     responseFormats: GatherResponseFormatsInput,
     keywordFilter: KeywordFilterInput,
     playwright: PlaywrightConfigInput.optional(),
-    agentBrowser: z.preprocess((val) => parseJson(val), AgentBrowserConfigInput),
     subreddit: z.string().min(1).optional(),
     sort: z.enum(["hot", "new", "top"]).optional(),
     userId: z.string().optional(),
@@ -369,7 +335,6 @@ export const SocialConfigByPlatform = z
     }
     if (
       platform === "XIAOHONGSHU" &&
-      driver !== "agent-browser" &&
       !payload.config.userId &&
       !payload.config.noteId &&
       !payload.config.query

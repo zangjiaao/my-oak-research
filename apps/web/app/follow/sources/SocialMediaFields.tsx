@@ -154,20 +154,10 @@ type IntentArgRow = {
   preset?: boolean;
 };
 
-type AgentScriptRow = {
-  id: string;
-  json: string;
-};
-
 const createEmptyArgRow = (): IntentArgRow => ({
   id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
   key: "",
   value: "",
-});
-
-const createEmptyAgentScriptRow = (): AgentScriptRow => ({
-  id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
-  json: "",
 });
 
 const toDelimitedStringArray = (value: unknown): string[] => {
@@ -312,9 +302,6 @@ export const SocialMediaFields = ({
   const selectedDriver = watch("social.config.driver") as string | undefined;
   const currentCredentialId = watch("social.credentialId") as string | null | undefined;
   const currentProxyId = watch("social.proxyId") as string | null | undefined;
-  const currentRecordFormat = watch(
-    "social.config.agentBrowser.recordSchema.format"
-  ) as string | undefined;
   const currentPlaywrightMode = watch(
     "social.config.playwright.mode"
   ) as string | undefined;
@@ -350,9 +337,6 @@ export const SocialMediaFields = ({
   const [newCredentialName, setNewCredentialName] = useState("");
   const [xArgRows, setXArgRows] = useState<IntentArgRow[]>([
     createEmptyArgRow(),
-  ]);
-  const [agentScriptRows, setAgentScriptRows] = useState<AgentScriptRow[]>([
-    createEmptyAgentScriptRow(),
   ]);
   const [catalogOptions, setCatalogOptions] = useState<IntentOption[]>([]);
   const [loadingCatalog, setLoadingCatalog] = useState(false);
@@ -591,22 +575,6 @@ export const SocialMediaFields = ({
 
   useEffect(() => {
     if (!setValue) return;
-    if (!socialPlatform || resolvedDriver !== "agent-browser") return;
-
-    if (!currentRecordFormat) {
-      setValue("social.config.agentBrowser.recordSchema.format", "jsonl", {
-        shouldDirty: false,
-      });
-    }
-  }, [
-    setValue,
-    socialPlatform,
-    resolvedDriver,
-    currentRecordFormat,
-  ]);
-
-  useEffect(() => {
-    if (!setValue) return;
     if (!socialPlatform || resolvedDriver !== "playwright") return;
     if (typeof currentPlaywrightPoolEnabled !== "boolean") {
       setValue("social.config.playwright.poolEnabled", true, {
@@ -687,31 +655,6 @@ export const SocialMediaFields = ({
     [setValue]
   );
 
-  const syncAgentScriptToForm = useCallback(
-    (rows: AgentScriptRow[]) => {
-      if (!setValue) return;
-      const script = rows
-        .map((row) => row.json.trim())
-        .filter(Boolean)
-        .map((row) => {
-          try {
-            const parsed = JSON.parse(row);
-            if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-              return parsed as Record<string, unknown>;
-            }
-            return null;
-          } catch {
-            return null;
-          }
-        })
-        .filter((step): step is Record<string, unknown> => Boolean(step));
-      setValue("social.config.agentBrowser.script", script, {
-        shouldDirty: true,
-      });
-    },
-    [setValue]
-  );
-
   useEffect(() => {
     if (!setValue) return;
     if (!socialPlatform) return;
@@ -742,23 +685,6 @@ export const SocialMediaFields = ({
     setXArgRows(rows.length > 0 ? rows : [createEmptyArgRow()]);
   }, [resolvedDriver, scriptOptions.length, watch]);
 
-  useEffect(() => {
-    if (resolvedDriver !== "agent-browser") return;
-    const rawScript = watch("social.config.agentBrowser.script");
-    const rows = Array.isArray(rawScript)
-      ? rawScript
-          .map((step) => {
-            if (!step || typeof step !== "object") return null;
-            return {
-              id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
-              json: JSON.stringify(step, null, 2),
-            } satisfies AgentScriptRow;
-          })
-          .filter(Boolean)
-      : [];
-    setAgentScriptRows(rows.length > 0 ? (rows as AgentScriptRow[]) : [createEmptyAgentScriptRow()]);
-  }, [resolvedDriver, watch]);
-
   const updateArgRow = useCallback(
     (id: string, field: "key" | "value", nextValue: string) => {
       const nextRows = xArgRows.map((row) =>
@@ -786,33 +712,6 @@ export const SocialMediaFields = ({
       syncArgsToForm(safeRows);
     },
     [syncArgsToForm, xArgRows]
-  );
-
-  const updateAgentScriptRow = useCallback(
-    (id: string, value: string) => {
-      const rows = agentScriptRows.map((row) =>
-        row.id === id ? { ...row, json: value } : row
-      );
-      setAgentScriptRows(rows);
-      syncAgentScriptToForm(rows);
-    },
-    [agentScriptRows, syncAgentScriptToForm]
-  );
-
-  const addAgentScriptRow = useCallback(() => {
-    const rows = [...agentScriptRows, createEmptyAgentScriptRow()];
-    setAgentScriptRows(rows);
-    syncAgentScriptToForm(rows);
-  }, [agentScriptRows, syncAgentScriptToForm]);
-
-  const removeAgentScriptRow = useCallback(
-    (id: string) => {
-      const rows = agentScriptRows.filter((row) => row.id !== id);
-      const safeRows = rows.length > 0 ? rows : [createEmptyAgentScriptRow()];
-      setAgentScriptRows(safeRows);
-      syncAgentScriptToForm(safeRows);
-    },
-    [agentScriptRows, syncAgentScriptToForm]
   );
 
   // Handle file selection
@@ -1075,16 +974,7 @@ export const SocialMediaFields = ({
               return rest;
             })(),
           }
-        : resolvedDriver === "agent-browser"
-          ? {
-              ...asRecord(previewConfig.agentBrowser),
-              ...(() => {
-                const rest = { ...previewConfig };
-                delete rest.agentBrowser;
-                return rest;
-              })(),
-            }
-          : previewConfig;
+        : previewConfig;
     const configuredFilter = asRecord(config.filter);
     const filter: Record<string, unknown> = {};
     if (typeof configuredFilter.minChars === "number") {
@@ -1165,160 +1055,6 @@ export const SocialMediaFields = ({
         return null;
     }
   };
-
-  const renderAgentBrowserFields = () => (
-    <div className="grid gap-4 rounded-lg border bg-background p-4">
-      <div>
-        <p className="text-sm font-medium">Agent Browser Option</p>
-        <p className="text-xs text-muted-foreground">
-          ownerId / sessionKey 由系统统一维护，表单无需填写。
-        </p>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-5">
-        <Controller
-          name="social.config.agentBrowser.headed"
-          control={control}
-          render={({ field }) => (
-            <div className="flex items-center gap-2">
-              <Switch
-                checked={Boolean(field.value)}
-                onCheckedChange={field.onChange}
-              />
-              <span className="text-sm">Headed</span>
-            </div>
-          )}
-        />
-        <Controller
-          name="social.config.agentBrowser.closeOnComplete"
-          control={control}
-          render={({ field }) => (
-            <div className="flex items-center gap-2">
-              <Switch
-                checked={Boolean(field.value)}
-                onCheckedChange={field.onChange}
-              />
-              <span className="text-sm">Close On Complete</span>
-            </div>
-          )}
-        />
-      </div>
-
-      <div className="grid gap-3 rounded-md border bg-background p-3">
-        <div className="flex items-center justify-between">
-          <Label className="text-sm font-medium">Script Steps (JSON per step)</Label>
-          <Button type="button" variant="outline" size="sm" onClick={addAgentScriptRow}>
-            <Plus className="mr-1 h-3.5 w-3.5" />
-            Add
-          </Button>
-        </div>
-        <div className="grid gap-2">
-          {agentScriptRows.map((row) => (
-            <div key={row.id} className="grid grid-cols-[1fr_auto] gap-2 items-start">
-              <Textarea
-                value={row.json}
-                rows={6}
-                placeholder='{"command":"open https://web.telegram.org/a/#-1001364377229"}'
-                onChange={(e) => updateAgentScriptRow(row.id, e.target.value)}
-              />
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                onClick={() => removeAgentScriptRow(row.id)}
-                aria-label="Remove script row"
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </div>
-          ))}
-        </div>
-        <p className="text-xs text-muted-foreground">
-          每行一个 JSON 对象步骤；仅合法 JSON 会被保存到配置。
-        </p>
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-2">
-        <div className="grid gap-2">
-          <Label htmlFor="social.config.agentBrowser.recordSchema.format">
-            Record Schema Format
-          </Label>
-          <Controller
-            name="social.config.agentBrowser.recordSchema.format"
-            control={control}
-            render={({ field }) => (
-              <ControlledSelect
-                value={(field.value as string) || "jsonl"}
-                onValueChange={field.onChange}
-                placeholder="Select format"
-              >
-                <SelectItem value="jsonl">jsonl</SelectItem>
-                <SelectItem value="tagged">tagged</SelectItem>
-                <SelectItem value="structured">structured</SelectItem>
-                <SelectItem value="auto">auto</SelectItem>
-              </ControlledSelect>
-            )}
-          />
-        </div>
-        <div className="grid gap-2">
-          <Label htmlFor="social.config.agentBrowser.captureFilter.keys">
-            Capture Filter Keys
-          </Label>
-          <Controller
-            name="social.config.agentBrowser.captureFilter.keys"
-            control={control}
-            render={({ field }) => (
-              <Textarea
-                id="social.config.agentBrowser.captureFilter.keys"
-                rows={3}
-                placeholder={"xhs_note_text\nxhs_note_meta"}
-                value={
-                  Array.isArray(field.value)
-                    ? field.value.join("\n")
-                    : typeof field.value === "string"
-                      ? field.value
-                      : ""
-                }
-                onChange={(e) => field.onChange(toDelimitedStringArray(e.target.value))}
-              />
-            )}
-          />
-          <p className="text-xs text-muted-foreground">
-            支持多个 key，使用逗号或换行分隔。
-          </p>
-        </div>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-5">
-        <Controller
-          name="social.config.agentBrowser.captureFilter.perLine"
-          control={control}
-          render={({ field }) => (
-            <div className="flex items-center gap-2">
-              <Switch
-                checked={Boolean(field.value)}
-                onCheckedChange={field.onChange}
-              />
-              <span className="text-sm">Capture Per Line</span>
-            </div>
-          )}
-        />
-        <Controller
-          name="social.config.agentBrowser.captureFilter.dedupe"
-          control={control}
-          render={({ field }) => (
-            <div className="flex items-center gap-2">
-              <Switch
-                checked={Boolean(field.value)}
-                onCheckedChange={field.onChange}
-              />
-              <span className="text-sm">Capture Dedupe</span>
-            </div>
-          )}
-        />
-      </div>
-    </div>
-  );
 
   const getPlatformOptionLabel = (platform: string) => {
     return platform;
@@ -1599,7 +1335,7 @@ export const SocialMediaFields = ({
                   )}
                 />
                 <p className="text-xs text-muted-foreground">
-                  xhttp 不支持认证凭据；playwright / agent-browser 支持凭据。
+                  xhttp 不支持认证凭据；playwright 支持凭据。
                 </p>
               </div>
             )}
@@ -1983,9 +1719,6 @@ export const SocialMediaFields = ({
             </div>
           )}
 
-          {resolvedDriver === "agent-browser" && (
-            renderAgentBrowserFields()
-          )}
         </>
       )}
 
@@ -2013,7 +1746,7 @@ export const SocialMediaFields = ({
         </Card>
       )}
 
-      {socialPlatform === "REDDIT" && resolvedDriver !== "agent-browser" && (
+      {socialPlatform === "REDDIT" && (
         <>
           <div className="grid gap-3">
             <Label htmlFor="social.config.subreddit">Subreddit</Label>
@@ -2036,7 +1769,7 @@ export const SocialMediaFields = ({
         </>
       )}
 
-      {socialPlatform === "XIAOHONGSHU" && resolvedDriver !== "agent-browser" && (
+      {socialPlatform === "XIAOHONGSHU" && (
         <>
           <div className="grid gap-3">
             <Label htmlFor="social.config.userId">用户 ID</Label>
@@ -2068,7 +1801,7 @@ export const SocialMediaFields = ({
         </>
       )}
 
-      {socialPlatform === "DOUYIN" && resolvedDriver !== "agent-browser" && (
+      {socialPlatform === "DOUYIN" && (
         <>
           <div className="grid gap-3">
             <Label htmlFor="social.config.userId">用户 ID</Label>
@@ -2100,7 +1833,7 @@ export const SocialMediaFields = ({
         </>
       )}
 
-      {socialPlatform === "TIKTOK" && resolvedDriver !== "agent-browser" && (
+      {socialPlatform === "TIKTOK" && (
         <>
           <div className="grid gap-3">
             <Label htmlFor="social.config.username">用户名</Label>
@@ -2132,7 +1865,7 @@ export const SocialMediaFields = ({
         </>
       )}
 
-      {socialPlatform === "WEIBO" && resolvedDriver !== "agent-browser" && (
+      {socialPlatform === "WEIBO" && (
         <>
           <div className="grid gap-3">
             <Label htmlFor="social.config.userId">用户 ID</Label>
@@ -2170,24 +1903,7 @@ export const SocialMediaFields = ({
         </>
       )}
 
-      {socialPlatform === "TELEGRAM" && resolvedDriver !== "agent-browser" && (
-        <>
-          <div className="grid gap-3">
-            <Label htmlFor="social.config.chatId">频道/群组 ID</Label>
-            <Input
-              id="social.config.chatId"
-              placeholder="频道或群组的 ID 或用户名"
-              {...register("social.config.chatId")}
-            />
-            <ErrorMessage>{getConfigErrorMessage("chatId")}</ErrorMessage>
-            <p className="text-xs text-muted-foreground">
-              留空则获取最近聊天记录
-            </p>
-          </div>
-        </>
-      )}
-
-      {socialPlatform === "WHATSAPP" && resolvedDriver !== "agent-browser" && (
+      {socialPlatform === "WHATSAPP" && (
         <>
           <div className="grid gap-3">
             <Label htmlFor="social.config.contactName">联系人/群组名称</Label>
@@ -2204,7 +1920,7 @@ export const SocialMediaFields = ({
         </>
       )}
 
-      {socialPlatform === "INSTAGRAM" && resolvedDriver !== "agent-browser" && (
+      {socialPlatform === "INSTAGRAM" && (
         <>
           <div className="grid gap-3">
             <Label htmlFor="social.config.username">用户名</Label>
@@ -2236,7 +1952,7 @@ export const SocialMediaFields = ({
         </>
       )}
 
-      {socialPlatform === "FACEBOOK" && resolvedDriver !== "agent-browser" && (
+      {socialPlatform === "FACEBOOK" && (
         <>
           <div className="grid gap-3">
             <Label htmlFor="social.config.username">用户名 / 页面 ID</Label>

@@ -275,7 +275,7 @@ export async function loadBatchTemplates(): Promise<BatchTemplate[]> {
   const gatherUrl = process.env.GATHER_SERVICE_URL || "http://localhost:8000";
   let gatherItems: GatherCatalogItem[] = [];
   try {
-    const response = await fetch(`${gatherUrl}/v3/scripts/catalog`, {
+    const response = await fetch(`${gatherUrl}/v1/scripts/catalog`, {
       cache: "no-store",
       headers: { Accept: "application/json" },
     });

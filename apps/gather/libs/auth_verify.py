@@ -1,11 +1,9 @@
 from __future__ import annotations
 
-import asyncio
 import json
 from pathlib import Path
 from typing import Any
 
-from drivers.agent_browser_runner import AgentBrowserScriptError, execute_agent_browser_script
 from schemas import VerifyAuthRequest, VerifyAuthResponse
 
 
@@ -30,90 +28,95 @@ def _looks_like_xhs_login_cookie_set(auth_data: dict[str, Any] | None) -> bool:
     return "a1" in cookie_names and ("web_session" in cookie_names or "webId" in cookie_names)
 
 
-async def verify_auth_with_agent_browser_for_whatsapp(
+async def verify_auth_with_whatsapp_playwright_profile(
     request: VerifyAuthRequest,
     auth_dir: Path,
 ) -> VerifyAuthResponse | None:
     if request.platform.lower() != "whatsapp":
         return None
 
-    options: dict[str, Any] = {
-        "mode": "self",
-        "headless": request.headless,
-        "startUrl": "https://web.whatsapp.com",
-        "waitAfterNavigationMs": max(0, int(request.verify_post_wait_ms)),
-        "timeoutMs": max(1000, int(request.verify_timeout_ms)),
-        "capture": [
-            {
-                "name": "auth_probe",
-                "source": "evaluate",
-                "script": (
-                    "(async()=>{"
-                    "const loggedIn=Boolean(document.querySelector('[aria-label=\"Chat list\"]')"
-                    "||document.querySelector('[data-testid=\"chat-list\"]')"
-                    "||document.querySelector('[contenteditable=\"true\"][data-tab]'));"
-                    "const needsQr=Boolean(document.querySelector('canvas[aria-label*=\"QR\"]'));"
-                    "if(loggedIn)return JSON.stringify({ok:true});"
-                    "if(needsQr)return JSON.stringify({ok:false,error:'QR required'});"
-                    "return JSON.stringify({ok:false,error:'Unable to confirm auth status'});"
-                    "})()"
-                ),
-                "captureAs": "auth_probe",
-            },
-        ],
-    }
-
-    if request.state_file:
-        options["stateFile"] = request.state_file
-
     auth_data = request.auth_data or {}
-    profile_name = auth_data.get("profileName")
-    if isinstance(profile_name, str) and profile_name.strip():
-        profile_path = auth_dir / profile_name.strip()
-        if profile_path.exists():
-            options["profile"] = str(profile_path)
-
-    try:
-        script_result = await asyncio.to_thread(
-            execute_agent_browser_script,
-            {"agentBrowser": options},
+    profile_name = auth_data.get("profileName", auth_data.get("profile_name"))
+    if not isinstance(profile_name, str) or not profile_name.strip():
+        return VerifyAuthResponse(
+            valid=False,
+            message="WhatsApp auth profile is missing",
+            details={"platform": "whatsapp", "verifyMethod": "playwright-profile"},
         )
-    except AgentBrowserScriptError as error:
-        print(f"[gather] whatsapp agent-browser verify failed: {error}")
+
+    profile_path = (auth_dir / profile_name.strip()).resolve()
+    if not profile_path.exists() or not profile_path.is_dir():
+        return VerifyAuthResponse(
+            valid=False,
+            message=f"WhatsApp profile does not exist: {profile_name}",
+            details={"platform": "whatsapp", "verifyMethod": "playwright-profile"},
+        )
+
+    from playwright.async_api import TimeoutError as PlaywrightTimeoutError
+    from playwright.async_api import async_playwright
+
+    target_url = request.verify_target_url or "https://web.whatsapp.com"
+    try:
+        async with async_playwright() as playwright:
+            context = await playwright.chromium.launch_persistent_context(
+                user_data_dir=str(profile_path),
+                headless=request.headless,
+            )
+            try:
+                page = context.pages[0] if context.pages else await context.new_page()
+                await page.goto(
+                    target_url,
+                    wait_until="domcontentloaded",
+                    timeout=max(1000, int(request.verify_timeout_ms)),
+                )
+                await page.wait_for_timeout(max(0, int(request.verify_post_wait_ms)))
+                payload = await page.evaluate(
+                    """
+                    (() => {
+                      const loggedIn = Boolean(
+                        document.querySelector('[aria-label="Chat list"]')
+                        || document.querySelector('[data-testid="chat-list"]')
+                        || document.querySelector('[contenteditable="true"][data-tab]')
+                      );
+                      const needsQr = Boolean(document.querySelector('canvas[aria-label*="QR"]'));
+                      if (loggedIn) return { ok: true };
+                      if (needsQr) return { ok: false, error: "QR required" };
+                      return { ok: false, error: "Unable to confirm auth status" };
+                    })()
+                    """
+                )
+            finally:
+                await context.close()
+    except PlaywrightTimeoutError as error:
+        return VerifyAuthResponse(
+            valid=False,
+            message=f"WhatsApp auth probe timed out: {error}",
+            details={"platform": "whatsapp", "verifyMethod": "playwright-profile"},
+        )
+    except Exception as error:
         return VerifyAuthResponse(
             valid=False,
             message=f"WhatsApp auth probe failed: {error}",
-            details={"platform": "whatsapp", "verifyMethod": "agent-browser"},
-        )
-    except Exception as error:  # pragma: no cover
-        print(f"[gather] whatsapp agent-browser verify unexpected error: {error}")
-        return VerifyAuthResponse(
-            valid=False,
-            message=f"WhatsApp auth probe failed: {error}",
-            details={"platform": "whatsapp", "verifyMethod": "agent-browser"},
+            details={"platform": "whatsapp", "verifyMethod": "playwright-profile"},
         )
 
-    captures = script_result.captures.get("auth_probe") or []
-    if not captures:
-        return None
-    raw = captures[-1]
-    try:
-        payload = json.loads(raw)
-    except json.JSONDecodeError:
-        return None
     if not isinstance(payload, dict):
-        return None
+        return VerifyAuthResponse(
+            valid=False,
+            message="WhatsApp auth probe failed with invalid payload",
+            details={"platform": "whatsapp", "verifyMethod": "playwright-profile"},
+        )
 
     if payload.get("ok") is True:
         return VerifyAuthResponse(
             valid=True,
             message="WhatsApp authentication is valid",
-            details={"platform": "whatsapp", "verifyMethod": "agent-browser"},
+            details={"platform": "whatsapp", "verifyMethod": "playwright-profile"},
         )
     return VerifyAuthResponse(
         valid=False,
         message=str(payload.get("error") or "WhatsApp authentication is invalid or expired"),
-        details={"platform": "whatsapp", "verifyMethod": "agent-browser"},
+        details={"platform": "whatsapp", "verifyMethod": "playwright-profile"},
     )
 
 
@@ -422,7 +425,7 @@ async def playwright_verify_auth(request: VerifyAuthRequest, auth_dir: Path) -> 
         return error_response
     normalized_request = request.model_copy(update={"auth_data": auth_data or {}})
 
-    whatsapp_result = await verify_auth_with_agent_browser_for_whatsapp(normalized_request, auth_dir=auth_dir)
+    whatsapp_result = await verify_auth_with_whatsapp_playwright_profile(normalized_request, auth_dir=auth_dir)
     if whatsapp_result is not None:
         return whatsapp_result
 
@@ -442,11 +445,4 @@ async def playwright_verify_auth(request: VerifyAuthRequest, auth_dir: Path) -> 
         valid=False,
         message="No built-in verify probe for this platform",
         details={"verifyMethod": "built-in-probe-missing"},
-    )
-
-
-async def agent_browser_verify_auth(_request: VerifyAuthRequest) -> VerifyAuthResponse:
-    return VerifyAuthResponse(
-        valid=True,
-        message="agent-browser authentication is configured through fetch config (profile/session/state).",
     )

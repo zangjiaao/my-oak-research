@@ -1,4 +1,4 @@
-// Sample /v3/fetch key parts
+// Sample /v1/fetch key parts
 // intent.type: me
 // intent.args: {}
 // output.field: {"name":"name","url":"url","headline":"headline","answer_count":"answer_count"}

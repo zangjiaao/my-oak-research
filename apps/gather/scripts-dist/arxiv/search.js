@@ -1,4 +1,4 @@
-// Sample /v3/fetch key parts
+// Sample /v1/fetch key parts
 // intent.type: search
 // intent.args: {"query":"large language model","limit":10}
 // output.field: {"id":"papers.id","title":"papers.title","authors":"papers.authors","url":"papers.url"}

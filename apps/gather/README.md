@@ -29,28 +29,28 @@ playwright install chromium
 
 ```bash
 # 导出 X.com cookies
-uv run export_chrome_cookies.py x
+uv run tools/export_chrome_cookies.py x
 
 # 导出小红书 cookies
-uv run export_chrome_cookies.py xiaohongshu
+uv run tools/export_chrome_cookies.py xiaohongshu
 
 # 导出 Reddit cookies
-uv run export_chrome_cookies.py reddit
+uv run tools/export_chrome_cookies.py reddit
 
 # 导出抖音 cookies
-uv run export_chrome_cookies.py douyin
+uv run tools/export_chrome_cookies.py douyin
 
 # 导出 TikTok cookies
-uv run export_chrome_cookies.py tiktok
+uv run tools/export_chrome_cookies.py tiktok
 
 # 导出微博 cookies
-uv run export_chrome_cookies.py weibo
+uv run tools/export_chrome_cookies.py weibo
 
 # 导出 Telegram cookies + localStorage
-uv run export_chrome_cookies.py telegram
+uv run tools/export_chrome_cookies.py telegram
 
 # 导出 WhatsApp（启动浏览器，需要扫码登录）
-uv run export_chrome_cookies.py whatsapp
+uv run tools/export_chrome_cookies.py whatsapp
 ```
 
 **注意**：
@@ -80,25 +80,25 @@ uv run export_chrome_cookies.py whatsapp
 ### 3. 启动服务
 
 ```bash
-python main.py
+python -m api.app
 ```
 
 或者使用 uvicorn：
 
 ```bash
-uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+uvicorn api.app:app --host 0.0.0.0 --port 8000 --reload
 ```
 
 ## API 接口
 
-### 验证认证 (POST /verify-auth)
+### 验证认证 (POST /v1/verify-auth)
 
 验证 cookies 是否有效。
 
 当前使用内置校验探针，不再依赖 `bb-site` 或 `site_scripts`：  
 - `x/twitter`: 检查 `ct0` + `auth_token` cookie  
 - `reddit`: Playwright 打开站点并请求 `/api/me.json`  
-- `whatsapp`: 使用 `agent-browser` 做登录态探测  
+- `whatsapp`: 使用 Playwright profile 探测登录态
 - 其他平台：返回 `built-in-probe-missing`
 
 **请求体**：
@@ -134,9 +134,9 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 }
 ```
 
-### 获取数据 v2（推荐）(POST /v2/fetch)
+### 获取数据（POST /v1/fetch)
 
-`/v2/fetch` 是唯一 fetch 契约入口，返回数组 `CleanItem`。
+`/v1/fetch` 是唯一 fetch 契约入口，返回 `{ items, meta }`。
 
 **请求体**：
 ```json
@@ -169,7 +169,7 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 }
 ```
 
-`driver.name` 必填，可选值为 `xhttp`、`playwright`、`agent-browser`。
+`driver.name` 必填，可选值为 `xhttp`、`playwright`。
 `driver.option` 透传给对应 driver；`driver.filter` 为关键词过滤参数（如 `minChars`）。
 `userId` 建议与 `sourceId` 同级传入（系统用户 ID，用于 Playwright 资源池复用隔离）。
 `output.field` 必填，控制 `recordContent` 输出字段（支持点路径）：
@@ -183,7 +183,7 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
 `output.keywordScope` 可选，限制关键词过滤只检查 `recordContent` 指定字段（例如 `["text"]`）。
 
-`driver.filter` 关键词匹配参数（`/v2/fetch` 与 `/v3/fetch` 一致）：
+`driver.filter` 关键词匹配参数（`/v1/fetch` 与 `/v1/fetch` 一致）：
 
 - `minChars`：最小正文长度门槛（默认 `1`）
 - `matchMode`：匹配模式，`smart`（默认，词级匹配）或 `contains`（子串匹配兼容模式）
@@ -196,11 +196,11 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 - CJK 关键词按子串匹配（受 `minCjkTermChars` 限制）
 - 未显式开启 `includeUrl` 时，URL 不参与关键词命中
 
-`/v2/fetch` 只接受新字段：`sourceId`、`userId`、`platform`、`keywords`、`driver.name`、`driver.option`、`driver.filter`、`output.field`。不再兼容旧字段。
+`/v1/fetch` 推荐使用 `driver.script` 契约；服务端会对旧 `driver.option`/顶层 `intent` 做兼容归一化。
 
 ### 通用网络代理配置（支持 HTTP/SOCKS/Tor）
 
-三个 driver（`xhttp` / `playwright` / `agent-browser`）都支持在 `driver.option.network.proxy` 下统一配置代理：
+两个 driver（`xhttp` / `playwright`）都支持在 `driver.option.network.proxy` 下统一配置代理：
 
 ```json
 {
@@ -222,7 +222,7 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
 - `url`: 必填，支持 `http://`、`https://`、`socks5://`、`socks5h://`
 - `username/password`: 可选，未写入 URL 时会自动注入
-- `bypass`: 可选，主要用于浏览器类 driver（Playwright / agent-browser）
+- `bypass`: 可选，主要用于浏览器类 driver（Playwright）
 - Tor 推荐使用 `socks5h://127.0.0.1:9050`（DNS 也走 Tor）
 
 ### xhttp 驱动（`driver.name: "xhttp"`）
@@ -277,168 +277,9 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 - `timeoutSeconds`: 可选，超时时间，默认 `15`
 - `maxChars`: 可选，返回 `text/markdown` 最大长度，默认 `20000`
 
-### Agent Browser 脚本化 PoC（`driver.name: "agent-browser"`）
-
-用于复杂交互场景（登录后页面、轮询点击、按脚本采集内容），通过 `agent-browser` CLI 执行步骤。
-
-```json
-{
-  "platform": "telegram",
-  "sourceId": "source_telegram_demo",
-  "driver": {
-    "name": "agent-browser",
-    "option": {
-      "headed": true,
-      "profile": ".auth/telegram_profile",
-      "auth": {
-        "stateFile": ".auth/telegram_auth.json"
-      },
-      "script": [
-        { "command": "open https://web.telegram.org/a/" },
-        { "command": "wait --load networkidle" },
-        { "command": "snapshot -i", "captureAs": "entry_snapshot" },
-        { "command": "click @e25", "repeat": 3, "intervalMs": 2000 },
-        { "command": "get text @e40", "captureAs": "messages" }
-      ],
-      "filters": {
-        "capture": {
-          "keys": ["messages"],
-          "minChars": 20
-        },
-        "keyword": {
-          "keywords": ["openclaw"],
-          "minChars": 8
-        }
-      }
-    }
-  }
-}
-```
-
-`driver.option`（agent-browser）常用参数：
-
-- `script`: 必填，步骤数组（每步至少包含 `command`）
-- `headed`: 可选，`true` 时可视化执行（等价于 `agent-browser --headed`）
-- `profile`: 可选，加载浏览器 profile（等价于 `--profile`）
-- `sessionName`: 可选，会话名（等价于 `--session-name`）
-- `stateFile`: 可选，加载 state 文件（等价于 `--state`）
-- `commandTimeoutMs`: 可选，单步超时，默认 30000
-- `instanceId`: 可选，复用上一次返回的实例 ID（不传则创建新实例）
-- `ownerId`: 可选，实例归属标识；复用实例时会校验归属
-- `sessionKey`: 可选，会话隔离键；默认不需要与 `sourceId` 重复
-- `instanceTtlSeconds`: 可选，实例空闲 TTL（默认 900 秒）；超过后会在后续请求中被自动清理
-- `heartbeat`: 可选，`true` 时可发送空脚本续租实例（需配合 `instanceId`）
-- `closeOnComplete`: 可选，默认 `false`，为 `true` 时任务结束自动关闭实例
-- `verbose`: 可选，默认 `true`，在 gather 服务日志中输出逐步执行信息（定位卡点时建议开启）
-
-> 并发建议：需要多实例并行时，不要在脚本中显式执行 `close`，由 worker 在任务结束时关闭；同时依赖空闲 TTL 做兜底回收。
-
-`driver.name: "agent-browser"` 的返回项会附带：
-
-- `instanceId`: 浏览器实例 ID（用于下一次请求复用）
-- `tabId`: 当前 tab 的逻辑 ID
-- `instanceActive`: 当前请求结束后实例是否仍存活
-
-### 循环操作（滚动 + 检查直到命中）
-
-支持在一次请求内执行循环步骤，直到命中条件或达到上限：
-
-```json
-{
-  "platform": "x",
-  "sourceId": "loop_demo_001",
-  "driver": {
-    "name": "agent-browser",
-    "option": {
-      "instanceId": "ab-1234567890",
-      "ownerId": "user-1001",
-      "script": [
-        { "command": "open https://x.com/some-post" },
-        {
-          "loop": {
-            "maxIterations": 20,
-            "intervalMs": 1000,
-            "steps": [
-              { "command": "scroll down 900" },
-              { "command": "snapshot", "captureAs": "page_snapshot" }
-            ],
-            "breakWhen": {
-              "captureKey": "page_snapshot",
-              "textIncludes": ["目标关键词", "备选关键词"]
-            }
-          }
-        }
-      ],
-      "filters": {
-        "capture": {
-          "keys": ["page_snapshot"],
-          "perLine": true,
-          "minChars": 20,
-          "dedupe": true,
-          "normalizeRefTags": true,
-          "startsWith": ["- article", "- text"]
-        }
-      }
-    }
-  }
-}
-```
-
-`loop` 参数说明（作为 `script` 中的一个步骤对象传入，不再支持顶层 loop 写法）：
-
-- `maxIterations`: 最大循环次数（必填）
-- `intervalMs`: 每轮循环间隔（可选）
-- `steps`: 每轮要执行的步骤数组（必填）
-- `breakWhen.captureKey + breakWhen.textIncludes`: 当指定 capture 的最新输出包含目标文本时停止循环（`textIncludes` 支持字符串或字符串数组）
-
-`captureFilter` 参数说明（可选）：
-
-- `keys`: 仅对指定 capture key 生效（例如 `["page_snapshot"]`）
-- `perLine`: `true` 时按行拆分输出（适合 `snapshot` 粗提取）
-- `minChars`: 最小字符长度过滤（例如 `20`）
-- `dedupe`: 是否去重（同一 capture key 下按字符串精确去重）
-- `normalizeRefTags`: 仅用于去重 key 归一化，去掉形如 `[ref=e120]`（含行尾 ` [ref=e120]:`）的引用标签（保留原始输出文本，兼容旧别名 `normalizeRefSuffix`）
-- `startsWith`: 白名单前缀，只有以这些前缀开头的行才保留（支持别名 `star_with`）
-- `excludes`: 黑名单前缀，以这些前缀开头的行会被过滤（支持别名 `ext`）
-- `startsWith` 与 `excludes` 互斥，不能同时传
-
-命名关联说明（`captureAs` / `captureKey` / `captureFilter.keys`）：
-
-- `captureAs`: 在某一步里给输出命名，例如 `snapshot` 步骤写成 `"captureAs": "page_snapshot"`
-- `captureKey`: `breakWhen` 里指定要检查哪个命名输出
-- `captureFilter.keys`: 指定过滤规则只作用于哪些命名输出
-- `page_snapshot` 只是示例名，可以改成任意字符串，只要三处对得上
-
-### Agent Browser 心跳接口 (POST /v2/agent-browser/heartbeat)
-
-用于续租已存在实例的 TTL，不执行任何页面操作。
-
-```json
-{
-  "platform": "x",
-  "sourceId": "heartbeat_001",
-  "instanceId": "ab-1234567890",
-  "ownerId": "user-1001",
-  "sessionKey": "tenant-a",
-  "verbose": true
-}
-```
-
-响应示例：
-
-```json
-{
-  "instanceId": "ab-1234567890",
-  "tabId": "tab-1a2b3c4d",
-  "instanceActive": true,
-  "ttlSeconds": 900,
-  "expiresAt": "2026-03-13T10:15:00+00:00"
-}
-```
-
 ### v2 错误结构
 
-`/v2/fetch` 在参数错误或运行时错误时统一返回：
+`/v1/fetch` 在参数错误或运行时错误时统一返回：
 
 ```json
 {
@@ -501,7 +342,7 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
 ### Worker 对接建议（推荐）
 
-Worker 侧建议统一调用 `/v2/fetch`，并显式传 `driver`，避免默认驱动变化导致行为不一致：
+Worker 侧建议统一调用 `/v1/fetch`，并显式传 `driver`，避免默认驱动变化导致行为不一致：
 
 ```json
 {
@@ -522,7 +363,7 @@ Worker 侧建议统一调用 `/v2/fetch`，并显式传 `driver`，避免默认�
 
 - API 直连：`driver.name: "xhttp"`
 - 登录态接口/脚本：`driver.name: "playwright"`
-- 复杂交互兜底：`driver.name: "agent-browser"`
+- 复杂交互兜底：`driver.name: "playwright"`（`intercept-*` / `eval-js`）
 
 ### Python 调用
 
@@ -531,7 +372,7 @@ import requests
 
 # 验证认证
 response = requests.post(
-    "http://localhost:8000/verify-auth",
+    "http://localhost:8000/v1/verify-auth",
     json={
         "platform": "x",
         "auth_data": {"cookies": [...], "origins": []}
@@ -541,7 +382,7 @@ print(response.json())
 
 # 获取数据
 response = requests.post(
-    "http://localhost:8000/v2/fetch",
+    "http://localhost:8000/v1/fetch",
     json={
         "platform": "x",
         "sourceId": "test",
@@ -562,7 +403,7 @@ for item in response.json():
 ### 在 Web UI 中使用
 
 1. 在 Chrome 中登录目标平台
-2. 运行 `python export_chrome_cookies.py <platform>` 导出 cookies
+2. 运行 `python tools/export_chrome_cookies.py <platform>` 导出 cookies
 3. 在添加 Source 时选择社交媒体类型
 4. 上传导出的 auth.json 文件
 5. 点击「上传验证」按钮验证 cookies 是否有效
@@ -574,10 +415,10 @@ for item in response.json():
 
 ```
 apps/gather/
-├── main.py                 # FastAPI 服务入口
+├── api/app.py              # FastAPI 服务入口
 ├── schemas.py              # 请求/响应模型
-├── fetch_processing.py     # 结构化记录解析与关键词过滤
-├── export_chrome_cookies.py # 浏览器认证数据导出脚本
+├── libs/fetch_processing.py # 结构化记录解析与关键词过滤
+├── tools/export_chrome_cookies.py # 浏览器认证数据导出脚本
 ├── pyproject.toml          # Python 依赖
 └── README.md               # 本文档
 ```
@@ -585,9 +426,9 @@ apps/gather/
 ### 添加新平台
 
 1. 在 `apps/gather/auth_verify.py` 增加该平台的内置 verify probe
-2. 采集逻辑优先走 `driver.name=agent-browser` 或 Playwright 内置 `intercept-*` 能力
-3. 在 `main.py` 中添加平台映射与采集逻辑
-4. 在 `export_chrome_cookies.py` 中添加平台配置（如需）
+2. 采集逻辑优先走 `driver.name=playwright` 的内置 `intercept-*` 能力
+3. 在 `api/app.py` 中添加平台映射与采集逻辑
+4. 在 `tools/export_chrome_cookies.py` 中添加平台配置（如需）
 
 ## 注意事项
 

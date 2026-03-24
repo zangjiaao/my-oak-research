@@ -1,4 +1,4 @@
-// Sample /v3/fetch key parts
+// Sample /v1/fetch key parts
 // intent.type: feed
 // intent.args: {"type":"all","limit":20}
 // output.field: {"id":"items.id","author":"items.author","text":"items.text","url":"items.url"}

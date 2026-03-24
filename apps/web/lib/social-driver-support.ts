@@ -1,4 +1,4 @@
-export type SocialDriver = "xhttp" | "playwright" | "agent-browser";
+export type SocialDriver = "xhttp" | "playwright";
 export type KnownSocialPlatform =
   | "X"
   | "REDDIT"
@@ -6,22 +6,20 @@ export type KnownSocialPlatform =
   | "DOUYIN"
   | "TIKTOK"
   | "WEIBO"
-  | "TELEGRAM"
   | "WHATSAPP"
   | "INSTAGRAM"
   | "FACEBOOK";
 
 export const SOCIAL_PLATFORM_DRIVER_SUPPORT: Record<KnownSocialPlatform, readonly SocialDriver[]> = {
-  X: ["playwright", "agent-browser"],
-  REDDIT: ["playwright", "xhttp", "agent-browser"],
-  XIAOHONGSHU: ["agent-browser"],
-  DOUYIN: ["playwright", "xhttp", "agent-browser"],
-  TIKTOK: ["playwright", "xhttp", "agent-browser"],
-  WEIBO: ["playwright", "xhttp", "agent-browser"],
-  TELEGRAM: ["agent-browser"],
-  WHATSAPP: ["playwright", "xhttp", "agent-browser"],
-  INSTAGRAM: ["playwright", "xhttp", "agent-browser"],
-  FACEBOOK: ["playwright", "xhttp", "agent-browser"],
+  X: ["playwright"],
+  REDDIT: ["playwright", "xhttp"],
+  XIAOHONGSHU: ["playwright"],
+  DOUYIN: ["playwright", "xhttp"],
+  TIKTOK: ["playwright", "xhttp"],
+  WEIBO: ["playwright", "xhttp"],
+  WHATSAPP: ["playwright", "xhttp"],
+  INSTAGRAM: ["playwright", "xhttp"],
+  FACEBOOK: ["playwright", "xhttp"],
 };
 
 export function getSupportedDrivers(platform: string): readonly SocialDriver[] {

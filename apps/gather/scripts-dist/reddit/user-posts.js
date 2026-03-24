@@ -1,4 +1,4 @@
-// Sample /v3/fetch key parts
+// Sample /v1/fetch key parts
 // intent.type: user-posts
 // intent.args: {"username":"spez","limit":20}
 // output.field: {"id":"posts.id","title":"posts.title","subreddit":"posts.subreddit","score":"posts.score","comments":"posts.comments","url":"posts.url"}

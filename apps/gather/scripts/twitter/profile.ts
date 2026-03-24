@@ -1,4 +1,4 @@
-// Sample /v3/fetch key parts
+// Sample /v1/fetch key parts
 // intent.type: profile
 // intent.args: {"username":"openai"}
 // output.field: {"screen_name":"profiles.screen_name","name":"profiles.name","bio":"profiles.bio","followers":"profiles.followers","following":"profiles.following","url":"profiles.url"}

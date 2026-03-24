@@ -1,4 +1,4 @@
-// Sample /v3/fetch key parts
+// Sample /v1/fetch key parts
 // intent.type: search
 // intent.args: {"query":"三亚"}
 // output.field: {"source":"source","count":"count","results":"results"}

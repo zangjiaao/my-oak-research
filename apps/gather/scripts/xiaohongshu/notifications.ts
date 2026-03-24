@@ -1,4 +1,4 @@
-// Sample /v3/fetch key parts
+// Sample /v1/fetch key parts
 // intent.type: notifications
 // intent.args: {"type":"mentions","limit":20}
 // output.field: {"user":"messages.user","action":"messages.action","content":"messages.content","time":"messages.time"}

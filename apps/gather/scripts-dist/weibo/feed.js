@@ -1,4 +1,4 @@
-// Sample /v3/fetch key parts
+// Sample /v1/fetch key parts
 // intent.type: feed
 // intent.args: {"limit":15}
 // output.field: {"id":"statuses.id","text":"statuses.text","screen_name":"statuses.user.screen_name","url":"statuses.url","created_at":"statuses.created_at"}

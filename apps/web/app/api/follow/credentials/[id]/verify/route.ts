@@ -117,7 +117,7 @@ export async function POST(
     const gatherServiceUrl = process.env.GATHER_SERVICE_URL || "http://localhost:8000";
     const stateFile = typeof payload.stateFile === "string" ? payload.stateFile : null;
     const authData = stateFile ? { state_file: stateFile } : { auth_data: payload };
-    const response = await fetch(`${gatherServiceUrl}/verify-auth`, {
+    const response = await fetch(`${gatherServiceUrl}/v1/verify-auth`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

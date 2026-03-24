@@ -1,4 +1,4 @@
-// Sample /v3/fetch key parts
+// Sample /v1/fetch key parts
 // intent.type: ranking
 // intent.args: {"category":0,"limit":20}
 // output.field: {"rank":"videos.rank","bvid":"videos.bvid","title":"videos.title","url":"videos.url"}

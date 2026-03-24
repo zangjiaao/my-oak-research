@@ -1,4 +1,4 @@
-// Sample /v3/fetch key parts
+// Sample /v1/fetch key parts
 // intent.type: user
 // intent.args: {"id":"1654184992"}
 // output.field: {"id":"id","screen_name":"screen_name","followers_count":"followers_count","profile_url":"profile_url"}

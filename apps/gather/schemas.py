@@ -14,12 +14,14 @@ class FetchRequest(BaseModel):
     output_fields: Optional[List[str]] = None
     output_field_map: Optional[Dict[str, str]] = None
     output_keyword_scope: Optional[List[str]] = None
+    output_type: Optional[str] = None
 
 
 class FetchV2Output(BaseModel):
     model_config = ConfigDict(extra="forbid")
     field: Union[List[str], Dict[str, str]]
     keywordScope: Optional[List[str]] = None
+    type: Optional[str] = None
 
 
 class FetchV2Driver(BaseModel):
@@ -225,23 +227,6 @@ class ErrorDetail(BaseModel):
 
 class ErrorResponse(BaseModel):
     error: ErrorDetail
-
-
-class AgentBrowserHeartbeatRequest(BaseModel):
-    platform: str
-    source_id: str = Field(validation_alias=AliasChoices("sourceId", "source_id"))
-    owner_id: Optional[str] = Field(default=None, validation_alias=AliasChoices("ownerId", "owner_id"))
-    session_key: Optional[str] = Field(default=None, validation_alias=AliasChoices("sessionKey", "session_key"))
-    instance_id: str = Field(validation_alias=AliasChoices("instanceId", "instance_id"))
-    verbose: bool = True
-
-
-class AgentBrowserHeartbeatResponse(BaseModel):
-    instanceId: str
-    tabId: str
-    instanceActive: bool
-    ttlSeconds: int
-    expiresAt: datetime
 
 
 class UploadProfileResponse(BaseModel):

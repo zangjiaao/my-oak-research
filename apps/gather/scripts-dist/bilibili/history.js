@@ -1,4 +1,4 @@
-// Sample /v3/fetch key parts
+// Sample /v1/fetch key parts
 // intent.type: history
 // intent.args: {"limit":20}
 // output.field: {"bvid":"items.bvid","title":"items.title","progress":"items.progress","url":"items.url"}

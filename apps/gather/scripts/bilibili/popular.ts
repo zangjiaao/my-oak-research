@@ -1,4 +1,4 @@
-// Sample /v3/fetch key parts
+// Sample /v1/fetch key parts
 // intent.type: popular
 // intent.args: {"limit":20,"page":1}
 // output.field: {"rank":"videos.rank","bvid":"videos.bvid","title":"videos.title","url":"videos.url"}

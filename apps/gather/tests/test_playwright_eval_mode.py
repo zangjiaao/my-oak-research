@@ -9,8 +9,8 @@ ROOT_DIR = Path(__file__).resolve().parents[1]
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
-import main
-from main import CleanItem
+import api.app as main
+from api.app import CleanItem
 
 
 def test_fetch_v2_playwright_eval_mode_uses_eval_runner(monkeypatch):
@@ -31,7 +31,7 @@ def test_fetch_v2_playwright_eval_mode_uses_eval_runner(monkeypatch):
 
     client = TestClient(main.app)
     response = client.post(
-        "/v2/fetch",
+        "/v1/fetch",
         json={
             "platform": "x",
             "sourceId": "source-eval-1",
@@ -52,17 +52,17 @@ def test_fetch_v2_playwright_eval_mode_uses_eval_runner(monkeypatch):
 
     assert response.status_code == 200
     payload = response.json()
-    assert isinstance(payload, list)
-    assert payload
-    assert payload[0]["recordContent"]["text"] == "eval keyword text"
-    assert payload[0]["driver"] == "playwright"
-    assert payload[0]["recordType"] == "eval-js"
+    assert isinstance(payload["items"], list)
+    assert payload["items"]
+    assert payload["items"][0]["recordContent"]["text"] == "eval keyword text"
+    assert payload["items"][0]["driver"] == "playwright"
+    assert payload["items"][0]["recordType"] == "eval-js"
 
 
 def test_fetch_v2_playwright_eval_mode_allows_missing_target_url():
     client = TestClient(main.app)
     response = client.post(
-        "/v2/fetch",
+        "/v1/fetch",
         json={
             "platform": "x",
             "sourceId": "source-eval-2",
@@ -80,7 +80,7 @@ def test_fetch_v2_playwright_eval_mode_allows_missing_target_url():
 
     assert response.status_code == 200
     payload = response.json()
-    assert isinstance(payload, list)
+    assert isinstance(payload["items"], list)
 
 
 def test_extract_playwright_eval_options_supports_state_file(tmp_path):

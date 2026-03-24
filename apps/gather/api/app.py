@@ -22,27 +22,15 @@ from pydantic import BaseModel, ValidationError
 from typing import List, Optional, Any, Dict
 from datetime import datetime, timezone
 from dotenv import load_dotenv
-from drivers.agent_browser_runner import (
-    AgentBrowserScriptError,
-    execute_agent_browser_script,
-    heartbeat_agent_browser_instance,
-)
 from drivers.playwright_driver import PlaywrightDriver
 from drivers.registry import DriverRegistry, DriverNotFoundError
 from drivers.xhttp_driver import XHttpDriver
-from auth_verify import (
-    agent_browser_verify_auth,
-    resolve_verify_auth_data,
-    verify_auth_with_agent_browser_for_whatsapp,
-    verify_auth_with_xhs_api_probe,
-    verify_auth_with_reddit_api_probe,
-    verify_auth_with_x_cookie_probe,
+from libs.auth_verify import (
+    playwright_verify_auth,
 )
-from fetch_processing import agent_browser_results_to_clean_items, apply_keyword_hard_filter
-from script_framework import ScriptRegistry, build_x_intent_script, build_x_search_intercept_script
+from libs.fetch_processing import apply_keyword_hard_filter
+from libs.script_framework import ScriptRegistry, build_x_intent_script, build_x_search_intercept_script
 from schemas import (
-    AgentBrowserHeartbeatRequest,
-    AgentBrowserHeartbeatResponse,
     CleanItem,
     DeleteAuthStateRequest,
     ErrorResponse,
@@ -58,13 +46,11 @@ from schemas import (
     VerifyAuthResponse,
 )
 
-_agent_browser_results_to_clean_items = agent_browser_results_to_clean_items
 _apply_keyword_hard_filter = apply_keyword_hard_filter
 
 _V3_DRIVER_STRATEGIES: dict[str, list[str]] = {
     "playwright": ["cookie", "header", "intercept", "ui"],
     "xhttp": ["public", "cookie", "header"],
-    "agent-browser": ["agent-browser"],
 }
 
 # Load environment variables from .env file
@@ -120,9 +106,9 @@ _SEARCH_ALIAS_COMPAT_ENABLED = _env_flag("GATHER_SEARCH_ALIAS_COMPAT_ENABLED", T
 _OPENCLI_BIN = os.getenv("GATHER_OPENCLI_BIN", "opencli").strip() or "opencli"
 _OPENCLI_CWD = os.getenv("GATHER_OPENCLI_CWD", "").strip() or None
 _RAW_API_IO_LOG_DIR = Path(
-    os.getenv("GATHER_API_IO_LOG_DIR", str(Path(__file__).resolve().parent / "logs"))
+    os.getenv("GATHER_API_IO_LOG_DIR", str(Path(__file__).resolve().parents[1] / "logs"))
 ).expanduser()
-_GATHER_APP_ROOT = Path(__file__).resolve().parent
+_GATHER_APP_ROOT = Path(__file__).resolve().parents[1]
 _SCRIPT_SOURCE_ROOT = _GATHER_APP_ROOT / "scripts"
 _SCRIPT_RUNTIME_ROOT = _GATHER_APP_ROOT / "scripts-dist"
 _SCRIPT_REGISTRY = ScriptRegistry(_SCRIPT_SOURCE_ROOT, _SCRIPT_RUNTIME_ROOT)
@@ -322,7 +308,7 @@ _PLAYWRIGHT_RUNTIME = None
 _PLAYWRIGHT_RUNTIME_LOCK = asyncio.Lock()
 _PLAYWRIGHT_POOL_SWEEP_TASK: asyncio.Task[Any] | None = None
 _PLAYWRIGHT_POOL_SWEEP_INTERVAL_MS = max(1000, int(os.getenv("GATHER_PLAYWRIGHT_POOL_SWEEP_INTERVAL_MS", "5000")))
-_SCRIPT_SAMPLE_LINE_RE = re.compile(r"^\s*//\s*Sample\s+/v3/fetch key parts\s*$")
+_SCRIPT_SAMPLE_LINE_RE = re.compile(r"^\s*//\s*Sample\s+/v1/fetch key parts\s*$")
 _SCRIPT_SAMPLE_ENTRY_RE = re.compile(r"^\s*//\s*([^:]+):\s*(.+?)\s*$")
 _SCRIPT_ALLOWED_CATEGORIES = {"STREAM", "INTERACTIVE", "RETRIEVAL"}
 
@@ -490,25 +476,6 @@ def _normalize_search_intent_args_for_catalog(
     return normalized
 
 
-async def _verify_auth_with_agent_browser_for_whatsapp(request: VerifyAuthRequest) -> VerifyAuthResponse | None:
-    return await verify_auth_with_agent_browser_for_whatsapp(
-        request,
-        auth_dir=AUTH_DIR,
-    )
-
-
-async def _verify_auth_with_reddit_api_probe(request: VerifyAuthRequest) -> VerifyAuthResponse | None:
-    return await verify_auth_with_reddit_api_probe(request)
-
-
-async def _verify_auth_with_xhs_api_probe(request: VerifyAuthRequest) -> VerifyAuthResponse | None:
-    return await verify_auth_with_xhs_api_probe(request)
-
-
-def _resolve_verify_auth_data(request: VerifyAuthRequest) -> tuple[dict[str, Any] | None, VerifyAuthResponse | None]:
-    return resolve_verify_auth_data(request)
-
-
 async def _playwright_verify_auth_legacy(request: VerifyAuthRequest):
     return VerifyAuthResponse(
         valid=False,
@@ -518,36 +485,7 @@ async def _playwright_verify_auth_legacy(request: VerifyAuthRequest):
 
 
 async def _playwright_verify_auth(request: VerifyAuthRequest):
-    auth_data, error_response = _resolve_verify_auth_data(request)
-    if error_response is not None:
-        return error_response
-
-    normalized_request = request.model_copy(update={"auth_data": auth_data or {}})
-    whatsapp_result = await _verify_auth_with_agent_browser_for_whatsapp(normalized_request)
-    if whatsapp_result is not None:
-        return whatsapp_result
-
-    reddit_probe_result = await _verify_auth_with_reddit_api_probe(normalized_request)
-    if reddit_probe_result is not None:
-        return reddit_probe_result
-
-    xhs_probe_result = await _verify_auth_with_xhs_api_probe(normalized_request)
-    if xhs_probe_result is not None:
-        return xhs_probe_result
-
-    x_probe_result = verify_auth_with_x_cookie_probe(normalized_request)
-    if x_probe_result is not None:
-        return x_probe_result
-
-    return VerifyAuthResponse(
-        valid=False,
-        message="No built-in verify probe for this platform",
-        details={"verifyMethod": "built-in-probe-missing"},
-    )
-
-
-async def _agent_browser_verify_auth(request: VerifyAuthRequest):
-    return await agent_browser_verify_auth(request)
+    return await playwright_verify_auth(request, auth_dir=AUTH_DIR)
 
 
 async def _playwright_fetch_data(request: FetchRequest):
@@ -645,7 +583,7 @@ async def _playwright_fetch_data(request: FetchRequest):
         status_code=400,
         detail=(
             f"playwright legacy clients have been removed for platform '{platform}'. "
-            "Use driver='agent-browser' or set config.playwright.mode='eval-js'."
+            "Set config.playwright.mode='eval-js' or an intercept-* mode."
         ),
     )
 
@@ -665,7 +603,7 @@ def _load_playwright_storage_state_from_config(
         return None
     state_path = Path(raw_state_file.strip()).expanduser()
     if not state_path.is_absolute():
-        state_path = (Path(__file__).resolve().parent / state_path).resolve()
+        state_path = (_GATHER_APP_ROOT / state_path).resolve()
     if not state_path.exists() or not state_path.is_file():
         raise HTTPException(status_code=400, detail=f"stateFile does not exist: {raw_state_file}")
     try:
@@ -765,7 +703,7 @@ def _extract_playwright_eval_options(config: Dict[str, Any]) -> dict[str, Any]:
             raise HTTPException(status_code=400, detail="config.playwright.scriptPath must be a non-empty string")
         resolved = Path(script_path).expanduser()
         if not resolved.is_absolute():
-            resolved = (Path(__file__).resolve().parent / resolved).resolve()
+            resolved = (_GATHER_APP_ROOT / resolved).resolve()
         if not resolved.exists() or not resolved.is_file():
             raise HTTPException(status_code=400, detail=f"scriptPath does not exist: {script_path}")
         script_body = resolved.read_text(encoding="utf-8")
@@ -805,7 +743,7 @@ def _extract_playwright_eval_options(config: Dict[str, Any]) -> dict[str, Any]:
             raise HTTPException(status_code=400, detail="config.playwright.stateFile must be a non-empty string")
         state_path = Path(state_file).expanduser()
         if not state_path.is_absolute():
-            state_path = (Path(__file__).resolve().parent / state_path).resolve()
+            state_path = (_GATHER_APP_ROOT / state_path).resolve()
         if not state_path.exists() or not state_path.is_file():
             raise HTTPException(status_code=400, detail=f"stateFile does not exist: {state_file}")
         try:
@@ -2772,42 +2710,6 @@ def _as_dict(value: Any) -> dict[str, Any]:
     return value if isinstance(value, dict) else {}
 
 
-def _normalize_agent_browser_driver_options(
-    source_id: str,
-    base_config: dict[str, Any],
-    driver_options: dict[str, Any],
-) -> dict[str, Any]:
-    normalized_config = dict(base_config)
-    existing_options = _as_dict(normalized_config.get("agentBrowser"))
-    merged_options = {**existing_options, **driver_options}
-
-    auth_options = _as_dict(merged_options.pop("auth", None))
-    state_file = auth_options.get("stateFile", auth_options.get("state_file"))
-    if isinstance(state_file, str) and state_file.strip() and not merged_options.get("stateFile"):
-        merged_options["stateFile"] = state_file.strip()
-
-    raw_filters = _as_dict(merged_options.pop("filters", None))
-    capture_filter = _as_dict(raw_filters.get("capture"))
-    if capture_filter:
-        merged_options["captureFilter"] = {
-            **_as_dict(merged_options.get("captureFilter")),
-            **capture_filter,
-        }
-    keyword_filter = _as_dict(raw_filters.get("keyword"))
-    if keyword_filter and not _as_dict(normalized_config.get("keywordFilter")):
-        normalized_config["keywordFilter"] = keyword_filter
-
-    session_key = merged_options.get("sessionKey")
-    if isinstance(session_key, str) and session_key.strip() == source_id:
-        merged_options.pop("sessionKey", None)
-    session_key_legacy = merged_options.get("session_key")
-    if isinstance(session_key_legacy, str) and session_key_legacy.strip() == source_id:
-        merged_options.pop("session_key", None)
-
-    normalized_config["agentBrowser"] = merged_options
-    return normalized_config
-
-
 def _normalize_v2_fetch_request(request: FetchV2Request) -> FetchRequest:
     normalized_driver = request.driver.name.strip().lower()
     raw_option = dict(request.driver.option)
@@ -2827,24 +2729,17 @@ def _normalize_v2_fetch_request(request: FetchV2Request) -> FetchRequest:
         config = {"playwright": playwright_option}
         if network is not None:
             config["network"] = network
-    elif normalized_driver == "agent-browser" and "agentBrowser" in raw_option:
-        raise HTTPException(
-            status_code=400,
-            detail="driver.option.agentBrowser has been removed; put agent-browser fields directly under driver.option",
-        )
     elif normalized_driver == "xhttp" and "xhttp" in raw_option:
         raise HTTPException(
             status_code=400,
             detail="driver.option.xhttp has been removed; put xhttp fields directly under driver.option",
         )
 
-    if normalized_driver == "agent-browser":
-        config = _normalize_agent_browser_driver_options(request.source_id, {}, config)
-
     output = request.output.model_dump()
     output_fields: list[str] = []
     output_field_map: dict[str, str] = {}
     output_keyword_scope: list[str] = []
+    output_type: str | None = None
     raw_fields = output.get("field")
     if isinstance(raw_fields, dict):
         output_field_map = {
@@ -2864,6 +2759,9 @@ def _normalize_v2_fetch_request(request: FetchV2Request) -> FetchRequest:
             for value in raw_keyword_scope
             if isinstance(value, str) and value.strip()
         ]
+    raw_output_type = output.get("type")
+    if isinstance(raw_output_type, str) and raw_output_type.strip():
+        output_type = raw_output_type.strip()
 
     filter_options = dict(request.driver.filter)
     if request.keywords:
@@ -2889,6 +2787,7 @@ def _normalize_v2_fetch_request(request: FetchV2Request) -> FetchRequest:
         output_fields=output_fields or None,
         output_field_map=output_field_map or None,
         output_keyword_scope=output_keyword_scope or None,
+        output_type=output_type,
     )
 
 
@@ -3014,7 +2913,7 @@ def _merge_v3_intent_into_driver_option(
         normalized_tweet_id = _extract_tweet_id(url)
     normalized_limit = limit if isinstance(limit, int) and limit > 0 else None
 
-    if driver_name in {"playwright", "agent-browser"}:
+    if driver_name == "playwright":
         args = merged_option.get("args")
         args_obj: dict[str, Any] = {}
         if isinstance(intent_args, dict):
@@ -3067,7 +2966,7 @@ def _merge_v3_intent_into_driver_option(
             if normalized_xhs_user_id and (not isinstance(args_obj.get("id"), str) or not args_obj.get("id")):
                 args_obj["id"] = normalized_xhs_user_id
         if intent_type in {"user", "user-posts", "user-comments"}:
-            if normalized_username and (not isinstance(args_obj.get("username"), str) or not args_obj.get("username")):
+            if normalized_username:
                 args_obj["username"] = normalized_username
         if intent_type in {"thread", "article"}:
             if normalized_tweet_id and (not isinstance(args_obj.get("tweet_id"), str) or not args_obj.get("tweet_id")):
@@ -3259,60 +3158,49 @@ def _build_validation_error_response(route: str, payload: Dict[str, Any], error:
     return response
 
 
+def _normalize_fetch_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
+    normalized = dict(payload)
+    raw_driver = normalized.get("driver")
+    has_driver = isinstance(raw_driver, dict)
+    driver = dict(raw_driver) if has_driver else {}
+    legacy_intent = normalized.pop("intent", None)
+
+    if not has_driver and not isinstance(legacy_intent, dict):
+        return normalized
+
+    raw_option = driver.pop("option", None)
+    if isinstance(raw_option, dict):
+        # Keep v1 payload tolerant for legacy clients while internally converging
+        # to driver.{...} + driver.script.
+        for key, value in raw_option.items():
+            driver.setdefault(key, value)
+
+    if isinstance(legacy_intent, dict) and not isinstance(driver.get("script"), dict):
+        driver["script"] = legacy_intent
+
+    if not isinstance(driver.get("script"), dict):
+        driver["script"] = {"type": "fetch", "args": {}}
+
+    raw_name = driver.get("name")
+    if not isinstance(raw_name, str) or not raw_name.strip():
+        driver["name"] = "playwright"
+
+    normalized["driver"] = driver
+    return normalized
+
+
 async def _execute_fetch_request(request: FetchRequest, driver_name: str) -> list[CleanItem]:
     raw_results = await driver_registry.fetch(request, driver_name=driver_name)
     results = _normalize_clean_items(raw_results)
     results = _apply_output_fields(results, request.output_fields, request.output_field_map)
     results = apply_keyword_hard_filter(request, results)
+    if isinstance(request.output_type, str) and request.output_type.strip():
+        for item in results:
+            item.recordType = request.output_type.strip()
     if driver_name:
         for item in results:
             item.driver = driver_name
     return results
-
-
-async def _agent_browser_fetch_data(request: FetchRequest):
-    try:
-        script_result = await asyncio.to_thread(execute_agent_browser_script, request.config)
-        items = agent_browser_results_to_clean_items(request, script_result)
-        if not items:
-            raise HTTPException(
-                status_code=500,
-                detail={"message": "agent-browser script finished without output"},
-            )
-        return items
-    except AgentBrowserScriptError as error:
-        status_code_map = {
-            "invalid_config": 400,
-            "forbidden_instance_owner": 403,
-            "forbidden_instance_session": 403,
-            "instance_expired": 410,
-        }
-        status_code = status_code_map.get(error.reason, 500)
-        debug_parts = [f"reason={error.reason}"]
-        if error.step_index is not None:
-            debug_parts.append(f"step={error.step_index}")
-        if error.command:
-            debug_parts.append(f"command={error.command}")
-        if error.return_code is not None:
-            debug_parts.append(f"returnCode={error.return_code}")
-        if error.stderr:
-            debug_parts.append(f"stderr={_truncate_text(error.stderr, 1000)}")
-        elif error.stdout:
-            debug_parts.append(f"stdout={_truncate_text(error.stdout, 1000)}")
-        enriched_message = f"{error.message} | {'; '.join(debug_parts)}"
-        raise HTTPException(
-            status_code=status_code,
-            detail={
-                "message": enriched_message,
-                "reason": error.reason,
-                "step": error.step_index,
-                "command": error.command,
-                "returnCode": error.return_code,
-                "stdout": error.stdout,
-                "stderr": error.stderr,
-                "debug": error.debug_context,
-            },
-        )
 
 
 driver_registry = DriverRegistry(default_driver="playwright")
@@ -3325,13 +3213,6 @@ driver_registry.register(
     PlaywrightDriver(
         verify_auth_handler=_playwright_verify_auth,
         fetch_handler=_playwright_fetch_data,
-    ),
-)
-driver_registry.register(
-    "agent-browser",
-    PlaywrightDriver(
-        verify_auth_handler=_agent_browser_verify_auth,
-        fetch_handler=_agent_browser_fetch_data,
     ),
 )
 
@@ -3350,12 +3231,12 @@ def _to_driver_error_response(error: DriverNotFoundError) -> JSONResponse:
     )
 
 
-@app.post("/verify-auth", response_model=VerifyAuthResponse)
+@app.post("/v1/verify-auth", response_model=VerifyAuthResponse)
 async def verify_auth(request: VerifyAuthRequest):
     try:
         result = await driver_registry.verify_auth(request)
         _log_api_io(
-            "/verify-auth",
+            "/v1/verify-auth",
             request.model_dump(mode="json", by_alias=True),
             result.model_dump(mode="json") if isinstance(result, BaseModel) else result,
             200,
@@ -3363,7 +3244,7 @@ async def verify_auth(request: VerifyAuthRequest):
         return result
     except DriverNotFoundError as error:
         _log_api_io(
-            "/verify-auth",
+            "/v1/verify-auth",
             request.model_dump(mode="json", by_alias=True),
             error.to_detail(),
             400,
@@ -3372,69 +3253,7 @@ async def verify_auth(request: VerifyAuthRequest):
 
 
 @app.post(
-    "/v2/fetch",
-    response_model=List[CleanItem],
-    response_model_exclude_none=True,
-    responses={
-        400: {"model": ErrorResponse},
-        422: {"model": ErrorResponse},
-        500: {"model": ErrorResponse},
-    },
-)
-async def fetch_data_v2(payload: Dict[str, Any]):
-    try:
-        request = FetchV2Request.model_validate(payload)
-    except ValidationError as e:
-        return _build_validation_error_response("/v2/fetch", payload, e)
-
-    try:
-        v1_request = _normalize_v2_fetch_request(request)
-        response_payload = await _execute_fetch_request(v1_request, request.driver.name)
-        _log_api_io(
-            "/v2/fetch",
-            payload,
-            [item.model_dump(mode="json", exclude_none=True) for item in response_payload],
-            200,
-        )
-        return response_payload
-    except DriverNotFoundError as error:
-        response = _to_driver_error_response(error)
-        _log_api_io("/v2/fetch", payload, response.body.decode("utf-8"), 400)
-        return response
-    except HTTPException as e:
-        status_code = e.status_code
-        if isinstance(e.detail, dict):
-            message = str(e.detail.get("message", e.detail))
-        else:
-            message = str(e.detail) if e.detail else "Request failed"
-        code = "FETCH_BAD_REQUEST" if status_code < 500 else "FETCH_INTERNAL_ERROR"
-        retryable = status_code >= 500
-        response = build_error_response(
-            status_code=status_code,
-            code=code,
-            message=message,
-            retryable=retryable,
-        )
-        _log_api_io("/v2/fetch", payload, response.body.decode("utf-8"), status_code)
-        return response
-    except Exception as error:
-        _log_internal_fetch_error("/v2/fetch", payload, error)
-        response = build_error_response(
-            status_code=500,
-            code="FETCH_INTERNAL_ERROR",
-            message=(
-                f"Internal server error: {type(error).__name__}: {error}"
-                if _EXPOSE_INTERNAL_ERROR
-                else "Internal server error"
-            ),
-            retryable=True,
-        )
-        _log_api_io("/v2/fetch", payload, response.body.decode("utf-8"), 500)
-        return response
-
-
-@app.post(
-    "/v3/fetch",
+    "/v1/fetch",
     response_model=FetchV3Response,
     response_model_exclude_none=True,
     responses={
@@ -3443,18 +3262,19 @@ async def fetch_data_v2(payload: Dict[str, Any]):
         500: {"model": ErrorResponse},
     },
 )
-async def fetch_data_v3(payload: Dict[str, Any]):
+async def fetch_data_v1(payload: Dict[str, Any]):
+    normalized_payload = _normalize_fetch_payload(payload)
     try:
-        request = FetchV3Request.model_validate(payload)
+        request = FetchV3Request.model_validate(normalized_payload)
     except ValidationError as e:
-        return _build_validation_error_response("/v3/fetch", payload, e)
+        return _build_validation_error_response("/v1/fetch", payload, e)
 
     try:
         normalized_request, driver_name, meta = _normalize_v3_fetch_request(request)
         items = await _execute_fetch_request(normalized_request, driver_name)
         response_payload = FetchV3Response(items=items, meta=meta)
         _log_api_io(
-            "/v3/fetch",
+            "/v1/fetch",
             payload,
             response_payload.model_dump(mode="json", by_alias=True, exclude_none=True),
             200,
@@ -3462,7 +3282,7 @@ async def fetch_data_v3(payload: Dict[str, Any]):
         return response_payload
     except DriverNotFoundError as error:
         response = _to_driver_error_response(error)
-        _log_api_io("/v3/fetch", payload, response.body.decode("utf-8"), 400)
+        _log_api_io("/v1/fetch", payload, response.body.decode("utf-8"), 400)
         return response
     except HTTPException as e:
         status_code = e.status_code
@@ -3478,10 +3298,10 @@ async def fetch_data_v3(payload: Dict[str, Any]):
             message=message,
             retryable=retryable,
         )
-        _log_api_io("/v3/fetch", payload, response.body.decode("utf-8"), status_code)
+        _log_api_io("/v1/fetch", payload, response.body.decode("utf-8"), status_code)
         return response
     except Exception as error:
-        _log_internal_fetch_error("/v3/fetch", payload, error)
+        _log_internal_fetch_error("/v1/fetch", payload, error)
         response = build_error_response(
             status_code=500,
             code="FETCH_INTERNAL_ERROR",
@@ -3492,91 +3312,19 @@ async def fetch_data_v3(payload: Dict[str, Any]):
             ),
             retryable=True,
         )
-        _log_api_io("/v3/fetch", payload, response.body.decode("utf-8"), 500)
+        _log_api_io("/v1/fetch", payload, response.body.decode("utf-8"), 500)
         return response
 
 
-@app.get("/v3/scripts/catalog")
+@app.get("/v1/scripts/catalog")
 async def list_scripts_catalog():
     payload = _build_scripts_catalog()
-    _log_api_io("/v3/scripts/catalog", {}, payload, 200)
+    _log_api_io("/v1/scripts/catalog", {}, payload, 200)
     return payload
 
 
-@app.post(
-    "/v2/agent-browser/heartbeat",
-    response_model=AgentBrowserHeartbeatResponse,
-    responses={
-        400: {"model": ErrorResponse},
-        403: {"model": ErrorResponse},
-        410: {"model": ErrorResponse},
-        422: {"model": ErrorResponse},
-        500: {"model": ErrorResponse},
-    },
-)
-async def agent_browser_heartbeat(payload: Dict[str, Any]):
-    try:
-        request = AgentBrowserHeartbeatRequest.model_validate(payload)
-    except ValidationError as e:
-        first_error = e.errors()[0] if e.errors() else {}
-        location = ".".join(str(part) for part in first_error.get("loc", []))
-        message = first_error.get("msg", "Invalid request payload")
-        if location:
-            message = f"{location}: {message}"
-        return build_error_response(
-            status_code=422,
-            code="VALIDATION_ERROR",
-            message=message,
-            retryable=False,
-        )
-
-    heartbeat_config: dict[str, Any] = {
-        "agentBrowser": {
-            "instanceId": request.instance_id,
-            "verbose": request.verbose,
-            "heartbeat": True,
-        }
-    }
-    if request.owner_id:
-        heartbeat_config["agentBrowser"]["ownerId"] = request.owner_id
-    if request.session_key:
-        heartbeat_config["agentBrowser"]["sessionKey"] = request.session_key
-
-    try:
-        result = await asyncio.to_thread(heartbeat_agent_browser_instance, heartbeat_config)
-    except AgentBrowserScriptError as error:
-        status_code_map = {
-            "invalid_config": 400,
-            "forbidden_instance_owner": 403,
-            "forbidden_instance_session": 403,
-            "instance_expired": 410,
-        }
-        status_code = status_code_map.get(error.reason, 500)
-        return build_error_response(
-            status_code=status_code,
-            code="HEARTBEAT_BAD_REQUEST" if status_code < 500 else "HEARTBEAT_INTERNAL_ERROR",
-            message=error.message,
-            retryable=False,
-        )
-    except Exception:
-        return build_error_response(
-            status_code=500,
-            code="HEARTBEAT_INTERNAL_ERROR",
-            message="Internal server error",
-            retryable=True,
-        )
-
-    return AgentBrowserHeartbeatResponse(
-        instanceId=result.instance_id,
-        tabId=result.tab_id,
-        instanceActive=result.instance_active,
-        ttlSeconds=result.ttl_seconds,
-        expiresAt=datetime.fromtimestamp(result.expires_at_epoch, tz=timezone.utc),
-    )
-
-
 # Constants for profile upload security
-AUTH_DIR = Path(__file__).parent / ".auth"
+AUTH_DIR = _GATHER_APP_ROOT / ".auth"
 MAX_PROFILE_SIZE = 100 * 1024 * 1024  # 100MB
 PROFILE_NAME_PATTERN = re.compile(r'^[a-zA-Z0-9_-]{1,64}$')
 STATE_FILE_NAME_PATTERN = re.compile(r"^[a-z0-9_-]{1,64}\.json$")
@@ -3603,7 +3351,7 @@ def _validate_auth_data_shape(auth_data: dict[str, Any]) -> None:
         )
 
 
-@app.post("/auth/state-file", response_model=SaveAuthStateResponse)
+@app.post("/v1/auth/state-file", response_model=SaveAuthStateResponse)
 async def save_auth_state_file(request: SaveAuthStateRequest):
     auth_data = request.auth_data
     if not isinstance(auth_data, dict):
@@ -3628,7 +3376,7 @@ async def save_auth_state_file(request: SaveAuthStateRequest):
     )
 
 
-@app.delete("/auth/state-file")
+@app.delete("/v1/auth/state-file")
 async def delete_auth_state_file(request: DeleteAuthStateRequest):
     raw_state_file = request.state_file.strip()
     file_name = Path(raw_state_file).name
@@ -3642,7 +3390,7 @@ async def delete_auth_state_file(request: DeleteAuthStateRequest):
     return {"success": True, "stateFile": f".auth/{file_name}"}
 
 
-@app.post("/upload-profile", response_model=UploadProfileResponse)
+@app.post("/v1/auth/profile", response_model=UploadProfileResponse)
 async def upload_profile(
     file: UploadFile = File(...),
     profile_name: str = Form(...),
@@ -3790,15 +3538,12 @@ async def upload_profile(
         files = list(target_dir.glob("*"))[:10]
         print(f"[gather] First few files in profile: {[f.name for f in files]}")
     
-    # 6. Verify the profile with agent-browser flow
+    # 6. Verify the profile with playwright profile probe
     try:
         print(f"[gather] Starting verification for: {profile_name}")
-        verify_result = await _verify_auth_with_agent_browser_for_whatsapp(
-            VerifyAuthRequest(
-                platform="whatsapp",
-                auth_data={"profileName": target_dir.name},
-                headless=False,
-            )
+        verify_result = await playwright_verify_auth(
+            VerifyAuthRequest(platform="whatsapp", auth_data={"profileName": target_dir.name}, headless=False),
+            auth_dir=AUTH_DIR,
         )
         is_valid = bool(verify_result and verify_result.valid)
         print(f"[gather] Verification result for {profile_name}: {is_valid}")
@@ -3828,7 +3573,7 @@ async def upload_profile(
         )
 
 
-@app.delete("/delete-profile/{profile_name}")
+@app.delete("/v1/auth/profile/{profile_name}")
 async def delete_profile(profile_name: str):
     """
     Delete a browser profile directory from the filesystem.
@@ -3873,9 +3618,9 @@ if __name__ == "__main__":
     print(f"[gather] Starting service on {host}:{port} (reload={reload})")
     if reload_excludes:
         print(f"[gather] reload excludes: {', '.join(reload_excludes)}")
-    # Using string import "main:app" to support reload
+    # Using string import "api.app:app" to support reload
     uvicorn.run(
-        "main:app",
+        "api.app:app",
         host=host,
         port=port,
         reload=reload,

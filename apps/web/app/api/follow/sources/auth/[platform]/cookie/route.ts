@@ -141,7 +141,7 @@ export async function POST(
       gatherFormData.append("profile_name", name || "default");
       gatherFormData.append("platform", "whatsapp");
 
-      const verifyResponse = await fetch(`${GATHER_SERVICE_URL}/upload-profile`, {
+      const verifyResponse = await fetch(`${GATHER_SERVICE_URL}/v1/auth/profile`, {
         method: "POST",
         body: gatherFormData,
       });
@@ -257,7 +257,7 @@ export async function POST(
     );
 
     const credentialName = credentialNameFromInput(providedName, platform.toUpperCase());
-    const persistStateResponse = await fetch(`${GATHER_SERVICE_URL}/auth/state-file`, {
+    const persistStateResponse = await fetch(`${GATHER_SERVICE_URL}/v1/auth/state-file`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -277,7 +277,7 @@ export async function POST(
       return serverError(new Error("Failed to persist auth state file: missing stateFile"));
     }
     logger.info("[auth] Verifying auth with gather state file", { platform });
-    const verifyResponse = await fetch(`${GATHER_SERVICE_URL}/verify-auth`, {
+    const verifyResponse = await fetch(`${GATHER_SERVICE_URL}/v1/verify-auth`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -293,7 +293,7 @@ export async function POST(
     }
     const verifyResult = await verifyResponse.json();
     if (!verifyResult.valid) {
-      await fetch(`${GATHER_SERVICE_URL}/auth/state-file`, {
+      await fetch(`${GATHER_SERVICE_URL}/v1/auth/state-file`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ stateFile }),
@@ -442,7 +442,7 @@ export async function GET(
       const stateFile = extractStateFilePath(credential.data);
       const rawPayload = unwrapCredentialPayload(credential.data);
       // Check with gather service
-      const verifyResponse = await fetch(`${GATHER_SERVICE_URL}/verify-auth`, {
+      const verifyResponse = await fetch(`${GATHER_SERVICE_URL}/v1/verify-auth`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

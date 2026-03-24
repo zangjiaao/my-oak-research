@@ -12,8 +12,8 @@ ROOT_DIR = Path(__file__).resolve().parents[1]
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
-import main
-from main import FetchRequest
+import api.app as main
+from api.app import FetchRequest
 from drivers.xhttp_driver import XHttpDriver, _resolve_xhttp_urls
 
 
@@ -104,7 +104,7 @@ def test_v2_fetch_xhttp_supports_top_level_keywords(monkeypatch):
     monkeypatch.setattr(xhttp_driver.httpx, "AsyncClient", FakeClient)
     client = TestClient(main.app)
     response = client.post(
-        "/v2/fetch",
+        "/v1/fetch",
         json={
             "platform": "x",
             "sourceId": "source-1",
@@ -122,9 +122,9 @@ def test_v2_fetch_xhttp_supports_top_level_keywords(monkeypatch):
 
     assert response.status_code == 200
     payload = response.json()
-    assert isinstance(payload, list)
-    assert payload
-    assert payload[0]["driver"] == "xhttp"
+    assert isinstance(payload["items"], list)
+    assert payload["items"]
+    assert payload["items"][0]["driver"] == "xhttp"
 
 
 def test_xhttp_fetch_data_supports_post_json_with_signature(monkeypatch):

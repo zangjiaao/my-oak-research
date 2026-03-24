@@ -1,4 +1,4 @@
-// Sample /v3/fetch key parts
+// Sample /v1/fetch key parts
 // intent.type: user_posts
 // intent.args: {"uid":"1654184992","page":1,"feature":0,"limit":20}
 // output.field: {"id":"posts.id","text":"posts.text","url":"posts.url","created_at":"posts.created_at"}

@@ -1,4 +1,4 @@
-// Sample /v3/fetch key parts
+// Sample /v1/fetch key parts
 // intent.type: video
 // intent.args: {"url":"https://www.youtube.com/watch?v=dQw4w9WgXcQ"}
 // output.field: {"title":"title","channel":"channel","views":"views","duration":"duration","publishDate":"publishDate","description":"description"}

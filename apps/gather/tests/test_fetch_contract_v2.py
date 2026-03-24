@@ -6,10 +6,10 @@ from fastapi.testclient import TestClient
 
 sys.path.append(str(Path(__file__).resolve().parents[1]))
 
-import main  # noqa: E402
+import api.app as main  # noqa: E402
 from drivers.base_driver import BaseDriver  # noqa: E402
 from drivers.registry import DriverRegistry  # noqa: E402
-from main import CleanItem, app  # noqa: E402
+from api.app import CleanItem, app  # noqa: E402
 
 
 client = TestClient(app)
@@ -235,7 +235,7 @@ def _client_with_no_id_mapping_driver(monkeypatch) -> TestClient:
 
 def test_fetch_v2_happy_path(monkeypatch):
     response = _client_with_stub_driver(monkeypatch).post(
-        "/v2/fetch",
+        "/v1/fetch",
         json={
             "platform": "contract-test-platform",
             "sourceId": "source_123",
@@ -246,7 +246,7 @@ def test_fetch_v2_happy_path(monkeypatch):
     )
 
     assert response.status_code == 200
-    items = response.json()
+    items = response.json()["items"]
     assert isinstance(items, list)
     assert items
 
@@ -263,7 +263,7 @@ def test_fetch_v2_happy_path(monkeypatch):
 
 def test_fetch_v2_validation_error():
     response = client.post(
-        "/v2/fetch",
+        "/v1/fetch",
         json={
             "sourceId": "source_123",
             "driver": {"name": "playwright", "option": {}},
@@ -281,7 +281,7 @@ def test_fetch_v2_validation_error():
 
 def test_fetch_v2_output_fields_text_only(monkeypatch):
     response = _client_with_stub_driver(monkeypatch).post(
-        "/v2/fetch",
+        "/v1/fetch",
         json={
             "platform": "contract-test-platform",
             "sourceId": "source_123",
@@ -292,7 +292,7 @@ def test_fetch_v2_output_fields_text_only(monkeypatch):
     )
 
     assert response.status_code == 200
-    items = response.json()
+    items = response.json()["items"]
     assert isinstance(items, list)
     assert items
     for item in items:
@@ -303,7 +303,7 @@ def test_fetch_v2_output_fields_text_only(monkeypatch):
 
 def test_fetch_v2_output_fields_markdown_only(monkeypatch):
     response = _client_with_stub_driver(monkeypatch).post(
-        "/v2/fetch",
+        "/v1/fetch",
         json={
             "platform": "contract-test-platform",
             "sourceId": "source_123",
@@ -314,7 +314,7 @@ def test_fetch_v2_output_fields_markdown_only(monkeypatch):
     )
 
     assert response.status_code == 200
-    items = response.json()
+    items = response.json()["items"]
     assert isinstance(items, list)
     assert items
     for item in items:
@@ -325,7 +325,7 @@ def test_fetch_v2_output_fields_markdown_only(monkeypatch):
 
 def test_fetch_v2_driver_options_without_legacy_config(monkeypatch):
     response = _client_with_stub_driver(monkeypatch).post(
-        "/v2/fetch",
+        "/v1/fetch",
         json={
             "platform": "contract-test-platform",
             "sourceId": "source_123",
@@ -336,7 +336,7 @@ def test_fetch_v2_driver_options_without_legacy_config(monkeypatch):
     )
 
     assert response.status_code == 200
-    items = response.json()
+    items = response.json()["items"]
     assert isinstance(items, list)
     assert items
     assert "recordContent" in items[0]
@@ -345,7 +345,7 @@ def test_fetch_v2_driver_options_without_legacy_config(monkeypatch):
 
 def test_fetch_v2_output_fields_keep_requested_content_only(monkeypatch):
     response = _client_with_stub_driver(monkeypatch).post(
-        "/v2/fetch",
+        "/v1/fetch",
         json={
             "platform": "contract-test-platform",
             "sourceId": "source_123",
@@ -356,7 +356,7 @@ def test_fetch_v2_output_fields_keep_requested_content_only(monkeypatch):
     )
 
     assert response.status_code == 200
-    items = response.json()
+    items = response.json()["items"]
     assert items
     assert "text" in items[0]["recordContent"]
     assert "url" not in items[0]["recordContent"]
@@ -364,7 +364,7 @@ def test_fetch_v2_output_fields_keep_requested_content_only(monkeypatch):
 
 def test_fetch_v2_output_type_overrides_record_type(monkeypatch):
     response = _client_with_stub_driver(monkeypatch).post(
-        "/v2/fetch",
+        "/v1/fetch",
         json={
             "platform": "contract-test-platform",
             "sourceId": "source_123",
@@ -375,14 +375,14 @@ def test_fetch_v2_output_type_overrides_record_type(monkeypatch):
     )
 
     assert response.status_code == 200
-    items = response.json()
+    items = response.json()["items"]
     assert items
     assert items[0]["recordType"] == "x.post"
 
 
 def test_fetch_v2_output_field_mapping(monkeypatch):
     response = _client_with_stub_driver(monkeypatch).post(
-        "/v2/fetch",
+        "/v1/fetch",
         json={
             "platform": "contract-test-platform",
             "sourceId": "source_123",
@@ -393,14 +393,14 @@ def test_fetch_v2_output_field_mapping(monkeypatch):
     )
 
     assert response.status_code == 200
-    items = response.json()
+    items = response.json()["items"]
     assert items
     assert items[0]["recordContent"] == {"query": "stub text", "body": "stub markdown"}
 
 
 def test_fetch_v2_output_field_mapping_expands_list_records(monkeypatch):
     response = _client_with_list_mapping_driver(monkeypatch).post(
-        "/v2/fetch",
+        "/v1/fetch",
         json={
             "platform": "x",
             "sourceId": "source-x-001",
@@ -421,7 +421,7 @@ def test_fetch_v2_output_field_mapping_expands_list_records(monkeypatch):
     )
 
     assert response.status_code == 200
-    items = response.json()
+    items = response.json()["items"]
     assert len(items) == 2
     assert items[0]["recordId"] == "1"
     assert items[0]["recordType"] == "text"
@@ -432,7 +432,7 @@ def test_fetch_v2_output_field_mapping_expands_list_records(monkeypatch):
 
 def test_fetch_v2_output_field_mapping_supports_text_alias_for_tweets(monkeypatch):
     response = _client_with_tweets_mapping_driver(monkeypatch).post(
-        "/v2/fetch",
+        "/v1/fetch",
         json={
             "platform": "x",
             "sourceId": "source-x-001",
@@ -453,7 +453,7 @@ def test_fetch_v2_output_field_mapping_supports_text_alias_for_tweets(monkeypatc
     )
 
     assert response.status_code == 200
-    items = response.json()
+    items = response.json()["items"]
     assert len(items) == 2
     assert items[0]["recordId"] == "11"
     assert items[0]["recordContent"]["author"] == "alice"
@@ -462,7 +462,7 @@ def test_fetch_v2_output_field_mapping_supports_text_alias_for_tweets(monkeypatc
 
 def test_fetch_v2_output_field_mapping_expands_list_with_scalar_fields(monkeypatch):
     response = _client_with_list_mapping_driver(monkeypatch).post(
-        "/v2/fetch",
+        "/v1/fetch",
         json={
             "platform": "x",
             "sourceId": "source-x-001",
@@ -481,7 +481,7 @@ def test_fetch_v2_output_field_mapping_expands_list_with_scalar_fields(monkeypat
     )
 
     assert response.status_code == 200
-    items = response.json()
+    items = response.json()["items"]
     assert len(items) == 2
     assert items[0]["recordContent"]["channel_query"] == "openai"
     assert items[0]["recordContent"]["id"] == "1"
@@ -491,7 +491,7 @@ def test_fetch_v2_output_field_mapping_expands_list_with_scalar_fields(monkeypat
 
 def test_fetch_v2_output_field_mapping_supports_wrapped_paths_on_flat_rows(monkeypatch):
     response = _client_with_flat_row_mapping_driver(monkeypatch).post(
-        "/v2/fetch",
+        "/v1/fetch",
         json={
             "platform": "reuters",
             "sourceId": "source-reuters-001",
@@ -509,7 +509,7 @@ def test_fetch_v2_output_field_mapping_supports_wrapped_paths_on_flat_rows(monke
     )
 
     assert response.status_code == 200
-    items = response.json()
+    items = response.json()["items"]
     assert len(items) == 2
     assert items[0]["recordContent"]["title"] == "First Reuters Story"
     assert items[1]["recordContent"]["url"] == "https://www.reuters.com/world/second-story"
@@ -517,7 +517,7 @@ def test_fetch_v2_output_field_mapping_supports_wrapped_paths_on_flat_rows(monke
 
 def test_fetch_v2_output_field_mapping_maps_items_alias_to_results_list(monkeypatch):
     response = _client_with_results_mapping_driver(monkeypatch).post(
-        "/v2/fetch",
+        "/v1/fetch",
         json={
             "platform": "google",
             "sourceId": "source-google-001",
@@ -534,7 +534,7 @@ def test_fetch_v2_output_field_mapping_maps_items_alias_to_results_list(monkeypa
     )
 
     assert response.status_code == 200
-    items = response.json()
+    items = response.json()["items"]
     assert len(items) == 2
     assert items[0]["recordContent"]["title"] == "OpenAI launches model"
     assert items[1]["recordContent"]["url"] == "https://example.com/ai-search"
@@ -544,7 +544,7 @@ def test_fetch_v2_output_field_mapping_expands_list_records_without_id_generates
     monkeypatch,
 ):
     response = _client_with_no_id_mapping_driver(monkeypatch).post(
-        "/v2/fetch",
+        "/v1/fetch",
         json={
             "platform": "google",
             "sourceId": "source-google-001",
@@ -561,7 +561,7 @@ def test_fetch_v2_output_field_mapping_expands_list_records_without_id_generates
     )
 
     assert response.status_code == 200
-    items = response.json()
+    items = response.json()["items"]
     assert len(items) == 2
     assert items[0]["recordId"] != items[1]["recordId"]
     assert items[0]["recordId"].endswith(":1")
@@ -570,7 +570,7 @@ def test_fetch_v2_output_field_mapping_expands_list_records_without_id_generates
 
 def test_fetch_v2_rejects_nested_playwright_option(monkeypatch):
     response = _client_with_stub_driver(monkeypatch).post(
-        "/v2/fetch",
+        "/v1/fetch",
         json={
             "platform": "x",
             "sourceId": "source-x-001",

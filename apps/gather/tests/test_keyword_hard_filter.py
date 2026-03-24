@@ -7,10 +7,10 @@ ROOT_DIR = Path(__file__).resolve().parents[1]
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
-import main
+import api.app as main
 from drivers.base_driver import BaseDriver
 from drivers.registry import DriverRegistry
-from main import CleanItem, FetchRequest
+from api.app import CleanItem, FetchRequest
 
 
 class StubKeywordDriver(BaseDriver):
@@ -179,7 +179,7 @@ def _client_with_stub_driver(monkeypatch) -> TestClient:
 def test_keyword_hit_content_persisted(monkeypatch):
     client = _client_with_stub_driver(monkeypatch)
     response = client.post(
-        "/v2/fetch",
+        "/v1/fetch",
         json={
             "platform": "hit-only",
             "sourceId": "source-hit",
@@ -190,7 +190,7 @@ def test_keyword_hit_content_persisted(monkeypatch):
     )
 
     assert response.status_code == 200
-    items = response.json()
+    items = response.json()["items"]
     assert len(items) == 1
     assert items[0]["matchedKeywords"] == ["ai", "regulation"]
     assert items[0]["keywordMatchScore"] == 1.0
@@ -199,7 +199,7 @@ def test_keyword_hit_content_persisted(monkeypatch):
 def test_keyword_miss_content_not_persisted(monkeypatch, capsys):
     client = _client_with_stub_driver(monkeypatch)
     response = client.post(
-        "/v2/fetch",
+        "/v1/fetch",
         json={
             "platform": "miss-only",
             "sourceId": "source-miss",
@@ -210,7 +210,7 @@ def test_keyword_miss_content_not_persisted(monkeypatch, capsys):
     )
 
     assert response.status_code == 200
-    assert response.json() == []
+    assert response.json()["items"] == []
     output = capsys.readouterr().out
     assert "[gather][keyword-filter][audit]" in output
 
@@ -218,7 +218,7 @@ def test_keyword_miss_content_not_persisted(monkeypatch, capsys):
 def test_keyword_hit_only_persisted_miss_audit_only(monkeypatch, capsys):
     client = _client_with_stub_driver(monkeypatch)
     response = client.post(
-        "/v2/fetch",
+        "/v1/fetch",
         json={
             "platform": "mixed",
             "sourceId": "source-mixed",
@@ -229,7 +229,7 @@ def test_keyword_hit_only_persisted_miss_audit_only(monkeypatch, capsys):
     )
 
     assert response.status_code == 200
-    items = response.json()
+    items = response.json()["items"]
     assert len(items) == 1
     assert "ai intelligence market" in items[0]["recordContent"]["text"]
     output = capsys.readouterr().out
@@ -239,7 +239,7 @@ def test_keyword_hit_only_persisted_miss_audit_only(monkeypatch, capsys):
 def test_keyword_filter_metrics_emitted(monkeypatch, capsys):
     client = _client_with_stub_driver(monkeypatch)
     response = client.post(
-        "/v2/fetch",
+        "/v1/fetch",
         json={
             "platform": "mixed",
             "sourceId": "source-metrics",
@@ -261,7 +261,7 @@ def test_keyword_filter_metrics_emitted(monkeypatch, capsys):
 def test_keyword_filter_invalid_config_fails_closed(monkeypatch, capsys):
     client = _client_with_stub_driver(monkeypatch)
     response = client.post(
-        "/v2/fetch",
+        "/v1/fetch",
         json={
             "platform": "mixed",
             "sourceId": "source-invalid",
@@ -281,7 +281,7 @@ def test_keyword_filter_invalid_config_fails_closed(monkeypatch, capsys):
 def test_keyword_min_chars_keeps_record_when_content_is_long_enough(monkeypatch):
     client = _client_with_stub_driver(monkeypatch)
     response = client.post(
-        "/v2/fetch",
+        "/v1/fetch",
         json={
             "platform": "chat-batch",
             "sourceId": "source-chat-min",
@@ -298,7 +298,7 @@ def test_keyword_min_chars_keeps_record_when_content_is_long_enough(monkeypatch)
     )
 
     assert response.status_code == 200
-    items = response.json()
+    items = response.json()["items"]
     assert len(items) == 1
     assert "alpha launch is live" in items[0]["recordContent"]["text"]
     assert items[0]["matchedKeywords"] == ["alpha"]
@@ -307,7 +307,7 @@ def test_keyword_min_chars_keeps_record_when_content_is_long_enough(monkeypatch)
 def test_keyword_min_chars_filters_out_short_content(monkeypatch):
     client = _client_with_stub_driver(monkeypatch)
     response = client.post(
-        "/v2/fetch",
+        "/v1/fetch",
         json={
             "platform": "chat-batch",
             "sourceId": "source-chat-too-short",
@@ -324,13 +324,13 @@ def test_keyword_min_chars_filters_out_short_content(monkeypatch):
     )
 
     assert response.status_code == 200
-    assert response.json() == []
+    assert response.json()["items"] == []
 
 
 def test_keyword_filter_rejects_split_mode(monkeypatch):
     client = _client_with_stub_driver(monkeypatch)
     response = client.post(
-        "/v2/fetch",
+        "/v1/fetch",
         json={
             "platform": "chat-batch",
             "sourceId": "source-chat-split-mode",
@@ -355,7 +355,7 @@ def test_keyword_filter_rejects_split_mode(monkeypatch):
 def test_keyword_scope_fields_limit_matching(monkeypatch):
     client = _client_with_stub_driver(monkeypatch)
     response = client.post(
-        "/v2/fetch",
+        "/v1/fetch",
         json={
             "platform": "scope-case",
             "sourceId": "source-scope",
@@ -366,13 +366,13 @@ def test_keyword_scope_fields_limit_matching(monkeypatch):
     )
 
     assert response.status_code == 200
-    assert response.json() == []
+    assert response.json()["items"] == []
 
 
 def test_short_ascii_keyword_does_not_match_substring(monkeypatch):
     client = _client_with_stub_driver(monkeypatch)
     response = client.post(
-        "/v2/fetch",
+        "/v1/fetch",
         json={
             "platform": "ascii-substring-miss",
             "sourceId": "source-ascii-substring-miss",
@@ -383,13 +383,13 @@ def test_short_ascii_keyword_does_not_match_substring(monkeypatch):
     )
 
     assert response.status_code == 200
-    assert response.json() == []
+    assert response.json()["items"] == []
 
 
 def test_short_ascii_keyword_matches_whole_word_case_insensitive(monkeypatch):
     client = _client_with_stub_driver(monkeypatch)
     response = client.post(
-        "/v2/fetch",
+        "/v1/fetch",
         json={
             "platform": "ascii-word-hit",
             "sourceId": "source-ascii-word-hit",
@@ -400,7 +400,7 @@ def test_short_ascii_keyword_matches_whole_word_case_insensitive(monkeypatch):
     )
 
     assert response.status_code == 200
-    items = response.json()
+    items = response.json()["items"]
     assert len(items) == 1
     assert items[0]["matchedKeywords"] == ["ai"]
 
@@ -408,7 +408,7 @@ def test_short_ascii_keyword_matches_whole_word_case_insensitive(monkeypatch):
 def test_keyword_filter_excludes_url_by_default(monkeypatch):
     client = _client_with_stub_driver(monkeypatch)
     response = client.post(
-        "/v2/fetch",
+        "/v1/fetch",
         json={
             "platform": "url-only",
             "sourceId": "source-url-only-default",
@@ -419,13 +419,13 @@ def test_keyword_filter_excludes_url_by_default(monkeypatch):
     )
 
     assert response.status_code == 200
-    assert response.json() == []
+    assert response.json()["items"] == []
 
 
 def test_keyword_filter_can_include_url_when_enabled(monkeypatch):
     client = _client_with_stub_driver(monkeypatch)
     response = client.post(
-        "/v2/fetch",
+        "/v1/fetch",
         json={
             "platform": "url-only",
             "sourceId": "source-url-only-include",
@@ -443,7 +443,7 @@ def test_keyword_filter_can_include_url_when_enabled(monkeypatch):
     )
 
     assert response.status_code == 200
-    items = response.json()
+    items = response.json()["items"]
     assert len(items) == 1
     assert items[0]["matchedKeywords"] == ["ai"]
 
@@ -451,7 +451,7 @@ def test_keyword_filter_can_include_url_when_enabled(monkeypatch):
 def test_cjk_keyword_matches_content(monkeypatch):
     client = _client_with_stub_driver(monkeypatch)
     response = client.post(
-        "/v2/fetch",
+        "/v1/fetch",
         json={
             "platform": "cjk-hit",
             "sourceId": "source-cjk-hit",
@@ -462,7 +462,7 @@ def test_cjk_keyword_matches_content(monkeypatch):
     )
 
     assert response.status_code == 200
-    items = response.json()
+    items = response.json()["items"]
     assert len(items) == 1
     assert items[0]["matchedKeywords"] == ["人工智能"]
 
@@ -470,7 +470,7 @@ def test_cjk_keyword_matches_content(monkeypatch):
 def test_single_cjk_keyword_filtered_by_min_cjk_chars(monkeypatch):
     client = _client_with_stub_driver(monkeypatch)
     response = client.post(
-        "/v2/fetch",
+        "/v1/fetch",
         json={
             "platform": "cjk-hit",
             "sourceId": "source-cjk-short-keyword",
@@ -481,13 +481,13 @@ def test_single_cjk_keyword_filtered_by_min_cjk_chars(monkeypatch):
     )
 
     assert response.status_code == 200
-    assert response.json() == []
+    assert response.json()["items"] == []
 
 
 def test_term_and_word_boundary_mode_matches_split_terms(monkeypatch):
     client = _client_with_stub_driver(monkeypatch)
     response = client.post(
-        "/v2/fetch",
+        "/v1/fetch",
         json={
             "platform": "term-and-hit",
             "sourceId": "source-term-and-hit",
@@ -502,7 +502,7 @@ def test_term_and_word_boundary_mode_matches_split_terms(monkeypatch):
     )
 
     assert response.status_code == 200
-    items = response.json()
+    items = response.json()["items"]
     assert len(items) == 1
     assert items[0]["matchedKeywords"] == ["openclaw memory"]
 
@@ -510,7 +510,7 @@ def test_term_and_word_boundary_mode_matches_split_terms(monkeypatch):
 def test_term_and_word_boundary_mode_still_avoids_airport_false_positive(monkeypatch):
     client = _client_with_stub_driver(monkeypatch)
     response = client.post(
-        "/v2/fetch",
+        "/v1/fetch",
         json={
             "platform": "ascii-substring-miss",
             "sourceId": "source-term-and-airport",
@@ -525,4 +525,4 @@ def test_term_and_word_boundary_mode_still_avoids_airport_false_positive(monkeyp
     )
 
     assert response.status_code == 200
-    assert response.json() == []
+    assert response.json()["items"] == []

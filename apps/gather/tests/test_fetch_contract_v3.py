@@ -7,10 +7,10 @@ import pytest
 
 sys.path.append(str(Path(__file__).resolve().parents[1]))
 
-import main  # noqa: E402
+import api.app as main  # noqa: E402
 from drivers.base_driver import BaseDriver  # noqa: E402
 from drivers.registry import DriverRegistry  # noqa: E402
-from main import CleanItem  # noqa: E402
+from api.app import CleanItem  # noqa: E402
 
 
 class StubFetchDriver(BaseDriver):
@@ -61,7 +61,7 @@ def _client_with_stub_driver(monkeypatch) -> TestClient:
 
 def test_fetch_v3_happy_path(monkeypatch):
     response = _client_with_stub_driver(monkeypatch).post(
-        "/v3/fetch",
+        "/v1/fetch",
         json={
             "platform": "x",
             "sourceId": "source_123",
@@ -86,7 +86,7 @@ def test_fetch_v3_happy_path(monkeypatch):
 
 def test_fetch_v3_uses_default_playwright_driver(monkeypatch):
     response = _client_with_stub_driver(monkeypatch).post(
-        "/v3/fetch",
+        "/v1/fetch",
         json={
             "platform": "x",
             "sourceId": "source_123",
@@ -104,7 +104,7 @@ def test_fetch_v3_uses_default_playwright_driver(monkeypatch):
 
 def test_fetch_v3_keeps_existing_driver_args(monkeypatch):
     response = _client_with_stub_driver(monkeypatch).post(
-        "/v3/fetch",
+        "/v1/fetch",
         json={
             "platform": "x",
             "sourceId": "source_123",
@@ -126,7 +126,7 @@ def test_fetch_v3_keeps_existing_driver_args(monkeypatch):
 
 def test_fetch_v3_profile_intent_maps_username_and_mode(monkeypatch):
     response = _client_with_stub_driver(monkeypatch).post(
-        "/v3/fetch",
+        "/v1/fetch",
         json={
             "platform": "x",
             "sourceId": "source_123",
@@ -146,7 +146,7 @@ def test_fetch_v3_profile_intent_maps_username_and_mode(monkeypatch):
 
 def test_fetch_v3_thread_intent_maps_tweet_id_and_mode(monkeypatch):
     response = _client_with_stub_driver(monkeypatch).post(
-        "/v3/fetch",
+        "/v1/fetch",
         json={
             "platform": "x",
             "sourceId": "source_123",
@@ -167,7 +167,7 @@ def test_fetch_v3_thread_intent_maps_tweet_id_and_mode(monkeypatch):
 
 def test_fetch_v3_reddit_search_intent_maps_mode_and_limit(monkeypatch):
     response = _client_with_stub_driver(monkeypatch).post(
-        "/v3/fetch",
+        "/v1/fetch",
         json={
             "platform": "reddit",
             "sourceId": "source_123",
@@ -188,7 +188,7 @@ def test_fetch_v3_reddit_search_intent_maps_mode_and_limit(monkeypatch):
 
 def test_fetch_v3_reddit_user_posts_maps_username(monkeypatch):
     response = _client_with_stub_driver(monkeypatch).post(
-        "/v3/fetch",
+        "/v1/fetch",
         json={
             "platform": "reddit",
             "sourceId": "source_123",
@@ -209,7 +209,7 @@ def test_fetch_v3_reddit_user_posts_maps_username(monkeypatch):
 
 def test_fetch_v3_xhs_search_intent_maps_mode(monkeypatch):
     response = _client_with_stub_driver(monkeypatch).post(
-        "/v3/fetch",
+        "/v1/fetch",
         json={
             "platform": "xhs",
             "sourceId": "source_123",
@@ -230,7 +230,7 @@ def test_fetch_v3_xhs_search_intent_maps_mode(monkeypatch):
 
 def test_fetch_v3_xhs_user_intent_maps_id(monkeypatch):
     response = _client_with_stub_driver(monkeypatch).post(
-        "/v3/fetch",
+        "/v1/fetch",
         json={
             "platform": "xhs",
             "sourceId": "source_123",
@@ -250,7 +250,7 @@ def test_fetch_v3_xhs_user_intent_maps_id(monkeypatch):
 
 def test_fetch_v3_bbc_news_intent_maps_mode_and_limit(monkeypatch):
     response = _client_with_stub_driver(monkeypatch).post(
-        "/v3/fetch",
+        "/v1/fetch",
         json={
             "platform": "bbc",
             "sourceId": "source_123",
@@ -270,7 +270,7 @@ def test_fetch_v3_bbc_news_intent_maps_mode_and_limit(monkeypatch):
 
 def test_fetch_v3_hackernews_top_intent_maps_mode_and_limit(monkeypatch):
     response = _client_with_stub_driver(monkeypatch).post(
-        "/v3/fetch",
+        "/v1/fetch",
         json={
             "platform": "hackernews",
             "sourceId": "source_123",
@@ -290,7 +290,7 @@ def test_fetch_v3_hackernews_top_intent_maps_mode_and_limit(monkeypatch):
 
 def test_fetch_v3_linkedin_search_maps_mode_and_args(monkeypatch):
     response = _client_with_stub_driver(monkeypatch).post(
-        "/v3/fetch",
+        "/v1/fetch",
         json={
             "platform": "linkedin",
             "sourceId": "source_123",
@@ -319,7 +319,7 @@ def test_fetch_v3_linkedin_search_maps_mode_and_args(monkeypatch):
 
 def test_fetch_v3_linux_do_search_maps_mode_and_keyword(monkeypatch):
     response = _client_with_stub_driver(monkeypatch).post(
-        "/v3/fetch",
+        "/v1/fetch",
         json={
             "platform": "linux-do",
             "sourceId": "source_123",
@@ -346,7 +346,7 @@ def test_fetch_v3_linux_do_search_maps_mode_and_keyword(monkeypatch):
 
 def test_fetch_v3_youtube_search_maps_mode(monkeypatch):
     response = _client_with_stub_driver(monkeypatch).post(
-        "/v3/fetch",
+        "/v1/fetch",
         json={
             "platform": "youtube",
             "sourceId": "source_123",
@@ -367,7 +367,7 @@ def test_fetch_v3_youtube_search_maps_mode(monkeypatch):
 
 def test_fetch_v3_youtube_transcript_maps_url_lang_mode(monkeypatch):
     response = _client_with_stub_driver(monkeypatch).post(
-        "/v3/fetch",
+        "/v1/fetch",
         json={
             "platform": "youtube",
             "sourceId": "source_123",
@@ -398,7 +398,7 @@ def test_fetch_v3_youtube_transcript_maps_url_lang_mode(monkeypatch):
 
 def test_fetch_v3_youtube_channel_maps_channel_id(monkeypatch):
     response = _client_with_stub_driver(monkeypatch).post(
-        "/v3/fetch",
+        "/v1/fetch",
         json={
             "platform": "youtube",
             "sourceId": "source_123",
@@ -425,7 +425,7 @@ def test_fetch_v3_youtube_channel_maps_channel_id(monkeypatch):
 
 def test_fetch_v3_weibo_user_posts_maps_mode_and_args(monkeypatch):
     response = _client_with_stub_driver(monkeypatch).post(
-        "/v3/fetch",
+        "/v1/fetch",
         json={
             "platform": "weibo",
             "sourceId": "source_123",
@@ -456,7 +456,7 @@ def test_fetch_v3_weibo_user_posts_maps_mode_and_args(monkeypatch):
 
 def test_fetch_v3_zhihu_search_maps_keyword_and_mode(monkeypatch):
     response = _client_with_stub_driver(monkeypatch).post(
-        "/v3/fetch",
+        "/v1/fetch",
         json={
             "platform": "zhihu",
             "sourceId": "source_123",
@@ -484,7 +484,7 @@ def test_fetch_v3_zhihu_search_maps_keyword_and_mode(monkeypatch):
 
 def test_fetch_v3_zhihu_question_maps_id_and_mode(monkeypatch):
     response = _client_with_stub_driver(monkeypatch).post(
-        "/v3/fetch",
+        "/v1/fetch",
         json={
             "platform": "zhihu",
             "sourceId": "source_123",
@@ -510,7 +510,7 @@ def test_fetch_v3_zhihu_question_maps_id_and_mode(monkeypatch):
 
 def test_fetch_v3_bilibili_search_maps_keyword_order_page_and_mode(monkeypatch):
     response = _client_with_stub_driver(monkeypatch).post(
-        "/v3/fetch",
+        "/v1/fetch",
         json={
             "platform": "bilibili",
             "sourceId": "source_123",
@@ -541,7 +541,7 @@ def test_fetch_v3_bilibili_search_maps_keyword_order_page_and_mode(monkeypatch):
 
 def test_fetch_v3_bilibili_video_maps_bvid_and_mode(monkeypatch):
     response = _client_with_stub_driver(monkeypatch).post(
-        "/v3/fetch",
+        "/v1/fetch",
         json={
             "platform": "bilibili",
             "sourceId": "source_123",
@@ -587,7 +587,7 @@ def test_fetch_v3_bilibili_video_maps_bvid_and_mode(monkeypatch):
 )
 def test_fetch_v3_new_web_sources_map_mode(monkeypatch, platform, intent_type, intent_args, expected_mode):
     response = _client_with_stub_driver(monkeypatch).post(
-        "/v3/fetch",
+        "/v1/fetch",
         json={
             "platform": platform,
             "sourceId": "source_123",
@@ -607,7 +607,7 @@ def test_fetch_v3_new_web_sources_map_mode(monkeypatch, platform, intent_type, i
 def test_fetch_v3_validation_error():
     client = TestClient(main.app)
     response = client.post(
-        "/v3/fetch",
+        "/v1/fetch",
         json={
             "platform": "x",
             "sourceId": "source_123",

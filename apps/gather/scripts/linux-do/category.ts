@@ -1,4 +1,4 @@
-// Sample /v3/fetch key parts
+// Sample /v1/fetch key parts
 // intent.type: category
 // intent.args: {"slug":"general","id":1,"limit":20}
 // output.field: {"rank":"topics.rank","title":"topics.title","replies":"topics.replies","views":"topics.views","likes":"topics.likes"}

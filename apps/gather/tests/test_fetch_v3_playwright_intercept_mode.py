@@ -8,8 +8,8 @@ import pytest
 
 sys.path.append(str(Path(__file__).resolve().parents[1]))
 
-import main  # noqa: E402
-from main import CleanItem  # noqa: E402
+import api.app as main  # noqa: E402
+from api.app import CleanItem  # noqa: E402
 
 
 def test_fetch_v3_uses_intercept_x_search_mode(monkeypatch):
@@ -31,7 +31,7 @@ def test_fetch_v3_uses_intercept_x_search_mode(monkeypatch):
 
     client = TestClient(main.app)
     response = client.post(
-        "/v3/fetch",
+        "/v1/fetch",
         json={
             "platform": "x",
             "sourceId": "source_123",
@@ -63,7 +63,7 @@ def test_fetch_v3_opencli_bridge_mode(monkeypatch):
 
     client = TestClient(main.app)
     response = client.post(
-        "/v3/fetch",
+        "/v1/fetch",
         json={
             "platform": "x",
             "sourceId": "source_123",
@@ -111,7 +111,7 @@ def test_fetch_v3_uses_intercept_reddit_search_mode(monkeypatch):
 
     client = TestClient(main.app)
     response = client.post(
-        "/v3/fetch",
+        "/v1/fetch",
         json={
             "platform": "reddit",
             "sourceId": "source_123",
@@ -150,7 +150,7 @@ def test_fetch_v3_uses_intercept_xhs_search_mode(monkeypatch):
 
     client = TestClient(main.app)
     response = client.post(
-        "/v3/fetch",
+        "/v1/fetch",
         json={
             "platform": "xhs",
             "sourceId": "source_123",
@@ -189,7 +189,7 @@ def test_fetch_v3_uses_intercept_bbc_news_mode(monkeypatch):
 
     client = TestClient(main.app)
     response = client.post(
-        "/v3/fetch",
+        "/v1/fetch",
         json={
             "platform": "bbc",
             "sourceId": "source_123",
@@ -228,7 +228,7 @@ def test_fetch_v3_uses_intercept_hackernews_top_mode(monkeypatch):
 
     client = TestClient(main.app)
     response = client.post(
-        "/v3/fetch",
+        "/v1/fetch",
         json={
             "platform": "hackernews",
             "sourceId": "source_123",
@@ -267,7 +267,7 @@ def test_fetch_v3_uses_intercept_linkedin_search_mode(monkeypatch):
 
     client = TestClient(main.app)
     response = client.post(
-        "/v3/fetch",
+        "/v1/fetch",
         json={
             "platform": "linkedin",
             "sourceId": "source_123",
@@ -306,7 +306,7 @@ def test_fetch_v3_uses_intercept_linux_do_search_mode(monkeypatch):
 
     client = TestClient(main.app)
     response = client.post(
-        "/v3/fetch",
+        "/v1/fetch",
         json={
             "platform": "linux-do",
             "sourceId": "source_123",
@@ -345,7 +345,7 @@ def test_fetch_v3_uses_intercept_youtube_search_mode(monkeypatch):
 
     client = TestClient(main.app)
     response = client.post(
-        "/v3/fetch",
+        "/v1/fetch",
         json={
             "platform": "youtube",
             "sourceId": "source_123",
@@ -384,7 +384,7 @@ def test_fetch_v3_uses_intercept_youtube_channel_mode(monkeypatch):
 
     client = TestClient(main.app)
     response = client.post(
-        "/v3/fetch",
+        "/v1/fetch",
         json={
             "platform": "youtube",
             "sourceId": "source_123",
@@ -423,7 +423,7 @@ def test_fetch_v3_uses_intercept_weibo_user_posts_mode(monkeypatch):
 
     client = TestClient(main.app)
     response = client.post(
-        "/v3/fetch",
+        "/v1/fetch",
         json={
             "platform": "weibo",
             "sourceId": "source_123",
@@ -462,7 +462,7 @@ def test_fetch_v3_uses_intercept_zhihu_search_mode(monkeypatch):
 
     client = TestClient(main.app)
     response = client.post(
-        "/v3/fetch",
+        "/v1/fetch",
         json={
             "platform": "zhihu",
             "sourceId": "source_123",
@@ -501,7 +501,7 @@ def test_fetch_v3_uses_intercept_bilibili_search_mode(monkeypatch):
 
     client = TestClient(main.app)
     response = client.post(
-        "/v3/fetch",
+        "/v1/fetch",
         json={
             "platform": "bilibili",
             "sourceId": "source_123",
@@ -558,7 +558,7 @@ def test_fetch_v3_uses_intercept_new_web_sources_mode(monkeypatch, platform, int
 
     client = TestClient(main.app)
     response = client.post(
-        "/v3/fetch",
+        "/v1/fetch",
         json={
             "platform": platform,
             "sourceId": "source_123",
