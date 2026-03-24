@@ -1613,6 +1613,18 @@ function normalizeGatherSocialConfig(
     headless:
       typeof playwright.headless === "boolean" ? playwright.headless : false,
   };
+  if (typeof playwright.poolEnabled === "boolean") {
+    normalizedPlaywright.poolEnabled = playwright.poolEnabled;
+  }
+  if (
+    typeof playwright.poolIdleTimeoutMs === "number" &&
+    Number.isFinite(playwright.poolIdleTimeoutMs)
+  ) {
+    normalizedPlaywright.poolIdleTimeoutMs = Math.max(
+      1000,
+      Math.trunc(playwright.poolIdleTimeoutMs)
+    );
+  }
 
   if (typeof playwright.stateFile === "string" && playwright.stateFile.trim()) {
     normalizedPlaywright.stateFile = playwright.stateFile;
