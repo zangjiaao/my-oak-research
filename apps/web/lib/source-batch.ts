@@ -610,13 +610,26 @@ export function buildSourceCreateData(input: {
   }
 
   const rawIntent = asRecord(config.intent);
-  const intent = {
+  const recallBinding = asRecord(rawIntent.recallBinding);
+  const recallBindingArgKeys = toStringArray(recallBinding.argKeys);
+  const intent: Record<string, unknown> = {
     type:
       typeof rawIntent.type === "string" && rawIntent.type.trim()
         ? rawIntent.type.trim()
         : template.intent.type,
     args: asRecord(rawIntent.args),
   };
+  if (typeof recallBinding.enabled === "boolean" && recallBinding.enabled === false) {
+    intent.recallBinding = {
+      enabled: false,
+      argKeys: [],
+    };
+  } else if (recallBindingArgKeys.length > 0) {
+    intent.recallBinding = {
+      enabled: true,
+      argKeys: recallBindingArgKeys,
+    };
+  }
   const effectiveNetworkPolicy =
     typeof config.networkPolicy === "string" &&
     (config.networkPolicy === "DEFAULT" || config.networkPolicy === "TOR_SOCKS5H")
