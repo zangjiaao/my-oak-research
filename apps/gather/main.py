@@ -11,6 +11,7 @@ import hashlib
 import subprocess
 import shutil
 import zipfile
+import traceback
 from contextlib import asynccontextmanager, suppress
 from pathlib import Path
 from urllib.parse import quote, urlparse, urlunparse
@@ -101,6 +102,7 @@ def _env_flag(name: str, default: bool = False) -> bool:
 
 
 _API_IO_LOG_ENABLED = _env_flag("GATHER_API_IO_LOG_ENABLED", False)
+_EXPOSE_INTERNAL_ERROR = _env_flag("GATHER_EXPOSE_INTERNAL_ERROR", False)
 _OPENCLI_BRIDGE_ENABLED = _env_flag("GATHER_OPENCLI_BRIDGE_ENABLED", False)
 _SEARCH_ALIAS_COMPAT_ENABLED = _env_flag("GATHER_SEARCH_ALIAS_COMPAT_ENABLED", True)
 _OPENCLI_BIN = os.getenv("GATHER_OPENCLI_BIN", "opencli").strip() or "opencli"
@@ -247,6 +249,30 @@ def _log_api_io(route: str, request_body: Any, response_body: Any, status_code: 
             f.write("\n")
     except Exception as error:  # pragma: no cover - logging must never break api
         print(f"[gather] failed to write api io log for {route}: {error}")
+
+
+def _log_internal_fetch_error(route: str, payload: Dict[str, Any], error: Exception) -> None:
+    try:
+        print(
+            json.dumps(
+                {
+                    "time": datetime.now(timezone.utc).isoformat(),
+                    "level": "error",
+                    "route": route,
+                    "message": "Unhandled gather fetch exception",
+                    "errorType": type(error).__name__,
+                    "errorMessage": str(error),
+                    "traceback": traceback.format_exc(),
+                    "request": _truncate_for_log(
+                        _redact_sensitive_for_log(payload),
+                        _API_IO_LOG_MAX_CHARS,
+                    ),
+                },
+                ensure_ascii=False,
+            )
+        )
+    except Exception as log_error:  # pragma: no cover - logging must never break api
+        print(f"[gather] failed to emit internal error log for {route}: {log_error}")
 
 
 _BB_SITE_PLATFORM_ALIAS = {
@@ -3364,11 +3390,16 @@ async def fetch_data_v2(payload: Dict[str, Any]):
         )
         _log_api_io("/v2/fetch", payload, response.body.decode("utf-8"), status_code)
         return response
-    except Exception:
+    except Exception as error:
+        _log_internal_fetch_error("/v2/fetch", payload, error)
         response = build_error_response(
             status_code=500,
             code="FETCH_INTERNAL_ERROR",
-            message="Internal server error",
+            message=(
+                f"Internal server error: {type(error).__name__}: {error}"
+                if _EXPOSE_INTERNAL_ERROR
+                else "Internal server error"
+            ),
             retryable=True,
         )
         _log_api_io("/v2/fetch", payload, response.body.decode("utf-8"), 500)
@@ -3422,11 +3453,16 @@ async def fetch_data_v3(payload: Dict[str, Any]):
         )
         _log_api_io("/v3/fetch", payload, response.body.decode("utf-8"), status_code)
         return response
-    except Exception:
+    except Exception as error:
+        _log_internal_fetch_error("/v3/fetch", payload, error)
         response = build_error_response(
             status_code=500,
             code="FETCH_INTERNAL_ERROR",
-            message="Internal server error",
+            message=(
+                f"Internal server error: {type(error).__name__}: {error}"
+                if _EXPOSE_INTERNAL_ERROR
+                else "Internal server error"
+            ),
             retryable=True,
         )
         _log_api_io("/v3/fetch", payload, response.body.decode("utf-8"), 500)
