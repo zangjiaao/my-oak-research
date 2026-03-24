@@ -70,6 +70,18 @@ _V3_DRIVER_STRATEGIES: dict[str, list[str]] = {
 # Load environment variables from .env file
 load_dotenv()
 
+try:
+    import playwright.async_api as _playwright_async_api
+    if not hasattr(_playwright_async_api, "TimeoutError"):
+        try:
+            from playwright._impl._errors import TimeoutError as _PlaywrightTimeoutError
+
+            setattr(_playwright_async_api, "TimeoutError", _PlaywrightTimeoutError)
+        except Exception:
+            setattr(_playwright_async_api, "TimeoutError", TimeoutError)
+except Exception:
+    pass
+
 
 @asynccontextmanager
 async def _app_lifespan(_app: FastAPI):
