@@ -1831,6 +1831,8 @@ const SourceDialog = ({
                   value={form.watch("proxyId") ?? null}
                   onValueChange={(value) => form.setValue("proxyId", value)}
                   placeholder="No proxy"
+                  nullValue="none"
+                  nullLabel="No proxy"
                 >
                   {proxies.map((proxy) => (
                     <SelectItem key={proxy.id} value={proxy.id}>
@@ -1838,17 +1840,6 @@ const SourceDialog = ({
                     </SelectItem>
                   ))}
                 </ControlledSelect>
-                <div className="flex justify-end">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    disabled={!form.watch("proxyId")}
-                    onClick={() => form.setValue("proxyId", null)}
-                  >
-                    取消使用 Proxy
-                  </Button>
-                </div>
               </CardContent>
             </Card>
 
