@@ -69,8 +69,8 @@ type DriverConfigInput = {
   stateFile: string;
   filterMinChars: number;
   filterMatchMode: "smart" | "contains" | "term_and_word_boundary";
-  filterIncludeUrl: boolean;
-  filterScopeFields: string[];
+  filterIncludeFields: string[];
+  filterExcludeFields: string[];
   proxy?: Proxy | null;
 };
 
@@ -167,11 +167,6 @@ function normalizeStringArray(value: unknown): string[] {
     );
   }
   return [];
-}
-
-function isUrlField(value: string): boolean {
-  const lastSegment = value.split(".").at(-1)?.trim().toLowerCase();
-  return lastSegment === "url";
 }
 
 function resolveOutputFieldOptions(rawOutputField: unknown): string[] {
@@ -299,10 +294,8 @@ function buildDriverConfig(input: {
     filter: {
       minChars: parseNumber(config.filterMinChars, 8),
       matchMode: config.filterMatchMode,
-      includeUrl: config.filterIncludeUrl,
-      ...(config.filterScopeFields.length > 0
-        ? { scopeFields: config.filterScopeFields }
-        : {}),
+      includeFields: config.filterIncludeFields,
+      excludeFields: config.filterExcludeFields,
     },
     ...(proxy
       ? {
@@ -447,13 +440,18 @@ function getInitialScriptState(source?: SourceWithRelations): {
         filter.matchMode === "smart"
           ? filter.matchMode
           : "smart",
-      filterIncludeFields: normalizeStringArray(filter.scopeFields),
+      filterIncludeFields:
+        normalizeStringArray(filter.includeFields).length > 0
+          ? normalizeStringArray(filter.includeFields)
+          : normalizeStringArray(filter.scopeFields),
       filterExcludeFields:
-        normalizeStringArray(filter.scopeFields).length > 0
-          ? []
-          : Boolean(filter.includeUrl)
+        normalizeStringArray(filter.excludeFields).length > 0
+          ? normalizeStringArray(filter.excludeFields)
+          : normalizeStringArray(filter.scopeFields).length > 0
             ? []
-            : ["url"],
+            : Boolean(filter.includeUrl)
+              ? []
+              : ["url"],
     };
   }
 
@@ -730,10 +728,8 @@ function buildPayloadFromUnified(input: {
       filter: {
         minChars: parseNumber(driverConfig.filterMinChars, 8),
         matchMode: driverConfig.filterMatchMode,
-        includeUrl: driverConfig.filterIncludeUrl,
-        ...(driverConfig.filterScopeFields.length > 0
-          ? { scopeFields: driverConfig.filterScopeFields }
-          : {}),
+        includeFields: driverConfig.filterIncludeFields,
+        excludeFields: driverConfig.filterExcludeFields,
       },
       args: Object.fromEntries(
         Object.entries(intentArgs).map(([key, value]) => [key, String(value ?? "")])
@@ -1065,12 +1061,10 @@ const SourceDialog = ({
       include.length > 0
         ? include
         : available.filter((field) => !exclude.includes(field));
-    const includeUrl = scopeFields.some((field) => isUrlField(field));
     return {
       include,
       exclude,
       scopeFields,
-      includeUrl,
     };
   }, [outputFieldOptions, filterIncludeFields, filterExcludeFields]);
 
@@ -1250,8 +1244,8 @@ const SourceDialog = ({
         stateFile: resolvedStateFile,
         filterMinChars,
         filterMatchMode,
-        filterIncludeUrl: effectiveFilter.includeUrl,
-        filterScopeFields: effectiveFilter.scopeFields,
+        filterIncludeFields: effectiveFilter.include,
+        filterExcludeFields: effectiveFilter.exclude,
         proxy: selectedProxy,
       },
       selectedCapabilityEngine,
@@ -1345,8 +1339,8 @@ const SourceDialog = ({
         stateFile: resolvedStateFile,
         filterMinChars,
         filterMatchMode,
-        filterIncludeUrl: effectiveFilter.includeUrl,
-        filterScopeFields: effectiveFilter.scopeFields,
+        filterIncludeFields: effectiveFilter.include,
+        filterExcludeFields: effectiveFilter.exclude,
         proxy: selectedProxy,
       },
     });
@@ -1427,8 +1421,8 @@ const SourceDialog = ({
         stateFile: resolvedStateFile,
         filterMinChars,
         filterMatchMode,
-        filterIncludeUrl: effectiveFilter.includeUrl,
-        filterScopeFields: effectiveFilter.scopeFields,
+        filterIncludeFields: effectiveFilter.include,
+        filterExcludeFields: effectiveFilter.exclude,
         proxy: selectedProxy,
       },
       selectedCapabilityEngine,
@@ -1991,8 +1985,8 @@ const SourceDialog = ({
                         </p>
                       </div>
                       <div className="rounded-md border border-dashed px-3 py-2 text-xs text-muted-foreground">
-                        Effective Scope: {effectiveFilter.scopeFields.join(", ") || "(empty)"} ·{" "}
-                        includeUrl: {effectiveFilter.includeUrl ? "true" : "false"}
+                        Effective Include: {effectiveFilter.include.join(", ") || "(empty)"} · Exclude:{" "}
+                        {effectiveFilter.exclude.join(", ") || "(empty)"}
                       </div>
                     </div>
 

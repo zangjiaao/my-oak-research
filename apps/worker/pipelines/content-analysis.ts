@@ -1481,6 +1481,7 @@ async function fetchSocialSource(
     ...configuredDriverFilter,
     ...existingKeywordFilter,
   };
+  normalizeKeywordFilterFields(keywordFilterOptions);
   delete keywordFilterOptions.keywords;
   const driverOption = normalizeGatherDriverOption(baseConfig, gatherDriver);
   const gatherUserId = resolveGatherPoolUserId(source, sourceConfigObj, driverOption);
@@ -2198,6 +2199,34 @@ function normalizeGatherDriverOption(
     ...playwright,
     ...rest,
   };
+}
+
+function normalizeKeywordFilterFields(
+  filter: Record<string, unknown>
+): void {
+  const includeFields = normalizeStringArray(filter.includeFields);
+  const excludeFields = normalizeStringArray(filter.excludeFields);
+  const legacyScopeFields = normalizeStringArray(filter.scopeFields);
+  const legacyIncludeUrl = typeof filter.includeUrl === "boolean" ? filter.includeUrl : null;
+
+  if (includeFields.length > 0) {
+    filter.includeFields = includeFields;
+  } else if (legacyScopeFields.length > 0) {
+    filter.includeFields = legacyScopeFields;
+  } else {
+    delete filter.includeFields;
+  }
+
+  if (excludeFields.length > 0) {
+    filter.excludeFields = excludeFields;
+  } else if (legacyIncludeUrl === false) {
+    filter.excludeFields = ["url"];
+  } else {
+    delete filter.excludeFields;
+  }
+
+  delete filter.scopeFields;
+  delete filter.includeUrl;
 }
 
 function applyGatherProxyConfig(

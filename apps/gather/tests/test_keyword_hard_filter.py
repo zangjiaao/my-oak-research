@@ -430,7 +430,14 @@ def test_keyword_filter_can_include_url_when_enabled(monkeypatch):
             "platform": "url-only",
             "sourceId": "source-url-only-include",
             "keywords": ["ai"],
-            "driver": {"name": "playwright", "option": {}, "filter": {"includeUrl": True, "matchMode": "contains"}},
+            "driver": {
+                "name": "playwright",
+                "option": {},
+                "filter": {
+                    "includeFields": ["url"],
+                    "matchMode": "contains",
+                },
+            },
             "output": {"field": ["title", "description", "url"]},
         },
     )
