@@ -1323,7 +1323,9 @@ const SourceDialog = ({
     const previewIntentArgs: Record<string, unknown> = { ...scriptArgs };
     if (boundArgKeys.length > 0) {
       for (const argKey of boundArgKeys) {
-        previewIntentArgs[argKey] = "<由 Query Keywords 注入>";
+        if (Object.prototype.hasOwnProperty.call(previewIntentArgs, argKey)) {
+          previewIntentArgs[argKey] = "<由 Query Keywords 注入>";
+        }
       }
     }
     const sourceIdPreview = currentSource?.id ?? "<source_id>";
