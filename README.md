@@ -39,28 +39,15 @@ cd docker/local
 docker compose -f docker-compose.dev.yml up -d
 ```
 
-3) Canonical env examples are centralized in `config/env`:
-
-- `config/env/.env.common.example`
-- `config/env/.env.apps.web.example`
-- `config/env/.env.apps.worker.example`
-- `config/env/.env.apps.gather.example`
-
-Create your shared env directory and initialize:
-
-- Windows example: `D:\Coding\my-oak-research-env`
-- macOS/Linux example: `$HOME/Coding/my-oak-research-env`
+3) Create app-local env files from examples:
 
 ```bash
-npm run env:init
+cp apps/web/.env.example apps/web/.env
+cp apps/worker/.env.example apps/worker/.env
+cp apps/gather/.env.example apps/gather/.env
 ```
 
-This writes:
-
-- `.env.common`
-- `.env.apps.web`
-- `.env.apps.worker`
-- Optional `.env.apps.gather` (if gather is used)
+If you do not use gather locally, `apps/gather/.env` is optional.
 
 For local Docker defaults, use these values:
 
@@ -78,32 +65,15 @@ MINIO_BUCKET=oak-research
 GATHER_SERVICE_URL=http://localhost:8000
 ```
 
-4) Set `OAK_ENV_DIR` once per machine:
-
-PowerShell (current session):
-
-```powershell
-$env:OAK_ENV_DIR="D:\Coding\my-oak-research-env"
-```
-
-PowerShell (persist for next sessions):
-
-```powershell
-setx OAK_ENV_DIR "D:\Coding\my-oak-research-env"
-```
-
-zsh/bash (current session):
+4) (Recommended) Encrypt app env files with dotenvx:
 
 ```bash
-export OAK_ENV_DIR="$HOME/Coding/my-oak-research-env"
+npx dotenvx encrypt -f apps/web/.env
+npx dotenvx encrypt -f apps/worker/.env
+npx dotenvx encrypt -f apps/gather/.env
 ```
 
-zsh persist (`~/.zshrc`):
-
-```bash
-echo 'export OAK_ENV_DIR="$HOME/Coding/my-oak-research-env"' >> ~/.zshrc
-source ~/.zshrc
-```
+Never commit `.env.keys`; store dotenvx private keys in your password manager or CI secrets.
 
 5) Run DB migration/seed (repo root):
 
@@ -148,16 +118,13 @@ npm --workspace worker run check-types
 # DB (loads env via dotenvx)
 npm run db:migrate
 npm run db:seed
-
-# Initialize shared env files from config/env examples
-npm run env:init
 ```
 
 ## Logging
 
 - Use centralized logger module: `apps/web/lib/logger.ts`
 - Do not write runtime logs to tracked files like `apps/web/error.log`
-- Shared envs are loaded with `dotenvx` via `scripts/run-with-dotenvx.mjs`
+- Runtime envs are loaded per workspace via `dotenvx run -- ...`
 - Configure by env:
   - `LOG_LEVEL` (`debug|info|warn|error`)
   - `LOG_APP_NAME` (service name)
@@ -165,4 +132,4 @@ npm run env:init
 ## Troubleshooting
 
 - If Prisma reports TLS/SSL issues against local PostgreSQL, confirm the URL uses `localhost`/`127.0.0.1` and local docker credentials.
-- If startup fails with `Missing OAK_ENV_DIR`, set `OAK_ENV_DIR` and confirm `.env.apps.web` / `.env.apps.worker` exist in that folder.
+- If startup fails with missing env values, confirm `apps/web/.env` / `apps/worker/.env` / `apps/gather/.env` exist and match their `.env.example`.

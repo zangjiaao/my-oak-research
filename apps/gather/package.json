@@ -3,8 +3,12 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "build:scripts": "npx tsc -p scripts/tsconfig.json",
-    "dev": "uv run main.py",
-    "start": "uv run main.py"
+    "build": "dotenvx run -- npm run build:scripts",
+    "build:scripts": "dotenvx run -- npx tsc -p scripts/tsconfig.json",
+    "dev": "dotenvx run -- uv run main.py",
+    "start": "dotenvx run -- uv run main.py"
+  },
+  "devDependencies": {
+    "@dotenvx/dotenvx": "^1.57.2"
   }
 }
