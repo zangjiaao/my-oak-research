@@ -1482,20 +1482,29 @@ async function fetchSocialSource(
   const gatherUserId = resolveGatherPoolUserId(source, sourceConfigObj, driverOption);
   const normalizedIntentType = intent.type.trim().toLowerCase();
   const recallBinding = resolveRecallBinding(sourceConfigObj);
+  const fallbackRecallQueries = Array.from(
+    new Set(keywordFilterTerms.map((term) => term.trim()).filter(Boolean))
+  );
+  const effectiveRecallQueries =
+    recallQueries.length > 0 ? recallQueries : fallbackRecallQueries;
   if (
     normalizedIntentType === "search" &&
     recallBinding.enabled &&
-    recallQueries.length === 0
+    effectiveRecallQueries.length === 0
   ) {
     logger.warn("skip social source due empty recall queries and recall binding enabled", {
       sourceId: source.id,
       sourceName: source.name,
+      keywordFilterTermsCount: keywordFilterTerms.length,
+      recallQueriesCount: recallQueries.length,
     });
     return [];
   }
   const batchedQueries =
     normalizedIntentType === "search" && recallBinding.enabled
-      ? Array.from(new Set(recallQueries.map((query) => query.trim()).filter(Boolean)))
+      ? Array.from(
+          new Set(effectiveRecallQueries.map((query) => query.trim()).filter(Boolean))
+        )
       : [""];
   const normalizedBatchedQueries = batchedQueries.length > 0 ? batchedQueries : [""];
   const normalizedItems: CleanItem[] = [];
