@@ -4,7 +4,7 @@ import { type ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Check, ChevronDown, ChevronsUpDown, Link2, Loader2, Minus, Plus, Unlink2 } from "lucide-react";
+import { Check, ChevronDown, ChevronsUpDown, Copy, Link2, Loader2, Minus, Plus, Unlink2 } from "lucide-react";
 
 import { SettingEditDialog } from "@/components/layout";
 import { Label } from "@/components/ui/label";
@@ -1941,7 +1941,27 @@ const SourceDialog = ({
 
             {gatherRequestPreview ? (
               <div className="grid gap-2">
-                <p className="text-xs font-medium text-muted-foreground">Gather Request Payload</p>
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-medium text-muted-foreground">Gather Request Payload</p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(
+                          JSON.stringify(gatherRequestPreview, null, 2)
+                        );
+                        toast.success("Copied gather preview");
+                      } catch {
+                        toast.error("Failed to copy gather preview");
+                      }
+                    }}
+                  >
+                    <Copy className="mr-1 size-3.5" />
+                    Copy
+                  </Button>
+                </div>
                 <pre className="max-h-64 overflow-auto rounded-md bg-background p-3 text-xs leading-5">
                   {JSON.stringify(gatherRequestPreview, null, 2)}
                 </pre>
