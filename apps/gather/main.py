@@ -3014,7 +3014,11 @@ def _merge_v3_intent_into_driver_option(
 
     if driver_name in {"playwright", "agent-browser"}:
         args = merged_option.get("args")
-        args_obj = dict(args) if isinstance(args, dict) else {}
+        args_obj: dict[str, Any] = {}
+        if isinstance(intent_args, dict):
+            args_obj.update(intent_args)
+        if isinstance(args, dict):
+            args_obj.update(args)
         if intent_type == "search":
             if normalized_query and (not isinstance(args_obj.get("query"), str) or not args_obj.get("query")):
                 args_obj["query"] = normalized_query

@@ -1648,6 +1648,26 @@ async function ensureGatherStateFileFromStorage(
   gatherUrl: string,
   gatherPlatform: string
 ): Promise<string | null> {
+  const verifyStateFile = async (stateFilePath: string): Promise<boolean> => {
+    const verifyResp = await fetch(`${gatherUrl}/verify-auth`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        platform: gatherPlatform,
+        state_file: stateFilePath,
+        headless: true,
+      }),
+    });
+    if (!verifyResp.ok) return false;
+    const verifyPayload = await verifyResp.json().catch(() => ({}));
+    return !!verifyPayload?.valid;
+  };
+
+  const restoreAlias =
+    source.social?.credentialId?.trim() ||
+    source.credentialId?.trim() ||
+    gatherPlatform;
+
   const credentialCandidates = [source.social?.credential?.data, source.credential?.data];
   for (const rawCandidate of credentialCandidates) {
     const decrypted = unwrapCredentialPayload(rawCandidate);
@@ -1660,20 +1680,8 @@ async function ensureGatherStateFileFromStorage(
     if (!stateFile || !storageKey) continue;
 
     try {
-      const verifyResp = await fetch(`${gatherUrl}/verify-auth`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          platform: gatherPlatform,
-          state_file: stateFile,
-          headless: true,
-        }),
-      });
-      if (verifyResp.ok) {
-        const verifyPayload = await verifyResp.json().catch(() => ({}));
-        if (verifyPayload?.valid) {
-          return stateFile;
-        }
+      if (await verifyStateFile(stateFile)) {
+        return stateFile;
       }
     } catch {
       // continue to restore from storage
@@ -1687,7 +1695,7 @@ async function ensureGatherStateFileFromStorage(
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           platform: gatherPlatform,
-          name: source.name,
+          name: restoreAlias,
           auth_data: authData,
         }),
       });
@@ -1697,13 +1705,22 @@ async function ensureGatherStateFileFromStorage(
         typeof restorePayload?.stateFile === "string"
           ? restorePayload.stateFile.trim()
           : "";
-      if (restoredStateFile) return restoredStateFile;
+      if (!restoredStateFile) {
+        throw new Error("gather auth restore succeeded but stateFile is empty");
+      }
+      if (!(await verifyStateFile(restoredStateFile))) {
+        throw new Error(`restored stateFile is still invalid: ${restoredStateFile}`);
+      }
+      return restoredStateFile;
     } catch (error) {
       logger.warn("failed to restore gather state file from storage", {
         sourceId: source.id,
         storageKey,
         error: logger.normalizeError(error),
       });
+      throw new Error(
+        `invalid auth state for source ${source.id}: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   }
   return null;
