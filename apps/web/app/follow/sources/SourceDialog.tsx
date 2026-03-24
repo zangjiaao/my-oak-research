@@ -1248,10 +1248,23 @@ const SourceDialog = ({
         (typeof outputField === "object" && Object.keys(outputField).length > 0))
         ? { field: outputField }
         : undefined;
+    const boundArgKeys = Array.from(
+      new Set(
+        recallBindingArgKeys
+          .map((key) => key.trim())
+          .filter(Boolean)
+      )
+    );
+    const previewIntentArgs: Record<string, unknown> = { ...scriptArgs };
+    if (boundArgKeys.length > 0) {
+      for (const argKey of boundArgKeys) {
+        previewIntentArgs[argKey] = "<由 Query Keywords 注入>";
+      }
+    }
     const sourceIdPreview = currentSource?.id ?? "<source_id>";
     const driverPreview = buildDriverConfig({
       intentType: selectedIntentType,
-      intentArgs: scriptArgs,
+      intentArgs: previewIntentArgs,
       config: {
         poolEnabled,
         poolIdleTimeoutMs,
@@ -1291,6 +1304,7 @@ const SourceDialog = ({
     currentSource?.id,
     selectedIntentType,
     scriptArgs,
+    recallBindingArgKeys,
     poolEnabled,
     poolIdleTimeoutMs,
     headless,
