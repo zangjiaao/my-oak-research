@@ -1475,8 +1475,12 @@ async function fetchSocialSource(
     ensuredCredentialStateFile
   );
   const baseConfig = applyGatherProxyConfig(normalizedSocialConfig, proxyUrl);
+  const configuredDriverFilter = resolveGatherDriverFilter(sourceConfigObj);
   const existingKeywordFilter = resolveGatherKeywordFilter(baseConfig, gatherDriver);
-  const keywordFilterOptions = { ...existingKeywordFilter };
+  const keywordFilterOptions = {
+    ...configuredDriverFilter,
+    ...existingKeywordFilter,
+  };
   delete keywordFilterOptions.keywords;
   const driverOption = normalizeGatherDriverOption(baseConfig, gatherDriver);
   const gatherUserId = resolveGatherPoolUserId(source, sourceConfigObj, driverOption);
@@ -2152,6 +2156,22 @@ function resolveGatherKeywordFilter(
   }
   const filters = asObject(driverOptions.filters);
   return asObject(filters.keyword);
+}
+
+function resolveGatherDriverFilter(
+  config: Record<string, unknown>
+): Record<string, unknown> {
+  const topLevelFilter = asObject(config.filter);
+  if (Object.keys(topLevelFilter).length > 0) {
+    return topLevelFilter;
+  }
+  const driverConfig = asObject(config.driver);
+  const legacyDriverFilter = asObject(driverConfig.filter);
+  if (Object.keys(legacyDriverFilter).length > 0) {
+    return legacyDriverFilter;
+  }
+  const playwrightConfig = asObject(config.playwright);
+  return asObject(playwrightConfig.filter);
 }
 
 function normalizeGatherDriverOption(
