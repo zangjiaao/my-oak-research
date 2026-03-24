@@ -559,7 +559,9 @@ exports.QueryFrequency = exports.$Enums.QueryFrequency = {
 };
 
 exports.QueryContentFilterMode = exports.$Enums.QueryContentFilterMode = {
-  TERM_AND_WORD_BOUNDARY: 'TERM_AND_WORD_BOUNDARY'
+  TERM_AND_WORD_BOUNDARY: 'TERM_AND_WORD_BOUNDARY',
+  CONTAINS: 'CONTAINS',
+  SMART: 'SMART'
 };
 
 exports.TaskStatus = exports.$Enums.TaskStatus = {

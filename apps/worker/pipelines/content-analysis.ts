@@ -1939,9 +1939,15 @@ function resolveRecallBinding(
 
 function mapQueryFilterModeToGatherMatchMode(
   mode?: QueryContentFilterMode
-): "term_and_word_boundary" | undefined {
+): "term_and_word_boundary" | "contains" | "smart" | undefined {
   if (mode === QueryContentFilterMode.TERM_AND_WORD_BOUNDARY) {
     return "term_and_word_boundary";
+  }
+  if (mode === QueryContentFilterMode.CONTAINS) {
+    return "contains";
+  }
+  if (mode === QueryContentFilterMode.SMART) {
+    return "smart";
   }
   return undefined;
 }

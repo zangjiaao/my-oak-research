@@ -270,7 +270,9 @@ export type QueryFrequency = (typeof QueryFrequency)[keyof typeof QueryFrequency
 
 
 export const QueryContentFilterMode: {
-  TERM_AND_WORD_BOUNDARY: 'TERM_AND_WORD_BOUNDARY'
+  TERM_AND_WORD_BOUNDARY: 'TERM_AND_WORD_BOUNDARY',
+  CONTAINS: 'CONTAINS',
+  SMART: 'SMART'
 };
 
 export type QueryContentFilterMode = (typeof QueryContentFilterMode)[keyof typeof QueryContentFilterMode]

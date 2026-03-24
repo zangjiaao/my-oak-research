@@ -349,6 +349,8 @@ enum QueryFrequency {
 
 enum QueryContentFilterMode {
   TERM_AND_WORD_BOUNDARY
+  CONTAINS
+  SMART
 }
 
 model Query {

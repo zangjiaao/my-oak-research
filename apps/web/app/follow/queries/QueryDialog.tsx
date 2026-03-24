@@ -13,7 +13,7 @@ import { Switch } from "@/components/ui/switch";
 import { ControlledSelect } from "@/components/ui/controlled-select";
 import { SelectItem } from "@/components/ui/select";
 import { ErrorMessage } from "@/components/business";
-import { Query, Keyword, Source } from "@/app/generated/prisma";
+import { Query, Keyword, Source, QueryContentFilterMode } from "@/app/generated/prisma";
 import { useQueryMutation } from "@/hooks/useQueryMutation";
 import { MultiSelect } from "@/components/common/multi-select";
 import {
@@ -46,7 +46,7 @@ interface Props {
     sourcePolicies?: Array<{
       sourceId: string;
       contentFilterEnabled: boolean;
-      contentFilterMode: "TERM_AND_WORD_BOUNDARY";
+      contentFilterMode: QueryContentFilterMode;
     }>;
   };
   keywords: Keyword[];
@@ -359,6 +359,12 @@ const QueryDialog = ({
                           >
                             <SelectItem value="TERM_AND_WORD_BOUNDARY">
                               TERM_AND_WORD_BOUNDARY
+                            </SelectItem>
+                            <SelectItem value="CONTAINS">
+                              CONTAINS
+                            </SelectItem>
+                            <SelectItem value="SMART">
+                              SMART
                             </SelectItem>
                           </ControlledSelect>
                         )}

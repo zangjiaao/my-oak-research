@@ -520,6 +520,8 @@ export const QueryFrequencyEnum = z.enum([
 
 export const QueryContentFilterModeEnum = z.enum([
   "TERM_AND_WORD_BOUNDARY",
+  "CONTAINS",
+  "SMART",
 ]);
 
 const QuerySourcePolicyInput = z.object({
