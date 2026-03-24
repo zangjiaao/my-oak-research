@@ -28,7 +28,7 @@ async () => {
     'X-Twitter-Active-User': 'yes',
   };
 
-  async function resolveQueryId(operationName: string, fallbackId: string): Promise<string> {
+  async function resolveQueryId(operationName, fallbackId) {
     try {
       const ghResp = await fetch('https://raw.githubusercontent.com/fa0311/twitter-openapi/refs/heads/main/src/config/placeholder.json');
       if (ghResp.ok) {
@@ -92,12 +92,12 @@ async () => {
   };
   const fieldToggles = { withArticlePlainText: false };
 
-  const seen = new Set<string>();
+  const seen = new Set();
   const tweets = [];
-  let cursor: string | null = null;
+  let cursor = null;
 
   for (let i = 0; i < 5 && tweets.length < limit; i += 1) {
-    const variables: Record<string, unknown> = {
+    const variables = {
       userId,
       count: Math.min(40, limit - tweets.length + 5),
       includePromotedContent: false,
@@ -121,7 +121,7 @@ async () => {
       payload?.data?.user?.result?.timeline?.timeline?.instructions ||
       [];
 
-    let nextCursor: string | null = null;
+    let nextCursor = null;
     for (const inst of instructions) {
       for (const entry of inst?.entries || []) {
         const content = entry?.content;
