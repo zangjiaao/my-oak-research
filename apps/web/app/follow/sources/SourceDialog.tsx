@@ -94,6 +94,26 @@ const SEARCH_PLATFORM_MAP: Record<string, "PARALLEL" | "TAVILY" | "ANSPIRE" | "C
   ANSPIRE: "ANSPIRE",
 };
 
+const FILTER_MODE_DESCRIPTIONS: Record<
+  "smart" | "contains" | "term_and_word_boundary",
+  string
+> = {
+  term_and_word_boundary:
+    "整词匹配（英文按单词边界），精准度最高，误匹配最少。",
+  contains: "子串包含匹配，只要包含关键词就命中，召回更高但噪声更多。",
+  smart: "智能模式：中文偏向包含匹配，英文偏向整词匹配，兼顾召回与精度。",
+};
+
+const FILTER_MODE_EXAMPLES: Record<
+  "smart" | "contains" | "term_and_word_boundary",
+  string
+> = {
+  term_and_word_boundary:
+    "例：关键词 `ai` 仅命中 `ai model`，不命中 `airdrop`。",
+  contains: "例：关键词 `ai` 会命中 `ai model` 和 `airdrop`。",
+  smart: "例：关键词 `人工智能` 按包含匹配，`ai` 按整词匹配。",
+};
+
 function normalizePlatform(value?: string | null): string {
   return String(value ?? "").trim().toUpperCase();
 }
@@ -1838,6 +1858,15 @@ const SourceDialog = ({
                             term_and_word_boundary
                           </SelectItem>
                         </ControlledSelect>
+                        <p className="text-xs text-muted-foreground">
+                          {FILTER_MODE_DESCRIPTIONS[filterMatchMode]}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {FILTER_MODE_EXAMPLES[filterMatchMode]}
+                        </p>
+                        <p className="text-xs text-amber-700 dark:text-amber-300">
+                          注意：若 Query 为该 Source 配置了 Content Filter Mode，将覆盖这里的默认值。
+                        </p>
                       </div>
                       <div className="flex items-center justify-between">
                         <Label htmlFor="filter-include-url-switch">Include URL</Label>
