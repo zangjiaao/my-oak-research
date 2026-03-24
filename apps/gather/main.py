@@ -3052,7 +3052,7 @@ def _merge_v3_intent_into_driver_option(
                 args_obj["subreddit"] = normalized_subreddit
             if normalized_subreddit and (not isinstance(args_obj.get("name"), str) or not args_obj.get("name")):
                 args_obj["name"] = normalized_subreddit
-        if intent_type in {"profile", "followers", "following"}:
+        if intent_type in {"profile", "followers", "following", "tweets"}:
             if normalized_username and (not isinstance(args_obj.get("username"), str) or not args_obj.get("username")):
                 args_obj["username"] = normalized_username
         if intent_type == "user":
