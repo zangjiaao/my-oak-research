@@ -1838,6 +1838,17 @@ const SourceDialog = ({
                     </SelectItem>
                   ))}
                 </ControlledSelect>
+                <div className="flex justify-end">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    disabled={!form.watch("proxyId")}
+                    onClick={() => form.setValue("proxyId", null)}
+                  >
+                    取消使用 Proxy
+                  </Button>
+                </div>
               </CardContent>
             </Card>
 
