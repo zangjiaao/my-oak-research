@@ -96,6 +96,39 @@ async () => {
   const tweets = [];
   let cursor = null;
 
+  function extractTweetResultsFromEntry(entry) {
+    if (!entry || typeof entry !== 'object') return [];
+    const content = entry.content;
+    if (!content || typeof content !== 'object') return [];
+
+    const direct = content?.itemContent?.tweet_results?.result;
+    if (direct) return [direct];
+
+    if (content.__typename === 'TimelineTimelineModule' && Array.isArray(content.items)) {
+      const collected = [];
+      for (const moduleItem of content.items) {
+        const nested = moduleItem?.item?.itemContent?.tweet_results?.result;
+        if (nested) collected.push(nested);
+      }
+      return collected;
+    }
+    return [];
+  }
+
+  function extractMediaUrls(legacy) {
+    const urls = [];
+    const pushMedia = (mediaList) => {
+      if (!Array.isArray(mediaList)) return;
+      for (const media of mediaList) {
+        const mediaUrl = typeof media?.media_url_https === 'string' ? media.media_url_https.trim() : '';
+        if (mediaUrl) urls.push(mediaUrl);
+      }
+    };
+    pushMedia(legacy?.extended_entities?.media);
+    pushMedia(legacy?.entities?.media);
+    return Array.from(new Set(urls));
+  }
+
   for (let i = 0; i < 5 && tweets.length < limit; i += 1) {
     const variables = {
       userId,
@@ -133,53 +166,59 @@ async () => {
           nextCursor = content?.value || nextCursor;
           continue;
         }
+        const results = extractTweetResultsFromEntry(entry);
+        for (const result of results) {
+          const tweet = result?.tweet || result;
+          const legacy = tweet?.legacy || {};
+          const restId = tweet?.rest_id;
+          if (!restId || seen.has(restId)) continue;
+          seen.add(restId);
 
-        const result = content?.itemContent?.tweet_results?.result;
-        if (!result) continue;
-        const tweet = result.tweet || result;
-        const legacy = tweet?.legacy || {};
-        const restId = tweet?.rest_id;
-        if (!restId || seen.has(restId)) continue;
-        seen.add(restId);
+          const user = tweet?.core?.user_results?.result;
+          const screenName = user?.legacy?.screen_name || user?.core?.screen_name || username;
+          const noteText = tweet?.note_tweet?.note_tweet_results?.result?.text;
+          const mediaUrls = extractMediaUrls(legacy);
+          const retweetResult = legacy?.retweeted_status_result?.result;
 
-        const user = tweet?.core?.user_results?.result;
-        const screenName = user?.legacy?.screen_name || user?.core?.screen_name || username;
-        const noteText = tweet?.note_tweet?.note_tweet_results?.result?.text;
-        const retweetResult = legacy?.retweeted_status_result?.result;
+          if (retweetResult) {
+            const retweet = retweetResult?.tweet || retweetResult;
+            const retweetLegacy = retweet?.legacy || {};
+            const retweetUser = retweet?.core?.user_results?.result;
+            const retweetNoteText = retweet?.note_tweet?.note_tweet_results?.result?.text;
+            const retweetMediaUrls = extractMediaUrls(retweetLegacy);
+            tweets.push({
+              id: restId,
+              type: 'retweet',
+              author: screenName,
+              url: `https://x.com/${screenName || '_'}/status/${restId}`,
+              rt_author:
+                retweetUser?.legacy?.screen_name || retweetUser?.core?.screen_name || '',
+              text: retweetNoteText || retweetLegacy.full_text || '',
+              likes: retweetLegacy.favorite_count || 0,
+              retweets: retweetLegacy.retweet_count || 0,
+              replies: retweetLegacy.reply_count || 0,
+              created_at: legacy.created_at || retweetLegacy.created_at || '',
+              media_urls: retweetMediaUrls,
+              media_first_url: retweetMediaUrls[0] || '',
+            });
+            continue;
+          }
 
-        if (retweetResult) {
-          const retweet = retweetResult?.tweet || retweetResult;
-          const retweetLegacy = retweet?.legacy || {};
-          const retweetUser = retweet?.core?.user_results?.result;
-          const retweetNoteText = retweet?.note_tweet?.note_tweet_results?.result?.text;
           tweets.push({
             id: restId,
-            type: 'retweet',
+            type: 'tweet',
             author: screenName,
             url: `https://x.com/${screenName || '_'}/status/${restId}`,
-            rt_author:
-              retweetUser?.legacy?.screen_name || retweetUser?.core?.screen_name || '',
-            text: retweetNoteText || retweetLegacy.full_text || '',
-            likes: retweetLegacy.favorite_count || 0,
-            retweets: retweetLegacy.retweet_count || 0,
-            replies: retweetLegacy.reply_count || 0,
-            created_at: legacy.created_at || retweetLegacy.created_at || '',
+            text: noteText || legacy.full_text || '',
+            likes: legacy.favorite_count || 0,
+            retweets: legacy.retweet_count || 0,
+            replies: legacy.reply_count || 0,
+            in_reply_to: legacy.in_reply_to_status_id_str || undefined,
+            created_at: legacy.created_at || '',
+            media_urls: mediaUrls,
+            media_first_url: mediaUrls[0] || '',
           });
-          continue;
         }
-
-        tweets.push({
-          id: restId,
-          type: 'tweet',
-          author: screenName,
-          url: `https://x.com/${screenName || '_'}/status/${restId}`,
-          text: noteText || legacy.full_text || '',
-          likes: legacy.favorite_count || 0,
-          retweets: legacy.retweet_count || 0,
-          replies: legacy.reply_count || 0,
-          in_reply_to: legacy.in_reply_to_status_id_str || undefined,
-          created_at: legacy.created_at || '',
-        });
       }
     }
 
