@@ -38,6 +38,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { ErrorMessage } from "@/components/business";
+import { MultiSelect } from "@/components/common/multi-select";
 import { apiFetcher } from "@/lib/fetcher";
 import type { Proxy } from "@/app/generated/prisma";
 import { SourceCategory } from "@/app/generated/prisma";
@@ -114,6 +115,8 @@ const FILTER_MODE_EXAMPLES: Record<
   smart: "例：关键词 `人工智能` 按包含匹配，`ai` 按整词匹配。",
 };
 
+const DEFAULT_FILTER_FIELD_OPTIONS = ["title", "snippet", "source", "time", "url"];
+
 function normalizePlatform(value?: string | null): string {
   return String(value ?? "").trim().toUpperCase();
 }
@@ -159,6 +162,34 @@ function normalizeStringArray(value: unknown): string[] {
         value
           .split(/[\n\r,，;；\t]+/g)
           .map((item) => item.trim())
+          .filter(Boolean)
+      )
+    );
+  }
+  return [];
+}
+
+function isUrlField(value: string): boolean {
+  const lastSegment = value.split(".").at(-1)?.trim().toLowerCase();
+  return lastSegment === "url";
+}
+
+function resolveOutputFieldOptions(rawOutputField: unknown): string[] {
+  if (Array.isArray(rawOutputField)) {
+    return Array.from(
+      new Set(
+        rawOutputField
+          .filter((item): item is string => typeof item === "string")
+          .map((item) => item.trim())
+          .filter(Boolean)
+      )
+    );
+  }
+  if (rawOutputField && typeof rawOutputField === "object" && !Array.isArray(rawOutputField)) {
+    return Array.from(
+      new Set(
+        Object.keys(rawOutputField as Record<string, unknown>)
+          .map((key) => key.trim())
           .filter(Boolean)
       )
     );
@@ -297,8 +328,8 @@ function getInitialScriptState(source?: SourceWithRelations): {
   stateFile: string;
   filterMinChars: number;
   filterMatchMode: "smart" | "contains" | "term_and_word_boundary";
-  filterIncludeUrl: boolean;
-  filterScopeFields: string[];
+  filterIncludeFields: string[];
+  filterExcludeFields: string[];
 } {
   if (!source) {
     return {
@@ -315,8 +346,8 @@ function getInitialScriptState(source?: SourceWithRelations): {
       stateFile: "",
       filterMinChars: 8,
       filterMatchMode: "smart",
-      filterIncludeUrl: false,
-      filterScopeFields: [],
+      filterIncludeFields: [],
+      filterExcludeFields: ["url"],
     };
   }
 
@@ -416,8 +447,13 @@ function getInitialScriptState(source?: SourceWithRelations): {
         filter.matchMode === "smart"
           ? filter.matchMode
           : "smart",
-      filterIncludeUrl: Boolean(filter.includeUrl),
-      filterScopeFields: normalizeStringArray(filter.scopeFields),
+      filterIncludeFields: normalizeStringArray(filter.scopeFields),
+      filterExcludeFields:
+        normalizeStringArray(filter.scopeFields).length > 0
+          ? []
+          : Boolean(filter.includeUrl)
+            ? []
+            : ["url"],
     };
   }
 
@@ -445,8 +481,8 @@ function getInitialScriptState(source?: SourceWithRelations): {
       stateFile: "",
       filterMinChars: 8,
       filterMatchMode: "smart",
-      filterIncludeUrl: false,
-      filterScopeFields: [],
+      filterIncludeFields: [],
+      filterExcludeFields: ["url"],
     };
   }
 
@@ -480,8 +516,8 @@ function getInitialScriptState(source?: SourceWithRelations): {
       stateFile: "",
       filterMinChars: 8,
       filterMatchMode: "smart",
-      filterIncludeUrl: false,
-      filterScopeFields: [],
+      filterIncludeFields: [],
+      filterExcludeFields: ["url"],
     };
   }
 
@@ -505,8 +541,8 @@ function getInitialScriptState(source?: SourceWithRelations): {
       stateFile: "",
       filterMinChars: 8,
       filterMatchMode: "smart",
-      filterIncludeUrl: false,
-      filterScopeFields: [],
+      filterIncludeFields: [],
+      filterExcludeFields: ["url"],
     };
   }
 
@@ -524,8 +560,8 @@ function getInitialScriptState(source?: SourceWithRelations): {
     stateFile: "",
     filterMinChars: 8,
     filterMatchMode: "smart",
-    filterIncludeUrl: false,
-    filterScopeFields: [],
+    filterIncludeFields: [],
+    filterExcludeFields: ["url"],
   };
 }
 
@@ -794,11 +830,11 @@ const SourceDialog = ({
   const [stateFile, setStateFile] = useState(initialScriptState.stateFile);
   const [filterMinChars, setFilterMinChars] = useState(initialScriptState.filterMinChars);
   const [filterMatchMode, setFilterMatchMode] = useState(initialScriptState.filterMatchMode);
-  const [filterIncludeUrl, setFilterIncludeUrl] = useState(
-    initialScriptState.filterIncludeUrl
+  const [filterIncludeFields, setFilterIncludeFields] = useState(
+    initialScriptState.filterIncludeFields
   );
-  const [filterScopeFieldsText, setFilterScopeFieldsText] = useState(
-    initialScriptState.filterScopeFields.join(", ")
+  const [filterExcludeFields, setFilterExcludeFields] = useState(
+    initialScriptState.filterExcludeFields
   );
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -825,8 +861,8 @@ const SourceDialog = ({
     setStateFile(initialScriptState.stateFile);
     setFilterMinChars(initialScriptState.filterMinChars);
     setFilterMatchMode(initialScriptState.filterMatchMode);
-    setFilterIncludeUrl(initialScriptState.filterIncludeUrl);
-    setFilterScopeFieldsText(initialScriptState.filterScopeFields.join(", "));
+    setFilterIncludeFields(initialScriptState.filterIncludeFields);
+    setFilterExcludeFields(initialScriptState.filterExcludeFields);
     setAdvancedOpen(false);
     setAuthStatus(null);
   }, [open, initialScriptState]);
@@ -1001,6 +1037,42 @@ const SourceDialog = ({
   }, [selectedCatalogItem, selectedIntentType, selectedPlatform]);
 
   const scriptArgs = useMemo(() => entriesToScriptArgs(scriptArgEntries), [scriptArgEntries]);
+  const outputFieldOptions = useMemo(() => {
+    const options = resolveOutputFieldOptions(selectedCatalogItem?.sample?.outputField);
+    return options.length > 0 ? options : DEFAULT_FILTER_FIELD_OPTIONS;
+  }, [selectedCatalogItem?.sample?.outputField]);
+  const outputFieldMultiSelectOptions = useMemo(
+    () => outputFieldOptions.map((field) => ({ label: field, value: field })),
+    [outputFieldOptions]
+  );
+  const effectiveFilter = useMemo(() => {
+    const available = outputFieldOptions;
+    const include = Array.from(
+      new Set(
+        filterIncludeFields
+          .map((field) => field.trim())
+          .filter((field) => field && available.includes(field))
+      )
+    );
+    const exclude = Array.from(
+      new Set(
+        filterExcludeFields
+          .map((field) => field.trim())
+          .filter((field) => field && available.includes(field) && !include.includes(field))
+      )
+    );
+    const scopeFields =
+      include.length > 0
+        ? include
+        : available.filter((field) => !exclude.includes(field));
+    const includeUrl = scopeFields.some((field) => isUrlField(field));
+    return {
+      include,
+      exclude,
+      scopeFields,
+      includeUrl,
+    };
+  }, [outputFieldOptions, filterIncludeFields, filterExcludeFields]);
 
   const {
     data: credentialData,
@@ -1178,8 +1250,8 @@ const SourceDialog = ({
         stateFile: resolvedStateFile,
         filterMinChars,
         filterMatchMode,
-        filterIncludeUrl,
-        filterScopeFields: normalizeStringArray(filterScopeFieldsText),
+        filterIncludeUrl: effectiveFilter.includeUrl,
+        filterScopeFields: effectiveFilter.scopeFields,
         proxy: selectedProxy,
       },
       selectedCapabilityEngine,
@@ -1202,8 +1274,7 @@ const SourceDialog = ({
     resolvedStateFile,
     filterMinChars,
     filterMatchMode,
-    filterIncludeUrl,
-    filterScopeFieldsText,
+    effectiveFilter,
     selectedProxy,
     selectedCapabilityEngine,
   ]);
@@ -1274,8 +1345,8 @@ const SourceDialog = ({
         stateFile: resolvedStateFile,
         filterMinChars,
         filterMatchMode,
-        filterIncludeUrl,
-        filterScopeFields: normalizeStringArray(filterScopeFieldsText),
+        filterIncludeUrl: effectiveFilter.includeUrl,
+        filterScopeFields: effectiveFilter.scopeFields,
         proxy: selectedProxy,
       },
     });
@@ -1313,8 +1384,7 @@ const SourceDialog = ({
     resolvedStateFile,
     filterMinChars,
     filterMatchMode,
-    filterIncludeUrl,
-    filterScopeFieldsText,
+    effectiveFilter,
     selectedProxy,
   ]);
 
@@ -1357,8 +1427,8 @@ const SourceDialog = ({
         stateFile: resolvedStateFile,
         filterMinChars,
         filterMatchMode,
-        filterIncludeUrl,
-        filterScopeFields: normalizeStringArray(filterScopeFieldsText),
+        filterIncludeUrl: effectiveFilter.includeUrl,
+        filterScopeFields: effectiveFilter.scopeFields,
         proxy: selectedProxy,
       },
       selectedCapabilityEngine,
@@ -1882,23 +1952,47 @@ const SourceDialog = ({
                           注意：若 Query 为该 Source 配置了 Content Filter Mode，将覆盖这里的默认值。
                         </p>
                       </div>
-                      <div className="flex items-center justify-between">
-                        <Label htmlFor="filter-include-url-switch">Include URL</Label>
-                        <Switch
-                          id="filter-include-url-switch"
-                          checked={filterIncludeUrl}
-                          onCheckedChange={setFilterIncludeUrl}
+                      <div className="grid gap-2">
+                        <Label>Include Fields (optional)</Label>
+                        <MultiSelect
+                          options={outputFieldMultiSelectOptions.filter(
+                            (option) => !filterExcludeFields.includes(option.value)
+                          )}
+                          value={filterIncludeFields}
+                          onValueChange={(next) => {
+                            setFilterIncludeFields(next);
+                            setFilterExcludeFields((current) =>
+                              current.filter((field) => !next.includes(field))
+                            );
+                          }}
+                          placeholder="Empty = all fields except exclude"
                         />
+                        <p className="text-xs text-muted-foreground">
+                          为空时，默认选择除 Exclude Fields 外的全部字段。
+                        </p>
                       </div>
                       <div className="grid gap-2">
-                        <Label>Scope Fields (comma separated)</Label>
-                        <Input
-                          placeholder="title, snippet, content"
-                          value={filterScopeFieldsText}
-                          onChange={(event) =>
-                            setFilterScopeFieldsText(event.target.value)
-                          }
+                        <Label>Exclude Fields (optional)</Label>
+                        <MultiSelect
+                          options={outputFieldMultiSelectOptions.filter(
+                            (option) => !filterIncludeFields.includes(option.value)
+                          )}
+                          value={filterExcludeFields}
+                          onValueChange={(next) => {
+                            setFilterExcludeFields(next);
+                            setFilterIncludeFields((current) =>
+                              current.filter((field) => !next.includes(field))
+                            );
+                          }}
+                          placeholder="Default: url"
                         />
+                        <p className="text-xs text-muted-foreground">
+                          默认排除 `url`。Include 与 Exclude 互斥，避免冲突。
+                        </p>
+                      </div>
+                      <div className="rounded-md border border-dashed px-3 py-2 text-xs text-muted-foreground">
+                        Effective Scope: {effectiveFilter.scopeFields.join(", ") || "(empty)"} ·{" "}
+                        includeUrl: {effectiveFilter.includeUrl ? "true" : "false"}
                       </div>
                     </div>
 
