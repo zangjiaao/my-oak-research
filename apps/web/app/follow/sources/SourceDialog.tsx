@@ -1918,7 +1918,30 @@ const SourceDialog = ({
           </CardHeader>
           <CardContent className="grid gap-4">
             <div className="grid gap-2">
-              <p className="text-xs font-medium text-muted-foreground">Source API Payload</p>
+              <div className="flex items-center gap-1.5">
+                <p className="text-xs font-medium text-muted-foreground">Source API Payload</p>
+                {!sourceApiPreviewError ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                    aria-label="Copy source api payload"
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(
+                          JSON.stringify(sourceApiPreview ?? {}, null, 2)
+                        );
+                        toast.success("Copied source payload");
+                      } catch {
+                        toast.error("Failed to copy source payload");
+                      }
+                    }}
+                  >
+                    <Copy className="size-3.5" />
+                  </Button>
+                ) : null}
+              </div>
               {sourceApiPreviewError ? (
                 <div
                   className={cn(
@@ -1941,7 +1964,7 @@ const SourceDialog = ({
 
             {gatherRequestPreview ? (
               <div className="grid gap-2">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
                   <p className="text-xs font-medium text-muted-foreground">Gather Request Payload</p>
                   <Button
                     type="button"
