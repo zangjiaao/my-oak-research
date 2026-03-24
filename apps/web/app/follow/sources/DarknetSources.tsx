@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { PencilIcon, TrashIcon } from "lucide-react";
-import { Source, DarknetSourceConfig, Proxy } from "@/app/generated/prisma";
+import { Copy, PencilIcon, TrashIcon } from "lucide-react";
+import { DarknetSourceConfig, Proxy } from "@/app/generated/prisma";
 import { DarknetSource as DarknetSourceBase } from "@/lib/types";
 import {
   DataTable,
@@ -12,6 +12,7 @@ import {
 } from "@/components/common";
 import SourceDeleteAlert from "./SourceDeleteAlert";
 import SourceDialog from "./SourceDialog";
+import { reserveCopySourceName } from "./source-copy-name";
 
 type DarknetSource = DarknetSourceBase & {
   darknet: DarknetSourceConfig & { proxy?: Proxy | null };
@@ -20,20 +21,40 @@ type DarknetSource = DarknetSourceBase & {
 interface Props {
   sources: DarknetSource[];
   proxies: Proxy[];
+  allSourceNames: string[];
 }
 
-const DarknetSources = ({ sources, proxies }: Props) => {
+const DarknetSources = ({ sources, proxies, allSourceNames }: Props) => {
   const [editingSource, setEditingSource] = useState<
+    DarknetSource | undefined
+  >();
+  const [duplicatingSource, setDuplicatingSource] = useState<
     DarknetSource | undefined
   >();
 
   const handleEdit = (source: DarknetSource) => {
+    setDuplicatingSource(undefined);
     setEditingSource(source);
+  };
+
+  const handleDuplicate = (source: DarknetSource) => {
+    setEditingSource(undefined);
+    setDuplicatingSource(source);
   };
 
   const handleCloseDialog = () => {
     setEditingSource(undefined);
+    setDuplicatingSource(undefined);
   };
+
+  const activeSource = duplicatingSource ?? editingSource;
+  const duplicateName = useMemo(
+    () =>
+      duplicatingSource
+        ? reserveCopySourceName(duplicatingSource.name, allSourceNames)
+        : undefined,
+    [duplicatingSource, allSourceNames]
+  );
 
   const columns: DataTableColumn<DarknetSource>[] = [
     {
@@ -69,6 +90,14 @@ const DarknetSources = ({ sources, proxies }: Props) => {
 
   const actions: DataTableAction<DarknetSource>[] = [
     {
+      type: "custom",
+      render: (source) => (
+        <Button size="sm" variant="outline" onClick={() => handleDuplicate(source)}>
+          <Copy className="size-3" />
+        </Button>
+      ),
+    },
+    {
       type: "edit",
       render: (source) => (
         <Button size="sm" variant="outline" onClick={() => handleEdit(source)}>
@@ -97,9 +126,11 @@ const DarknetSources = ({ sources, proxies }: Props) => {
       <SourceDialog
         sourceType="RETRIEVAL"
         sourceIsDarknet
-        source={editingSource}
+        source={activeSource}
+        mode={duplicatingSource ? "duplicate" : "auto"}
+        duplicateName={duplicateName}
         proxies={proxies}
-        open={!!editingSource}
+        open={!!activeSource}
         onOpenChange={(open) => !open && handleCloseDialog()}
       />
       <DataTable

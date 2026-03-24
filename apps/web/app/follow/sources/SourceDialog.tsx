@@ -56,6 +56,8 @@ type SourceFormValues = {
   credentialId?: string | null;
 };
 
+type SourceDialogMode = "auto" | "edit" | "duplicate";
+
 type SourceCapabilityResponse = {
   items: SourceCapability[];
 };
@@ -775,6 +777,8 @@ const SourceDialog = ({
   proxies,
   sourceType: propSourceType,
   sourceIsDarknet: propSourceIsDarknet,
+  mode = "auto",
+  duplicateName,
   onOpenChange,
   open,
 }: {
@@ -783,6 +787,8 @@ const SourceDialog = ({
   proxies: Proxy[];
   sourceType?: SourceCategory;
   sourceIsDarknet?: boolean;
+  mode?: SourceDialogMode;
+  duplicateName?: string;
   onOpenChange: (open: boolean) => void;
   open: boolean;
 }) => {
@@ -798,10 +804,20 @@ const SourceDialog = ({
     }
   }, [open, propSource, propSourceType, propSourceIsDarknet]);
 
-  const isUpdate = !!currentSource;
+  const isDuplicateMode = mode === "duplicate";
+  const isUpdate = !!currentSource && !isDuplicateMode;
+  const sourceIdForExistingRecord = isUpdate ? currentSource?.id : undefined;
   const effectiveCategory: SourceCategory =
     currentSourceType || currentSource?.category || "INTERACTIVE";
   const effectiveIsDarknet = currentSource?.isDarknet ?? currentIsDarknet;
+  const initialSourceName = useMemo(() => {
+    if (isDuplicateMode) {
+      const fallback = currentSource?.name ?? "";
+      const resolved = duplicateName?.trim() || fallback;
+      return resolved;
+    }
+    return currentSource?.name ?? "";
+  }, [isDuplicateMode, duplicateName, currentSource?.name]);
 
   const initialScriptState = useMemo(() => getInitialScriptState(currentSource), [currentSource]);
 
@@ -903,7 +919,7 @@ const SourceDialog = ({
 
   const form = useForm<SourceFormValues>({
     defaultValues: {
-      name: currentSource?.name ?? "",
+      name: initialSourceName,
       description: currentSource?.description ?? "",
       active: currentSource?.active ?? true,
       rateLimit: currentSource?.rateLimit ?? 10,
@@ -915,14 +931,14 @@ const SourceDialog = ({
   useEffect(() => {
     if (!open) return;
     form.reset({
-      name: currentSource?.name ?? "",
+      name: initialSourceName,
       description: currentSource?.description ?? "",
       active: currentSource?.active ?? true,
       rateLimit: currentSource?.rateLimit ?? 10,
       proxyId: currentSource?.proxyId ?? null,
       credentialId: currentSource?.credentialId ?? null,
     });
-  }, [open, currentSource, form]);
+  }, [open, currentSource, form, initialSourceName]);
 
   const expectedCategory = effectiveCategory;
   const targetCategory: SourceCategory = useMemo(() => {
@@ -936,7 +952,7 @@ const SourceDialog = ({
   ]);
 
   const mutation = useSourceMutation({
-    sourceId: currentSource?.id,
+    sourceId: sourceIdForExistingRecord,
     sourceCategory: targetCategory,
     onSuccess: () => {
       onOpenChange(false);
@@ -1170,7 +1186,7 @@ const SourceDialog = ({
           method: "POST",
           body: JSON.stringify({
             authData,
-            sourceId: currentSource?.id,
+            sourceId: sourceIdForExistingRecord,
           }),
         }
       );
@@ -1328,7 +1344,7 @@ const SourceDialog = ({
         }
       }
     }
-    const sourceIdPreview = currentSource?.id ?? "<source_id>";
+    const sourceIdPreview = sourceIdForExistingRecord ?? "<source_id>";
     const driverPreview = buildDriverConfig({
       intentType: selectedIntentType,
       intentArgs: previewIntentArgs,
@@ -1349,8 +1365,8 @@ const SourceDialog = ({
     const effectiveUserId =
       typeof driverPreview.userId === "string" && driverPreview.userId.trim()
         ? driverPreview.userId.trim()
-        : currentSource?.id
-          ? `source:${currentSource.id}`
+        : sourceIdForExistingRecord
+          ? `source:${sourceIdForExistingRecord}`
           : "<默认: source:<source_id>>";
     return {
       sourceId: sourceIdPreview,
@@ -1368,7 +1384,7 @@ const SourceDialog = ({
     selectedPlatform,
     selectedCapability?.execution.driver,
     selectedCatalogItem,
-    currentSource?.id,
+    sourceIdForExistingRecord,
     selectedIntentType,
     scriptArgs,
     recallBindingArgKeys,

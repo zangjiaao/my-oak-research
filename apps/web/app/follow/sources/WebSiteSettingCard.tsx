@@ -4,7 +4,6 @@ import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PlusIcon, Search } from "lucide-react";
-import { SourceWithRelations } from "@/lib/types";
 import { classifySourceCategory } from "@/lib/source-taxonomy";
 import { SettingCard } from "@/components/common";
 import SourceDialog from "./SourceDialog";
@@ -105,7 +104,11 @@ const WebSiteSettingCard = () => {
           <Skeleton className="h-12 w-full" />
         </div>
       ) : (
-        <WebSites sources={filteredSources} proxies={proxies} />
+        <WebSites
+          sources={filteredSources}
+          proxies={proxies}
+          allSourceNames={webSources.map((source) => source.name)}
+        />
       )}
     </SettingCard>
   );

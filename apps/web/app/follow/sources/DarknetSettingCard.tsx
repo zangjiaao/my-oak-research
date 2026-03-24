@@ -96,7 +96,11 @@ const DarknetSettingCard = () => {
           <Skeleton className="h-12 w-full" />
         </div>
       ) : (
-        <DarknetSources sources={filteredSources} proxies={proxies} />
+        <DarknetSources
+          sources={filteredSources}
+          proxies={proxies}
+          allSourceNames={darknetSources.map((source) => source.name)}
+        />
       )}
     </SettingCard>
   );

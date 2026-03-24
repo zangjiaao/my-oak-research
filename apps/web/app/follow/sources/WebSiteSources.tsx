@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { PencilIcon, TrashIcon } from "lucide-react";
+import { Copy, PencilIcon, TrashIcon } from "lucide-react";
 import { Source, Proxy } from "@/app/generated/prisma";
 import { SourceWithRelations } from "@/lib/types";
 import {
@@ -12,10 +12,12 @@ import {
 } from "@/components/common";
 import SourceDialog from "./SourceDialog";
 import SourceDeleteAlert from "./SourceDeleteAlert";
+import { reserveCopySourceName } from "./source-copy-name";
 
 interface Props {
   sources: SourceWithRelations[];
   proxies: Proxy[];
+  allSourceNames: string[];
 }
 
 type StreamSource = SourceWithRelations & Source;
@@ -70,16 +72,33 @@ function getSourcePlatformLabel(source: StreamSource): string {
   return platform ?? "-";
 }
 
-const WebSites = ({ sources, proxies }: Props) => {
+const WebSites = ({ sources, proxies, allSourceNames }: Props) => {
   const [editingSource, setEditingSource] = useState<SourceWithRelations | undefined>();
+  const [duplicatingSource, setDuplicatingSource] = useState<SourceWithRelations | undefined>();
 
   const handleEdit = (source: SourceWithRelations) => {
+    setDuplicatingSource(undefined);
     setEditingSource(source);
+  };
+
+  const handleDuplicate = (source: SourceWithRelations) => {
+    setEditingSource(undefined);
+    setDuplicatingSource(source);
   };
 
   const handleCloseDialog = () => {
     setEditingSource(undefined);
+    setDuplicatingSource(undefined);
   };
+
+  const activeSource = duplicatingSource ?? editingSource;
+  const duplicateName = useMemo(
+    () =>
+      duplicatingSource
+        ? reserveCopySourceName(duplicatingSource.name, allSourceNames)
+        : undefined,
+    [duplicatingSource, allSourceNames]
+  );
 
   const columns: DataTableColumn<StreamSource>[] = [
     {
@@ -114,6 +133,14 @@ const WebSites = ({ sources, proxies }: Props) => {
 
   const actions: DataTableAction<StreamSource>[] = [
     {
+      type: "custom",
+      render: (source) => (
+        <Button size="sm" variant="outline" onClick={() => handleDuplicate(source)}>
+          <Copy className="size-3" />
+        </Button>
+      ),
+    },
+    {
       type: "edit",
       render: (source) => (
         <Button size="sm" variant="outline" onClick={() => handleEdit(source)}>
@@ -141,9 +168,11 @@ const WebSites = ({ sources, proxies }: Props) => {
     <>
       <SourceDialog
         sourceType="STREAM"
-        source={editingSource}
+        source={activeSource}
+        mode={duplicatingSource ? "duplicate" : "auto"}
+        duplicateName={duplicateName}
         proxies={proxies}
-        open={!!editingSource}
+        open={!!activeSource}
         onOpenChange={(open) => !open && handleCloseDialog()}
       />
       <DataTable

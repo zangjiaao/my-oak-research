@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { PencilIcon, TrashIcon } from "lucide-react";
+import { Copy, PencilIcon, TrashIcon } from "lucide-react";
 import { Source, Proxy } from "@/app/generated/prisma";
 import {
   DataTable,
@@ -12,12 +12,14 @@ import {
 import SourceDialog from "./SourceDialog";
 import SourceDeleteAlert from "./SourceDeleteAlert";
 import { SourceWithRelations } from "@/lib/types";
+import { reserveCopySourceName } from "./source-copy-name";
 
 interface Props {
   sources: (SourceWithRelations & {
     proxy?: Proxy | null;
   })[];
   proxies: Proxy[];
+  allSourceNames: string[];
 }
 
 type InteractiveSource = SourceWithRelations & Source & {
@@ -41,18 +43,37 @@ function getSourcePlatformLabel(source: InteractiveSource): string {
   return platform ?? "-";
 }
 
-const SocialMediaSources = ({ sources, proxies }: Props) => {
+const SocialMediaSources = ({ sources, proxies, allSourceNames }: Props) => {
   const [editingSource, setEditingSource] = useState<
+    InteractiveSource | undefined
+  >();
+  const [duplicatingSource, setDuplicatingSource] = useState<
     InteractiveSource | undefined
   >();
 
   const handleEdit = (source: InteractiveSource) => {
+    setDuplicatingSource(undefined);
     setEditingSource(source);
+  };
+
+  const handleDuplicate = (source: InteractiveSource) => {
+    setEditingSource(undefined);
+    setDuplicatingSource(source);
   };
 
   const handleCloseDialog = () => {
     setEditingSource(undefined);
+    setDuplicatingSource(undefined);
   };
+
+  const activeSource = duplicatingSource ?? editingSource;
+  const duplicateName = useMemo(
+    () =>
+      duplicatingSource
+        ? reserveCopySourceName(duplicatingSource.name, allSourceNames)
+        : undefined,
+    [duplicatingSource, allSourceNames]
+  );
 
   const columns: DataTableColumn<InteractiveSource>[] = [
     {
@@ -87,6 +108,14 @@ const SocialMediaSources = ({ sources, proxies }: Props) => {
 
   const actions: DataTableAction<InteractiveSource>[] = [
     {
+      type: "custom",
+      render: (source) => (
+        <Button size="sm" variant="outline" onClick={() => handleDuplicate(source)}>
+          <Copy className="size-3" />
+        </Button>
+      ),
+    },
+    {
       type: "edit",
       render: (source) => (
         <Button size="sm" variant="outline" onClick={() => handleEdit(source)}>
@@ -114,9 +143,11 @@ const SocialMediaSources = ({ sources, proxies }: Props) => {
     <>
       <SourceDialog
         sourceType="INTERACTIVE"
-        source={editingSource}
+        source={activeSource}
+        mode={duplicatingSource ? "duplicate" : "auto"}
+        duplicateName={duplicateName}
         proxies={proxies}
-        open={!!editingSource}
+        open={!!activeSource}
         onOpenChange={(open) => !open && handleCloseDialog()}
       />
       <DataTable
