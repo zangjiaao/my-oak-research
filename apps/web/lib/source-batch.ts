@@ -85,7 +85,6 @@ const REQUIRED_INTENT_ARGS = new Set([
   "uid",
 ]);
 
-const DEFAULT_RECALL_BINDING_ARG_KEYS = ["query"];
 const NON_IDENTITY_INTENT_ARG_KEYS = new Set([
   "limit",
   "count",
@@ -296,8 +295,8 @@ function buildTemplateFromCapabilityIntent(
         type: intentType,
         args,
         recallBinding: {
-          enabled: true,
-          argKeys: DEFAULT_RECALL_BINDING_ARG_KEYS,
+          enabled: false,
+          argKeys: [],
         },
       },
       networkPolicy: inferredNetworkPolicy,
@@ -788,8 +787,8 @@ export function buildSourceCreateData(input: {
     };
   } else {
     intent.recallBinding = {
-      enabled: true,
-      argKeys: DEFAULT_RECALL_BINDING_ARG_KEYS,
+      enabled: false,
+      argKeys: [],
     };
   }
   const effectiveNetworkPolicy =
