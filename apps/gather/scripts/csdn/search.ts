@@ -1,4 +1,4 @@
-// Sample /v3/fetch key parts
+// Sample /v1/fetch key parts
 // intent.type: search
 // intent.args: {"query":"python","page":1}
 // output.field: {"title":"results.title","url":"results.url","author":"results.author","description":"results.description"}

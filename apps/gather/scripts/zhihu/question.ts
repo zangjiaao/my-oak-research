@@ -1,4 +1,4 @@
-// Sample /v3/fetch key parts
+// Sample /v1/fetch key parts
 // intent.type: question
 // intent.args: {"id":"34816524","limit":5}
 // output.field: {"title":"title","answer_count":"answer_count","author":"answers.author","content":"answers.content"}

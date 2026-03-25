@@ -1,4 +1,4 @@
-// Sample /v3/fetch key parts
+// Sample /v1/fetch key parts
 // intent.type: search
 // intent.args: {"keyword":"playwright","limit":20}
 // output.field: {"rank":"topics.rank","title":"topics.title","views":"topics.views","likes":"topics.likes","replies":"topics.replies"}

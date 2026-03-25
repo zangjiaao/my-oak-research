@@ -1,4 +1,4 @@
-// Sample /v3/fetch key parts
+// Sample /v1/fetch key parts
 // intent.type: search
 // intent.args: {"query":"rust programming","limit":10}
 // output.field: {"title":"articles.title","url":"articles.url","author":"articles.author","published_at":"articles.published_at"}

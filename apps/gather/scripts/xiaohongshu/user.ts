@@ -1,4 +1,4 @@
-// Sample /v3/fetch key parts
+// Sample /v1/fetch key parts
 // intent.type: user
 // intent.args: {"id":"66f26918000000000101adf0","limit":20}
 // output.field: {"id":"notes.id","title":"notes.title","type":"notes.type","likes":"notes.likes","url":"notes.url"}

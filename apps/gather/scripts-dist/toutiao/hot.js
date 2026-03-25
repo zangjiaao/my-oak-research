@@ -1,4 +1,4 @@
-// Sample /v3/fetch key parts
+// Sample /v1/fetch key parts
 // intent.type: hot
 // intent.args: {"limit":20}
 // output.field: {"rank":"items.rank","title":"items.title","hot_value":"items.hot_value","url":"items.url"}

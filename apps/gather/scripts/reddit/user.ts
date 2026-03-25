@@ -1,4 +1,4 @@
-// Sample /v3/fetch key parts
+// Sample /v1/fetch key parts
 // intent.type: user
 // intent.args: {"username":"spez"}
 // output.field: {"username":"users.username","post_karma":"users.post_karma","comment_karma":"users.comment_karma","total_karma":"users.total_karma","created_at":"users.created_at"}

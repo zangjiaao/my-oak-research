@@ -33,7 +33,7 @@ import asyncio
 import browser_cookie3
 from pathlib import Path
 
-SCRIPT_DIR = Path(__file__).parent
+SCRIPT_DIR = Path(__file__).resolve().parents[1]
 AUTH_DIR = SCRIPT_DIR / ".auth"
 
 # Authentication types (can be combined as array):

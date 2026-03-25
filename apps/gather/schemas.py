@@ -14,40 +14,24 @@ class FetchRequest(BaseModel):
     output_fields: Optional[List[str]] = None
     output_field_map: Optional[Dict[str, str]] = None
     output_keyword_scope: Optional[List[str]] = None
+    output_type: Optional[str] = None
 
 
-class FetchV2Output(BaseModel):
+class FetchOutputConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
     field: Union[List[str], Dict[str, str]]
     keywordScope: Optional[List[str]] = None
+    type: Optional[str] = None
 
 
-class FetchV2Driver(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    name: str
-    option: Dict[str, Any] = Field(default_factory=dict)
-    filter: Dict[str, Any] = Field(default_factory=dict)
-
-
-class FetchV2Request(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    platform: str
-    source_id: str = Field(validation_alias=AliasChoices("sourceId"))
-    user_id: Optional[str] = Field(default=None, validation_alias=AliasChoices("userId", "user_id"))
-    keywords: List[str] = Field(default_factory=list)
-    driver: FetchV2Driver
-    output: FetchV2Output
-
-
-class FetchV3Intent(BaseModel):
+class FetchIntent(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     type: str = "search"
     args: Dict[str, Any] = Field(default_factory=dict)
 
 
-class FetchV3Network(BaseModel):
+class FetchNetworkConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     proxy_profile: Optional[str] = Field(
@@ -56,57 +40,57 @@ class FetchV3Network(BaseModel):
     )
 
 
-class FetchV3Driver(BaseModel):
+class FetchDriverConfig(BaseModel):
     model_config = ConfigDict(extra="allow")
 
     name: str
     filter: Dict[str, Any] = Field(default_factory=dict)
-    script: Optional[FetchV3Intent] = None
+    script: Optional[FetchIntent] = None
 
     @model_validator(mode="after")
     def _validate_no_option(self):
         if isinstance(self.model_extra, dict) and "option" in self.model_extra:
             raise ValueError(
-                "v3 payload no longer accepts driver.option; move fields directly under driver (e.g. driver.headless)"
+                "payload no longer accepts driver.option; move fields directly under driver (e.g. driver.headless)"
             )
         return self
 
 
-class FetchV3Request(BaseModel):
+class FetchApiRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     platform: str
     source_id: str = Field(validation_alias=AliasChoices("sourceId", "source_id"))
     user_id: Optional[str] = Field(default=None, validation_alias=AliasChoices("userId", "user_id"))
-    intent: Optional[FetchV3Intent] = None
+    intent: Optional[FetchIntent] = None
     keywords: List[str] = Field(default_factory=list)
-    output: FetchV2Output
-    driver: Optional[FetchV3Driver] = None
-    network: Optional[FetchV3Network] = None
+    output: FetchOutputConfig
+    driver: Optional[FetchDriverConfig] = None
+    network: Optional[FetchNetworkConfig] = None
 
     @model_validator(mode="after")
-    def _validate_v3_driver_script(self):
+    def _validate_driver_script(self):
         if self.intent is not None:
             raise ValueError(
-                "v3 payload no longer accepts top-level intent; move it to driver.script (e.g. driver.script.type / driver.script.args)"
+                "payload no longer accepts top-level intent; move it to driver.script (e.g. driver.script.type / driver.script.args)"
             )
         if self.driver is None or self.driver.script is None:
             raise ValueError(
-                "v3 payload requires driver.script; please provide driver.script.type and driver.script.args"
+                "payload requires driver.script; please provide driver.script.type and driver.script.args"
             )
         return self
 
 
-class FetchV3Meta(BaseModel):
+class FetchMeta(BaseModel):
     adapter: str
     strategyTried: List[str] = Field(default_factory=list)
     strategyUsed: str
     driverUsed: str
 
 
-class FetchV3Response(BaseModel):
+class FetchApiResponse(BaseModel):
     items: List["CleanItem"]
-    meta: FetchV3Meta
+    meta: FetchMeta
 
 
 class VerifyAuthRequest(BaseModel):
@@ -227,23 +211,6 @@ class ErrorResponse(BaseModel):
     error: ErrorDetail
 
 
-class AgentBrowserHeartbeatRequest(BaseModel):
-    platform: str
-    source_id: str = Field(validation_alias=AliasChoices("sourceId", "source_id"))
-    owner_id: Optional[str] = Field(default=None, validation_alias=AliasChoices("ownerId", "owner_id"))
-    session_key: Optional[str] = Field(default=None, validation_alias=AliasChoices("sessionKey", "session_key"))
-    instance_id: str = Field(validation_alias=AliasChoices("instanceId", "instance_id"))
-    verbose: bool = True
-
-
-class AgentBrowserHeartbeatResponse(BaseModel):
-    instanceId: str
-    tabId: str
-    instanceActive: bool
-    ttlSeconds: int
-    expiresAt: datetime
-
-
 class UploadProfileResponse(BaseModel):
     success: bool
     message: str
@@ -274,4 +241,4 @@ class KeywordFilterConfigError(ValueError):
     pass
 
 
-FetchV3Response.model_rebuild()
+FetchApiResponse.model_rebuild()

@@ -3,16 +3,15 @@ import sys
 from pathlib import Path
 
 import pytest
-from fastapi.testclient import TestClient
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
-import main
+import core.fetch as core_fetch
 from drivers.base_driver import BaseDriver
 from drivers.registry import DriverNotFoundError, DriverRegistry
-from main import CleanItem, FetchRequest, VerifyAuthResponse
+from schemas import CleanItem, FetchRequest, VerifyAuthResponse
 
 
 class DummyDriver(BaseDriver):
@@ -61,33 +60,5 @@ def test_driver_registry_not_found():
     assert error.value.code == "DRIVER_NOT_FOUND"
 
 
-def test_fetch_v2_driver_selected(monkeypatch):
-    registry = DriverRegistry(default_driver="playwright")
-    default_driver = DummyDriver("default-playwright")
-    selected_driver = DummyDriver("stub-driver")
-
-    registry.register("playwright", default_driver)
-    registry.register("stub", selected_driver)
-
-    monkeypatch.setattr(main, "driver_registry", registry)
-
-    client = TestClient(main.app)
-    response = client.post(
-        "/v2/fetch",
-        json={
-            "platform": "x",
-            "keywords": [],
-            "driver": {"name": "stub", "option": {}},
-            "output": {"field": ["text", "markdown"]},
-            "sourceId": "source-1",
-        },
-    )
-
-    assert response.status_code == 200
-    assert selected_driver.fetch_calls == 1
-    assert default_driver.fetch_calls == 0
-    assert response.json()[0]["platform"] == "stub-driver"
-
-
-def test_main_driver_registry_contains_three_drivers():
-    assert set(main.driver_registry.available_drivers) == {"agent-browser", "playwright", "xhttp"}
+def test_main_driver_registry_contains_expected_drivers():
+    assert set(core_fetch.driver_registry.available_drivers) == {"playwright", "xhttp"}

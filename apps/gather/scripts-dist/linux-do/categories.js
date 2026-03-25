@@ -1,4 +1,4 @@
-// Sample /v3/fetch key parts
+// Sample /v1/fetch key parts
 // intent.type: categories
 // intent.args: {"limit":20}
 // output.field: {"name":"categories.name","slug":"categories.slug","id":"categories.id","topics":"categories.topics","description":"categories.description"}

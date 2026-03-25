@@ -1,4 +1,4 @@
-// Sample /v3/fetch key parts
+// Sample /v1/fetch key parts
 // intent.type: search
 // intent.args: {"query":"openai","subreddit":"","sort":"relevance","time":"all","limit":20}
 // output.field: {"id":"posts.id","title":"posts.title","subreddit":"posts.subreddit","author":"posts.author","score":"posts.score","comments":"posts.comments","url":"posts.url"}

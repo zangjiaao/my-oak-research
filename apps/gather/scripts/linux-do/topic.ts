@@ -1,4 +1,4 @@
-// Sample /v3/fetch key parts
+// Sample /v1/fetch key parts
 // intent.type: topic
 // intent.args: {"id":12345,"limit":20}
 // output.field: {"author":"posts.author","content":"posts.content","likes":"posts.likes","created_at":"posts.created_at"}

@@ -1,4 +1,4 @@
-// Sample /v3/fetch key parts
+// Sample /v1/fetch key parts
 // intent.type: search
 // intent.args: {"query":"openai","limit":20,"page":1,"order":"totalrank"}
 // output.field: {"bvid":"videos.bvid","title":"videos.title","author":"videos.author","url":"videos.url"}

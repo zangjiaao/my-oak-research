@@ -1,4 +1,4 @@
-// Sample /v3/fetch key parts
+// Sample /v1/fetch key parts
 // intent.type: search
 // intent.args: {"query":"software engineer","location":"San Francisco Bay Area","limit":10}
 // output.field: {"rank":"jobs.rank","title":"jobs.title","company":"jobs.company","location":"jobs.location","listed":"jobs.listed","salary":"jobs.salary","url":"jobs.url"}

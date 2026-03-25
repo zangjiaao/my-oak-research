@@ -1,4 +1,4 @@
-// Sample /v3/fetch key parts
+// Sample /v1/fetch key parts
 // intent.type: comments
 // intent.args: {"id":"5274888946583083","limit":20}
 // output.field: {"id":"comments.id","text":"comments.text","screen_name":"comments.user.screen_name","likes_count":"comments.likes_count"}

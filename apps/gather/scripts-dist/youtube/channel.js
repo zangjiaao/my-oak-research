@@ -1,4 +1,4 @@
-// Sample /v3/fetch key parts
+// Sample /v1/fetch key parts
 // intent.type: channel
 // intent.args: {"id":"@programmingwithmosh","limit":10}
 // output.field: {"channelId":"channelId","name":"name","subscriberCount":"subscriberCount","recentVideoCount":"recentVideoCount","title":"recentVideos.title","url":"recentVideos.url"}

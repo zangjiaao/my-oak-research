@@ -77,7 +77,7 @@ export async function DELETE(
 
         if (profileName) {
           logger.info("[credentials] Deleting WhatsApp profile from gather", { profileName });
-          const response = await fetch(`${GATHER_SERVICE_URL}/delete-profile/${profileName}`, {
+          const response = await fetch(`${GATHER_SERVICE_URL}/v1/auth/profile/${profileName}`, {
             method: "DELETE",
           });
 
@@ -100,7 +100,7 @@ export async function DELETE(
     const stateFile = extractStateFilePath(credential.data);
     if (stateFile) {
       try {
-        const response = await fetch(`${GATHER_SERVICE_URL}/auth/state-file`, {
+        const response = await fetch(`${GATHER_SERVICE_URL}/v1/auth/state-file`, {
           method: "DELETE",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ stateFile }),

@@ -1,4 +1,4 @@
-// Sample /v3/fetch key parts
+// Sample /v1/fetch key parts
 // intent.type: post
 // intent.args: {"id":"QvqcCrCyL"}
 // output.field: {"id":"id","text":"text","screen_name":"user.screen_name","comments_count":"comments_count","url":"url"}

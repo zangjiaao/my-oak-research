@@ -1,4 +1,4 @@
-// Sample /v3/fetch key parts
+// Sample /v1/fetch key parts
 // intent.type: trending
 // intent.args: {"limit":20}
 // output.field: {"rank":"items.rank","keyword":"items.keyword","search_url":"items.search_url"}

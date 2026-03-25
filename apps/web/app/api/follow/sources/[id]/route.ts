@@ -5,61 +5,12 @@ import { Prisma } from "@/app/generated/prisma";
 import { syncSocialPresetBinding } from "@/lib/source-preset-binding";
 import { z } from "zod";
 
-// 帮助函数：将 null 转换为 Prisma.JsonNull，undefined 保持不变
 function jsonOrNull(value: unknown) {
   return value === null ? Prisma.JsonNull : value;
 }
 
-function asObject(value: unknown): Record<string, unknown> {
-  if (value && typeof value === "object" && !Array.isArray(value)) {
-    return value as Record<string, unknown>;
-  }
-  return {};
-}
-
-function toDelimitedStringArray(value: unknown): string[] {
-  if (Array.isArray(value)) {
-    return Array.from(
-      new Set(
-        value
-          .map((item) => (typeof item === "string" ? item.trim() : ""))
-          .filter(Boolean)
-      )
-    );
-  }
-  if (typeof value === "string") {
-    return Array.from(
-      new Set(
-        value
-          .split(/[,\n\r，、;；\t]+/g)
-          .map((item) => item.trim())
-          .filter(Boolean)
-      )
-    );
-  }
-  return [];
-}
-
 function normalizeSocialConfigForPersist(config: unknown): unknown {
-  const configObj = asObject(config);
-  if (Object.keys(configObj).length === 0) {
-    return config;
-  }
-
-  const normalized = { ...configObj };
-  const agentBrowser = asObject(normalized.agentBrowser);
-  if (Object.keys(agentBrowser).length > 0) {
-    const captureFilter = asObject(agentBrowser.captureFilter);
-    if (Object.keys(captureFilter).length > 0 && "keys" in captureFilter) {
-      agentBrowser.captureFilter = {
-        ...captureFilter,
-        keys: toDelimitedStringArray(captureFilter.keys),
-      };
-      normalized.agentBrowser = agentBrowser;
-    }
-  }
-
-  return normalized;
+  return config;
 }
 
 // 更新数据类型定义

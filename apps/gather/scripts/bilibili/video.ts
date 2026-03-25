@@ -1,4 +1,4 @@
-// Sample /v3/fetch key parts
+// Sample /v1/fetch key parts
 // intent.type: video
 // intent.args: {"bvid":"BV1LGwHzrE4A"}
 // output.field: {"bvid":"bvid","title":"title","author":"author","view":"stat.view","url":"url"}

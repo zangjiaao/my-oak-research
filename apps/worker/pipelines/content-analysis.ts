@@ -86,7 +86,7 @@ type QueryKeyword = {
   synonyms: string[];
 };
 
-type GatherSocialDriver = "playwright" | "xhttp" | "agent-browser";
+type GatherSocialDriver = "playwright" | "xhttp";
 type GatherOutputField = string[] | Record<string, string>;
 type GatherOutputPayload = {
   field: GatherOutputField;
@@ -1476,7 +1476,7 @@ async function fetchSocialSource(
   );
   const baseConfig = applyGatherProxyConfig(normalizedSocialConfig, proxyUrl);
   const configuredDriverFilter = resolveGatherDriverFilter(sourceConfigObj);
-  const existingKeywordFilter = resolveGatherKeywordFilter(baseConfig, gatherDriver);
+  const existingKeywordFilter = resolveGatherKeywordFilter(baseConfig);
   const keywordFilterOptions = {
     ...configuredDriverFilter,
     ...existingKeywordFilter,
@@ -1540,7 +1540,7 @@ async function fetchSocialSource(
               ...(gatherMatchMode ? { filter: { matchMode: gatherMatchMode } } : {}),
             };
 
-      const response = await fetch(`${gatherUrl}/v3/fetch`, {
+      const response = await fetch(`${gatherUrl}/v1/fetch`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -1601,13 +1601,6 @@ function normalizeGatherSocialConfig(
 ): Record<string, unknown> {
   const sanitizedConfig = sanitizeGatherConfig(config);
   const credentialStateFile = stateFileOverride ?? resolveCredentialStateFile(source);
-  if (driver === "agent-browser") {
-    return normalizeAgentBrowserGatherConfig(
-      source,
-      sanitizedConfig,
-      credentialStateFile
-    );
-  }
 
   if (driver !== "playwright") {
     return sanitizedConfig;
@@ -1649,7 +1642,7 @@ async function ensureGatherStateFileFromStorage(
   gatherPlatform: string
 ): Promise<string | null> {
   const verifyStateFile = async (stateFilePath: string): Promise<boolean> => {
-    const verifyResp = await fetch(`${gatherUrl}/verify-auth`, {
+    const verifyResp = await fetch(`${gatherUrl}/v1/verify-auth`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -1690,7 +1683,7 @@ async function ensureGatherStateFileFromStorage(
     try {
       const storageBuffer = await downloadFile(storageKey);
       const authData = JSON.parse(storageBuffer.toString("utf-8")) as Record<string, unknown>;
-      const restoreResp = await fetch(`${gatherUrl}/auth/state-file`, {
+      const restoreResp = await fetch(`${gatherUrl}/v1/auth/state-file`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -1724,140 +1717,6 @@ async function ensureGatherStateFileFromStorage(
     }
   }
   return null;
-}
-
-function normalizeAgentBrowserGatherConfig(
-  source: SocialMediaSource,
-  config: Record<string, unknown>,
-  credentialStateFile: string | null
-): Record<string, unknown> {
-  const topLevelKeywordFilter = asObject(config.keywordFilter);
-  const topLevelFilters = asObject(config.filters);
-  const topLevelFiltersKeyword = asObject(topLevelFilters.keyword);
-  const rawDriverOptions = asObject(config.driverOptions);
-  const rawAgentBrowser = asObject(config.agentBrowser);
-
-  let agentBrowserOptions = rawAgentBrowser;
-  let wrappedKeywordFilter: Record<string, unknown> = {};
-
-  const wrappedConfig = asObject(rawDriverOptions.config);
-  if (Object.keys(rawDriverOptions).length > 0) {
-    agentBrowserOptions = rawDriverOptions;
-    const nestedFilters = asObject(rawDriverOptions.filters);
-    const nestedKeywordFilter = asObject(nestedFilters.keyword);
-    if (Object.keys(nestedKeywordFilter).length > 0) {
-      wrappedKeywordFilter = nestedKeywordFilter;
-    }
-  } else if (Object.keys(wrappedConfig).length > 0) {
-    const nestedAgentBrowser = asObject(wrappedConfig.agentBrowser);
-    if (Object.keys(nestedAgentBrowser).length > 0) {
-      agentBrowserOptions = nestedAgentBrowser;
-    }
-    const nestedKeywordFilter = asObject(wrappedConfig.keywordFilter);
-    if (Object.keys(nestedKeywordFilter).length > 0) {
-      wrappedKeywordFilter = nestedKeywordFilter;
-    }
-  } else {
-    const wrappedConfig = asObject(rawAgentBrowser.config);
-    if (Object.keys(wrappedConfig).length > 0) {
-      const nestedAgentBrowser = asObject(wrappedConfig.agentBrowser);
-      if (Object.keys(nestedAgentBrowser).length > 0) {
-        agentBrowserOptions = nestedAgentBrowser;
-      }
-      const nestedKeywordFilter = asObject(wrappedConfig.keywordFilter);
-      if (Object.keys(nestedKeywordFilter).length > 0) {
-        wrappedKeywordFilter = nestedKeywordFilter;
-      }
-    } else {
-      const nestedAgentBrowser = asObject(rawAgentBrowser.agentBrowser);
-      if (Object.keys(nestedAgentBrowser).length > 0) {
-        agentBrowserOptions = nestedAgentBrowser;
-      }
-      const directKeywordFilter = asObject(rawAgentBrowser.keywordFilter);
-      if (Object.keys(directKeywordFilter).length > 0) {
-        wrappedKeywordFilter = directKeywordFilter;
-      }
-    }
-  }
-
-  const keywordFilter =
-    Object.keys(topLevelKeywordFilter).length > 0
-      ? topLevelKeywordFilter
-      : Object.keys(topLevelFiltersKeyword).length > 0
-        ? topLevelFiltersKeyword
-        : wrappedKeywordFilter;
-
-  const ownerId = resolveAgentBrowserOwnerId(source, agentBrowserOptions);
-  const normalizedAgentBrowser: Record<string, unknown> = {
-    ...agentBrowserOptions,
-    ownerId,
-    closeOnComplete: false,
-  };
-  if (
-    typeof normalizedAgentBrowser.sessionKey === "string" &&
-    normalizedAgentBrowser.sessionKey.trim() === source.id
-  ) {
-    delete normalizedAgentBrowser.sessionKey;
-  }
-  if (
-    typeof normalizedAgentBrowser.session_key === "string" &&
-    normalizedAgentBrowser.session_key.trim() === source.id
-  ) {
-    delete normalizedAgentBrowser.session_key;
-  }
-  const captureFilter = asObject(normalizedAgentBrowser.captureFilter);
-  const captureKeys = normalizeStringArray(captureFilter.keys);
-  if (captureKeys.length > 0) {
-    normalizedAgentBrowser.captureFilter = {
-      ...captureFilter,
-      keys: captureKeys,
-    };
-  }
-  if (
-    typeof normalizedAgentBrowser.stateFile !== "string" ||
-    !normalizedAgentBrowser.stateFile.trim()
-  ) {
-    if (credentialStateFile) {
-      normalizedAgentBrowser.stateFile = credentialStateFile;
-    }
-  }
-  const auth: Record<string, unknown> = {};
-  if (
-    typeof normalizedAgentBrowser.stateFile === "string" &&
-    normalizedAgentBrowser.stateFile.trim()
-  ) {
-    auth.stateFile = normalizedAgentBrowser.stateFile.trim();
-  }
-
-  const filters: Record<string, unknown> = {};
-  if (Object.keys(captureFilter).length > 0) {
-    const normalizedCapture = { ...captureFilter };
-    if (typeof normalizedCapture.minSegmentChars === "number" && normalizedCapture.minChars == null) {
-      normalizedCapture.minChars = normalizedCapture.minSegmentChars;
-      delete normalizedCapture.minSegmentChars;
-    }
-    filters.capture = normalizedCapture;
-  }
-  if (Object.keys(keywordFilter).length > 0) {
-    const normalizedKeywordFilter = { ...keywordFilter };
-    if (
-      typeof normalizedKeywordFilter.minSegmentChars === "number" &&
-      normalizedKeywordFilter.minChars == null
-    ) {
-      normalizedKeywordFilter.minChars = normalizedKeywordFilter.minSegmentChars;
-      delete normalizedKeywordFilter.minSegmentChars;
-    }
-    filters.keyword = normalizedKeywordFilter;
-  }
-
-  delete normalizedAgentBrowser.captureFilter;
-  delete normalizedAgentBrowser.keywordFilter;
-
-  return {
-    ...normalizedAgentBrowser,
-    ...(Object.keys(auth).length > 0 ? { auth } : {}),
-    ...(Object.keys(filters).length > 0 ? { filters } : {}),
-  };
 }
 
 function resolveCredentialStateFile(source: SocialMediaSource): string | null {
@@ -2079,7 +1938,7 @@ async function refreshGatherScriptCatalogCache(gatherUrl: string): Promise<void>
   if (now < gatherOutputFieldRuleCacheExpireAt) return;
 
   try {
-    const response = await fetch(`${gatherUrl}/v3/scripts/catalog`, {
+    const response = await fetch(`${gatherUrl}/v1/scripts/catalog`, {
       cache: "no-store",
       headers: { Accept: "application/json" },
     });
@@ -2116,24 +1975,6 @@ async function refreshGatherScriptCatalogCache(gatherUrl: string): Promise<void>
   }
 }
 
-function resolveAgentBrowserOwnerId(
-  source: SocialMediaSource,
-  options: Record<string, unknown>
-): string {
-  const candidates = [
-    options.ownerId,
-    options.owner_id,
-    source.social?.credentialId,
-    source.credentialId,
-  ];
-  for (const value of candidates) {
-    if (typeof value === "string" && value.trim()) {
-      return value.trim();
-    }
-  }
-  return `source:${source.id}`;
-}
-
 function resolveGatherPoolUserId(
   source: SocialMediaSource,
   config: Record<string, unknown>,
@@ -2157,29 +1998,24 @@ function resolveGatherPoolUserId(
 }
 
 function resolveGatherKeywordFilter(
-  driverOptions: Record<string, unknown>,
-  driver: GatherSocialDriver
+  driverOptions: Record<string, unknown>
 ): Record<string, unknown> {
-  if (driver !== "agent-browser") {
-    const topLevelKeywordFilter = asObject(driverOptions.keywordFilter);
-    if (Object.keys(topLevelKeywordFilter).length > 0) {
-      return topLevelKeywordFilter;
-    }
-    const topLevelFilters = asObject(driverOptions.filters);
-    const topLevelFiltersKeyword = asObject(topLevelFilters.keyword);
-    if (Object.keys(topLevelFiltersKeyword).length > 0) {
-      return topLevelFiltersKeyword;
-    }
-    const playwright = asObject(driverOptions.playwright);
-    const playwrightKeywordFilter = asObject(playwright.keywordFilter);
-    if (Object.keys(playwrightKeywordFilter).length > 0) {
-      return playwrightKeywordFilter;
-    }
-    const playwrightFilters = asObject(playwright.filters);
-    return asObject(playwrightFilters.keyword);
+  const topLevelKeywordFilter = asObject(driverOptions.keywordFilter);
+  if (Object.keys(topLevelKeywordFilter).length > 0) {
+    return topLevelKeywordFilter;
   }
-  const filters = asObject(driverOptions.filters);
-  return asObject(filters.keyword);
+  const topLevelFilters = asObject(driverOptions.filters);
+  const topLevelFiltersKeyword = asObject(topLevelFilters.keyword);
+  if (Object.keys(topLevelFiltersKeyword).length > 0) {
+    return topLevelFiltersKeyword;
+  }
+  const playwright = asObject(driverOptions.playwright);
+  const playwrightKeywordFilter = asObject(playwright.keywordFilter);
+  if (Object.keys(playwrightKeywordFilter).length > 0) {
+    return playwrightKeywordFilter;
+  }
+  const playwrightFilters = asObject(playwright.filters);
+  return asObject(playwrightFilters.keyword);
 }
 
 function resolveGatherDriverFilter(

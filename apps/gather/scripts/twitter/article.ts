@@ -1,4 +1,4 @@
-// Sample /v3/fetch key parts
+// Sample /v1/fetch key parts
 // intent.type: article
 // intent.args: {"tweet_id":"1900000000000000000"}
 // output.field: {"id":"items.id","title":"items.title","content":"items.content","author":"items.author","url":"items.url"}

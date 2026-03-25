@@ -1,4 +1,4 @@
-// Sample /v3/fetch key parts
+// Sample /v1/fetch key parts
 // intent.type: tweets
 // intent.args: {"username":"openai","limit":20}
 // output.field: {"id":"tweets.id","type":"tweets.type","author":"tweets.author","text":"tweets.text","url":"tweets.url","created_at":"tweets.created_at"}

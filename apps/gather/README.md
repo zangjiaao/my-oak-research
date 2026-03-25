@@ -1,17 +1,20 @@
 # Oak Gather Service
 
-社交媒体数据采集服务，使用 Playwright 和 Cookie 认证来获取社交媒体平台的数据。
+Oak Gather 是一个基于 FastAPI 的平台数据采集服务，统一通过 `/v1` API 调用 Playwright / xhttp 执行脚本并返回结构化数据。
 
-## 支持的平台
+## 能力概览
 
-- **X.com (Twitter)** - Cookie 认证
-- **小红书 (Xiaohongshu)** - Cookie 认证
-- **Reddit** - Cookie 认证
-- **抖音 (Douyin)** - Cookie 认证
-- **TikTok** - Cookie 认证
-- **微博 (Weibo)** - Cookie 认证
-- **Telegram** - Cookie + localStorage 认证
-- **WhatsApp** - 持久化浏览器配置文件（QR 码扫码登录）
+### 可抓取平台（以 `scripts/` 为准）
+
+- 社交/社区：X(Twitter)、Reddit、小红书、微博、Bilibili、YouTube、知乎、LinkedIn、Linux Do
+- 资讯/内容：BBC、Reuters、Hacker News、36Kr、Hupu、Toutiao
+- 搜索/检索：Google、Bing、DuckDuckGo、Baidu、CNBlogs、CSDN、Dev.to、Arxiv、Ctrip
+
+### 认证能力
+
+- Cookie / storage_state 校验：`/v1/verify-auth`
+- stateFile 生命周期：`/v1/auth/state-file`
+- WhatsApp Profile 上传与校验：`/v1/auth/profile`
 
 ## 快速开始
 
@@ -23,122 +26,88 @@ uv sync
 playwright install chromium
 ```
 
-### 2. 导出 Chrome Cookies
-
-首先，确保你已在 Chrome 浏览器中登录目标平台。然后运行以下命令导出 cookies：
+### 2. 导出浏览器认证数据
 
 ```bash
-# 导出 X.com cookies
-uv run export_chrome_cookies.py x
+# X
+uv run tools/export_chrome_cookies.py x
 
-# 导出小红书 cookies
-uv run export_chrome_cookies.py xiaohongshu
+# 小红书
+uv run tools/export_chrome_cookies.py xiaohongshu
 
-# 导出 Reddit cookies
-uv run export_chrome_cookies.py reddit
+# Reddit
+uv run tools/export_chrome_cookies.py reddit
 
-# 导出抖音 cookies
-uv run export_chrome_cookies.py douyin
+# 微博
+uv run tools/export_chrome_cookies.py weibo
 
-# 导出 TikTok cookies
-uv run export_chrome_cookies.py tiktok
-
-# 导出微博 cookies
-uv run export_chrome_cookies.py weibo
-
-# 导出 Telegram cookies + localStorage
-uv run export_chrome_cookies.py telegram
-
-# 导出 WhatsApp（启动浏览器，需要扫码登录）
-uv run export_chrome_cookies.py whatsapp
+# WhatsApp（导出 profile，需扫码）
+uv run tools/export_chrome_cookies.py whatsapp
 ```
 
-**注意**：
-- 运行此脚本之前，请完全关闭 Chrome 浏览器
-- 导出的文件会保存在 `.auth/` 目录下（已被 gitignore 忽略，不会提交到仓库）
+注意：
 
-导出的文件格式为 Playwright storage_state 格式：
-
-```json
-{
-  "cookies": [
-    {
-      "name": "cookie_name",
-      "value": "cookie_value",
-      "domain": ".example.com",
-      "path": "/",
-      "secure": true,
-      "httpOnly": true,
-      "sameSite": "Lax",
-      "expires": 1234567890
-    }
-  ],
-  "origins": []
-}
-```
+- 导出前请完全关闭 Chrome
+- 认证文件默认写入 `.auth/`（已在 `.gitignore` 中）
 
 ### 3. 启动服务
 
 ```bash
-python main.py
+python -m app
 ```
 
-或者使用 uvicorn：
+或：
 
 ```bash
-uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+uvicorn app:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-## API 接口
+## API 接口（/v1）
 
-### 验证认证 (POST /verify-auth)
+### 路由总览
 
-验证 cookies 是否有效。
+- `POST /v1/verify-auth`：校验认证数据是否有效
+- `POST /v1/fetch`：执行采集请求并返回 `{ items, meta }`
+- `GET /v1/scripts/catalog`：列出可用脚本目录与 sample 元数据
+- `POST /v1/auth/state-file`：保存 `authData` 为 `.auth/*.json`
+- `DELETE /v1/auth/state-file`：删除指定 state file
+- `POST /v1/auth/profile`：上传并校验 WhatsApp profile zip
+- `DELETE /v1/auth/profile/{profile_name}`：删除已上传 profile
 
-当前使用内置校验探针，不再依赖 `bb-site` 或 `site_scripts`：  
-- `x/twitter`: 检查 `ct0` + `auth_token` cookie  
-- `reddit`: Playwright 打开站点并请求 `/api/me.json`  
-- `whatsapp`: 使用 `agent-browser` 做登录态探测  
+### `POST /v1/verify-auth`
+
+用于验证 cookies/state file 是否有效。
+
+内置探针：
+
+- `x/twitter`：检查 `ct0` + `auth_token`
+- `reddit`：Playwright 打开站点并请求 `/api/me.json`
+- `whatsapp`：Playwright profile 探针
 - 其他平台：返回 `built-in-probe-missing`
 
-**请求体**：
+请求示例：
+
 ```json
 {
   "platform": "x",
   "stateFile": ".auth/x_auth.json",
   "verifyTargetUrl": "https://x.com",
   "verifyTimeoutMs": 90000,
-  "verifyPostWaitMs": 5000,
-  "auth_data": {
-    "cookies": [...],
-    "origins": []
-  }
+  "verifyPostWaitMs": 5000
 }
 ```
 
-`auth_data` 与 `stateFile` 二选一即可（`stateFile` 为 gather 服务本机可访问路径）。
-可选覆盖字段：
-- `verifyTargetUrl`: 指定校验跳转地址（不传则按平台默认地址）
-- `verifyTimeoutMs`: Playwright 导航超时（毫秒，默认 `60000`）
-- `verifyPostWaitMs`: 导航后额外等待时间（毫秒，默认 `3000`，单页应用建议适当调大）
+说明：
 
-**响应**：
-```json
-{
-  "valid": true,
-  "message": "X.com authentication is valid",
-  "details": {
-    "platform": "X",
-    "cookies_count": 15
-  }
-}
-```
+- `authData` 与 `stateFile` 二选一
+- `stateFile` 路径以 gather 服务本机文件系统为准
 
-### 获取数据 v2（推荐）(POST /v2/fetch)
+### `POST /v1/fetch`
 
-`/v2/fetch` 是唯一 fetch 契约入口，返回数组 `CleanItem`。
+`/v1/fetch` 是唯一采集入口，标准响应结构为 `{ items, meta }`。
 
-**请求体**：
+标准请求示例（Playwright）：
+
 ```json
 {
   "platform": "x",
@@ -147,280 +116,56 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
   "keywords": ["openai"],
   "driver": {
     "name": "playwright",
-    "option": {
+    "script": {
+      "type": "search",
       "args": {
         "query": "openai",
         "limit": 20
-      },
-      "network": {
-        "proxy": {
-          "url": "socks5h://127.0.0.1:9050"
-        }
+      }
+    },
+    "mode": "intercept-x-search",
+    "network": {
+      "proxy": {
+        "url": "socks5h://127.0.0.1:9050"
       }
     },
     "filter": {
-      "minChars": 8
+      "minChars": 8,
+      "matchMode": "smart"
     }
   },
   "output": {
-    "field": ["text", "meta.image", "url", "comments"],
-    "type": "x.post"
+    "field": ["text", "url"],
+    "type": "x.post",
+    "keywordScope": ["text"]
   }
 }
 ```
 
-`driver.name` 必填，可选值为 `xhttp`、`playwright`、`agent-browser`。
-`driver.option` 透传给对应 driver；`driver.filter` 为关键词过滤参数（如 `minChars`）。
-`userId` 建议与 `sourceId` 同级传入（系统用户 ID，用于 Playwright 资源池复用隔离）。
-`output.field` 必填，控制 `recordContent` 输出字段（支持点路径）：
-
-- `["text"]`：只返回 `recordContent.text`
-- `["text", "url"]`：返回 `recordContent.text` + `recordContent.url`
-- `["meta.image"]`：返回嵌套字段 `recordContent.meta.image`
-- `{"query":"query","product":"product","text":"tweets"}`：按映射重组输出字段（左侧是输出字段名，右侧是原始输出字段路径）
-- 当映射路径命中数组字段（如 `text.id`、`text.author`）时，会按数组元素自动拆分为多条 record 输出
-- 当原始字段名是 `tweets`（或 `items/posts/results/data/notes`）时，也支持用 `text.xxx` 作为映射路径别名
-
-`output.keywordScope` 可选，限制关键词过滤只检查 `recordContent` 指定字段（例如 `["text"]`）。
-
-`driver.filter` 关键词匹配参数（`/v2/fetch` 与 `/v3/fetch` 一致）：
-
-- `minChars`：最小正文长度门槛（默认 `1`）
-- `matchMode`：匹配模式，`smart`（默认，词级匹配）或 `contains`（子串匹配兼容模式）
-- `includeUrl`：是否把 `url` 字段纳入关键词匹配（默认 `false`）
-- `minCjkTermChars`：CJK 关键词最小长度（默认 `2`）
-
-`smart` 模式说明：
-
-- 英文/数字词按词边界匹配（避免 `ai` 命中 `airport/campaign`）
-- CJK 关键词按子串匹配（受 `minCjkTermChars` 限制）
-- 未显式开启 `includeUrl` 时，URL 不参与关键词命中
-
-`/v2/fetch` 只接受新字段：`sourceId`、`userId`、`platform`、`keywords`、`driver.name`、`driver.option`、`driver.filter`、`output.field`。不再兼容旧字段。
-
-### 通用网络代理配置（支持 HTTP/SOCKS/Tor）
-
-三个 driver（`xhttp` / `playwright` / `agent-browser`）都支持在 `driver.option.network.proxy` 下统一配置代理：
+标准请求示例（xhttp）：
 
 ```json
 {
-  "driver": {
-    "name": "playwright",
-    "option": {
-      "network": {
-        "proxy": {
-          "url": "socks5h://127.0.0.1:9050",
-          "username": "optional-user",
-          "password": "optional-pass",
-          "bypass": "localhost,127.0.0.1"
-        }
-      }
-    }
-  }
-}
-```
-
-- `url`: 必填，支持 `http://`、`https://`、`socks5://`、`socks5h://`
-- `username/password`: 可选，未写入 URL 时会自动注入
-- `bypass`: 可选，主要用于浏览器类 driver（Playwright / agent-browser）
-- Tor 推荐使用 `socks5h://127.0.0.1:9050`（DNS 也走 Tor）
-
-### xhttp 驱动（`driver.name: "xhttp"`）
-
-适用于直接调用搜索 API 或普通 HTTP 页面，不依赖浏览器环境。
-
-```json
-{
-  "platform": "search",
-  "sourceId": "source_search_demo",
+  "platform": "google",
+  "sourceId": "source_google_001",
+  "keywords": ["openai"],
   "driver": {
     "name": "xhttp",
-    "option": {
-      "url": "https://api.example.com/search",
-      "method": "POST",
-      "headers": {
-        "Content-Type": "application/json"
-      },
-      "params": {
-        "q": "openai"
-      },
-      "json": {
-        "query": "openai",
-        "count": 20
-      },
-      "signature": {
-        "secretEnv": "SEARCH_API_SECRET",
-        "source": "query",
-        "timestampField": "ts",
-        "nonceField": "nonce",
-        "fields": ["q", "ts", "nonce"],
-        "algorithm": "hmac-sha256",
-        "digest": "hex",
-        "target": "header",
-        "header": "X-Signature"
-      },
-      "timeoutSeconds": 20,
-      "maxChars": 50000
-    }
-  }
-}
-```
-
-`xhttp` 常用参数：
-
-- `url` / `urls`: 必填，目标地址（支持 `http/https`）
-- `method`: 可选，默认 `GET`，支持 `GET/POST/PUT/PATCH/DELETE/HEAD/OPTIONS`
-- `headers`: 可选，请求头对象
-- `params`: 可选，Query 参数对象
-- `json` / `form` / `body`: 可选，请求体（只能传一种）
-- `signature`: 可选，按字段生成签名并写回 query/body/header（支持 `secret` 或 `secretEnv`）
-- `timeoutSeconds`: 可选，超时时间，默认 `15`
-- `maxChars`: 可选，返回 `text/markdown` 最大长度，默认 `20000`
-
-### Agent Browser 脚本化 PoC（`driver.name: "agent-browser"`）
-
-用于复杂交互场景（登录后页面、轮询点击、按脚本采集内容），通过 `agent-browser` CLI 执行步骤。
-
-```json
-{
-  "platform": "telegram",
-  "sourceId": "source_telegram_demo",
-  "driver": {
-    "name": "agent-browser",
-    "option": {
-      "headed": true,
-      "profile": ".auth/telegram_profile",
-      "auth": {
-        "stateFile": ".auth/telegram_auth.json"
-      },
-      "script": [
-        { "command": "open https://web.telegram.org/a/" },
-        { "command": "wait --load networkidle" },
-        { "command": "snapshot -i", "captureAs": "entry_snapshot" },
-        { "command": "click @e25", "repeat": 3, "intervalMs": 2000 },
-        { "command": "get text @e40", "captureAs": "messages" }
-      ],
-      "filters": {
-        "capture": {
-          "keys": ["messages"],
-          "minChars": 20
-        },
-        "keyword": {
-          "keywords": ["openclaw"],
-          "minChars": 8
-        }
+    "script": {
+      "type": "search",
+      "args": {
+        "query": "openai"
       }
+    },
+    "url": "https://www.google.com/search",
+    "method": "GET",
+    "params": {
+      "q": "openai"
     }
+  },
+  "output": {
+    "field": ["title", "url", "snippet"]
   }
-}
-```
-
-`driver.option`（agent-browser）常用参数：
-
-- `script`: 必填，步骤数组（每步至少包含 `command`）
-- `headed`: 可选，`true` 时可视化执行（等价于 `agent-browser --headed`）
-- `profile`: 可选，加载浏览器 profile（等价于 `--profile`）
-- `sessionName`: 可选，会话名（等价于 `--session-name`）
-- `stateFile`: 可选，加载 state 文件（等价于 `--state`）
-- `commandTimeoutMs`: 可选，单步超时，默认 30000
-- `instanceId`: 可选，复用上一次返回的实例 ID（不传则创建新实例）
-- `ownerId`: 可选，实例归属标识；复用实例时会校验归属
-- `sessionKey`: 可选，会话隔离键；默认不需要与 `sourceId` 重复
-- `instanceTtlSeconds`: 可选，实例空闲 TTL（默认 900 秒）；超过后会在后续请求中被自动清理
-- `heartbeat`: 可选，`true` 时可发送空脚本续租实例（需配合 `instanceId`）
-- `closeOnComplete`: 可选，默认 `false`，为 `true` 时任务结束自动关闭实例
-- `verbose`: 可选，默认 `true`，在 gather 服务日志中输出逐步执行信息（定位卡点时建议开启）
-
-> 并发建议：需要多实例并行时，不要在脚本中显式执行 `close`，由 worker 在任务结束时关闭；同时依赖空闲 TTL 做兜底回收。
-
-`driver.name: "agent-browser"` 的返回项会附带：
-
-- `instanceId`: 浏览器实例 ID（用于下一次请求复用）
-- `tabId`: 当前 tab 的逻辑 ID
-- `instanceActive`: 当前请求结束后实例是否仍存活
-
-### 循环操作（滚动 + 检查直到命中）
-
-支持在一次请求内执行循环步骤，直到命中条件或达到上限：
-
-```json
-{
-  "platform": "x",
-  "sourceId": "loop_demo_001",
-  "driver": {
-    "name": "agent-browser",
-    "option": {
-      "instanceId": "ab-1234567890",
-      "ownerId": "user-1001",
-      "script": [
-        { "command": "open https://x.com/some-post" },
-        {
-          "loop": {
-            "maxIterations": 20,
-            "intervalMs": 1000,
-            "steps": [
-              { "command": "scroll down 900" },
-              { "command": "snapshot", "captureAs": "page_snapshot" }
-            ],
-            "breakWhen": {
-              "captureKey": "page_snapshot",
-              "textIncludes": ["目标关键词", "备选关键词"]
-            }
-          }
-        }
-      ],
-      "filters": {
-        "capture": {
-          "keys": ["page_snapshot"],
-          "perLine": true,
-          "minChars": 20,
-          "dedupe": true,
-          "normalizeRefTags": true,
-          "startsWith": ["- article", "- text"]
-        }
-      }
-    }
-  }
-}
-```
-
-`loop` 参数说明（作为 `script` 中的一个步骤对象传入，不再支持顶层 loop 写法）：
-
-- `maxIterations`: 最大循环次数（必填）
-- `intervalMs`: 每轮循环间隔（可选）
-- `steps`: 每轮要执行的步骤数组（必填）
-- `breakWhen.captureKey + breakWhen.textIncludes`: 当指定 capture 的最新输出包含目标文本时停止循环（`textIncludes` 支持字符串或字符串数组）
-
-`captureFilter` 参数说明（可选）：
-
-- `keys`: 仅对指定 capture key 生效（例如 `["page_snapshot"]`）
-- `perLine`: `true` 时按行拆分输出（适合 `snapshot` 粗提取）
-- `minChars`: 最小字符长度过滤（例如 `20`）
-- `dedupe`: 是否去重（同一 capture key 下按字符串精确去重）
-- `normalizeRefTags`: 仅用于去重 key 归一化，去掉形如 `[ref=e120]`（含行尾 ` [ref=e120]:`）的引用标签（保留原始输出文本，兼容旧别名 `normalizeRefSuffix`）
-- `startsWith`: 白名单前缀，只有以这些前缀开头的行才保留（支持别名 `star_with`）
-- `excludes`: 黑名单前缀，以这些前缀开头的行会被过滤（支持别名 `ext`）
-- `startsWith` 与 `excludes` 互斥，不能同时传
-
-命名关联说明（`captureAs` / `captureKey` / `captureFilter.keys`）：
-
-- `captureAs`: 在某一步里给输出命名，例如 `snapshot` 步骤写成 `"captureAs": "page_snapshot"`
-- `captureKey`: `breakWhen` 里指定要检查哪个命名输出
-- `captureFilter.keys`: 指定过滤规则只作用于哪些命名输出
-- `page_snapshot` 只是示例名，可以改成任意字符串，只要三处对得上
-
-### Agent Browser 心跳接口 (POST /v2/agent-browser/heartbeat)
-
-用于续租已存在实例的 TTL，不执行任何页面操作。
-
-```json
-{
-  "platform": "x",
-  "sourceId": "heartbeat_001",
-  "instanceId": "ab-1234567890",
-  "ownerId": "user-1001",
-  "sessionKey": "tenant-a",
-  "verbose": true
 }
 ```
 
@@ -428,17 +173,103 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
 ```json
 {
-  "instanceId": "ab-1234567890",
-  "tabId": "tab-1a2b3c4d",
-  "instanceActive": true,
-  "ttlSeconds": 900,
-  "expiresAt": "2026-03-13T10:15:00+00:00"
+  "items": [
+    {
+      "sourceId": "source_123",
+      "sourceType": "SOCIAL_MEDIA",
+      "recordId": "source_123:1",
+      "recordType": "x.post",
+      "recordTime": "2026-03-25T10:00:00Z",
+      "recordContent": {
+        "text": "OpenAI update",
+        "url": "https://x.com/..."
+      }
+    }
+  ],
+  "meta": {
+    "adapter": "x.search",
+    "strategyTried": ["cookie", "header", "intercept", "ui"],
+    "strategyUsed": "cookie",
+    "driverUsed": "playwright"
+  }
 }
 ```
 
-### v2 错误结构
+字段说明：
 
-`/v2/fetch` 在参数错误或运行时错误时统一返回：
+- `driver.name`：`playwright` 或 `xhttp`
+- `driver.script.type`：intent 名称（如 `search` / `profile` / `news`）
+- `driver.script.args`：intent 参数
+- `driver.filter`：关键词硬过滤
+- `output.field`：输出字段白名单或字段映射
+- `output.type`：覆盖 `recordType`
+- `output.keywordScope`：限定关键词匹配范围
+
+关键词过滤参数（`driver.filter`）：
+
+- `minChars`：最小正文长度，默认 `1`
+- `matchMode`：`smart`（默认）或 `contains` 或 `term_and_word_boundary`
+- `includeUrl`：是否将 URL 纳入关键词匹配，默认 `false`
+- `minCjkTermChars`：CJK 关键词最小长度，默认 `2`
+
+### 通用代理配置
+
+`playwright` 与 `xhttp` 都支持：
+
+```json
+{
+  "driver": {
+    "network": {
+      "proxy": {
+        "url": "socks5h://127.0.0.1:9050",
+        "username": "optional-user",
+        "password": "optional-pass",
+        "bypass": "localhost,127.0.0.1"
+      }
+    }
+  }
+}
+```
+
+### `GET /v1/scripts/catalog`
+
+返回当前可用脚本目录信息（按平台/intent 聚合），可用于 UI 下拉和参数提示。
+
+### `POST /v1/auth/state-file`
+
+把认证数据保存为 `.auth/*.json`：
+
+```json
+{
+  "platform": "x",
+  "authData": {
+    "cookies": [],
+    "origins": []
+  },
+  "name": "prod"
+}
+```
+
+### `DELETE /v1/auth/state-file`
+
+```json
+{
+  "stateFile": ".auth/x_prod_abcd1234.json"
+}
+```
+
+### `POST /v1/auth/profile`
+
+- `multipart/form-data`
+- 字段：`file`(zip), `profile_name`, `platform`（当前仅 `whatsapp`）
+
+### `DELETE /v1/auth/profile/{profile_name}`
+
+删除已上传 profile 目录。
+
+### 错误响应结构
+
+`/v1/fetch` 参数错误或运行时错误统一返回：
 
 ```json
 {
@@ -450,98 +281,48 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 }
 ```
 
-**配置选项**：
-
-#### X.com
-- `query`: 搜索关键词
-- `user`: 用户名（获取用户推文）
-- `listId`: 列表 ID（获取列表推文）
-- `maxResults`: 最大结果数（默认 10）
-
-#### 小红书
-- `query`: 搜索关键词
-- `userId`: 用户 ID（获取用户笔记）
-- `noteId`: 笔记 ID（获取单个笔记详情）
-- `maxResults`: 最大结果数（默认 10）
-
-#### Reddit
-- `subreddit`: Subreddit 名称（例如 "programming"）
-- `query`: 搜索关键词
-- `username`: 用户名（获取用户帖子）
-- `sort`: 排序方式（hot, new, top, rising，默认 hot）
-- `maxResults`: 最大结果数（默认 10）
-
-#### 抖音 (Douyin)
-- `query`: 搜索关键词
-- `userId`: 用户 ID 或 sec_uid（获取用户视频）
-- `videoId`: 视频 ID（获取单个视频详情）
-- `maxResults`: 最大结果数（默认 10）
-
-#### TikTok
-- `query`: 搜索关键词
-- `username`: 用户名（不带 @）
-- `videoId`: 视频 ID（获取单个视频详情）
-- `maxResults`: 最大结果数（默认 10）
-
-#### 微博 (Weibo)
-- `query`: 搜索关键词
-- `userId`: 用户 ID (uid)
-- `hotTopics`: 设为 true 获取热搜话题
-- `maxResults`: 最大结果数（默认 10）
-
-#### Telegram
-- `chatId`: 频道/群组 ID 或用户名（留空则获取最近聊天）
-- `maxResults`: 最大结果数（默认 20）
-
-#### WhatsApp
-- `contactName`: 联系人/群组名称（留空则获取最近聊天）
-- `maxResults`: 最大结果数（默认 20）
-
 ## 使用示例
 
-### Worker 对接建议（推荐）
+### Worker 调用建议
 
-Worker 侧建议统一调用 `/v2/fetch`，并显式传 `driver`，避免默认驱动变化导致行为不一致：
+建议统一调用 `/v1/fetch`，并显式传递 `driver` 与 `driver.script`：
 
 ```json
 {
   "platform": "x",
   "sourceId": "source-x-001",
   "driver": {
-    "name": "xhttp",
-    "option": {
-      "url": "https://api.example.com/search",
-      "method": "POST",
-      "json": { "query": "openai" }
+    "name": "playwright",
+    "script": {
+      "type": "search",
+      "args": {
+        "query": "openai",
+        "limit": 20
+      }
     }
+  },
+  "output": {
+    "field": ["text", "url"]
   }
 }
 ```
-
-对于社媒抓取可按 source 配置切换：
-
-- API 直连：`driver.name: "xhttp"`
-- 登录态接口/脚本：`driver.name: "playwright"`
-- 复杂交互兜底：`driver.name: "agent-browser"`
 
 ### Python 调用
 
 ```python
 import requests
 
-# 验证认证
-response = requests.post(
-    "http://localhost:8000/verify-auth",
+verify_resp = requests.post(
+    "http://localhost:8000/v1/verify-auth",
     json={
         "platform": "x",
-        "auth_data": {"cookies": [...], "origins": []}
-    }
+        "stateFile": ".auth/x_auth.json",
+    },
 )
-print(response.json())
+print(verify_resp.json())
 
-# 获取数据
-response = requests.post(
-    "http://localhost:8000/v2/fetch",
+fetch_resp = requests.post(
+    "http://localhost:8000/v1/fetch",
     json={
         "platform": "x",
         "sourceId": "test",
@@ -549,68 +330,87 @@ response = requests.post(
         "keywords": ["ai", "openai"],
         "driver": {
             "name": "playwright",
-            "option": {"args": {"query": "openai", "limit": 20}},
-            "filter": {"minChars": 8}
+            "script": {
+                "type": "search",
+                "args": {"query": "openai", "limit": 20},
+            },
+            "filter": {"minChars": 8},
         },
-        "output": {"field": ["text", "url"]}
-    }
+        "output": {"field": ["text", "url"]},
+    },
 )
-for item in response.json():
+
+for item in fetch_resp.json().get("items", []):
     print(item["recordContent"].get("text"))
 ```
-
-### 在 Web UI 中使用
-
-1. 在 Chrome 中登录目标平台
-2. 运行 `python export_chrome_cookies.py <platform>` 导出 cookies
-3. 在添加 Source 时选择社交媒体类型
-4. 上传导出的 auth.json 文件
-5. 点击「上传验证」按钮验证 cookies 是否有效
-6. 验证通过后，配置其他参数并保存
 
 ## 开发
 
 ### 项目结构
 
-```
+```text
 apps/gather/
-├── main.py                 # FastAPI 服务入口
-├── schemas.py              # 请求/响应模型
-├── fetch_processing.py     # 结构化记录解析与关键词过滤
-├── export_chrome_cookies.py # 浏览器认证数据导出脚本
-├── pyproject.toml          # Python 依赖
-└── README.md               # 本文档
+├── app.py                         # FastAPI 主入口（uvicorn 启动点）
+├── schemas.py                     # 请求/响应 Pydantic 模型
+├── api/                           # HTTP 路由层（薄 wrapper）
+│   ├── auth.py                    # /v1/verify-auth, /v1/auth/*
+│   ├── catalog.py                 # /v1/scripts/catalog
+│   ├── fetch.py                   # /v1/fetch
+│   └── system.py                  # /（健康检查）
+├── core/                          # 业务逻辑层
+│   ├── browser_pool.py            # Playwright 浏览器池生命周期
+│   ├── catalog.py                 # 脚本目录构建
+│   ├── config.py                  # 环境变量、路径常量、intent 注册表
+│   ├── errors.py                  # 标准化错误响应
+│   ├── fetch.py                   # fetch 调度与 driver 注册
+│   ├── intercept/                 # 按平台拆分的 intercept handler
+│   ├── io_logging.py              # API I/O 日志
+│   ├── normalize.py               # 请求规范化与输出字段映射
+│   ├── playwright_runner.py       # Playwright 脚本执行引擎
+│   └── profile.py                 # 认证状态文件与 profile 管理
+├── drivers/                       # Driver 抽象（playwright / xhttp）
+├── libs/                          # 独立工具库
+│   ├── auth_verify.py             # 认证校验探针
+│   ├── fetch_processing.py        # 关键词硬过滤
+│   └── script_framework.py        # 脚本注册与模板构建
+├── scripts/                       # 源脚本（按平台/intent）
+├── scripts-dist/                  # 编译后运行时脚本
+├── tools/export_chrome_cookies.py # 浏览器认证数据导出工具
+├── tests/                         # 测试用例
+├── pyproject.toml
+└── README.md
 ```
 
-### 添加新平台
+### 添加新平台/新 intent
 
-1. 在 `apps/gather/auth_verify.py` 增加该平台的内置 verify probe
-2. 采集逻辑优先走 `driver.name=agent-browser` 或 Playwright 内置 `intercept-*` 能力
-3. 在 `main.py` 中添加平台映射与采集逻辑
-4. 在 `export_chrome_cookies.py` 中添加平台配置（如需）
+1. 在 `scripts/<platform>/<intent>.ts` 增加脚本
+2. 确认脚本可被 `ScriptRegistry` 识别并出现在 `/v1/scripts/catalog`
+3. 如需认证探针，在 `libs/auth_verify.py` 增加平台校验逻辑
+4. 如需 `intercept-*` 模式，在 `core/intercept/` 增加对应平台 handler
+5. 在 `core/config.py` 注册新平台的 intent 集合
+6. 补充/更新对应测试用例
 
 ## 注意事项
 
-- Cookies 可能会过期，需要定期重新导出
-- 频繁访问可能导致账号被临时限制
-- 建议设置合理的访问频率限制
-- 使用代理可以提高稳定性
+- 认证数据会过期，需要定期重新导出
+- 高频访问可能触发平台限流或风控
+- 建议在生产环境配置代理与合理节流
 
 ## 故障排除
 
-### Cookies 导出失败
+### 认证导出失败
 
 1. 确保 Chrome 完全关闭
-2. 检查是否有足够的权限访问 Chrome 数据目录
-3. 在 macOS 上，可能需要给终端应用文件夹访问权限
+2. 检查终端对浏览器数据目录的访问权限
+3. macOS 下确保终端有“文件与文件夹”权限
 
 ### 认证验证失败
 
-1. 检查 cookies 是否过期
-2. 确保在 Chrome 中已登录目标平台
-3. 重新导出 cookies 并再次尝试
+1. 检查 cookies / profile 是否过期
+2. 确认当前账号在浏览器中可正常访问目标平台
+3. 重新导出认证数据后重试
 
 ### Playwright 错误
 
-1. 确保已安装 Playwright 浏览器：`playwright install chromium`
-2. 在某些系统上可能需要安装额外依赖：`playwright install-deps`
+1. 确认已安装浏览器：`playwright install chromium`
+2. 必要时安装系统依赖：`playwright install-deps`

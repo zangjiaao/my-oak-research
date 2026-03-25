@@ -1,4 +1,4 @@
-// Sample /v3/fetch key parts
+// Sample /v1/fetch key parts
 // intent.type: notifications
 // intent.args: {"limit":20}
 // output.field: {"id":"notifications.id","action":"notifications.action","text":"notifications.text","author":"notifications.author","url":"notifications.url"}

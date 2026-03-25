@@ -1,4 +1,4 @@
-// Sample /v3/fetch key parts
+// Sample /v1/fetch key parts
 // intent.type: search
 // intent.args: {"query":"artificial intelligence","limit":10}
 // output.field: {"title":"results.title","url":"results.url","description":"results.description","date":"results.date"}

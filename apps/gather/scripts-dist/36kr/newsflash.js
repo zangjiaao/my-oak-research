@@ -1,4 +1,4 @@
-// Sample /v3/fetch key parts
+// Sample /v1/fetch key parts
 // intent.type: newsflash
 // intent.args: {"limit":20}
 // output.field: {"title":"items.title","description":"items.description","timestamp":"items.timestamp","url":"items.url"}
