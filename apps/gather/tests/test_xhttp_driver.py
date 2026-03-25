@@ -13,7 +13,7 @@ if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
 import api.app as main
-from api.app import FetchRequest
+from schemas import FetchRequest
 from drivers.xhttp_driver import XHttpDriver, _resolve_xhttp_urls
 
 

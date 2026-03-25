@@ -10,9 +10,10 @@ if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
 import api.app as main
+from api.services import runtime_service as runtime
 from drivers.base_driver import BaseDriver
 from drivers.registry import DriverNotFoundError, DriverRegistry
-from api.app import CleanItem, FetchRequest, VerifyAuthResponse
+from schemas import CleanItem, FetchRequest, VerifyAuthResponse
 
 
 class DummyDriver(BaseDriver):
@@ -69,7 +70,7 @@ def test_fetch_driver_selected(monkeypatch):
     registry.register("playwright", default_driver)
     registry.register("stub", selected_driver)
 
-    monkeypatch.setattr(main, "driver_registry", registry)
+    monkeypatch.setattr(runtime, "driver_registry", registry)
 
     client = TestClient(main.app)
     response = client.post(
@@ -91,4 +92,4 @@ def test_fetch_driver_selected(monkeypatch):
 
 
 def test_main_driver_registry_contains_expected_drivers():
-    assert set(main.driver_registry.available_drivers) == {"playwright", "xhttp"}
+    assert set(runtime.driver_registry.available_drivers) == {"playwright", "xhttp"}

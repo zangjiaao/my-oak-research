@@ -16,7 +16,7 @@ from contextlib import asynccontextmanager, suppress
 from pathlib import Path
 from urllib.parse import quote, urlparse, urlunparse
 from dataclasses import dataclass, field
-from fastapi import FastAPI, HTTPException, UploadFile, File, Form
+from fastapi import FastAPI, HTTPException, UploadFile
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ValidationError
 from typing import List, Optional, Any, Dict
@@ -87,9 +87,6 @@ async def _app_lifespan(_app: FastAPI):
             if _PLAYWRIGHT_RUNTIME is not None:
                 await _PLAYWRIGHT_RUNTIME.stop()
                 _PLAYWRIGHT_RUNTIME = None
-
-
-app = FastAPI(title="Oak Gather Service", lifespan=_app_lifespan)
 
 
 def _env_flag(name: str, default: bool = False) -> bool:
@@ -325,7 +322,6 @@ def build_error_response(
     )
 
 
-@app.get("/")
 async def root():
     return {"status": "ok", "service": "oak-gather"}
 
@@ -3206,7 +3202,6 @@ def _to_driver_error_response(error: DriverNotFoundError) -> JSONResponse:
     )
 
 
-@app.post("/v1/verify-auth", response_model=VerifyAuthResponse)
 async def verify_auth(request: VerifyAuthRequest):
     try:
         result = await driver_registry.verify_auth(request)
@@ -3227,16 +3222,6 @@ async def verify_auth(request: VerifyAuthRequest):
         raise _to_driver_http_exception(error)
 
 
-@app.post(
-    "/v1/fetch",
-    response_model=FetchV3Response,
-    response_model_exclude_none=True,
-    responses={
-        400: {"model": ErrorResponse},
-        422: {"model": ErrorResponse},
-        500: {"model": ErrorResponse},
-    },
-)
 async def fetch_data_v1(payload: Dict[str, Any]):
     normalized_payload = _normalize_fetch_payload(payload)
     try:
@@ -3291,7 +3276,6 @@ async def fetch_data_v1(payload: Dict[str, Any]):
         return response
 
 
-@app.get("/v1/scripts/catalog")
 async def list_scripts_catalog():
     payload = _build_scripts_catalog()
     _log_api_io("/v1/scripts/catalog", {}, payload, 200)
@@ -3326,7 +3310,6 @@ def _validate_auth_data_shape(auth_data: dict[str, Any]) -> None:
         )
 
 
-@app.post("/v1/auth/state-file", response_model=SaveAuthStateResponse)
 async def save_auth_state_file(request: SaveAuthStateRequest):
     auth_data = request.auth_data
     if not isinstance(auth_data, dict):
@@ -3351,7 +3334,6 @@ async def save_auth_state_file(request: SaveAuthStateRequest):
     )
 
 
-@app.delete("/v1/auth/state-file")
 async def delete_auth_state_file(request: DeleteAuthStateRequest):
     raw_state_file = request.state_file.strip()
     file_name = Path(raw_state_file).name
@@ -3365,11 +3347,10 @@ async def delete_auth_state_file(request: DeleteAuthStateRequest):
     return {"success": True, "stateFile": f".auth/{file_name}"}
 
 
-@app.post("/v1/auth/profile", response_model=UploadProfileResponse)
 async def upload_profile(
-    file: UploadFile = File(...),
-    profile_name: str = Form(...),
-    platform: str = Form(default="whatsapp")
+    file: UploadFile,
+    profile_name: str,
+    platform: str = "whatsapp",
 ):
     """
     Upload and verify a browser profile (e.g., WhatsApp).
@@ -3548,7 +3529,6 @@ async def upload_profile(
         )
 
 
-@app.delete("/v1/auth/profile/{profile_name}")
 async def delete_profile(profile_name: str):
     """
     Delete a browser profile directory from the filesystem.
@@ -3579,25 +3559,3 @@ async def delete_profile(profile_name: str):
     except Exception as e:
         print(f"[gather] Error deleting profile: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to delete profile: {str(e)}")
-
-
-if __name__ == "__main__":
-    import uvicorn
-    host = os.getenv("GATHER_HOST", "0.0.0.0")
-    port = int(os.getenv("GATHER_PORT", "8000"))
-    reload = os.getenv("GATHER_RELOAD", "false").lower() == "true"
-    reload_excludes: list[str] = []
-    if _API_IO_LOG_ENABLED:
-        reload_excludes.append(str(_API_IO_LOG_DIR))
-    
-    print(f"[gather] Starting service on {host}:{port} (reload={reload})")
-    if reload_excludes:
-        print(f"[gather] reload excludes: {', '.join(reload_excludes)}")
-    # Using string import "api.app:app" to support reload
-    uvicorn.run(
-        "api.app:app",
-        host=host,
-        port=port,
-        reload=reload,
-        reload_excludes=reload_excludes,
-    )

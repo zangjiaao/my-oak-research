@@ -9,7 +9,8 @@ import pytest
 sys.path.append(str(Path(__file__).resolve().parents[1]))
 
 import api.app as main  # noqa: E402
-from api.app import CleanItem  # noqa: E402
+from api.services import runtime_service as runtime  # noqa: E402
+from schemas import CleanItem  # noqa: E402
 
 
 def test_fetch_v3_uses_intercept_x_search_mode(monkeypatch):
@@ -27,7 +28,7 @@ def test_fetch_v3_uses_intercept_x_search_mode(monkeypatch):
             )
         ]
 
-    monkeypatch.setattr(main, "_run_playwright_intercept_x_search", fake_run_playwright_intercept_x_search)
+    monkeypatch.setattr(runtime, "_run_playwright_intercept_x_search", fake_run_playwright_intercept_x_search)
 
     client = TestClient(main.app)
     response = client.post(
@@ -59,7 +60,7 @@ def test_fetch_v3_opencli_bridge_mode(monkeypatch):
             stderr="",
         )
 
-    monkeypatch.setattr(main.subprocess, "run", fake_run)
+    monkeypatch.setattr(runtime.subprocess, "run", fake_run)
 
     client = TestClient(main.app)
     response = client.post(
@@ -107,7 +108,7 @@ def test_fetch_v3_uses_intercept_reddit_search_mode(monkeypatch):
             )
         ]
 
-    monkeypatch.setattr(main, "_run_playwright_intercept_reddit_intent", fake_run_playwright_intercept_reddit_intent)
+    monkeypatch.setattr(runtime, "_run_playwright_intercept_reddit_intent", fake_run_playwright_intercept_reddit_intent)
 
     client = TestClient(main.app)
     response = client.post(
@@ -146,7 +147,7 @@ def test_fetch_v3_uses_intercept_xhs_search_mode(monkeypatch):
             )
         ]
 
-    monkeypatch.setattr(main, "_run_playwright_intercept_xhs_intent", fake_run_playwright_intercept_xhs_intent)
+    monkeypatch.setattr(runtime, "_run_playwright_intercept_xhs_intent", fake_run_playwright_intercept_xhs_intent)
 
     client = TestClient(main.app)
     response = client.post(
@@ -185,7 +186,7 @@ def test_fetch_v3_uses_intercept_bbc_news_mode(monkeypatch):
             )
         ]
 
-    monkeypatch.setattr(main, "_run_playwright_intercept_bbc_intent", fake_run_playwright_intercept_bbc_intent)
+    monkeypatch.setattr(runtime, "_run_playwright_intercept_bbc_intent", fake_run_playwright_intercept_bbc_intent)
 
     client = TestClient(main.app)
     response = client.post(
@@ -224,7 +225,7 @@ def test_fetch_v3_uses_intercept_hackernews_top_mode(monkeypatch):
             )
         ]
 
-    monkeypatch.setattr(main, "_run_playwright_intercept_hackernews_intent", fake_run_playwright_intercept_hackernews_intent)
+    monkeypatch.setattr(runtime, "_run_playwright_intercept_hackernews_intent", fake_run_playwright_intercept_hackernews_intent)
 
     client = TestClient(main.app)
     response = client.post(
@@ -263,7 +264,7 @@ def test_fetch_v3_uses_intercept_linkedin_search_mode(monkeypatch):
             )
         ]
 
-    monkeypatch.setattr(main, "_run_playwright_intercept_linkedin_intent", fake_run_playwright_intercept_linkedin_intent)
+    monkeypatch.setattr(runtime, "_run_playwright_intercept_linkedin_intent", fake_run_playwright_intercept_linkedin_intent)
 
     client = TestClient(main.app)
     response = client.post(
@@ -302,7 +303,7 @@ def test_fetch_v3_uses_intercept_linux_do_search_mode(monkeypatch):
             )
         ]
 
-    monkeypatch.setattr(main, "_run_playwright_intercept_linux_do_intent", fake_run_playwright_intercept_linux_do_intent)
+    monkeypatch.setattr(runtime, "_run_playwright_intercept_linux_do_intent", fake_run_playwright_intercept_linux_do_intent)
 
     client = TestClient(main.app)
     response = client.post(
@@ -341,7 +342,7 @@ def test_fetch_v3_uses_intercept_youtube_search_mode(monkeypatch):
             )
         ]
 
-    monkeypatch.setattr(main, "_run_playwright_intercept_youtube_intent", fake_run_playwright_intercept_youtube_intent)
+    monkeypatch.setattr(runtime, "_run_playwright_intercept_youtube_intent", fake_run_playwright_intercept_youtube_intent)
 
     client = TestClient(main.app)
     response = client.post(
@@ -380,7 +381,7 @@ def test_fetch_v3_uses_intercept_youtube_channel_mode(monkeypatch):
             )
         ]
 
-    monkeypatch.setattr(main, "_run_playwright_intercept_youtube_intent", fake_run_playwright_intercept_youtube_intent)
+    monkeypatch.setattr(runtime, "_run_playwright_intercept_youtube_intent", fake_run_playwright_intercept_youtube_intent)
 
     client = TestClient(main.app)
     response = client.post(
@@ -419,7 +420,7 @@ def test_fetch_v3_uses_intercept_weibo_user_posts_mode(monkeypatch):
             )
         ]
 
-    monkeypatch.setattr(main, "_run_playwright_intercept_weibo_intent", fake_run_playwright_intercept_weibo_intent)
+    monkeypatch.setattr(runtime, "_run_playwright_intercept_weibo_intent", fake_run_playwright_intercept_weibo_intent)
 
     client = TestClient(main.app)
     response = client.post(
@@ -458,7 +459,7 @@ def test_fetch_v3_uses_intercept_zhihu_search_mode(monkeypatch):
             )
         ]
 
-    monkeypatch.setattr(main, "_run_playwright_intercept_zhihu_intent", fake_run_playwright_intercept_zhihu_intent)
+    monkeypatch.setattr(runtime, "_run_playwright_intercept_zhihu_intent", fake_run_playwright_intercept_zhihu_intent)
 
     client = TestClient(main.app)
     response = client.post(
@@ -497,7 +498,7 @@ def test_fetch_v3_uses_intercept_bilibili_search_mode(monkeypatch):
             )
         ]
 
-    monkeypatch.setattr(main, "_run_playwright_intercept_bilibili_intent", fake_run_playwright_intercept_bilibili_intent)
+    monkeypatch.setattr(runtime, "_run_playwright_intercept_bilibili_intent", fake_run_playwright_intercept_bilibili_intent)
 
     client = TestClient(main.app)
     response = client.post(
@@ -554,7 +555,7 @@ def test_fetch_v3_uses_intercept_new_web_sources_mode(monkeypatch, platform, int
             )
         ]
 
-    monkeypatch.setattr(main, "_run_playwright_intercept_generic_intent", fake_run_playwright_intercept_generic_intent)
+    monkeypatch.setattr(runtime, "_run_playwright_intercept_generic_intent", fake_run_playwright_intercept_generic_intent)
 
     client = TestClient(main.app)
     response = client.post(

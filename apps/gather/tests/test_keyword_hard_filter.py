@@ -8,9 +8,10 @@ if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
 import api.app as main
+from api.services import runtime_service as runtime
 from drivers.base_driver import BaseDriver
 from drivers.registry import DriverRegistry
-from api.app import CleanItem, FetchRequest
+from schemas import CleanItem, FetchRequest
 
 
 class StubKeywordDriver(BaseDriver):
@@ -172,7 +173,7 @@ class StubKeywordDriver(BaseDriver):
 def _client_with_stub_driver(monkeypatch) -> TestClient:
     registry = DriverRegistry(default_driver="playwright")
     registry.register("playwright", StubKeywordDriver())
-    monkeypatch.setattr(main, "driver_registry", registry)
+    monkeypatch.setattr(runtime, "driver_registry", registry)
     return TestClient(main.app)
 
 

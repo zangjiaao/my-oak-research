@@ -19,7 +19,4 @@ router = APIRouter()
     },
 )
 async def fetch_data_v1(payload: Dict[str, Any]):
-    from api import app as app_module
-
-    app_module.sync_runtime_state()
     return await fetch_service.fetch_data(payload)

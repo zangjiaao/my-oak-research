@@ -8,9 +8,10 @@ import pytest
 sys.path.append(str(Path(__file__).resolve().parents[1]))
 
 import api.app as main  # noqa: E402
+from api.services import runtime_service as runtime  # noqa: E402
 from drivers.base_driver import BaseDriver  # noqa: E402
 from drivers.registry import DriverRegistry  # noqa: E402
-from api.app import CleanItem  # noqa: E402
+from schemas import CleanItem  # noqa: E402
 
 
 class StubFetchDriver(BaseDriver):
@@ -55,7 +56,7 @@ class StubFetchDriver(BaseDriver):
 def _client_with_stub_driver(monkeypatch) -> TestClient:
     registry = DriverRegistry(default_driver="playwright")
     registry.register("playwright", StubFetchDriver())
-    monkeypatch.setattr(main, "driver_registry", registry)
+    monkeypatch.setattr(runtime, "driver_registry", registry)
     return TestClient(main.app)
 
 

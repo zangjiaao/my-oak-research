@@ -8,7 +8,8 @@ if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
 import api.app as main
-from api.app import VerifyAuthResponse
+from api.services import runtime_service as runtime
+from schemas import VerifyAuthResponse
 
 
 def test_verify_auth_uses_x_cookie_probe():
@@ -98,7 +99,7 @@ def test_verify_auth_uses_playwright_profile_probe_for_whatsapp(monkeypatch):
             details={"verifyMethod": "playwright-profile"},
         )
 
-    monkeypatch.setattr(main, "playwright_verify_auth", fake_whatsapp_verify)
+    monkeypatch.setattr(runtime, "playwright_verify_auth", fake_whatsapp_verify)
 
     client = TestClient(main.app)
     response = client.post(

@@ -7,12 +7,13 @@ from fastapi.testclient import TestClient
 sys.path.append(str(Path(__file__).resolve().parents[1]))
 
 import api.app as main  # noqa: E402
+from api.services import runtime_service as runtime  # noqa: E402
 from drivers.base_driver import BaseDriver  # noqa: E402
 from drivers.registry import DriverRegistry  # noqa: E402
-from api.app import CleanItem, app  # noqa: E402
+from schemas import CleanItem  # noqa: E402
 
 
-client = TestClient(app)
+client = TestClient(main.app)
 
 
 class StubFetchDriver(BaseDriver):
@@ -194,42 +195,42 @@ class StubListMappingNoIdDriver(BaseDriver):
 def _client_with_stub_driver(monkeypatch) -> TestClient:
     registry = DriverRegistry(default_driver="playwright")
     registry.register("playwright", StubFetchDriver())
-    monkeypatch.setattr(main, "driver_registry", registry)
+    monkeypatch.setattr(runtime, "driver_registry", registry)
     return TestClient(main.app)
 
 
 def _client_with_list_mapping_driver(monkeypatch) -> TestClient:
     registry = DriverRegistry(default_driver="playwright")
     registry.register("playwright", StubListMappingDriver())
-    monkeypatch.setattr(main, "driver_registry", registry)
+    monkeypatch.setattr(runtime, "driver_registry", registry)
     return TestClient(main.app)
 
 
 def _client_with_tweets_mapping_driver(monkeypatch) -> TestClient:
     registry = DriverRegistry(default_driver="playwright")
     registry.register("playwright", StubTweetsMappingDriver())
-    monkeypatch.setattr(main, "driver_registry", registry)
+    monkeypatch.setattr(runtime, "driver_registry", registry)
     return TestClient(main.app)
 
 
 def _client_with_flat_row_mapping_driver(monkeypatch) -> TestClient:
     registry = DriverRegistry(default_driver="playwright")
     registry.register("playwright", StubFlatRowMappingDriver())
-    monkeypatch.setattr(main, "driver_registry", registry)
+    monkeypatch.setattr(runtime, "driver_registry", registry)
     return TestClient(main.app)
 
 
 def _client_with_results_mapping_driver(monkeypatch) -> TestClient:
     registry = DriverRegistry(default_driver="playwright")
     registry.register("playwright", StubResultsMappingDriver())
-    monkeypatch.setattr(main, "driver_registry", registry)
+    monkeypatch.setattr(runtime, "driver_registry", registry)
     return TestClient(main.app)
 
 
 def _client_with_no_id_mapping_driver(monkeypatch) -> TestClient:
     registry = DriverRegistry(default_driver="playwright")
     registry.register("playwright", StubListMappingNoIdDriver())
-    monkeypatch.setattr(main, "driver_registry", registry)
+    monkeypatch.setattr(runtime, "driver_registry", registry)
     return TestClient(main.app)
 
 
