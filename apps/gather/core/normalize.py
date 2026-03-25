@@ -73,7 +73,13 @@ def extract_x_status_id(url: Optional[str]) -> Optional[str]:
     return matched.group(1) if matched else None
 
 
-def extract_tweet_id(raw: str | None) -> str:
+def extract_tweet_id(raw: Any) -> str:
+    if raw is None:
+        return ""
+    if isinstance(raw, (int, float)):
+        if isinstance(raw, float) and not raw.is_integer():
+            return ""
+        raw = str(int(raw))
     if not isinstance(raw, str):
         return ""
     value = raw.strip()
@@ -691,5 +697,4 @@ def merge_intent_into_driver_option(
         return merged_option
 
     return merged_option
-
 

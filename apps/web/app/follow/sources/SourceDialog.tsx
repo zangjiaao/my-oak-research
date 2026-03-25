@@ -275,9 +275,16 @@ function toScriptArgEntries(value: unknown): ScriptArgEntry[] {
   }));
 }
 
-function parseScriptArgValue(raw: string): unknown {
+function isIdLikeArgKey(key: string): boolean {
+  const normalized = key.trim().toLowerCase();
+  if (!normalized) return false;
+  return normalized === "id" || normalized.endsWith("_id") || normalized.endsWith("id");
+}
+
+function parseScriptArgValue(raw: string, key: string): unknown {
   const trimmed = raw.trim();
   if (!trimmed) return "";
+  if (isIdLikeArgKey(key)) return trimmed;
   if (trimmed === "true") return true;
   if (trimmed === "false") return false;
   if (/^-?\d+(\.\d+)?$/.test(trimmed)) return Number(trimmed);
@@ -296,7 +303,7 @@ function entriesToScriptArgs(entries: ScriptArgEntry[]): Record<string, unknown>
   for (const entry of entries) {
     const key = entry.key.trim();
     if (!key) continue;
-    output[key] = parseScriptArgValue(entry.value);
+    output[key] = parseScriptArgValue(entry.value, key);
   }
   return output;
 }
