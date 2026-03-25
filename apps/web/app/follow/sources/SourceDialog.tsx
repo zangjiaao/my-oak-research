@@ -201,6 +201,35 @@ function asRecord(value: unknown): Record<string, unknown> {
   return {};
 }
 
+function isCatalogArgRule(value: unknown): value is { required?: unknown; description?: unknown } {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const candidate = value as Record<string, unknown>;
+  return "required" in candidate || "description" in candidate;
+}
+
+function normalizeTemplateIntentArgs(input: Record<string, unknown>): Record<string, unknown> {
+  const args: Record<string, unknown> = {};
+
+  for (const [key, value] of Object.entries(input)) {
+    if (isCatalogArgRule(value)) {
+      args[key] = "";
+      continue;
+    }
+
+    if (value === undefined || value === null) {
+      args[key] = "";
+      continue;
+    }
+    if (typeof value === "string") {
+      args[key] = value;
+      continue;
+    }
+    args[key] = String(value);
+  }
+
+  return args;
+}
+
 function parseGatherMarker(value?: string | null): { platform: string; intentType: string } | null {
   const text = String(value ?? "").trim();
   if (!text) return null;
@@ -1080,7 +1109,13 @@ const SourceDialog = ({
       setScriptArgEntries([]);
       return;
     }
-    const sampleArgs = selectedCatalogItem?.sample?.intentArgs ?? {};
+    const rawSampleArgs =
+      selectedCatalogItem?.sample?.intentArgs &&
+      typeof selectedCatalogItem.sample.intentArgs === "object" &&
+      !Array.isArray(selectedCatalogItem.sample.intentArgs)
+        ? (selectedCatalogItem.sample.intentArgs as Record<string, unknown>)
+        : {};
+    const sampleArgs = normalizeTemplateIntentArgs(rawSampleArgs);
     const sampleEntries = toScriptArgEntries(sampleArgs);
     if (sampleEntries.length === 0) {
       setScriptArgEntries((prev) => (prev.length > 0 ? prev : [EMPTY_ARG_ENTRY]));
