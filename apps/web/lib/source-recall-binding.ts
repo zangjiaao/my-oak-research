@@ -33,6 +33,8 @@ export function sourceHasLockedRecallArgs(source: unknown): boolean {
   const sourceObject = asObject(source);
   const socialConfig = asObject(asObject(sourceObject.social).config);
   const socialIntent = asObject(socialConfig.intent);
+  const socialRuntime = asObject(socialConfig.runtime);
+  const socialRuntimeScript = asObject(socialRuntime.script);
 
   const webParseRules = asObject(asObject(sourceObject.web).parseRules);
   const webGather = asObject(webParseRules.gather);
@@ -40,10 +42,19 @@ export function sourceHasLockedRecallArgs(source: unknown): boolean {
 
   const searchOptions = asObject(asObject(sourceObject.search).options);
   const searchIntent = asObject(searchOptions.intent);
+  const searchDriver = asObject(searchOptions.driver);
+  const searchDriverScript = asObject(searchDriver.script);
 
   return [
     socialIntent.recallBinding,
+    socialConfig.recallBinding,
+    socialRuntimeScript.recallBinding,
+    socialRuntime.recallBinding,
     webIntent.recallBinding,
+    webGather.recallBinding,
     searchIntent.recallBinding,
+    searchOptions.recallBinding,
+    searchDriverScript.recallBinding,
+    searchDriver.recallBinding,
   ].some((candidate) => hasLockedRecallBinding(candidate));
 }

@@ -589,6 +589,18 @@ function buildPayloadFromUnified(input: {
   } =
     input;
   const intentArgs = scriptArgs;
+  const normalizedRecallBindingArgKeys = Array.from(
+    new Set(
+      recallBindingArgKeys.map((key) => key.trim()).filter(Boolean)
+    )
+  );
+  const recallBinding = {
+    enabled: normalizedRecallBindingArgKeys.length > 0,
+    argKeys:
+      normalizedRecallBindingArgKeys.length > 0
+        ? normalizedRecallBindingArgKeys
+        : ["query"],
+  };
   const driver = buildDriverConfig({ intentType, intentArgs, config: driverConfig });
 
   const base = {
@@ -617,6 +629,12 @@ function buildPayloadFromUnified(input: {
               platform: normalizePlatform(platform),
               intentType: intentType || "search",
               intentArgs,
+              intent: {
+                type: intentType || "search",
+                args: intentArgs,
+                recallBinding,
+              },
+              recallBinding,
               driver,
             },
           }
@@ -664,6 +682,12 @@ function buildPayloadFromUnified(input: {
             provider: provider || "CUSTOM",
             intentType,
             intentArgs,
+            intent: {
+              type: intentType || "search",
+              args: intentArgs,
+              recallBinding,
+            },
+            recallBinding,
             driver,
           },
           credentialId: values.credentialId ?? null,
@@ -711,11 +735,7 @@ function buildPayloadFromUnified(input: {
     intent: {
       type: intentType || "search",
       args: intentArgs,
-      recallBinding: {
-        enabled: recallBindingArgKeys.length > 0,
-        argKeys:
-          recallBindingArgKeys.length > 0 ? recallBindingArgKeys : ["query"],
-      },
+      recallBinding,
     },
     playwright: {
       mode: "eval-js",
