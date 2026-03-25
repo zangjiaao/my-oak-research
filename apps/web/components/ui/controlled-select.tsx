@@ -32,7 +32,7 @@ export const ControlledSelect = ({
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
       <SelectContent>
-        {nullValue && <SelectItem value={nullValue}>{nullLabel}</SelectItem>}
+        <SelectItem value={nullValue}>{nullLabel}</SelectItem>
         {children}
       </SelectContent>
     </Select>
