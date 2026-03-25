@@ -1250,6 +1250,7 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
                                 }))
                               }
                               placeholder="No proxy"
+                              nullLabel="No proxy"
                             >
                               {proxies.map((proxy) => (
                                 <SelectItem key={proxy.id} value={proxy.id}>
