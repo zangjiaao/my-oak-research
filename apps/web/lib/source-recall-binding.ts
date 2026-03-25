@@ -25,8 +25,7 @@ function hasLockedRecallBinding(recallBinding: unknown): boolean {
   const enabled =
     typeof binding.enabled === "boolean" ? binding.enabled : true;
   const argKeys = toStringArray(binding.argKeys);
-  const effectiveArgKeys = argKeys.length > 0 ? argKeys : ["query"];
-  return enabled && effectiveArgKeys.length > 0;
+  return enabled && argKeys.length > 0;
 }
 
 export function sourceHasLockedRecallArgs(source: unknown): boolean {
