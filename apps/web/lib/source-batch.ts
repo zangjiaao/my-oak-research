@@ -410,6 +410,19 @@ export function listMissingRequiredFields(
     ...config,
   };
   return template.requiredFields.filter((field) => {
+    if (field.startsWith("intent.args.")) {
+      const argKey = field.slice("intent.args.".length).trim();
+      if (argKey) {
+        const intent = asRecord(merged.intent);
+        const recallBinding = asRecord(intent.recallBinding);
+        if (recallBinding.enabled !== false) {
+          const boundKeys = toStringArray(recallBinding.argKeys);
+          if (boundKeys.includes(argKey)) {
+            return false;
+          }
+        }
+      }
+    }
     const value = getByPath(merged, field);
     return isEmptyValue(value);
   });

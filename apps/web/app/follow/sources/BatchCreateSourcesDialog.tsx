@@ -555,8 +555,15 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
   const getLocalMissing = (template: BatchTemplate): string[] => {
     const missing: string[] = [];
     const config = getCurrentConfig(template);
+    const boundKeys = getRecallBindingArgKeys(config);
 
     for (const field of template.requiredFields) {
+      if (field.startsWith("intent.args.")) {
+        const argKey = field.slice("intent.args.".length).trim();
+        if (argKey && boundKeys.includes(argKey)) {
+          continue;
+        }
+      }
       if (isEmptyValue(getByPath(config, field))) {
         missing.push(field);
       }
