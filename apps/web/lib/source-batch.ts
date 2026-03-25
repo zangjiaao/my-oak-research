@@ -556,7 +556,7 @@ function resolveIntentArgContext(config: Record<string, unknown>): string | null
   );
   const picked = (identityEntries.length > 0 ? identityEntries : allEntries).slice(0, 2);
 
-  return picked.map((item) => `${item.key}: ${item.value}`).join(", ");
+  return picked.map((item) => `${item.key}:${item.value}`).join(", ");
 }
 
 export function resolveCredentialId(
@@ -610,7 +610,7 @@ export function buildSourceCreateData(input: {
     ? `${template.title} (${intentArgContext})`
     : `${template.title} (${identity.intentArgsHash.slice(0, 6)})`;
   const resolvedDescription = intentArgContext
-    ? `${template.description}(${intentArgContext})`
+    ? `${template.description}（${intentArgContext}）`
     : template.description;
 
   const resolvedProxyId =
