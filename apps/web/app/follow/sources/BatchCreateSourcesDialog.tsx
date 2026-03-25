@@ -214,6 +214,7 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
     Record<string, string | null>
   >({});
   const [platformProxyRefs, setPlatformProxyRefs] = useState<Record<string, string | null>>({});
+  const [scriptArgRowsMap, setScriptArgRowsMap] = useState<Record<string, ScriptArgEntry[]>>({});
   const [categoryFilter, setCategoryFilter] = useState<
     "ALL" | BatchTemplate["category"]
   >("ALL");
@@ -254,6 +255,7 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
     setAuthStatusMap({});
     setPlatformCredentialRefs({});
     setPlatformProxyRefs({});
+    setScriptArgRowsMap({});
   }, [open]);
 
   const platformOptions = useMemo(
@@ -384,6 +386,18 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
         },
       };
     });
+  };
+
+  const getScriptArgRows = (template: BatchTemplate): ScriptArgEntry[] => {
+    const source =
+      scriptArgRowsMap[template.key] ??
+      toScriptArgEntries(getByPath(getCurrentConfig(template), "intent.args"));
+    return source.map((entry) => ({ ...entry }));
+  };
+
+  const updateScriptArgRows = (template: BatchTemplate, rows: ScriptArgEntry[]) => {
+    setScriptArgRowsMap((prev) => ({ ...prev, [template.key]: rows }));
+    handleConfigChange(template.key, "intent.args", toScriptArgs(rows));
   };
 
   const getRequiredAuth = (template: BatchTemplate) =>
@@ -1033,7 +1047,7 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
                                   <div className="space-y-2">
                                     <Label>Script Args</Label>
                                     <div className="grid gap-2">
-                                      {toScriptArgEntries(getByPath(config, "intent.args")).map(
+                                      {getScriptArgRows(template).map(
                                         (entry, index, list) => (
                                           <div
                                             key={`${template.key}-arg-${index}`}
@@ -1046,20 +1060,14 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
                                                 const currentConfig = getCurrentConfig(template);
                                                 const currentBoundKeys =
                                                   getRecallBindingArgKeys(currentConfig);
-                                                const next = toScriptArgEntries(
-                                                  getByPath(currentConfig, "intent.args")
-                                                );
+                                                const next = getScriptArgRows(template);
                                                 const oldKey = next[index]?.key.trim();
                                                 const newKey = event.target.value;
                                                 next[index] = {
                                                   ...next[index],
                                                   key: newKey,
                                                 };
-                                                handleConfigChange(
-                                                  template.key,
-                                                  "intent.args",
-                                                  toScriptArgs(next)
-                                                );
+                                                updateScriptArgRows(template, next);
                                                 if (oldKey && currentBoundKeys.includes(oldKey)) {
                                                   const mapped = currentBoundKeys
                                                     .map((item) =>
@@ -1092,18 +1100,12 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
                                                 return boundKeys.includes(normalizedEntryKey);
                                               })()}
                                               onChange={(event) => {
-                                                const next = toScriptArgEntries(
-                                                  getByPath(getCurrentConfig(template), "intent.args")
-                                                );
+                                                const next = getScriptArgRows(template);
                                                 next[index] = {
                                                   ...next[index],
                                                   value: event.target.value,
                                                 };
-                                                handleConfigChange(
-                                                  template.key,
-                                                  "intent.args",
-                                                  toScriptArgs(next)
-                                                );
+                                                updateScriptArgRows(template, next);
                                               }}
                                             />
                                             {(() => {
@@ -1167,15 +1169,9 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
                                               size="icon"
                                               aria-label="Add arg row"
                                               onClick={() => {
-                                                const next = toScriptArgEntries(
-                                                  getByPath(getCurrentConfig(template), "intent.args")
-                                                );
+                                                const next = getScriptArgRows(template);
                                                 next.splice(index + 1, 0, { ...EMPTY_ARG_ENTRY });
-                                                handleConfigChange(
-                                                  template.key,
-                                                  "intent.args",
-                                                  toScriptArgs(next)
-                                                );
+                                                updateScriptArgRows(template, next);
                                               }}
                                             >
                                               <Plus className="size-4" />
@@ -1191,19 +1187,13 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
                                                 const currentConfig = getCurrentConfig(template);
                                                 const currentBoundKeys =
                                                   getRecallBindingArgKeys(currentConfig);
-                                                const currentArgs = toScriptArgEntries(
-                                                  getByPath(currentConfig, "intent.args")
-                                                );
+                                                const currentArgs = getScriptArgRows(template);
                                                 const removingKey =
                                                   currentArgs[index]?.key.trim();
                                                 const next = currentArgs.filter(
                                                   (_, itemIndex) => itemIndex !== index
                                                 );
-                                                handleConfigChange(
-                                                  template.key,
-                                                  "intent.args",
-                                                  toScriptArgs(next)
-                                                );
+                                                updateScriptArgRows(template, next);
                                                 if (removingKey && currentBoundKeys.includes(removingKey)) {
                                                   const nextKeys = currentBoundKeys.filter(
                                                     (item) => item !== removingKey
