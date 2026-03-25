@@ -17,7 +17,16 @@
     "network"
   ],
   "readOnly": true,
-  "example": "bb-browser site twitter/thread 1900000000000000000 50"
+  "example": "bb-browser site twitter/thread 1900000000000000000 50",
+  "category": "INTERACTIVE",
+  "auth": {
+    "required": true,
+    "kind": "twitter-cookie",
+    "description": "twitter auth credential"
+  },
+  "tags": [
+    "foreign"
+  ]
 }
 */
 

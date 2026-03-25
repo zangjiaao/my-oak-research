@@ -13,7 +13,16 @@
     "network"
   ],
   "readOnly": true,
-  "example": "bb-browser site hackernews/top 20"
+  "example": "bb-browser site hackernews/top 20",
+  "category": "STREAM",
+  "auth": {
+    "required": false,
+    "kind": "hackernews-cookie",
+    "description": "hackernews auth credential"
+  },
+  "tags": [
+    "foreign"
+  ]
 }
 */
 

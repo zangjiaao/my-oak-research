@@ -21,7 +21,16 @@
     "network"
   ],
   "readOnly": true,
-  "example": "bb-browser site youtube/transcript https://www.youtube.com/watch?v=dQw4w9WgXcQ en"
+  "example": "bb-browser site youtube/transcript https://www.youtube.com/watch?v=dQw4w9WgXcQ en",
+  "category": "INTERACTIVE",
+  "auth": {
+    "required": true,
+    "kind": "youtube-cookie",
+    "description": "youtube auth credential"
+  },
+  "tags": [
+    "foreign"
+  ]
 }
 */
 

@@ -17,7 +17,16 @@
     "network"
   ],
   "readOnly": true,
-  "example": "bb-browser site arxiv/search large language model 10"
+  "example": "bb-browser site arxiv/search large language model 10",
+  "category": "RETRIEVAL",
+  "auth": {
+    "required": false,
+    "kind": "arxiv-cookie",
+    "description": "arxiv auth credential"
+  },
+  "tags": [
+    "foreign"
+  ]
 }
 */
 

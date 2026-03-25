@@ -17,7 +17,16 @@
     "network"
   ],
   "readOnly": true,
-  "example": "bb-browser site youtube/channel @programmingwithmosh 10"
+  "example": "bb-browser site youtube/channel @programmingwithmosh 10",
+  "category": "INTERACTIVE",
+  "auth": {
+    "required": true,
+    "kind": "youtube-cookie",
+    "description": "youtube auth credential"
+  },
+  "tags": [
+    "foreign"
+  ]
 }
 */
 

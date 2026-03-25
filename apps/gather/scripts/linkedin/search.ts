@@ -21,7 +21,16 @@
     "network"
   ],
   "readOnly": true,
-  "example": "bb-browser site linkedin/search software engineer San Francisco Bay Area"
+  "example": "bb-browser site linkedin/search software engineer San Francisco Bay Area",
+  "category": "INTERACTIVE",
+  "auth": {
+    "required": true,
+    "kind": "linkedin-cookie",
+    "description": "linkedin auth credential"
+  },
+  "tags": [
+    "foreign"
+  ]
 }
 */
 

@@ -8,7 +8,16 @@
     "network"
   ],
   "readOnly": true,
-  "example": "bb-browser site zhihu/me"
+  "example": "bb-browser site zhihu/me",
+  "category": "INTERACTIVE",
+  "auth": {
+    "required": true,
+    "kind": "zhihu-cookie",
+    "description": "zhihu auth credential"
+  },
+  "tags": [
+    "domestic"
+  ]
 }
 */
 

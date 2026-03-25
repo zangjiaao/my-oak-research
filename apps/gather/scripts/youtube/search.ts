@@ -17,7 +17,16 @@
     "network"
   ],
   "readOnly": true,
-  "example": "bb-browser site youtube/search openai 20"
+  "example": "bb-browser site youtube/search openai 20",
+  "category": "INTERACTIVE",
+  "auth": {
+    "required": true,
+    "kind": "youtube-cookie",
+    "description": "youtube auth credential"
+  },
+  "tags": [
+    "foreign"
+  ]
 }
 */
 

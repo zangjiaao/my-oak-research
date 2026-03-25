@@ -17,7 +17,16 @@
     "network"
   ],
   "readOnly": true,
-  "example": "bb-browser site reddit/hot programming 20"
+  "example": "bb-browser site reddit/hot programming 20",
+  "category": "INTERACTIVE",
+  "auth": {
+    "required": true,
+    "kind": "reddit-cookie",
+    "description": "reddit auth credential"
+  },
+  "tags": [
+    "foreign"
+  ]
 }
 */
 

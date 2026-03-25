@@ -17,7 +17,16 @@
     "network"
   ],
   "readOnly": true,
-  "example": "bb-browser site csdn/search python 1"
+  "example": "bb-browser site csdn/search python 1",
+  "category": "RETRIEVAL",
+  "auth": {
+    "required": false,
+    "kind": "csdn-cookie",
+    "description": "csdn auth credential"
+  },
+  "tags": [
+    "domestic"
+  ]
 }
 */
 

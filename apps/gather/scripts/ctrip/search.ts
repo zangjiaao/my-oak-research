@@ -13,7 +13,16 @@
     "network"
   ],
   "readOnly": true,
-  "example": "bb-browser site ctrip/search 三亚"
+  "example": "bb-browser site ctrip/search 三亚",
+  "category": "RETRIEVAL",
+  "auth": {
+    "required": false,
+    "kind": "ctrip-cookie",
+    "description": "ctrip auth credential"
+  },
+  "tags": [
+    "domestic"
+  ]
 }
 */
 

@@ -25,7 +25,16 @@
     "network"
   ],
   "readOnly": true,
-  "example": "bb-browser site reddit/subreddit programming hot"
+  "example": "bb-browser site reddit/subreddit programming hot",
+  "category": "INTERACTIVE",
+  "auth": {
+    "required": true,
+    "kind": "reddit-cookie",
+    "description": "reddit auth credential"
+  },
+  "tags": [
+    "foreign"
+  ]
 }
 */
 

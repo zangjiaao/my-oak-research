@@ -13,7 +13,16 @@
     "network"
   ],
   "readOnly": true,
-  "example": "bb-browser site duckduckgo/search openai"
+  "example": "bb-browser site duckduckgo/search openai",
+  "category": "RETRIEVAL",
+  "auth": {
+    "required": false,
+    "kind": "duckduckgo-cookie",
+    "description": "duckduckgo auth credential"
+  },
+  "tags": [
+    "foreign"
+  ]
 }
 */
 

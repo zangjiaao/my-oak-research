@@ -13,7 +13,16 @@
     "network"
   ],
   "readOnly": true,
-  "example": "bb-browser site twitter/notifications 20"
+  "example": "bb-browser site twitter/notifications 20",
+  "category": "INTERACTIVE",
+  "auth": {
+    "required": true,
+    "kind": "twitter-cookie",
+    "description": "twitter auth credential"
+  },
+  "tags": [
+    "foreign"
+  ]
 }
 */
 

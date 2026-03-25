@@ -13,7 +13,16 @@
     "network"
   ],
   "readOnly": true,
-  "example": "bb-browser site twitter/profile openai"
+  "example": "bb-browser site twitter/profile openai",
+  "category": "INTERACTIVE",
+  "auth": {
+    "required": true,
+    "kind": "twitter-cookie",
+    "description": "twitter auth credential"
+  },
+  "tags": [
+    "foreign"
+  ]
 }
 */
 

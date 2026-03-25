@@ -13,7 +13,16 @@
     "network"
   ],
   "readOnly": true,
-  "example": "bb-browser site hupu/hot 20"
+  "example": "bb-browser site hupu/hot 20",
+  "category": "STREAM",
+  "auth": {
+    "required": false,
+    "kind": "hupu-cookie",
+    "description": "hupu auth credential"
+  },
+  "tags": [
+    "domestic"
+  ]
 }
 */
 

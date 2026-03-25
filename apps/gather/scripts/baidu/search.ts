@@ -17,7 +17,16 @@
     "network"
   ],
   "readOnly": true,
-  "example": "bb-browser site baidu/search openai 10"
+  "example": "bb-browser site baidu/search openai 10",
+  "category": "RETRIEVAL",
+  "auth": {
+    "required": false,
+    "kind": "baidu-cookie",
+    "description": "baidu auth credential"
+  },
+  "tags": [
+    "domestic"
+  ]
 }
 */
 

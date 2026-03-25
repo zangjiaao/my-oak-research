@@ -17,7 +17,16 @@
     "network"
   ],
   "readOnly": true,
-  "example": "bb-browser site zhihu/question 34816524 5"
+  "example": "bb-browser site zhihu/question 34816524 5",
+  "category": "INTERACTIVE",
+  "auth": {
+    "required": true,
+    "kind": "zhihu-cookie",
+    "description": "zhihu auth credential"
+  },
+  "tags": [
+    "domestic"
+  ]
 }
 */
 

@@ -13,7 +13,16 @@
     "network"
   ],
   "readOnly": true,
-  "example": "bb-browser site toutiao/hot 20"
+  "example": "bb-browser site toutiao/hot 20",
+  "category": "STREAM",
+  "auth": {
+    "required": false,
+    "kind": "toutiao-cookie",
+    "description": "toutiao auth credential"
+  },
+  "tags": [
+    "domestic"
+  ]
 }
 */
 

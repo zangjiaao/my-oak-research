@@ -8,7 +8,16 @@
     "network"
   ],
   "readOnly": true,
-  "example": "bb-browser site weibo/me"
+  "example": "bb-browser site weibo/me",
+  "category": "INTERACTIVE",
+  "auth": {
+    "required": true,
+    "kind": "weibo-cookie",
+    "description": "weibo auth credential"
+  },
+  "tags": [
+    "domestic"
+  ]
 }
 */
 

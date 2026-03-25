@@ -17,7 +17,16 @@
     "network"
   ],
   "readOnly": true,
-  "example": "bb-browser site xiaohongshu/user 66f26918000000000101adf0 20"
+  "example": "bb-browser site xiaohongshu/user 66f26918000000000101adf0 20",
+  "category": "INTERACTIVE",
+  "auth": {
+    "required": true,
+    "kind": "xiaohongshu-cookie",
+    "description": "xiaohongshu auth credential"
+  },
+  "tags": [
+    "domestic"
+  ]
 }
 */
 

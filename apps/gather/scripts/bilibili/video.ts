@@ -13,7 +13,16 @@
     "network"
   ],
   "readOnly": true,
-  "example": "bb-browser site bilibili/video BV1LGwHzrE4A"
+  "example": "bb-browser site bilibili/video BV1LGwHzrE4A",
+  "category": "INTERACTIVE",
+  "auth": {
+    "required": true,
+    "kind": "bilibili-cookie",
+    "description": "bilibili auth credential"
+  },
+  "tags": [
+    "domestic"
+  ]
 }
 */
 

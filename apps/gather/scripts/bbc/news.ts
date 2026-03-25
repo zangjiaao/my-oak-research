@@ -13,7 +13,16 @@
     "network"
   ],
   "readOnly": true,
-  "example": "bb-browser site bbc/news 20"
+  "example": "bb-browser site bbc/news 20",
+  "category": "STREAM",
+  "auth": {
+    "required": false,
+    "kind": "bbc-cookie",
+    "description": "bbc auth credential"
+  },
+  "tags": [
+    "foreign"
+  ]
 }
 */
 

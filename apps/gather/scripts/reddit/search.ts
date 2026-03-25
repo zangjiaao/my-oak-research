@@ -29,7 +29,16 @@
     "network"
   ],
   "readOnly": true,
-  "example": "bb-browser site reddit/search openai relevance"
+  "example": "bb-browser site reddit/search openai relevance",
+  "category": "INTERACTIVE",
+  "auth": {
+    "required": true,
+    "kind": "reddit-cookie",
+    "description": "reddit auth credential"
+  },
+  "tags": [
+    "foreign"
+  ]
 }
 */
 

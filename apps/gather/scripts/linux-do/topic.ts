@@ -17,7 +17,16 @@
     "network"
   ],
   "readOnly": true,
-  "example": "bb-browser site linux-do/topic 12345 20"
+  "example": "bb-browser site linux-do/topic 12345 20",
+  "category": "INTERACTIVE",
+  "auth": {
+    "required": false,
+    "kind": "linux-do-cookie",
+    "description": "linux-do auth credential"
+  },
+  "tags": [
+    "domestic"
+  ]
 }
 */
 

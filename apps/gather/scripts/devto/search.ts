@@ -17,7 +17,16 @@
     "network"
   ],
   "readOnly": true,
-  "example": "bb-browser site devto/search rust programming 10"
+  "example": "bb-browser site devto/search rust programming 10",
+  "category": "RETRIEVAL",
+  "auth": {
+    "required": false,
+    "kind": "devto-cookie",
+    "description": "devto auth credential"
+  },
+  "tags": [
+    "foreign"
+  ]
 }
 */
 

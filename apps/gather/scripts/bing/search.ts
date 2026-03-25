@@ -17,7 +17,16 @@
     "network"
   ],
   "readOnly": true,
-  "example": "bb-browser site bing/search openai 10"
+  "example": "bb-browser site bing/search openai 10",
+  "category": "RETRIEVAL",
+  "auth": {
+    "required": false,
+    "kind": "bing-cookie",
+    "description": "bing auth credential"
+  },
+  "tags": [
+    "foreign"
+  ]
 }
 */
 

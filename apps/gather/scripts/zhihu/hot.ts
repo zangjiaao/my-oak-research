@@ -13,7 +13,16 @@
     "network"
   ],
   "readOnly": true,
-  "example": "bb-browser site zhihu/hot 20"
+  "example": "bb-browser site zhihu/hot 20",
+  "category": "INTERACTIVE",
+  "auth": {
+    "required": true,
+    "kind": "zhihu-cookie",
+    "description": "zhihu auth credential"
+  },
+  "tags": [
+    "domestic"
+  ]
 }
 */
 

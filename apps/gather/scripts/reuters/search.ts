@@ -17,7 +17,16 @@
     "network"
   ],
   "readOnly": true,
-  "example": "bb-browser site reuters/search artificial intelligence 10"
+  "example": "bb-browser site reuters/search artificial intelligence 10",
+  "category": "STREAM",
+  "auth": {
+    "required": true,
+    "kind": "reuters-cookie",
+    "description": "reuters auth credential"
+  },
+  "tags": [
+    "foreign"
+  ]
 }
 */
 

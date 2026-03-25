@@ -21,7 +21,16 @@
     "network"
   ],
   "readOnly": true,
-  "example": "bb-browser site linux-do/category general 1"
+  "example": "bb-browser site linux-do/category general 1",
+  "category": "INTERACTIVE",
+  "auth": {
+    "required": false,
+    "kind": "linux-do-cookie",
+    "description": "linux-do auth credential"
+  },
+  "tags": [
+    "domestic"
+  ]
 }
 */
 

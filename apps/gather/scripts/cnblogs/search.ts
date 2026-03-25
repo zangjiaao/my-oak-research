@@ -17,7 +17,16 @@
     "network"
   ],
   "readOnly": true,
-  "example": "bb-browser site cnblogs/search python 1"
+  "example": "bb-browser site cnblogs/search python 1",
+  "category": "RETRIEVAL",
+  "auth": {
+    "required": true,
+    "kind": "cnblogs-cookie",
+    "description": "cnblogs auth credential"
+  },
+  "tags": [
+    "domestic"
+  ]
 }
 */
 

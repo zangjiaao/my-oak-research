@@ -17,7 +17,16 @@
     "network"
   ],
   "readOnly": true,
-  "example": "bb-browser site xiaohongshu/notifications mentions 20"
+  "example": "bb-browser site xiaohongshu/notifications mentions 20",
+  "category": "INTERACTIVE",
+  "auth": {
+    "required": true,
+    "kind": "xiaohongshu-cookie",
+    "description": "xiaohongshu auth credential"
+  },
+  "tags": [
+    "domestic"
+  ]
 }
 */
 

@@ -13,7 +13,16 @@
     "network"
   ],
   "readOnly": true,
-  "example": "bb-browser site youtube/video https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+  "example": "bb-browser site youtube/video https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+  "category": "INTERACTIVE",
+  "auth": {
+    "required": true,
+    "kind": "youtube-cookie",
+    "description": "youtube auth credential"
+  },
+  "tags": [
+    "foreign"
+  ]
 }
 */
 

@@ -13,7 +13,16 @@
     "network"
   ],
   "readOnly": true,
-  "example": "bb-browser site 36kr/newsflash 20"
+  "example": "bb-browser site 36kr/newsflash 20",
+  "category": "STREAM",
+  "auth": {
+    "required": false,
+    "kind": "36kr-cookie",
+    "description": "36kr auth credential"
+  },
+  "tags": [
+    "domestic"
+  ]
 }
 */
 

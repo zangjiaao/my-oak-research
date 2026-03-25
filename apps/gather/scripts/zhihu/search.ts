@@ -17,7 +17,16 @@
     "network"
   ],
   "readOnly": true,
-  "example": "bb-browser site zhihu/search openai 10"
+  "example": "bb-browser site zhihu/search openai 10",
+  "category": "INTERACTIVE",
+  "auth": {
+    "required": true,
+    "kind": "zhihu-cookie",
+    "description": "zhihu auth credential"
+  },
+  "tags": [
+    "domestic"
+  ]
 }
 */
 

@@ -17,7 +17,16 @@
     "network"
   ],
   "readOnly": true,
-  "example": "bb-browser site google/search openai 10"
+  "example": "bb-browser site google/search openai 10",
+  "category": "RETRIEVAL",
+  "auth": {
+    "required": true,
+    "kind": "google-cookie",
+    "description": "google auth credential"
+  },
+  "tags": [
+    "foreign"
+  ]
 }
 */
 

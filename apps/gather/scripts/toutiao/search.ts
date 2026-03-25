@@ -17,7 +17,16 @@
     "network"
   ],
   "readOnly": true,
-  "example": "bb-browser site toutiao/search AI 10"
+  "example": "bb-browser site toutiao/search AI 10",
+  "category": "STREAM",
+  "auth": {
+    "required": false,
+    "kind": "toutiao-cookie",
+    "description": "toutiao auth credential"
+  },
+  "tags": [
+    "domestic"
+  ]
 }
 */
 
