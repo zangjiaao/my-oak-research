@@ -902,6 +902,7 @@ const SourceDialog = ({
 
   const [selectedPlatform, setSelectedPlatform] = useState(initialScriptState.platform);
   const [selectedIntentType, setSelectedIntentType] = useState(initialScriptState.intentType);
+  const lastIntentTypeRef = useRef<string | null>(null);
   const [scriptArgEntries, setScriptArgEntries] = useState<ScriptArgEntry[]>(
     (() => {
       const entries = toScriptArgEntries(initialScriptState.scriptArgs);
@@ -937,6 +938,7 @@ const SourceDialog = ({
 
   useEffect(() => {
     if (!open) return;
+    lastIntentTypeRef.current = null;
     setSelectedPlatform(initialScriptState.platform);
     setSelectedIntentType(initialScriptState.intentType);
     setScriptArgEntries(() => {
@@ -1106,6 +1108,7 @@ const SourceDialog = ({
 
   useEffect(() => {
     if (!selectedIntentType) {
+      lastIntentTypeRef.current = null;
       setScriptArgEntries([]);
       return;
     }
@@ -1117,20 +1120,21 @@ const SourceDialog = ({
         : {};
     const sampleArgs = normalizeTemplateIntentArgs(rawSampleArgs);
     const sampleEntries = toScriptArgEntries(sampleArgs);
-    if (sampleEntries.length === 0) {
-      setScriptArgEntries((prev) => (prev.length > 0 ? prev : [EMPTY_ARG_ENTRY]));
-      return;
+    const fallbackEntries = sampleEntries.length > 0 ? sampleEntries : [{ ...EMPTY_ARG_ENTRY }];
+    const previousIntentType = lastIntentTypeRef.current;
+    const intentChanged =
+      previousIntentType !== null && previousIntentType !== selectedIntentType;
+
+    if (intentChanged) {
+      setScriptArgEntries(fallbackEntries);
+    } else {
+      setScriptArgEntries((prev) => {
+        const prevAllEmpty =
+          prev.length === 0 || prev.every((entry) => !entry.key.trim() && !entry.value.trim());
+        return prevAllEmpty ? fallbackEntries : prev;
+      });
     }
-    setScriptArgEntries((prev) => {
-      const prevAllEmpty = prev.length === 0 || prev.every(
-        (entry) => !entry.key.trim() && !entry.value.trim()
-      );
-      if (prevAllEmpty) return sampleEntries;
-      const existingKeys = new Set(prev.map((entry) => entry.key.trim()).filter(Boolean));
-      const missing = sampleEntries.filter((entry) => !existingKeys.has(entry.key.trim()));
-      if (missing.length === 0) return prev;
-      return [...prev, ...missing.map((entry) => ({ ...entry, value: "" }))];
-    });
+    lastIntentTypeRef.current = selectedIntentType;
   }, [selectedCatalogItem, selectedIntentType, selectedPlatform]);
 
   const scriptArgs = useMemo(() => entriesToScriptArgs(scriptArgEntries), [scriptArgEntries]);
