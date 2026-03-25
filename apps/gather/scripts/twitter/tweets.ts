@@ -1,7 +1,7 @@
 /* @meta
 {
   "name": "twitter/tweets",
-  "description": "获取 twitter 的 tweets 数据",
+  "description": "用来关注推主的推文数据",
   "domain": "x.com",
   "args": {
     "username": {

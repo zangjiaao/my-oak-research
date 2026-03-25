@@ -362,7 +362,12 @@ export function buildGatherCapabilities(items: GatherCatalogItem[]): SourceCapab
                 : undefined,
           }
         : buildAuthRequirement(platform);
-    if (!metaCategory || typeof authMetaRequired !== "boolean") {
+    const hasExplicitMetaContract =
+      item.meta?.category !== undefined || item.meta?.auth !== undefined;
+    if (
+      hasExplicitMetaContract &&
+      (!metaCategory || typeof authMetaRequired !== "boolean")
+    ) {
       tags.push("UNSPECIFIED");
     }
     const catalogDriver =
