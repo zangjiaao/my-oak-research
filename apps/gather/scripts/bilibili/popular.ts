@@ -1,12 +1,34 @@
-// Sample /v1/fetch key parts
-// intent.type: popular
-// intent.args: {"limit":20,"page":1}
-// output.field: {"rank":"videos.rank","bvid":"videos.bvid","title":"videos.title","url":"videos.url"}
-// category: "INTERACTIVE"
-// auth.required: true
-// auth.kind: "bilibili-cookie"
-// auth.description: "bilibili auth credential"
-// tags: ["domestic"]
+/* @meta
+{
+  "name": "bilibili/popular",
+  "description": "获取 bilibili 的 popular 数据",
+  "domain": "bilibili.com",
+  "args": {
+    "limit": {
+      "required": false,
+      "description": "Script argument: limit"
+    },
+    "page": {
+      "required": false,
+      "description": "Script argument: page"
+    }
+  },
+  "capabilities": [
+    "network"
+  ],
+  "readOnly": true,
+  "example": "bb-browser site bilibili/popular 20 1",
+  "category": "INTERACTIVE",
+  "auth": {
+    "required": true,
+    "kind": "bilibili-cookie",
+    "description": "bilibili auth credential"
+  },
+  "tags": [
+    "domestic"
+  ]
+}
+*/
 
 async () => {
   const count = Math.max(1, Math.min(__COUNT__, 50));

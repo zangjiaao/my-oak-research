@@ -1,12 +1,38 @@
-// Sample /v1/fetch key parts
-// intent.type: search
-// intent.args: {"query":"software engineer","location":"San Francisco Bay Area","limit":10}
-// output.field: {"rank":"jobs.rank","title":"jobs.title","company":"jobs.company","location":"jobs.location","listed":"jobs.listed","salary":"jobs.salary","url":"jobs.url"}
-// category: "INTERACTIVE"
-// auth.required: true
-// auth.kind: "linkedin-cookie"
-// auth.description: "linkedin auth credential"
-// tags: ["foreign"]
+/* @meta
+{
+  "name": "linkedin/search",
+  "description": "获取 linkedin 的 search 数据",
+  "domain": "linkedin.com",
+  "args": {
+    "query": {
+      "required": true,
+      "description": "Script argument: query"
+    },
+    "location": {
+      "required": true,
+      "description": "Script argument: location"
+    },
+    "limit": {
+      "required": false,
+      "description": "Script argument: limit"
+    }
+  },
+  "capabilities": [
+    "network"
+  ],
+  "readOnly": true,
+  "example": "bb-browser site linkedin/search software engineer San Francisco Bay Area",
+  "category": "INTERACTIVE",
+  "auth": {
+    "required": true,
+    "kind": "linkedin-cookie",
+    "description": "linkedin auth credential"
+  },
+  "tags": [
+    "foreign"
+  ]
+}
+*/
 
 async () => {
   const EXPERIENCE_LEVELS = {

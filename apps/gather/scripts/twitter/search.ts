@@ -1,12 +1,34 @@
-// Sample /v1/fetch key parts
-// intent.type: search
-// intent.args: {"query":"openai","limit":20}
-// output.field: {"id":"tweets.id","text":"tweets.text","author":"tweets.author","url":"tweets.url","created_at":"tweets.created_at"}
-// category: "INTERACTIVE"
-// auth.required: true
-// auth.kind: "twitter-cookie"
-// auth.description: "twitter auth credential"
-// tags: ["foreign"]
+/* @meta
+{
+  "name": "twitter/search",
+  "description": "获取 twitter 的 search 数据",
+  "domain": "x.com",
+  "args": {
+    "query": {
+      "required": true,
+      "description": "Script argument: query"
+    },
+    "limit": {
+      "required": false,
+      "description": "Script argument: limit"
+    }
+  },
+  "capabilities": [
+    "network"
+  ],
+  "readOnly": true,
+  "example": "bb-browser site twitter/search openai 20",
+  "category": "INTERACTIVE",
+  "auth": {
+    "required": true,
+    "kind": "twitter-cookie",
+    "description": "twitter auth credential"
+  },
+  "tags": [
+    "foreign"
+  ]
+}
+*/
 
 async () => {
   const CAPTURE_KEY = "SearchTimeline";

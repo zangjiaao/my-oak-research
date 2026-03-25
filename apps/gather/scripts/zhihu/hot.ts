@@ -1,12 +1,30 @@
-// Sample /v1/fetch key parts
-// intent.type: hot
-// intent.args: {"limit":20}
-// output.field: {"rank":"items.rank","title":"items.title","heat":"items.heat","url":"items.url"}
-// category: "INTERACTIVE"
-// auth.required: true
-// auth.kind: "zhihu-cookie"
-// auth.description: "zhihu auth credential"
-// tags: ["domestic"]
+/* @meta
+{
+  "name": "zhihu/hot",
+  "description": "获取 zhihu 的 hot 数据",
+  "domain": "zhihu.com",
+  "args": {
+    "limit": {
+      "required": false,
+      "description": "Script argument: limit"
+    }
+  },
+  "capabilities": [
+    "network"
+  ],
+  "readOnly": true,
+  "example": "bb-browser site zhihu/hot 20",
+  "category": "INTERACTIVE",
+  "auth": {
+    "required": true,
+    "kind": "zhihu-cookie",
+    "description": "zhihu auth credential"
+  },
+  "tags": [
+    "domestic"
+  ]
+}
+*/
 
 async () => {
   const count = Math.max(1, Math.min(__COUNT__, 50));

@@ -1,12 +1,34 @@
-// Sample /v1/fetch key parts
-// intent.type: hot
-// intent.args: {"subreddit":"programming","limit":20}
-// output.field: {"id":"posts.id","title":"posts.title","author":"posts.author","subreddit":"posts.subreddit","score":"posts.score","comments":"posts.comments","url":"posts.url"}
-// category: "INTERACTIVE"
-// auth.required: true
-// auth.kind: "reddit-cookie"
-// auth.description: "reddit auth credential"
-// tags: ["foreign"]
+/* @meta
+{
+  "name": "reddit/hot",
+  "description": "获取 reddit 的 hot 数据",
+  "domain": "reddit.com",
+  "args": {
+    "subreddit": {
+      "required": true,
+      "description": "Script argument: subreddit"
+    },
+    "limit": {
+      "required": false,
+      "description": "Script argument: limit"
+    }
+  },
+  "capabilities": [
+    "network"
+  ],
+  "readOnly": true,
+  "example": "bb-browser site reddit/hot programming 20",
+  "category": "INTERACTIVE",
+  "auth": {
+    "required": true,
+    "kind": "reddit-cookie",
+    "description": "reddit auth credential"
+  },
+  "tags": [
+    "foreign"
+  ]
+}
+*/
 
 async () => {
   const rawSubreddit = (__SUBREDDIT_JSON__ || "").trim();

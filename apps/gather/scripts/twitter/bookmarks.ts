@@ -1,12 +1,30 @@
-// Sample /v1/fetch key parts
-// intent.type: bookmarks
-// intent.args: {"limit":20}
-// output.field: {"id":"tweets.id","text":"tweets.text","author":"tweets.author","url":"tweets.url","created_at":"tweets.created_at"}
-// category: "INTERACTIVE"
-// auth.required: true
-// auth.kind: "twitter-cookie"
-// auth.description: "twitter auth credential"
-// tags: ["foreign"]
+/* @meta
+{
+  "name": "twitter/bookmarks",
+  "description": "获取 twitter 的 bookmarks 数据",
+  "domain": "x.com",
+  "args": {
+    "limit": {
+      "required": false,
+      "description": "Script argument: limit"
+    }
+  },
+  "capabilities": [
+    "network"
+  ],
+  "readOnly": true,
+  "example": "bb-browser site twitter/bookmarks 20",
+  "category": "INTERACTIVE",
+  "auth": {
+    "required": true,
+    "kind": "twitter-cookie",
+    "description": "twitter auth credential"
+  },
+  "tags": [
+    "foreign"
+  ]
+}
+*/
 
 async () => {
   const limit = Number(__COUNT__) || 20;

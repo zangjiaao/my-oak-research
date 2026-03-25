@@ -1,12 +1,25 @@
-// Sample /v1/fetch key parts
-// intent.type: me
-// intent.args: {}
-// output.field: {"id":"id","screen_name":"screen_name","followers_count":"followers_count","profile_url":"profile_url"}
-// category: "INTERACTIVE"
-// auth.required: true
-// auth.kind: "weibo-cookie"
-// auth.description: "weibo auth credential"
-// tags: ["domestic"]
+/* @meta
+{
+  "name": "weibo/me",
+  "description": "获取 weibo 的 me 数据",
+  "domain": "weibo.com",
+  "args": {},
+  "capabilities": [
+    "network"
+  ],
+  "readOnly": true,
+  "example": "bb-browser site weibo/me",
+  "category": "INTERACTIVE",
+  "auth": {
+    "required": true,
+    "kind": "weibo-cookie",
+    "description": "weibo auth credential"
+  },
+  "tags": [
+    "domestic"
+  ]
+}
+*/
 
 async () => {
   const app = (document.querySelector("#app") as any)?.__vue_app__;

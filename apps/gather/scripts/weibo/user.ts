@@ -1,12 +1,30 @@
-// Sample /v1/fetch key parts
-// intent.type: user
-// intent.args: {"id":"1654184992"}
-// output.field: {"id":"id","screen_name":"screen_name","followers_count":"followers_count","profile_url":"profile_url"}
-// category: "INTERACTIVE"
-// auth.required: true
-// auth.kind: "weibo-cookie"
-// auth.description: "weibo auth credential"
-// tags: ["domestic"]
+/* @meta
+{
+  "name": "weibo/user",
+  "description": "获取 weibo 的 user 数据",
+  "domain": "weibo.com",
+  "args": {
+    "id": {
+      "required": true,
+      "description": "Script argument: id"
+    }
+  },
+  "capabilities": [
+    "network"
+  ],
+  "readOnly": true,
+  "example": "bb-browser site weibo/user 1654184992",
+  "category": "INTERACTIVE",
+  "auth": {
+    "required": true,
+    "kind": "weibo-cookie",
+    "description": "weibo auth credential"
+  },
+  "tags": [
+    "domestic"
+  ]
+}
+*/
 
 async () => {
   const userId = String(__WEIBO_ID_JSON__ || "").trim();

@@ -1,12 +1,34 @@
-// Sample /v1/fetch key parts
-// intent.type: ranking
-// intent.args: {"category":0,"limit":20}
-// output.field: {"rank":"videos.rank","bvid":"videos.bvid","title":"videos.title","url":"videos.url"}
-// category: "INTERACTIVE"
-// auth.required: true
-// auth.kind: "bilibili-cookie"
-// auth.description: "bilibili auth credential"
-// tags: ["domestic"]
+/* @meta
+{
+  "name": "bilibili/ranking",
+  "description": "获取 bilibili 的 ranking 数据",
+  "domain": "bilibili.com",
+  "args": {
+    "category": {
+      "required": true,
+      "description": "Script argument: category"
+    },
+    "limit": {
+      "required": false,
+      "description": "Script argument: limit"
+    }
+  },
+  "capabilities": [
+    "network"
+  ],
+  "readOnly": true,
+  "example": "bb-browser site bilibili/ranking 0 20",
+  "category": "INTERACTIVE",
+  "auth": {
+    "required": true,
+    "kind": "bilibili-cookie",
+    "description": "bilibili auth credential"
+  },
+  "tags": [
+    "domestic"
+  ]
+}
+*/
 
 async () => {
   const count = Math.max(1, Math.min(__COUNT__, 100));

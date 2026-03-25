@@ -1,12 +1,34 @@
-// Sample /v1/fetch key parts
-// intent.type: following
-// intent.args: {"username":"openai","limit":50}
-// output.field: {"screen_name":"users.screen_name","name":"users.name","bio":"users.bio","followers":"users.followers","url":"users.url"}
-// category: "INTERACTIVE"
-// auth.required: true
-// auth.kind: "twitter-cookie"
-// auth.description: "twitter auth credential"
-// tags: ["foreign"]
+/* @meta
+{
+  "name": "twitter/following",
+  "description": "获取 twitter 的 following 数据",
+  "domain": "x.com",
+  "args": {
+    "username": {
+      "required": true,
+      "description": "Script argument: username"
+    },
+    "limit": {
+      "required": false,
+      "description": "Script argument: limit"
+    }
+  },
+  "capabilities": [
+    "network"
+  ],
+  "readOnly": true,
+  "example": "bb-browser site twitter/following openai 50",
+  "category": "INTERACTIVE",
+  "auth": {
+    "required": true,
+    "kind": "twitter-cookie",
+    "description": "twitter auth credential"
+  },
+  "tags": [
+    "foreign"
+  ]
+}
+*/
 
 async () => {
   const username = String(__USERNAME_JSON__ || '').replace(/^@/, '').trim();

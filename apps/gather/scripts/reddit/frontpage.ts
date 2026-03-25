@@ -1,12 +1,30 @@
-// Sample /v1/fetch key parts
-// intent.type: frontpage
-// intent.args: {"limit":20}
-// output.field: {"id":"posts.id","title":"posts.title","author":"posts.author","subreddit":"posts.subreddit","score":"posts.score","comments":"posts.comments","url":"posts.url"}
-// category: "INTERACTIVE"
-// auth.required: true
-// auth.kind: "reddit-cookie"
-// auth.description: "reddit auth credential"
-// tags: ["foreign"]
+/* @meta
+{
+  "name": "reddit/frontpage",
+  "description": "获取 reddit 的 frontpage 数据",
+  "domain": "reddit.com",
+  "args": {
+    "limit": {
+      "required": false,
+      "description": "Script argument: limit"
+    }
+  },
+  "capabilities": [
+    "network"
+  ],
+  "readOnly": true,
+  "example": "bb-browser site reddit/frontpage 20",
+  "category": "INTERACTIVE",
+  "auth": {
+    "required": true,
+    "kind": "reddit-cookie",
+    "description": "reddit auth credential"
+  },
+  "tags": [
+    "foreign"
+  ]
+}
+*/
 
 async () => {
   const limit = Number.isFinite(__LIMIT__) ? Math.max(1, __LIMIT__) : 20;

@@ -1,12 +1,34 @@
-// Sample /v1/fetch key parts
-// intent.type: search
-// intent.args: {"query":"openai","limit":10}
-// output.field: {"title":"results.title","url":"results.url","snippet":"results.snippet"}
-// category: "RETRIEVAL"
-// auth.required: false
-// auth.kind: "baidu-cookie"
-// auth.description: "baidu auth credential"
-// tags: ["domestic"]
+/* @meta
+{
+  "name": "baidu/search",
+  "description": "获取 baidu 的 search 数据",
+  "domain": "baidu.com",
+  "args": {
+    "query": {
+      "required": true,
+      "description": "Script argument: query"
+    },
+    "limit": {
+      "required": false,
+      "description": "Script argument: limit"
+    }
+  },
+  "capabilities": [
+    "network"
+  ],
+  "readOnly": true,
+  "example": "bb-browser site baidu/search openai 10",
+  "category": "RETRIEVAL",
+  "auth": {
+    "required": false,
+    "kind": "baidu-cookie",
+    "description": "baidu auth credential"
+  },
+  "tags": [
+    "domestic"
+  ]
+}
+*/
 
 async () => {
   const query = String(__QUERY_JSON__ || "").trim();

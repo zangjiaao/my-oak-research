@@ -1,12 +1,25 @@
-// Sample /v1/fetch key parts
-// intent.type: me
-// intent.args: {}
-// output.field: {"mid":"mid","username":"username","level":"level","url":"url"}
-// category: "INTERACTIVE"
-// auth.required: true
-// auth.kind: "bilibili-cookie"
-// auth.description: "bilibili auth credential"
-// tags: ["domestic"]
+/* @meta
+{
+  "name": "bilibili/me",
+  "description": "获取 bilibili 的 me 数据",
+  "domain": "bilibili.com",
+  "args": {},
+  "capabilities": [
+    "network"
+  ],
+  "readOnly": true,
+  "example": "bb-browser site bilibili/me",
+  "category": "INTERACTIVE",
+  "auth": {
+    "required": true,
+    "kind": "bilibili-cookie",
+    "description": "bilibili auth credential"
+  },
+  "tags": [
+    "domestic"
+  ]
+}
+*/
 
 async () => {
   const response = await fetch("https://api.bilibili.com/x/web-interface/nav", { credentials: "include" });

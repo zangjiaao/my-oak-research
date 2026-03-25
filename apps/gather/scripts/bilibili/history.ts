@@ -1,12 +1,30 @@
-// Sample /v1/fetch key parts
-// intent.type: history
-// intent.args: {"limit":20}
-// output.field: {"bvid":"items.bvid","title":"items.title","progress":"items.progress","url":"items.url"}
-// category: "INTERACTIVE"
-// auth.required: true
-// auth.kind: "bilibili-cookie"
-// auth.description: "bilibili auth credential"
-// tags: ["domestic"]
+/* @meta
+{
+  "name": "bilibili/history",
+  "description": "获取 bilibili 的 history 数据",
+  "domain": "bilibili.com",
+  "args": {
+    "limit": {
+      "required": false,
+      "description": "Script argument: limit"
+    }
+  },
+  "capabilities": [
+    "network"
+  ],
+  "readOnly": true,
+  "example": "bb-browser site bilibili/history 20",
+  "category": "INTERACTIVE",
+  "auth": {
+    "required": true,
+    "kind": "bilibili-cookie",
+    "description": "bilibili auth credential"
+  },
+  "tags": [
+    "domestic"
+  ]
+}
+*/
 
 async () => {
   const count = Math.max(1, Math.min(__COUNT__, 50));

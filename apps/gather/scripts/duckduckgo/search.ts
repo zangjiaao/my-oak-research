@@ -1,12 +1,30 @@
-// Sample /v1/fetch key parts
-// intent.type: search
-// intent.args: {"query":"openai"}
-// output.field: {"title":"results.title","url":"results.url","snippet":"results.snippet"}
-// category: "RETRIEVAL"
-// auth.required: false
-// auth.kind: "duckduckgo-cookie"
-// auth.description: "duckduckgo auth credential"
-// tags: ["foreign"]
+/* @meta
+{
+  "name": "duckduckgo/search",
+  "description": "获取 duckduckgo 的 search 数据",
+  "domain": "duckduckgo.com",
+  "args": {
+    "query": {
+      "required": true,
+      "description": "Script argument: query"
+    }
+  },
+  "capabilities": [
+    "network"
+  ],
+  "readOnly": true,
+  "example": "bb-browser site duckduckgo/search openai",
+  "category": "RETRIEVAL",
+  "auth": {
+    "required": false,
+    "kind": "duckduckgo-cookie",
+    "description": "duckduckgo auth credential"
+  },
+  "tags": [
+    "foreign"
+  ]
+}
+*/
 
 async () => {
   const query = String(__QUERY_JSON__ || "").trim();

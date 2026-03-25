@@ -1,12 +1,34 @@
-// Sample /v1/fetch key parts
-// intent.type: comments
-// intent.args: {"id":"5274888946583083","limit":20}
-// output.field: {"id":"comments.id","text":"comments.text","screen_name":"comments.user.screen_name","likes_count":"comments.likes_count"}
-// category: "INTERACTIVE"
-// auth.required: true
-// auth.kind: "weibo-cookie"
-// auth.description: "weibo auth credential"
-// tags: ["domestic"]
+/* @meta
+{
+  "name": "weibo/comments",
+  "description": "获取 weibo 的 comments 数据",
+  "domain": "weibo.com",
+  "args": {
+    "id": {
+      "required": true,
+      "description": "Script argument: id"
+    },
+    "limit": {
+      "required": false,
+      "description": "Script argument: limit"
+    }
+  },
+  "capabilities": [
+    "network"
+  ],
+  "readOnly": true,
+  "example": "bb-browser site weibo/comments 5274888946583083 20",
+  "category": "INTERACTIVE",
+  "auth": {
+    "required": true,
+    "kind": "weibo-cookie",
+    "description": "weibo auth credential"
+  },
+  "tags": [
+    "domestic"
+  ]
+}
+*/
 
 async () => {
   const postId = String(__WEIBO_ID_JSON__ || "").trim();

@@ -1,12 +1,34 @@
-// Sample /v1/fetch key parts
-// intent.type: search
-// intent.args: {"query":"openai","limit":20}
-// output.field: {"rank":"videos.rank","title":"videos.title","channel":"videos.channel","views":"videos.views","duration":"videos.duration","url":"videos.url"}
-// category: "INTERACTIVE"
-// auth.required: true
-// auth.kind: "youtube-cookie"
-// auth.description: "youtube auth credential"
-// tags: ["foreign"]
+/* @meta
+{
+  "name": "youtube/search",
+  "description": "获取 youtube 的 search 数据",
+  "domain": "youtube.com",
+  "args": {
+    "query": {
+      "required": true,
+      "description": "Script argument: query"
+    },
+    "limit": {
+      "required": false,
+      "description": "Script argument: limit"
+    }
+  },
+  "capabilities": [
+    "network"
+  ],
+  "readOnly": true,
+  "example": "bb-browser site youtube/search openai 20",
+  "category": "INTERACTIVE",
+  "auth": {
+    "required": true,
+    "kind": "youtube-cookie",
+    "description": "youtube auth credential"
+  },
+  "tags": [
+    "foreign"
+  ]
+}
+*/
 
 async () => {
   const query = String(__QUERY_JSON__ || "").trim();

@@ -1,12 +1,30 @@
-// Sample /v1/fetch key parts
-// intent.type: hot
-// intent.args: {"limit":30}
-// output.field: {"rank":"items.rank","word":"items.word","hot_value":"items.hot_value","url":"items.url"}
-// category: "INTERACTIVE"
-// auth.required: true
-// auth.kind: "weibo-cookie"
-// auth.description: "weibo auth credential"
-// tags: ["domestic"]
+/* @meta
+{
+  "name": "weibo/hot",
+  "description": "获取 weibo 的 hot 数据",
+  "domain": "weibo.com",
+  "args": {
+    "limit": {
+      "required": false,
+      "description": "Script argument: limit"
+    }
+  },
+  "capabilities": [
+    "network"
+  ],
+  "readOnly": true,
+  "example": "bb-browser site weibo/hot 30",
+  "category": "INTERACTIVE",
+  "auth": {
+    "required": true,
+    "kind": "weibo-cookie",
+    "description": "weibo auth credential"
+  },
+  "tags": [
+    "domestic"
+  ]
+}
+*/
 
 async () => {
   const response = await fetch("/ajax/statuses/hot_band", { credentials: "include" });

@@ -1,12 +1,34 @@
-// Sample /v1/fetch key parts
-// intent.type: search
-// intent.args: {"query":"rust programming","limit":10}
-// output.field: {"title":"articles.title","url":"articles.url","author":"articles.author","published_at":"articles.published_at"}
-// category: "RETRIEVAL"
-// auth.required: false
-// auth.kind: "devto-cookie"
-// auth.description: "devto auth credential"
-// tags: ["foreign"]
+/* @meta
+{
+  "name": "devto/search",
+  "description": "获取 devto 的 search 数据",
+  "domain": "dev.to",
+  "args": {
+    "query": {
+      "required": true,
+      "description": "Script argument: query"
+    },
+    "limit": {
+      "required": false,
+      "description": "Script argument: limit"
+    }
+  },
+  "capabilities": [
+    "network"
+  ],
+  "readOnly": true,
+  "example": "bb-browser site devto/search rust programming 10",
+  "category": "RETRIEVAL",
+  "auth": {
+    "required": false,
+    "kind": "devto-cookie",
+    "description": "devto auth credential"
+  },
+  "tags": [
+    "foreign"
+  ]
+}
+*/
 
 async () => {
   const query = String(__QUERY_JSON__ || "").trim();

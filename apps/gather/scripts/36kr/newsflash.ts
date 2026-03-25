@@ -1,12 +1,30 @@
-// Sample /v1/fetch key parts
-// intent.type: newsflash
-// intent.args: {"limit":20}
-// output.field: {"title":"items.title","description":"items.description","timestamp":"items.timestamp","url":"items.url"}
-// category: "STREAM"
-// auth.required: false
-// auth.kind: "36kr-cookie"
-// auth.description: "36kr auth credential"
-// tags: ["domestic"]
+/* @meta
+{
+  "name": "36kr/newsflash",
+  "description": "获取 36kr 的 newsflash 数据",
+  "domain": "36kr.com",
+  "args": {
+    "limit": {
+      "required": false,
+      "description": "Script argument: limit"
+    }
+  },
+  "capabilities": [
+    "network"
+  ],
+  "readOnly": true,
+  "example": "bb-browser site 36kr/newsflash 20",
+  "category": "STREAM",
+  "auth": {
+    "required": false,
+    "kind": "36kr-cookie",
+    "description": "36kr auth credential"
+  },
+  "tags": [
+    "domestic"
+  ]
+}
+*/
 
 async () => {
   const count = Math.max(1, Math.min(__COUNT__, 50));

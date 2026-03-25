@@ -1,12 +1,30 @@
-// Sample /v1/fetch key parts
-// intent.type: hot
-// intent.args: {"limit":20}
-// output.field: {"rank":"items.rank","title":"items.title","url":"items.url","lights":"items.lights","replies":"items.replies"}
-// category: "STREAM"
-// auth.required: false
-// auth.kind: "hupu-cookie"
-// auth.description: "hupu auth credential"
-// tags: ["domestic"]
+/* @meta
+{
+  "name": "hupu/hot",
+  "description": "获取 hupu 的 hot 数据",
+  "domain": "hupu.com",
+  "args": {
+    "limit": {
+      "required": false,
+      "description": "Script argument: limit"
+    }
+  },
+  "capabilities": [
+    "network"
+  ],
+  "readOnly": true,
+  "example": "bb-browser site hupu/hot 20",
+  "category": "STREAM",
+  "auth": {
+    "required": false,
+    "kind": "hupu-cookie",
+    "description": "hupu auth credential"
+  },
+  "tags": [
+    "domestic"
+  ]
+}
+*/
 
 async () => {
   const count = Math.max(1, Math.min(__COUNT__, 100));

@@ -1,12 +1,34 @@
-// Sample /v1/fetch key parts
-// intent.type: hot
-// intent.args: {"period":"weekly","limit":20}
-// output.field: {"rank":"topics.rank","title":"topics.title","replies":"topics.replies","views":"topics.views","likes":"topics.likes","category":"topics.category"}
-// category: "INTERACTIVE"
-// auth.required: false
-// auth.kind: "linux-do-cookie"
-// auth.description: "linux-do auth credential"
-// tags: ["domestic"]
+/* @meta
+{
+  "name": "linux-do/hot",
+  "description": "获取 linux-do 的 hot 数据",
+  "domain": "linux.do",
+  "args": {
+    "period": {
+      "required": true,
+      "description": "Script argument: period"
+    },
+    "limit": {
+      "required": false,
+      "description": "Script argument: limit"
+    }
+  },
+  "capabilities": [
+    "network"
+  ],
+  "readOnly": true,
+  "example": "bb-browser site linux-do/hot weekly 20",
+  "category": "INTERACTIVE",
+  "auth": {
+    "required": false,
+    "kind": "linux-do-cookie",
+    "description": "linux-do auth credential"
+  },
+  "tags": [
+    "domestic"
+  ]
+}
+*/
 
 async () => {
   const period = String(__PERIOD_JSON__ || "weekly").trim() || "weekly";

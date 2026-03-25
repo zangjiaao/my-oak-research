@@ -1,12 +1,30 @@
-// Sample /v1/fetch key parts
-// intent.type: categories
-// intent.args: {"limit":20}
-// output.field: {"name":"categories.name","slug":"categories.slug","id":"categories.id","topics":"categories.topics","description":"categories.description"}
-// category: "INTERACTIVE"
-// auth.required: false
-// auth.kind: "linux-do-cookie"
-// auth.description: "linux-do auth credential"
-// tags: ["domestic"]
+/* @meta
+{
+  "name": "linux-do/categories",
+  "description": "获取 linux-do 的 categories 数据",
+  "domain": "linux.do",
+  "args": {
+    "limit": {
+      "required": false,
+      "description": "Script argument: limit"
+    }
+  },
+  "capabilities": [
+    "network"
+  ],
+  "readOnly": true,
+  "example": "bb-browser site linux-do/categories 20",
+  "category": "INTERACTIVE",
+  "auth": {
+    "required": false,
+    "kind": "linux-do-cookie",
+    "description": "linux-do auth credential"
+  },
+  "tags": [
+    "domestic"
+  ]
+}
+*/
 
 async () => {
   const response = await fetch("/categories.json", { credentials: "include" });

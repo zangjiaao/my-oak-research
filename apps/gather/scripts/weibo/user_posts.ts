@@ -1,12 +1,42 @@
-// Sample /v1/fetch key parts
-// intent.type: user_posts
-// intent.args: {"uid":"1654184992","page":1,"feature":0,"limit":20}
-// output.field: {"id":"posts.id","text":"posts.text","url":"posts.url","created_at":"posts.created_at"}
-// category: "INTERACTIVE"
-// auth.required: true
-// auth.kind: "weibo-cookie"
-// auth.description: "weibo auth credential"
-// tags: ["domestic"]
+/* @meta
+{
+  "name": "weibo/user_posts",
+  "description": "获取 weibo 的 user_posts 数据",
+  "domain": "weibo.com",
+  "args": {
+    "uid": {
+      "required": true,
+      "description": "Script argument: uid"
+    },
+    "page": {
+      "required": false,
+      "description": "Script argument: page"
+    },
+    "feature": {
+      "required": true,
+      "description": "Script argument: feature"
+    },
+    "limit": {
+      "required": false,
+      "description": "Script argument: limit"
+    }
+  },
+  "capabilities": [
+    "network"
+  ],
+  "readOnly": true,
+  "example": "bb-browser site weibo/user_posts 1654184992 1",
+  "category": "INTERACTIVE",
+  "auth": {
+    "required": true,
+    "kind": "weibo-cookie",
+    "description": "weibo auth credential"
+  },
+  "tags": [
+    "domestic"
+  ]
+}
+*/
 
 async () => {
   const uid = String(__WEIBO_UID_JSON__ || "").trim();

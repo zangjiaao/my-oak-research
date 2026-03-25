@@ -86,6 +86,19 @@ const REQUIRED_INTENT_ARGS = new Set([
 ]);
 
 const DEFAULT_RECALL_BINDING_ARG_KEYS = ["query"];
+const NON_IDENTITY_INTENT_ARG_KEYS = new Set([
+  "limit",
+  "count",
+  "page",
+  "offset",
+  "cursor",
+  "sort",
+  "time",
+  "since",
+  "until",
+  "max_results",
+  "scroll_times",
+]);
 
 function hasTag(tags: string[], value: string): boolean {
   const lower = value.toLowerCase();
@@ -110,6 +123,42 @@ function inferRequiredIntentFields(args: Record<string, unknown>): string[] {
   return fields;
 }
 
+function isCatalogArgRule(value: unknown): value is { required?: unknown; description?: unknown } {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const candidate = value as Record<string, unknown>;
+  return "required" in candidate || "description" in candidate;
+}
+
+function normalizeTemplateIntentArgs(input: Record<string, unknown>): {
+  args: Record<string, unknown>;
+  requiredKeys: string[];
+} {
+  const args: Record<string, unknown> = {};
+  const requiredKeys: string[] = [];
+
+  for (const [key, value] of Object.entries(input)) {
+    if (isCatalogArgRule(value)) {
+      if (Boolean(value.required)) {
+        requiredKeys.push(key);
+      }
+      args[key] = "";
+      continue;
+    }
+
+    if (value === undefined || value === null) {
+      args[key] = "";
+      continue;
+    }
+    if (typeof value === "string") {
+      args[key] = value;
+      continue;
+    }
+    args[key] = String(value);
+  }
+
+  return { args, requiredKeys };
+}
+
 function buildCredentialRequirements(
   capability: SourceCapability
 ): BatchCredentialRequirement[] {
@@ -131,12 +180,13 @@ function buildTemplateFromCapabilityIntent(
   capability: SourceCapability,
   intent: SourceCapability["intents"][number]
 ): BatchTemplate {
-  const args =
+  const rawArgs =
     intent.sample?.intentArgs &&
     typeof intent.sample.intentArgs === "object" &&
     !Array.isArray(intent.sample.intentArgs)
       ? (intent.sample.intentArgs as Record<string, unknown>)
       : {};
+  const { args, requiredKeys } = normalizeTemplateIntentArgs(rawArgs);
   const templateCategory = inferTemplateCategory(capability);
   const intentType = intent.sample?.intentType ?? intent.intent;
   const title = intent.title?.trim()
@@ -145,7 +195,10 @@ function buildTemplateFromCapabilityIntent(
   const description = intent.description?.trim()
     ? intent.description.trim()
     : `Collect ${capability.platform} (${intent.intent}) via ${capability.execution.engine}.`;
-  const requiredFields = inferRequiredIntentFields(args);
+  const requiredFields =
+    requiredKeys.length > 0
+      ? requiredKeys.map((key) => `intent.args.${key}`)
+      : inferRequiredIntentFields(args);
   const inferredNetworkPolicy = inferNetworkPolicy(capability.tags);
   const isDarknet = inferredNetworkPolicy === "TOR_SOCKS5H";
 
@@ -370,6 +423,19 @@ export function listMissingRequiredFields(
     ...config,
   };
   return template.requiredFields.filter((field) => {
+    if (field.startsWith("intent.args.")) {
+      const argKey = field.slice("intent.args.".length).trim();
+      if (argKey) {
+        const intent = asRecord(merged.intent);
+        const recallBinding = asRecord(intent.recallBinding);
+        if (recallBinding.enabled !== false) {
+          const boundKeys = toStringArray(recallBinding.argKeys);
+          if (boundKeys.includes(argKey)) {
+            return false;
+          }
+        }
+      }
+    }
     const value = getByPath(merged, field);
     return isEmptyValue(value);
   });
@@ -461,6 +527,38 @@ function toPrismaJsonObject(value: unknown): Prisma.InputJsonObject {
   return toPrismaJsonValue(value) as Prisma.InputJsonObject;
 }
 
+function toDisplayArgValue(value: unknown): string | null {
+  if (value === null || value === undefined) return null;
+  if (typeof value === "string") {
+    const normalized = value.trim();
+    return normalized.length > 0 ? normalized : null;
+  }
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+  return null;
+}
+
+function resolveIntentArgContext(config: Record<string, unknown>): string | null {
+  const intent = asRecord(config.intent);
+  const args = asRecord(intent.args);
+  const allEntries = Object.entries(args)
+    .map(([key, rawValue]) => ({
+      key: key.trim(),
+      value: toDisplayArgValue(rawValue),
+    }))
+    .filter((item): item is { key: string; value: string } => Boolean(item.key && item.value));
+
+  if (allEntries.length === 0) return null;
+
+  const identityEntries = allEntries.filter(
+    (item) => !NON_IDENTITY_INTENT_ARG_KEYS.has(item.key.toLowerCase())
+  );
+  const picked = (identityEntries.length > 0 ? identityEntries : allEntries).slice(0, 2);
+
+  return picked.map((item) => `${item.key}: ${item.value}`).join(", ");
+}
+
 export function resolveCredentialId(
   template: BatchTemplate,
   config: Record<string, unknown>,
@@ -507,6 +605,13 @@ export function buildSourceCreateData(input: {
   identity: BatchIdentity;
 }) {
   const { template, config, defaults, credentialRefs, identity } = input;
+  const intentArgContext = resolveIntentArgContext(config);
+  const resolvedName = intentArgContext
+    ? `${template.title} (${intentArgContext})`
+    : `${template.title} (${identity.intentArgsHash.slice(0, 6)})`;
+  const resolvedDescription = intentArgContext
+    ? `${template.description}（${intentArgContext}）`
+    : template.description;
 
   const resolvedProxyId =
     typeof config.proxyId === "string" && config.proxyId.trim()
@@ -515,8 +620,8 @@ export function buildSourceCreateData(input: {
   const resolvedCredentialId = resolveCredentialId(template, config, credentialRefs);
 
   const base = {
-    name: `${template.title} (${identity.intentArgsHash.slice(0, 6)})`,
-    description: template.description,
+    name: resolvedName,
+    description: resolvedDescription,
     category: template.category,
     isDarknet: template.isDarknet,
     active: defaults?.active ?? true,

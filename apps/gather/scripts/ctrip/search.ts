@@ -1,12 +1,30 @@
-// Sample /v1/fetch key parts
-// intent.type: search
-// intent.args: {"query":"三亚"}
-// output.field: {"source":"source","count":"count","results":"results"}
-// category: "RETRIEVAL"
-// auth.required: false
-// auth.kind: "ctrip-cookie"
-// auth.description: "ctrip auth credential"
-// tags: ["domestic"]
+/* @meta
+{
+  "name": "ctrip/search",
+  "description": "获取 ctrip 的 search 数据",
+  "domain": "ctrip.com",
+  "args": {
+    "query": {
+      "required": true,
+      "description": "Script argument: query"
+    }
+  },
+  "capabilities": [
+    "network"
+  ],
+  "readOnly": true,
+  "example": "bb-browser site ctrip/search 三亚",
+  "category": "RETRIEVAL",
+  "auth": {
+    "required": false,
+    "kind": "ctrip-cookie",
+    "description": "ctrip auth credential"
+  },
+  "tags": [
+    "domestic"
+  ]
+}
+*/
 
 async () => {
   const query = String(__QUERY_JSON__ || "").trim();

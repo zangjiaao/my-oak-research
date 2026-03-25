@@ -1,12 +1,34 @@
-// Sample /v1/fetch key parts
-// intent.type: tweets
-// intent.args: {"username":"openai","limit":20}
-// output.field: {"id":"tweets.id","type":"tweets.type","author":"tweets.author","text":"tweets.text","url":"tweets.url","created_at":"tweets.created_at"}
-// category: "INTERACTIVE"
-// auth.required: true
-// auth.kind: "twitter-cookie"
-// auth.description: "twitter auth credential"
-// tags: ["foreign"]
+/* @meta
+{
+  "name": "twitter/tweets",
+  "description": "用来关注推主的推文数据",
+  "domain": "x.com",
+  "args": {
+    "username": {
+      "required": true,
+      "description": "Script argument: username"
+    },
+    "limit": {
+      "required": false,
+      "description": "Script argument: limit"
+    }
+  },
+  "capabilities": [
+    "network"
+  ],
+  "readOnly": true,
+  "example": "bb-browser site twitter/tweets openai 20",
+  "category": "INTERACTIVE",
+  "auth": {
+    "required": true,
+    "kind": "twitter-cookie",
+    "description": "twitter auth credential"
+  },
+  "tags": [
+    "foreign"
+  ]
+}
+*/
 
 async () => {
   const username = String(__USERNAME_JSON__ || '').replace(/^@/, '').trim();

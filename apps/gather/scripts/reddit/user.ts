@@ -1,12 +1,30 @@
-// Sample /v1/fetch key parts
-// intent.type: user
-// intent.args: {"username":"spez"}
-// output.field: {"username":"users.username","post_karma":"users.post_karma","comment_karma":"users.comment_karma","total_karma":"users.total_karma","created_at":"users.created_at"}
-// category: "INTERACTIVE"
-// auth.required: true
-// auth.kind: "reddit-cookie"
-// auth.description: "reddit auth credential"
-// tags: ["foreign"]
+/* @meta
+{
+  "name": "reddit/user",
+  "description": "获取 reddit 的 user 数据",
+  "domain": "reddit.com",
+  "args": {
+    "username": {
+      "required": true,
+      "description": "Script argument: username"
+    }
+  },
+  "capabilities": [
+    "network"
+  ],
+  "readOnly": true,
+  "example": "bb-browser site reddit/user spez",
+  "category": "INTERACTIVE",
+  "auth": {
+    "required": true,
+    "kind": "reddit-cookie",
+    "description": "reddit auth credential"
+  },
+  "tags": [
+    "foreign"
+  ]
+}
+*/
 
 async () => {
   const rawUsername = (__USERNAME_JSON__ || "").trim();

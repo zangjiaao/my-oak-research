@@ -1,12 +1,34 @@
-// Sample /v1/fetch key parts
-// intent.type: search
-// intent.args: {"keyword":"playwright","limit":20}
-// output.field: {"rank":"topics.rank","title":"topics.title","views":"topics.views","likes":"topics.likes","replies":"topics.replies"}
-// category: "INTERACTIVE"
-// auth.required: false
-// auth.kind: "linux-do-cookie"
-// auth.description: "linux-do auth credential"
-// tags: ["domestic"]
+/* @meta
+{
+  "name": "linux-do/search",
+  "description": "获取 linux-do 的 search 数据",
+  "domain": "linux.do",
+  "args": {
+    "keyword": {
+      "required": true,
+      "description": "Script argument: keyword"
+    },
+    "limit": {
+      "required": false,
+      "description": "Script argument: limit"
+    }
+  },
+  "capabilities": [
+    "network"
+  ],
+  "readOnly": true,
+  "example": "bb-browser site linux-do/search playwright 20",
+  "category": "INTERACTIVE",
+  "auth": {
+    "required": false,
+    "kind": "linux-do-cookie",
+    "description": "linux-do auth credential"
+  },
+  "tags": [
+    "domestic"
+  ]
+}
+*/
 
 async () => {
   const keyword = String(__KEYWORD_JSON__ || "").trim();

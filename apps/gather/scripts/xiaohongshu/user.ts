@@ -1,12 +1,34 @@
-// Sample /v1/fetch key parts
-// intent.type: user
-// intent.args: {"id":"66f26918000000000101adf0","limit":20}
-// output.field: {"id":"notes.id","title":"notes.title","type":"notes.type","likes":"notes.likes","url":"notes.url"}
-// category: "INTERACTIVE"
-// auth.required: true
-// auth.kind: "xiaohongshu-cookie"
-// auth.description: "xiaohongshu auth credential"
-// tags: ["domestic"]
+/* @meta
+{
+  "name": "xiaohongshu/user",
+  "description": "获取 xiaohongshu 的 user 数据",
+  "domain": "xiaohongshu.com",
+  "args": {
+    "id": {
+      "required": true,
+      "description": "Script argument: id"
+    },
+    "limit": {
+      "required": false,
+      "description": "Script argument: limit"
+    }
+  },
+  "capabilities": [
+    "network"
+  ],
+  "readOnly": true,
+  "example": "bb-browser site xiaohongshu/user 66f26918000000000101adf0 20",
+  "category": "INTERACTIVE",
+  "auth": {
+    "required": true,
+    "kind": "xiaohongshu-cookie",
+    "description": "xiaohongshu auth credential"
+  },
+  "tags": [
+    "domestic"
+  ]
+}
+*/
 
 async () => {
   const userId = String(__XHS_USER_ID_JSON__ || "").trim();
