@@ -193,49 +193,6 @@ exports.Prisma.SourceIdentityScalarFieldEnum = {
   updatedAt: 'updatedAt'
 };
 
-exports.Prisma.BbPresetScalarFieldEnum = {
-  id: 'id',
-  key: 'key',
-  version: 'version',
-  name: 'name',
-  description: 'description',
-  platform: 'platform',
-  scriptRelPath: 'scriptRelPath',
-  scriptHash: 'scriptHash',
-  scriptSnapshotKey: 'scriptSnapshotKey',
-  argsSchema: 'argsSchema',
-  outputSchema: 'outputSchema',
-  status: 'status',
-  isActive: 'isActive',
-  createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
-};
-
-exports.Prisma.SourcePresetBindingScalarFieldEnum = {
-  id: 'id',
-  sourceId: 'sourceId',
-  presetId: 'presetId',
-  args: 'args',
-  enabled: 'enabled',
-  createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
-};
-
-exports.Prisma.BbPresetSyncLogScalarFieldEnum = {
-  id: 'id',
-  rootPath: 'rootPath',
-  status: 'status',
-  startedAt: 'startedAt',
-  finishedAt: 'finishedAt',
-  scannedCount: 'scannedCount',
-  createdCount: 'createdCount',
-  changedCount: 'changedCount',
-  brokenCount: 'brokenCount',
-  skippedCount: 'skippedCount',
-  diff: 'diff',
-  error: 'error'
-};
-
 exports.Prisma.WebSourceConfigScalarFieldEnum = {
   sourceId: 'sourceId',
   url: 'url',
@@ -509,17 +466,6 @@ exports.SourceCategory = exports.$Enums.SourceCategory = {
   RETRIEVAL: 'RETRIEVAL'
 };
 
-exports.BbPresetStatus = exports.$Enums.BbPresetStatus = {
-  ACTIVE: 'ACTIVE',
-  DEPRECATED: 'DEPRECATED',
-  BROKEN: 'BROKEN'
-};
-
-exports.BbPresetSyncStatus = exports.$Enums.BbPresetSyncStatus = {
-  SUCCEEDED: 'SUCCEEDED',
-  FAILED: 'FAILED'
-};
-
 exports.CrawlerEngine = exports.$Enums.CrawlerEngine = {
   FETCH: 'FETCH',
   CHEERIO: 'CHEERIO',
@@ -604,9 +550,6 @@ exports.Prisma.ModelName = {
   Credential: 'Credential',
   Source: 'Source',
   SourceIdentity: 'SourceIdentity',
-  BbPreset: 'BbPreset',
-  SourcePresetBinding: 'SourcePresetBinding',
-  BbPresetSyncLog: 'BbPresetSyncLog',
   WebSourceConfig: 'WebSourceConfig',
   DarknetSourceConfig: 'DarknetSourceConfig',
   SearchEngineSourceConfig: 'SearchEngineSourceConfig',

@@ -27,11 +27,6 @@ export type KnowledgeProcessPayload = {
   chunkSize: number;
 };
 
-export type BbPresetSyncPayload = {
-  rootPath?: string;
-  trigger?: "manual" | "scheduled";
-};
-
 export const defaultJobOpts: JobsOptions = {
   attempts: 3,
   backoff: { type: "exponential", delay: 2000 },
@@ -53,14 +48,6 @@ export const knowledgeQueue = new Queue<KnowledgeProcessPayload>("knowledge-proc
 export const knowledgeQueueEvents = new QueueEvents("knowledge-process", {
   connection: bullConnection,
 });
-export const bbPresetSyncQueue = new Queue<BbPresetSyncPayload>("bb-preset-sync", {
-  connection: bullConnection,
-  defaultJobOptions: defaultJobOpts,
-});
-export const bbPresetSyncQueueEvents = new QueueEvents("bb-preset-sync", {
-  connection: bullConnection,
-});
-
 const SCHEDULED_COLLECT_JOB_NAME = "collect-scheduled";
 const SCHEDULED_COLLECT_TZ = process.env.QUERY_SCHEDULE_TZ || "UTC";
 
@@ -172,12 +159,3 @@ export function createKnowledgeWorker(
   });
 }
 
-export function createBbPresetSyncWorker(
-  processor: (job: { data: BbPresetSyncPayload }) => Promise<unknown>,
-  concurrency = 1
-) {
-  return new Worker<BbPresetSyncPayload>("bb-preset-sync", processor, {
-    connection: bullConnection,
-    concurrency,
-  });
-}

@@ -2,7 +2,6 @@ import prisma from "@/lib/prisma";
 import { json, badRequest, notFound, serverError } from "@/app/api/_utils/http";
 import { SourceUpdateSchema } from "@/app/api/_utils/zod";
 import { Prisma } from "@/app/generated/prisma";
-import { syncSocialPresetBinding } from "@/lib/source-preset-binding";
 import { z } from "zod";
 
 function jsonOrNull(value: unknown) {
@@ -29,23 +28,6 @@ export async function GET(
         darknet: { include: { proxy: true } },
         search: true,
         social: true,
-        presetBindings: {
-          include: {
-            preset: {
-              select: {
-                id: true,
-                key: true,
-                version: true,
-                name: true,
-                platform: true,
-                scriptRelPath: true,
-                status: true,
-                isActive: true,
-              },
-            },
-          },
-          orderBy: { updatedAt: "desc" as const },
-        },
         proxy: true,
         credential: true,
       },
@@ -79,7 +61,6 @@ export async function PATCH(
         darknet: { include: { proxy: true } },
         search: true,
         social: true,
-        presetBindings: true,
       },
     });
     if (!exists) return notFound("Source not found");
@@ -198,13 +179,6 @@ export async function PATCH(
           where: { sourceId: id },
           data: updateData,
         });
-
-        if (socialData.config !== undefined) {
-          await syncSocialPresetBinding(tx, {
-            sourceId: id,
-            config: socialData.config,
-          });
-        }
       }
 
       return tx.source.findUnique({
@@ -214,23 +188,6 @@ export async function PATCH(
           darknet: { include: { proxy: true } },
           search: true,
           social: true,
-          presetBindings: {
-            include: {
-              preset: {
-                select: {
-                  id: true,
-                  key: true,
-                  version: true,
-                  name: true,
-                  platform: true,
-                  scriptRelPath: true,
-                  status: true,
-                  isActive: true,
-                },
-              },
-            },
-            orderBy: { updatedAt: "desc" as const },
-          },
           proxy: true,
           credential: true,
         },
