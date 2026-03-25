@@ -1139,14 +1139,22 @@ const SourceDialog = ({
     isLoading: loadingCredentials,
     refetch: refetchCredentials,
   } = useQuery<CredentialListResponse>({
-    queryKey: ["source-credentials", normalizePlatform(selectedPlatform)],
+    queryKey: [
+      "source-credentials",
+      normalizePlatform(selectedPlatform),
+      selectedCapability?.authRequirement.kind ?? "",
+    ],
     queryFn: () =>
       apiFetcher(
-        selectedPlatform
-          ? `/api/follow/credentials?platform=${encodeURIComponent(
-              normalizePlatform(selectedPlatform).toLowerCase()
+        selectedCapability?.authRequirement.kind
+          ? `/api/follow/credentials?kind=${encodeURIComponent(
+              selectedCapability.authRequirement.kind
             )}`
-          : "/api/follow/credentials"
+          : selectedPlatform
+            ? `/api/follow/credentials?platform=${encodeURIComponent(
+                normalizePlatform(selectedPlatform).toLowerCase()
+              )}`
+            : "/api/follow/credentials"
       ),
     enabled: open,
   });
