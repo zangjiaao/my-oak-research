@@ -556,7 +556,7 @@ function resolveIntentArgContext(config: Record<string, unknown>): string | null
   );
   const picked = (identityEntries.length > 0 ? identityEntries : allEntries).slice(0, 2);
 
-  return picked.map((item) => `${item.key}:${item.value}`).join(", ");
+  return picked.map((item) => `${item.key}: ${item.value}`).join(", ");
 }
 
 export function resolveCredentialId(

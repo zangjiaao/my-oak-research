@@ -549,6 +549,7 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
     const argsObject = rawArgs as Record<string, unknown>;
     const sharedArgs: Record<string, unknown> = {};
     const indexedArgs = new Map<number, Record<string, unknown>>();
+    const indexedBaseKeys = new Set<string>();
 
     for (const [rawKey, rawValue] of Object.entries(argsObject)) {
       const parsed = parseIndexedArgKey(rawKey);
@@ -556,6 +557,7 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
         sharedArgs[rawKey] = rawValue;
         continue;
       }
+      indexedBaseKeys.add(parsed.baseKey);
       const bucket = indexedArgs.get(parsed.index) ?? {};
       bucket[parsed.baseKey] = rawValue;
       indexedArgs.set(parsed.index, bucket);
@@ -571,7 +573,14 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
     return Array.from(indexedArgs.entries())
       .sort(([a], [b]) => a - b)
       .map(([index, args]) => {
-        const nextArgs = { ...sharedArgs, ...args };
+        const paddedIndexedArgs = Array.from(indexedBaseKeys).reduce<Record<string, unknown>>(
+          (acc, key) => {
+            acc[key] = Object.prototype.hasOwnProperty.call(args, key) ? args[key] : "";
+            return acc;
+          },
+          {}
+        );
+        const nextArgs = { ...sharedArgs, ...paddedIndexedArgs };
         let nextConfig = setByPath(config, "intent.args", nextArgs);
         if (bindingEnabled !== false) {
           const nextBindingKeys = bindingKeys
