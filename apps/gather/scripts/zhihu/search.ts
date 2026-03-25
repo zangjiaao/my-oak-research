@@ -1,12 +1,25 @@
-// Sample /v1/fetch key parts
-// intent.type: search
-// intent.args: {"query":"openai","limit":10}
-// output.field: {"title":"results.title","url":"results.url","author":"results.author","voteup_count":"results.voteup_count"}
-// category: "INTERACTIVE"
-// auth.required: true
-// auth.kind: "zhihu-cookie"
-// auth.description: "zhihu auth credential"
-// tags: ["domestic"]
+/* @meta
+{
+  "name": "zhihu/search",
+  "description": "获取 zhihu 的 search 数据",
+  "domain": "zhihu.com",
+  "args": {
+    "query": {
+      "required": true,
+      "description": "Script argument: query"
+    },
+    "limit": {
+      "required": false,
+      "description": "Script argument: limit"
+    }
+  },
+  "capabilities": [
+    "network"
+  ],
+  "readOnly": true,
+  "example": "bb-browser site zhihu/search openai 10"
+}
+*/
 
 async () => {
   const keyword = String(__KEYWORD_JSON__ || "").trim();

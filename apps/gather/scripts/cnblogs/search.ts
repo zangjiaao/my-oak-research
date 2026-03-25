@@ -1,12 +1,25 @@
-// Sample /v1/fetch key parts
-// intent.type: search
-// intent.args: {"query":"python","page":1}
-// output.field: {"title":"results.title","url":"results.url","author":"results.author","snippet":"results.snippet"}
-// category: "RETRIEVAL"
-// auth.required: true
-// auth.kind: "cnblogs-cookie"
-// auth.description: "cnblogs auth credential"
-// tags: ["domestic"]
+/* @meta
+{
+  "name": "cnblogs/search",
+  "description": "获取 cnblogs 的 search 数据",
+  "domain": "cnblogs.com",
+  "args": {
+    "query": {
+      "required": true,
+      "description": "Script argument: query"
+    },
+    "page": {
+      "required": false,
+      "description": "Script argument: page"
+    }
+  },
+  "capabilities": [
+    "network"
+  ],
+  "readOnly": true,
+  "example": "bb-browser site cnblogs/search python 1"
+}
+*/
 
 async () => {
   const query = String(__QUERY_JSON__ || "").trim();

@@ -1,12 +1,25 @@
-// Sample /v1/fetch key parts
-// intent.type: search
-// intent.args: {"query":"large language model","limit":10}
-// output.field: {"id":"papers.id","title":"papers.title","authors":"papers.authors","url":"papers.url"}
-// category: "RETRIEVAL"
-// auth.required: false
-// auth.kind: "arxiv-cookie"
-// auth.description: "arxiv auth credential"
-// tags: ["foreign"]
+/* @meta
+{
+  "name": "arxiv/search",
+  "description": "获取 arxiv 的 search 数据",
+  "domain": "arxiv.org",
+  "args": {
+    "query": {
+      "required": true,
+      "description": "Script argument: query"
+    },
+    "limit": {
+      "required": false,
+      "description": "Script argument: limit"
+    }
+  },
+  "capabilities": [
+    "network"
+  ],
+  "readOnly": true,
+  "example": "bb-browser site arxiv/search large language model 10"
+}
+*/
 
 async () => {
   const query = String(__QUERY_JSON__ || "").trim();

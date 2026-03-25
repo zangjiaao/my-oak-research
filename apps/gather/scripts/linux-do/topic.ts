@@ -1,12 +1,25 @@
-// Sample /v1/fetch key parts
-// intent.type: topic
-// intent.args: {"id":12345,"limit":20}
-// output.field: {"author":"posts.author","content":"posts.content","likes":"posts.likes","created_at":"posts.created_at"}
-// category: "INTERACTIVE"
-// auth.required: false
-// auth.kind: "linux-do-cookie"
-// auth.description: "linux-do auth credential"
-// tags: ["domestic"]
+/* @meta
+{
+  "name": "linux-do/topic",
+  "description": "获取 linux-do 的 topic 数据",
+  "domain": "linux.do",
+  "args": {
+    "id": {
+      "required": true,
+      "description": "Script argument: id"
+    },
+    "limit": {
+      "required": false,
+      "description": "Script argument: limit"
+    }
+  },
+  "capabilities": [
+    "network"
+  ],
+  "readOnly": true,
+  "example": "bb-browser site linux-do/topic 12345 20"
+}
+*/
 
 async () => {
   const topicId = __TOPIC_ID__;

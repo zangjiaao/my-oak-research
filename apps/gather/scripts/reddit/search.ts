@@ -1,12 +1,37 @@
-// Sample /v1/fetch key parts
-// intent.type: search
-// intent.args: {"query":"openai","subreddit":"","sort":"relevance","time":"all","limit":20}
-// output.field: {"id":"posts.id","title":"posts.title","subreddit":"posts.subreddit","author":"posts.author","score":"posts.score","comments":"posts.comments","url":"posts.url"}
-// category: "INTERACTIVE"
-// auth.required: true
-// auth.kind: "reddit-cookie"
-// auth.description: "reddit auth credential"
-// tags: ["foreign"]
+/* @meta
+{
+  "name": "reddit/search",
+  "description": "获取 reddit 的 search 数据",
+  "domain": "reddit.com",
+  "args": {
+    "query": {
+      "required": true,
+      "description": "Script argument: query"
+    },
+    "subreddit": {
+      "required": true,
+      "description": "Script argument: subreddit"
+    },
+    "sort": {
+      "required": true,
+      "description": "Script argument: sort"
+    },
+    "time": {
+      "required": true,
+      "description": "Script argument: time"
+    },
+    "limit": {
+      "required": false,
+      "description": "Script argument: limit"
+    }
+  },
+  "capabilities": [
+    "network"
+  ],
+  "readOnly": true,
+  "example": "bb-browser site reddit/search openai relevance"
+}
+*/
 
 async () => {
   const q = encodeURIComponent(__QUERY_JSON__ || "");

@@ -1,12 +1,29 @@
-// Sample /v1/fetch key parts
-// intent.type: transcript
-// intent.args: {"url":"https://www.youtube.com/watch?v=dQw4w9WgXcQ","lang":"en","mode":"grouped"}
-// output.field: {"timestamp":"rows.timestamp","speaker":"rows.speaker","text":"rows.text"}
-// category: "INTERACTIVE"
-// auth.required: true
-// auth.kind: "youtube-cookie"
-// auth.description: "youtube auth credential"
-// tags: ["foreign"]
+/* @meta
+{
+  "name": "youtube/transcript",
+  "description": "获取 youtube 的 transcript 数据",
+  "domain": "youtube.com",
+  "args": {
+    "url": {
+      "required": true,
+      "description": "Script argument: url"
+    },
+    "lang": {
+      "required": true,
+      "description": "Script argument: lang"
+    },
+    "mode": {
+      "required": true,
+      "description": "Script argument: mode"
+    }
+  },
+  "capabilities": [
+    "network"
+  ],
+  "readOnly": true,
+  "example": "bb-browser site youtube/transcript https://www.youtube.com/watch?v=dQw4w9WgXcQ en"
+}
+*/
 
 async () => {
   const parseVideoId = (input) => {

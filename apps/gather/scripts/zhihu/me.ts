@@ -1,12 +1,16 @@
-// Sample /v1/fetch key parts
-// intent.type: me
-// intent.args: {}
-// output.field: {"name":"name","url":"url","headline":"headline","answer_count":"answer_count"}
-// category: "INTERACTIVE"
-// auth.required: true
-// auth.kind: "zhihu-cookie"
-// auth.description: "zhihu auth credential"
-// tags: ["domestic"]
+/* @meta
+{
+  "name": "zhihu/me",
+  "description": "获取 zhihu 的 me 数据",
+  "domain": "zhihu.com",
+  "args": {},
+  "capabilities": [
+    "network"
+  ],
+  "readOnly": true,
+  "example": "bb-browser site zhihu/me"
+}
+*/
 
 async () => {
   const response = await fetch("https://www.zhihu.com/api/v4/me", { credentials: "include" });

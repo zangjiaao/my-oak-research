@@ -1,12 +1,25 @@
-// Sample /v1/fetch key parts
-// intent.type: user-posts
-// intent.args: {"username":"spez","limit":20}
-// output.field: {"id":"posts.id","title":"posts.title","subreddit":"posts.subreddit","score":"posts.score","comments":"posts.comments","url":"posts.url"}
-// category: "INTERACTIVE"
-// auth.required: true
-// auth.kind: "reddit-cookie"
-// auth.description: "reddit auth credential"
-// tags: ["foreign"]
+/* @meta
+{
+  "name": "reddit/user-posts",
+  "description": "获取 reddit 的 user-posts 数据",
+  "domain": "reddit.com",
+  "args": {
+    "username": {
+      "required": true,
+      "description": "Script argument: username"
+    },
+    "limit": {
+      "required": false,
+      "description": "Script argument: limit"
+    }
+  },
+  "capabilities": [
+    "network"
+  ],
+  "readOnly": true,
+  "example": "bb-browser site reddit/user-posts spez 20"
+}
+*/
 
 async () => {
   const rawUsername = (__USERNAME_JSON__ || "").trim();

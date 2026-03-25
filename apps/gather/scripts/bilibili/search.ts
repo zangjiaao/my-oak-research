@@ -1,12 +1,33 @@
-// Sample /v1/fetch key parts
-// intent.type: search
-// intent.args: {"query":"openai","limit":20,"page":1,"order":"totalrank"}
-// output.field: {"bvid":"videos.bvid","title":"videos.title","author":"videos.author","url":"videos.url"}
-// category: "INTERACTIVE"
-// auth.required: true
-// auth.kind: "bilibili-cookie"
-// auth.description: "bilibili auth credential"
-// tags: ["domestic"]
+/* @meta
+{
+  "name": "bilibili/search",
+  "description": "获取 bilibili 的 search 数据",
+  "domain": "bilibili.com",
+  "args": {
+    "query": {
+      "required": true,
+      "description": "Script argument: query"
+    },
+    "limit": {
+      "required": false,
+      "description": "Script argument: limit"
+    },
+    "page": {
+      "required": false,
+      "description": "Script argument: page"
+    },
+    "order": {
+      "required": true,
+      "description": "Script argument: order"
+    }
+  },
+  "capabilities": [
+    "network"
+  ],
+  "readOnly": true,
+  "example": "bb-browser site bilibili/search openai 20"
+}
+*/
 
 async () => {
   const keyword = String(__KEYWORD_JSON__ || "").trim();

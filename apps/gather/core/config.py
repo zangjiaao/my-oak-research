@@ -172,7 +172,7 @@ PLATFORM_DEFAULT_URL: dict[str, str] = {
 # Script catalog helpers
 # ---------------------------------------------------------------------------
 
-SCRIPT_SAMPLE_LINE_RE = re.compile(r"^\s*//\s*Sample\s+/v1/fetch key parts\s*$")
+SCRIPT_SAMPLE_LINE_RE = re.compile(r"^\s*//\s*Sample\s+/v\d+/fetch key parts\s*$")
 SCRIPT_SAMPLE_ENTRY_RE = re.compile(r"^\s*//\s*([^:]+):\s*(.+?)\s*$")
 SCRIPT_ALLOWED_CATEGORIES = {"STREAM", "INTERACTIVE", "RETRIEVAL"}
 

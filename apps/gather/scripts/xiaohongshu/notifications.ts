@@ -1,12 +1,25 @@
-// Sample /v1/fetch key parts
-// intent.type: notifications
-// intent.args: {"type":"mentions","limit":20}
-// output.field: {"user":"messages.user","action":"messages.action","content":"messages.content","time":"messages.time"}
-// category: "INTERACTIVE"
-// auth.required: true
-// auth.kind: "xiaohongshu-cookie"
-// auth.description: "xiaohongshu auth credential"
-// tags: ["domestic"]
+/* @meta
+{
+  "name": "xiaohongshu/notifications",
+  "description": "获取 xiaohongshu 的 notifications 数据",
+  "domain": "xiaohongshu.com",
+  "args": {
+    "type": {
+      "required": true,
+      "description": "Script argument: type"
+    },
+    "limit": {
+      "required": false,
+      "description": "Script argument: limit"
+    }
+  },
+  "capabilities": [
+    "network"
+  ],
+  "readOnly": true,
+  "example": "bb-browser site xiaohongshu/notifications mentions 20"
+}
+*/
 
 async () => {
   const category = String(__NOTIFICATION_TYPE_JSON__ || "mentions").trim() || "mentions";

@@ -1,12 +1,33 @@
-// Sample /v1/fetch key parts
-// intent.type: comments
-// intent.args: {"bvid":"BV1LGwHzrE4A","page":1,"limit":20,"sort":2}
-// output.field: {"user":"comments.user","content":"comments.content","like":"comments.like","time":"comments.time"}
-// category: "INTERACTIVE"
-// auth.required: true
-// auth.kind: "bilibili-cookie"
-// auth.description: "bilibili auth credential"
-// tags: ["domestic"]
+/* @meta
+{
+  "name": "bilibili/comments",
+  "description": "获取 bilibili 的 comments 数据",
+  "domain": "bilibili.com",
+  "args": {
+    "bvid": {
+      "required": true,
+      "description": "Script argument: bvid"
+    },
+    "page": {
+      "required": false,
+      "description": "Script argument: page"
+    },
+    "limit": {
+      "required": false,
+      "description": "Script argument: limit"
+    },
+    "sort": {
+      "required": true,
+      "description": "Script argument: sort"
+    }
+  },
+  "capabilities": [
+    "network"
+  ],
+  "readOnly": true,
+  "example": "bb-browser site bilibili/comments BV1LGwHzrE4A 1"
+}
+*/
 
 async () => {
   const bvid = String(__BVID_JSON__ || "").trim();

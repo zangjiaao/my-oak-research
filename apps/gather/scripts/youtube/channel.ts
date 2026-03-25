@@ -1,12 +1,25 @@
-// Sample /v1/fetch key parts
-// intent.type: channel
-// intent.args: {"id":"@programmingwithmosh","limit":10}
-// output.field: {"channelId":"channelId","name":"name","subscriberCount":"subscriberCount","recentVideoCount":"recentVideoCount","title":"recentVideos.title","url":"recentVideos.url"}
-// category: "INTERACTIVE"
-// auth.required: true
-// auth.kind: "youtube-cookie"
-// auth.description: "youtube auth credential"
-// tags: ["foreign"]
+/* @meta
+{
+  "name": "youtube/channel",
+  "description": "获取 youtube 的 channel 数据",
+  "domain": "youtube.com",
+  "args": {
+    "id": {
+      "required": true,
+      "description": "Script argument: id"
+    },
+    "limit": {
+      "required": false,
+      "description": "Script argument: limit"
+    }
+  },
+  "capabilities": [
+    "network"
+  ],
+  "readOnly": true,
+  "example": "bb-browser site youtube/channel @programmingwithmosh 10"
+}
+*/
 
 async () => {
   const cfg = window.ytcfg?.data_ || {};

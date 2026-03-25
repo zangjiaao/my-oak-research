@@ -14,9 +14,46 @@ from core.config import (
 from core.io_logging import log_api_io
 from core.normalize import _as_dict, _extract_search_query
 
+SCRIPT_META_BLOCK_RE = re.compile(r"/\*\s*@meta\s*([\s\S]*?)\*/", re.MULTILINE)
+
 
 def _parse_script_sample_payload(script_content: str) -> dict[str, Any]:
     sample: dict[str, Any] = {}
+    meta_match = SCRIPT_META_BLOCK_RE.search(script_content)
+    if meta_match:
+        raw_meta = meta_match.group(1).strip()
+        try:
+            parsed_meta = json.loads(raw_meta)
+        except json.JSONDecodeError:
+            parsed_meta = None
+
+        if isinstance(parsed_meta, dict):
+            sample["meta"] = parsed_meta
+            if isinstance(parsed_meta.get("args"), dict):
+                sample["intent.args"] = parsed_meta["args"]
+            intent_type = parsed_meta.get("intentType")
+            if isinstance(intent_type, str) and intent_type.strip():
+                sample["intent.type"] = intent_type.strip()
+            output_field = parsed_meta.get("outputField", parsed_meta.get("output"))
+            if isinstance(output_field, (list, dict)):
+                sample["output.field"] = output_field
+
+            passthrough_keys = [
+                "category",
+                "title",
+                "description",
+                "auth",
+                "tags",
+                "name",
+                "domain",
+                "capabilities",
+                "readOnly",
+                "example",
+            ]
+            for key in passthrough_keys:
+                if key in parsed_meta:
+                    sample[key] = parsed_meta[key]
+
     lines = script_content.splitlines()
     in_sample_block = False
 
@@ -35,6 +72,8 @@ def _parse_script_sample_payload(script_content: str) -> dict[str, Any]:
         raw_key = matched.group(1).strip()
         raw_value = matched.group(2).strip()
         if not raw_key:
+            continue
+        if raw_key in sample:
             continue
         try:
             sample[raw_key] = json.loads(raw_value)
@@ -65,17 +104,39 @@ def _normalize_script_tags(value: Any) -> list[str]:
 
 def _extract_script_meta(sample_payload: dict[str, Any]) -> dict[str, Any]:
     meta: dict[str, Any] = {}
-    category = _normalize_script_category(sample_payload.get("category"))
+    raw_meta = _as_dict(sample_payload.get("meta"))
+    category = _normalize_script_category(raw_meta.get("category", sample_payload.get("category")))
     if category:
         meta["category"] = category
-    title = sample_payload.get("title")
+    title = raw_meta.get("title", sample_payload.get("title"))
     if isinstance(title, str) and title.strip():
         meta["title"] = title.strip()
-    description = sample_payload.get("description")
+    description = raw_meta.get("description", sample_payload.get("description"))
     if isinstance(description, str) and description.strip():
         meta["description"] = description.strip()
 
-    auth_raw = sample_payload.get("auth")
+    name = raw_meta.get("name", sample_payload.get("name"))
+    if isinstance(name, str) and name.strip():
+        meta["name"] = name.strip()
+    domain = raw_meta.get("domain", sample_payload.get("domain"))
+    if isinstance(domain, str) and domain.strip():
+        meta["domain"] = domain.strip()
+    capabilities = raw_meta.get("capabilities", sample_payload.get("capabilities"))
+    if isinstance(capabilities, list):
+        normalized_capabilities = [str(item).strip() for item in capabilities if str(item).strip()]
+        if normalized_capabilities:
+            meta["capabilities"] = normalized_capabilities
+    read_only = raw_meta.get("readOnly", sample_payload.get("readOnly"))
+    if isinstance(read_only, bool):
+        meta["readOnly"] = read_only
+    example = raw_meta.get("example", sample_payload.get("example"))
+    if isinstance(example, str) and example.strip():
+        meta["example"] = example.strip()
+    args_meta = raw_meta.get("args")
+    if isinstance(args_meta, dict):
+        meta["args"] = args_meta
+
+    auth_raw = raw_meta.get("auth", sample_payload.get("auth"))
     auth_obj = auth_raw if isinstance(auth_raw, dict) else {}
     auth_required = auth_obj.get("required", sample_payload.get("auth.required"))
     auth_kind = auth_obj.get("kind", sample_payload.get("auth.kind"))
@@ -91,7 +152,7 @@ def _extract_script_meta(sample_payload: dict[str, Any]) -> dict[str, Any]:
     if auth_meta:
         meta["auth"] = auth_meta
 
-    tags = _normalize_script_tags(sample_payload.get("tags"))
+    tags = _normalize_script_tags(raw_meta.get("tags", sample_payload.get("tags")))
     if tags:
         meta["tags"] = tags
 

@@ -1,12 +1,25 @@
-// Sample /v1/fetch key parts
-// intent.type: feed
-// intent.args: {"type":"all","limit":20}
-// output.field: {"id":"items.id","author":"items.author","text":"items.text","url":"items.url"}
-// category: "INTERACTIVE"
-// auth.required: true
-// auth.kind: "bilibili-cookie"
-// auth.description: "bilibili auth credential"
-// tags: ["domestic"]
+/* @meta
+{
+  "name": "bilibili/feed",
+  "description": "获取 bilibili 的 feed 数据",
+  "domain": "bilibili.com",
+  "args": {
+    "type": {
+      "required": true,
+      "description": "Script argument: type"
+    },
+    "limit": {
+      "required": false,
+      "description": "Script argument: limit"
+    }
+  },
+  "capabilities": [
+    "network"
+  ],
+  "readOnly": true,
+  "example": "bb-browser site bilibili/feed all 20"
+}
+*/
 
 async () => {
   const type = String(__TYPE_JSON__ || "all");

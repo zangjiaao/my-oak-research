@@ -1,12 +1,21 @@
-// Sample /v1/fetch key parts
-// intent.type: article
-// intent.args: {"tweet_id":"1900000000000000000"}
-// output.field: {"id":"items.id","title":"items.title","content":"items.content","author":"items.author","url":"items.url"}
-// category: "INTERACTIVE"
-// auth.required: true
-// auth.kind: "twitter-cookie"
-// auth.description: "twitter auth credential"
-// tags: ["foreign"]
+/* @meta
+{
+  "name": "twitter/article",
+  "description": "获取 twitter 的 article 数据",
+  "domain": "x.com",
+  "args": {
+    "tweet_id": {
+      "required": true,
+      "description": "Script argument: tweet_id"
+    }
+  },
+  "capabilities": [
+    "network"
+  ],
+  "readOnly": true,
+  "example": "bb-browser site twitter/article 1900000000000000000"
+}
+*/
 
 async () => {
   const tweetId = String(__TWEET_ID_JSON__ || '').trim();

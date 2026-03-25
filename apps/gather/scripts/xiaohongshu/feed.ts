@@ -1,12 +1,21 @@
-// Sample /v1/fetch key parts
-// intent.type: feed
-// intent.args: {"limit":20}
-// output.field: {"id":"notes.id","title":"notes.title","author":"notes.author","likes":"notes.likes","url":"notes.url"}
-// category: "INTERACTIVE"
-// auth.required: true
-// auth.kind: "xiaohongshu-cookie"
-// auth.description: "xiaohongshu auth credential"
-// tags: ["domestic"]
+/* @meta
+{
+  "name": "xiaohongshu/feed",
+  "description": "获取 xiaohongshu 的 feed 数据",
+  "domain": "xiaohongshu.com",
+  "args": {
+    "limit": {
+      "required": false,
+      "description": "Script argument: limit"
+    }
+  },
+  "capabilities": [
+    "network"
+  ],
+  "readOnly": true,
+  "example": "bb-browser site xiaohongshu/feed 20"
+}
+*/
 
 async () => {
   const limit = Number(__LIMIT__) || Number(__COUNT__) || 20;

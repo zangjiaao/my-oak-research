@@ -1,12 +1,29 @@
-// Sample /v1/fetch key parts
-// intent.type: category
-// intent.args: {"slug":"general","id":1,"limit":20}
-// output.field: {"rank":"topics.rank","title":"topics.title","replies":"topics.replies","views":"topics.views","likes":"topics.likes"}
-// category: "INTERACTIVE"
-// auth.required: false
-// auth.kind: "linux-do-cookie"
-// auth.description: "linux-do auth credential"
-// tags: ["domestic"]
+/* @meta
+{
+  "name": "linux-do/category",
+  "description": "获取 linux-do 的 category 数据",
+  "domain": "linux.do",
+  "args": {
+    "slug": {
+      "required": true,
+      "description": "Script argument: slug"
+    },
+    "id": {
+      "required": true,
+      "description": "Script argument: id"
+    },
+    "limit": {
+      "required": false,
+      "description": "Script argument: limit"
+    }
+  },
+  "capabilities": [
+    "network"
+  ],
+  "readOnly": true,
+  "example": "bb-browser site linux-do/category general 1"
+}
+*/
 
 async () => {
   const slug = String(__SLUG_JSON__ || "").trim();

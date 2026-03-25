@@ -1,12 +1,25 @@
-// Sample /v1/fetch key parts
-// intent.type: search
-// intent.args: {"query":"ai","limit":20}
-// output.field: {"id":"notes.id","title":"notes.title","author":"notes.author","likes":"notes.likes","url":"notes.url"}
-// category: "INTERACTIVE"
-// auth.required: true
-// auth.kind: "xiaohongshu-cookie"
-// auth.description: "xiaohongshu auth credential"
-// tags: ["domestic"]
+/* @meta
+{
+  "name": "xiaohongshu/search",
+  "description": "获取 xiaohongshu 的 search 数据",
+  "domain": "xiaohongshu.com",
+  "args": {
+    "query": {
+      "required": true,
+      "description": "Script argument: query"
+    },
+    "limit": {
+      "required": false,
+      "description": "Script argument: limit"
+    }
+  },
+  "capabilities": [
+    "network"
+  ],
+  "readOnly": true,
+  "example": "bb-browser site xiaohongshu/search ai 20"
+}
+*/
 
 async () => {
   const query = String(__QUERY_JSON__ || "").trim();

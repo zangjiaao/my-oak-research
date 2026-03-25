@@ -1,12 +1,33 @@
-// Sample /v1/fetch key parts
-// intent.type: subreddit
-// intent.args: {"name":"programming","sort":"hot","time":"all","limit":20}
-// output.field: {"id":"posts.id","title":"posts.title","author":"posts.author","subreddit":"posts.subreddit","score":"posts.score","comments":"posts.comments","url":"posts.url"}
-// category: "INTERACTIVE"
-// auth.required: true
-// auth.kind: "reddit-cookie"
-// auth.description: "reddit auth credential"
-// tags: ["foreign"]
+/* @meta
+{
+  "name": "reddit/subreddit",
+  "description": "获取 reddit 的 subreddit 数据",
+  "domain": "reddit.com",
+  "args": {
+    "name": {
+      "required": true,
+      "description": "Script argument: name"
+    },
+    "sort": {
+      "required": true,
+      "description": "Script argument: sort"
+    },
+    "time": {
+      "required": true,
+      "description": "Script argument: time"
+    },
+    "limit": {
+      "required": false,
+      "description": "Script argument: limit"
+    }
+  },
+  "capabilities": [
+    "network"
+  ],
+  "readOnly": true,
+  "example": "bb-browser site reddit/subreddit programming hot"
+}
+*/
 
 async () => {
   const rawName = ((__SUBREDDIT_JSON__ || "") || "").trim();

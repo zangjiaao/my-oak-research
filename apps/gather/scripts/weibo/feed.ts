@@ -1,12 +1,21 @@
-// Sample /v1/fetch key parts
-// intent.type: feed
-// intent.args: {"limit":15}
-// output.field: {"id":"statuses.id","text":"statuses.text","screen_name":"statuses.user.screen_name","url":"statuses.url","created_at":"statuses.created_at"}
-// category: "INTERACTIVE"
-// auth.required: true
-// auth.kind: "weibo-cookie"
-// auth.description: "weibo auth credential"
-// tags: ["domestic"]
+/* @meta
+{
+  "name": "weibo/feed",
+  "description": "获取 weibo 的 feed 数据",
+  "domain": "weibo.com",
+  "args": {
+    "limit": {
+      "required": false,
+      "description": "Script argument: limit"
+    }
+  },
+  "capabilities": [
+    "network"
+  ],
+  "readOnly": true,
+  "example": "bb-browser site weibo/feed 15"
+}
+*/
 
 async () => {
   const app = (document.querySelector("#app") as any)?.__vue_app__;

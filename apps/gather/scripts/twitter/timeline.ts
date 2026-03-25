@@ -1,12 +1,21 @@
-// Sample /v1/fetch key parts
-// intent.type: timeline
-// intent.args: {"limit":20}
-// output.field: {"id":"tweets.id","text":"tweets.text","author":"tweets.author","url":"tweets.url","created_at":"tweets.created_at"}
-// category: "INTERACTIVE"
-// auth.required: true
-// auth.kind: "twitter-cookie"
-// auth.description: "twitter auth credential"
-// tags: ["foreign"]
+/* @meta
+{
+  "name": "twitter/timeline",
+  "description": "获取 twitter 的 timeline 数据",
+  "domain": "x.com",
+  "args": {
+    "limit": {
+      "required": false,
+      "description": "Script argument: limit"
+    }
+  },
+  "capabilities": [
+    "network"
+  ],
+  "readOnly": true,
+  "example": "bb-browser site twitter/timeline 20"
+}
+*/
 
 async () => {
   const limit = Number(__COUNT__) || 20;

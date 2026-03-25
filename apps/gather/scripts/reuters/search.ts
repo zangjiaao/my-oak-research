@@ -1,12 +1,25 @@
-// Sample /v1/fetch key parts
-// intent.type: search
-// intent.args: {"query":"artificial intelligence","limit":10}
-// output.field: {"title":"results.title","url":"results.url","description":"results.description","date":"results.date"}
-// category: "STREAM"
-// auth.required: true
-// auth.kind: "reuters-cookie"
-// auth.description: "reuters auth credential"
-// tags: ["foreign"]
+/* @meta
+{
+  "name": "reuters/search",
+  "description": "获取 reuters 的 search 数据",
+  "domain": "reuters.com",
+  "args": {
+    "query": {
+      "required": true,
+      "description": "Script argument: query"
+    },
+    "limit": {
+      "required": false,
+      "description": "Script argument: limit"
+    }
+  },
+  "capabilities": [
+    "network"
+  ],
+  "readOnly": true,
+  "example": "bb-browser site reuters/search artificial intelligence 10"
+}
+*/
 
 async () => {
   const query = String(__QUERY_JSON__ || "").trim();

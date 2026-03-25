@@ -1,12 +1,21 @@
-// Sample /v1/fetch key parts
-// intent.type: latest
-// intent.args: {"limit":20}
-// output.field: {"rank":"topics.rank","title":"topics.title","replies":"topics.replies","views":"topics.views","likes":"topics.likes"}
-// category: "INTERACTIVE"
-// auth.required: false
-// auth.kind: "linux-do-cookie"
-// auth.description: "linux-do auth credential"
-// tags: ["domestic"]
+/* @meta
+{
+  "name": "linux-do/latest",
+  "description": "获取 linux-do 的 latest 数据",
+  "domain": "linux.do",
+  "args": {
+    "limit": {
+      "required": false,
+      "description": "Script argument: limit"
+    }
+  },
+  "capabilities": [
+    "network"
+  ],
+  "readOnly": true,
+  "example": "bb-browser site linux-do/latest 20"
+}
+*/
 
 async () => {
   const response = await fetch("/latest.json", { credentials: "include" });

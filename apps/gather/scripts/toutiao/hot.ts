@@ -1,12 +1,21 @@
-// Sample /v1/fetch key parts
-// intent.type: hot
-// intent.args: {"limit":20}
-// output.field: {"rank":"items.rank","title":"items.title","hot_value":"items.hot_value","url":"items.url"}
-// category: "STREAM"
-// auth.required: false
-// auth.kind: "toutiao-cookie"
-// auth.description: "toutiao auth credential"
-// tags: ["domestic"]
+/* @meta
+{
+  "name": "toutiao/hot",
+  "description": "获取 toutiao 的 hot 数据",
+  "domain": "toutiao.com",
+  "args": {
+    "limit": {
+      "required": false,
+      "description": "Script argument: limit"
+    }
+  },
+  "capabilities": [
+    "network"
+  ],
+  "readOnly": true,
+  "example": "bb-browser site toutiao/hot 20"
+}
+*/
 
 async () => {
   const count = Math.max(1, Math.min(__COUNT__, 50));

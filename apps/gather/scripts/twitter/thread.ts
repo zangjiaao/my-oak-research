@@ -1,12 +1,25 @@
-// Sample /v1/fetch key parts
-// intent.type: thread
-// intent.args: {"tweet_id":"1900000000000000000","limit":50}
-// output.field: {"id":"tweets.id","text":"tweets.text","author":"tweets.author","url":"tweets.url","created_at":"tweets.created_at"}
-// category: "INTERACTIVE"
-// auth.required: true
-// auth.kind: "twitter-cookie"
-// auth.description: "twitter auth credential"
-// tags: ["foreign"]
+/* @meta
+{
+  "name": "twitter/thread",
+  "description": "获取 twitter 的 thread 数据",
+  "domain": "x.com",
+  "args": {
+    "tweet_id": {
+      "required": true,
+      "description": "Script argument: tweet_id"
+    },
+    "limit": {
+      "required": false,
+      "description": "Script argument: limit"
+    }
+  },
+  "capabilities": [
+    "network"
+  ],
+  "readOnly": true,
+  "example": "bb-browser site twitter/thread 1900000000000000000 50"
+}
+*/
 
 async () => {
   const tweetId = String(__TWEET_ID_JSON__ || '').trim();

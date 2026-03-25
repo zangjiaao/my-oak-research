@@ -1,12 +1,21 @@
-// Sample /v1/fetch key parts
-// intent.type: video
-// intent.args: {"bvid":"BV1LGwHzrE4A"}
-// output.field: {"bvid":"bvid","title":"title","author":"author","view":"stat.view","url":"url"}
-// category: "INTERACTIVE"
-// auth.required: true
-// auth.kind: "bilibili-cookie"
-// auth.description: "bilibili auth credential"
-// tags: ["domestic"]
+/* @meta
+{
+  "name": "bilibili/video",
+  "description": "获取 bilibili 的 video 数据",
+  "domain": "bilibili.com",
+  "args": {
+    "bvid": {
+      "required": true,
+      "description": "Script argument: bvid"
+    }
+  },
+  "capabilities": [
+    "network"
+  ],
+  "readOnly": true,
+  "example": "bb-browser site bilibili/video BV1LGwHzrE4A"
+}
+*/
 
 async () => {
   const bvid = String(__BVID_JSON__ || "").trim();

@@ -1,12 +1,25 @@
-// Sample /v1/fetch key parts
-// intent.type: question
-// intent.args: {"id":"34816524","limit":5}
-// output.field: {"title":"title","answer_count":"answer_count","author":"answers.author","content":"answers.content"}
-// category: "INTERACTIVE"
-// auth.required: true
-// auth.kind: "zhihu-cookie"
-// auth.description: "zhihu auth credential"
-// tags: ["domestic"]
+/* @meta
+{
+  "name": "zhihu/question",
+  "description": "获取 zhihu 的 question 数据",
+  "domain": "zhihu.com",
+  "args": {
+    "id": {
+      "required": true,
+      "description": "Script argument: id"
+    },
+    "limit": {
+      "required": false,
+      "description": "Script argument: limit"
+    }
+  },
+  "capabilities": [
+    "network"
+  ],
+  "readOnly": true,
+  "example": "bb-browser site zhihu/question 34816524 5"
+}
+*/
 
 async () => {
   const questionId = String(__QUESTION_ID_JSON__ || "").trim();

@@ -1,12 +1,21 @@
-// Sample /v1/fetch key parts
-// intent.type: top
-// intent.args: {"limit":20}
-// output.field: {"rank":"items.rank","title":"items.title","score":"items.score","author":"items.author","comments":"items.comments","url":"items.url"}
-// category: "STREAM"
-// auth.required: false
-// auth.kind: "hackernews-cookie"
-// auth.description: "hackernews auth credential"
-// tags: ["foreign"]
+/* @meta
+{
+  "name": "hackernews/top",
+  "description": "获取 hackernews 的 top 数据",
+  "domain": "news.ycombinator.com",
+  "args": {
+    "limit": {
+      "required": false,
+      "description": "Script argument: limit"
+    }
+  },
+  "capabilities": [
+    "network"
+  ],
+  "readOnly": true,
+  "example": "bb-browser site hackernews/top 20"
+}
+*/
 
 async () => {
   const limit = Math.max(1, Math.min(__LIMIT__, 100));

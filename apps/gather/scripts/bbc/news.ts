@@ -1,12 +1,21 @@
-// Sample /v1/fetch key parts
-// intent.type: news
-// intent.args: {"limit":20}
-// output.field: {"rank":"items.rank","title":"items.title","description":"items.description","url":"items.url"}
-// category: "STREAM"
-// auth.required: false
-// auth.kind: "bbc-cookie"
-// auth.description: "bbc auth credential"
-// tags: ["foreign"]
+/* @meta
+{
+  "name": "bbc/news",
+  "description": "获取 bbc 的 news 数据",
+  "domain": "bbc.com",
+  "args": {
+    "limit": {
+      "required": false,
+      "description": "Script argument: limit"
+    }
+  },
+  "capabilities": [
+    "network"
+  ],
+  "readOnly": true,
+  "example": "bb-browser site bbc/news 20"
+}
+*/
 
 async () => {
   const decodeEntities = (value) =>
