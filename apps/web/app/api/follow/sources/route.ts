@@ -2,7 +2,6 @@ import prisma from "@/lib/prisma";
 import { json, badRequest, serverError, conflict } from "@/app/api/_utils/http";
 import { SourceCreateSchema, SourceQuerySchema } from "@/app/api/_utils/zod";
 import { Prisma } from "@/app/generated/prisma";
-import { syncSocialPresetBinding } from "@/lib/source-preset-binding";
 import { z } from "zod";
 
 // 帮助函数：将 null 转换为 Prisma.JsonNull，undefined 保持不变
@@ -66,23 +65,6 @@ export async function GET(req: Request) {
         search: { include: { credential: true } },
         social: true,
         identity: true,
-        presetBindings: {
-          include: {
-            preset: {
-              select: {
-                id: true,
-                key: true,
-                version: true,
-                name: true,
-                platform: true,
-                scriptRelPath: true,
-                status: true,
-                isActive: true,
-              },
-            },
-          },
-          orderBy: { updatedAt: "desc" as const },
-        },
         proxy: true,
         credential: true,
       }
@@ -191,10 +173,6 @@ export async function POST(req: Request) {
               keywordStrategy: data.social.keywordStrategy ?? "AUTO",
             },
           });
-          await syncSocialPresetBinding(tx, {
-            sourceId: base.id,
-            config: data.social.config,
-          });
           break;
       }
 
@@ -206,23 +184,6 @@ export async function POST(req: Request) {
           search: { include: { credential: true } },
           social: true,
           identity: true,
-          presetBindings: {
-            include: {
-              preset: {
-                select: {
-                  id: true,
-                  key: true,
-                  version: true,
-                  name: true,
-                  platform: true,
-                  scriptRelPath: true,
-                  status: true,
-                  isActive: true,
-                },
-              },
-            },
-            orderBy: { updatedAt: "desc" as const },
-          },
           proxy: true,
           credential: true,
         },

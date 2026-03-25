@@ -1,5 +1,4 @@
 import {
-  BbPreset,
   Query,
   Keyword,
   Source,
@@ -8,11 +7,9 @@ import {
   SocialMediaSourceConfig,
   SearchEngineSourceConfig,
   SourceIdentity,
-  SourcePresetBinding,
   Proxy,
   Credential,
   QueryRun,
-  TaskStatus,
   QuerySourcePolicy,
 } from "@/app/generated/prisma";
 
@@ -30,18 +27,10 @@ export type QueryWithAggregations = Query & {
   latestRun?: QueryRunSummary;
 };
 
-type SourcePresetBindingWithPreset = SourcePresetBinding & {
-  preset: Pick<
-    BbPreset,
-    "id" | "key" | "version" | "name" | "platform" | "scriptRelPath" | "status" | "isActive"
-  >;
-};
-
 type SourceBaseWithRelations = Source & {
   proxy?: Proxy | null;
   credential?: Credential | null;
   identity?: SourceIdentity | null;
-  presetBindings?: SourcePresetBindingWithPreset[];
 };
 
 export type WebSource = SourceBaseWithRelations & {

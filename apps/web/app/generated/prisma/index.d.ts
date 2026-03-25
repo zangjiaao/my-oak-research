@@ -44,21 +44,6 @@ export type Source = $Result.DefaultSelection<Prisma.$SourcePayload>
  */
 export type SourceIdentity = $Result.DefaultSelection<Prisma.$SourceIdentityPayload>
 /**
- * Model BbPreset
- * 
- */
-export type BbPreset = $Result.DefaultSelection<Prisma.$BbPresetPayload>
-/**
- * Model SourcePresetBinding
- * 
- */
-export type SourcePresetBinding = $Result.DefaultSelection<Prisma.$SourcePresetBindingPayload>
-/**
- * Model BbPresetSyncLog
- * 
- */
-export type BbPresetSyncLog = $Result.DefaultSelection<Prisma.$BbPresetSyncLogPayload>
-/**
  * Model WebSourceConfig
  * 
  */
@@ -175,23 +160,6 @@ export namespace $Enums {
 };
 
 export type SourceCategory = (typeof SourceCategory)[keyof typeof SourceCategory]
-
-
-export const BbPresetStatus: {
-  ACTIVE: 'ACTIVE',
-  DEPRECATED: 'DEPRECATED',
-  BROKEN: 'BROKEN'
-};
-
-export type BbPresetStatus = (typeof BbPresetStatus)[keyof typeof BbPresetStatus]
-
-
-export const BbPresetSyncStatus: {
-  SUCCEEDED: 'SUCCEEDED',
-  FAILED: 'FAILED'
-};
-
-export type BbPresetSyncStatus = (typeof BbPresetSyncStatus)[keyof typeof BbPresetSyncStatus]
 
 
 export const CrawlerEngine: {
@@ -319,14 +287,6 @@ export type ReportStatus = (typeof ReportStatus)[keyof typeof ReportStatus]
 export type SourceCategory = $Enums.SourceCategory
 
 export const SourceCategory: typeof $Enums.SourceCategory
-
-export type BbPresetStatus = $Enums.BbPresetStatus
-
-export const BbPresetStatus: typeof $Enums.BbPresetStatus
-
-export type BbPresetSyncStatus = $Enums.BbPresetSyncStatus
-
-export const BbPresetSyncStatus: typeof $Enums.BbPresetSyncStatus
 
 export type CrawlerEngine = $Enums.CrawlerEngine
 
@@ -552,36 +512,6 @@ export class PrismaClient<
     * ```
     */
   get sourceIdentity(): Prisma.SourceIdentityDelegate<ExtArgs, ClientOptions>;
-
-  /**
-   * `prisma.bbPreset`: Exposes CRUD operations for the **BbPreset** model.
-    * Example usage:
-    * ```ts
-    * // Fetch zero or more BbPresets
-    * const bbPresets = await prisma.bbPreset.findMany()
-    * ```
-    */
-  get bbPreset(): Prisma.BbPresetDelegate<ExtArgs, ClientOptions>;
-
-  /**
-   * `prisma.sourcePresetBinding`: Exposes CRUD operations for the **SourcePresetBinding** model.
-    * Example usage:
-    * ```ts
-    * // Fetch zero or more SourcePresetBindings
-    * const sourcePresetBindings = await prisma.sourcePresetBinding.findMany()
-    * ```
-    */
-  get sourcePresetBinding(): Prisma.SourcePresetBindingDelegate<ExtArgs, ClientOptions>;
-
-  /**
-   * `prisma.bbPresetSyncLog`: Exposes CRUD operations for the **BbPresetSyncLog** model.
-    * Example usage:
-    * ```ts
-    * // Fetch zero or more BbPresetSyncLogs
-    * const bbPresetSyncLogs = await prisma.bbPresetSyncLog.findMany()
-    * ```
-    */
-  get bbPresetSyncLog(): Prisma.BbPresetSyncLogDelegate<ExtArgs, ClientOptions>;
 
   /**
    * `prisma.webSourceConfig`: Exposes CRUD operations for the **WebSourceConfig** model.
@@ -1232,9 +1162,6 @@ export namespace Prisma {
     Credential: 'Credential',
     Source: 'Source',
     SourceIdentity: 'SourceIdentity',
-    BbPreset: 'BbPreset',
-    SourcePresetBinding: 'SourcePresetBinding',
-    BbPresetSyncLog: 'BbPresetSyncLog',
     WebSourceConfig: 'WebSourceConfig',
     DarknetSourceConfig: 'DarknetSourceConfig',
     SearchEngineSourceConfig: 'SearchEngineSourceConfig',
@@ -1271,7 +1198,7 @@ export namespace Prisma {
       omit: GlobalOmitOptions
     }
     meta: {
-      modelProps: "category" | "keyword" | "proxy" | "credential" | "source" | "sourceIdentity" | "bbPreset" | "sourcePresetBinding" | "bbPresetSyncLog" | "webSourceConfig" | "darknetSourceConfig" | "searchEngineSourceConfig" | "socialMediaSourceConfig" | "query" | "querySourcePolicy" | "queryRun" | "taskEvent" | "content" | "contentKeyword" | "contentSubjectMatch" | "contentEntity" | "favorite" | "reportTemplate" | "report" | "chatSession" | "chatMessage" | "reportMaterial" | "knowledge" | "knowledgeFile" | "knowledgeChunk"
+      modelProps: "category" | "keyword" | "proxy" | "credential" | "source" | "sourceIdentity" | "webSourceConfig" | "darknetSourceConfig" | "searchEngineSourceConfig" | "socialMediaSourceConfig" | "query" | "querySourcePolicy" | "queryRun" | "taskEvent" | "content" | "contentKeyword" | "contentSubjectMatch" | "contentEntity" | "favorite" | "reportTemplate" | "report" | "chatSession" | "chatMessage" | "reportMaterial" | "knowledge" | "knowledgeFile" | "knowledgeChunk"
       txIsolationLevel: Prisma.TransactionIsolationLevel
     }
     model: {
@@ -1716,228 +1643,6 @@ export namespace Prisma {
           count: {
             args: Prisma.SourceIdentityCountArgs<ExtArgs>
             result: $Utils.Optional<SourceIdentityCountAggregateOutputType> | number
-          }
-        }
-      }
-      BbPreset: {
-        payload: Prisma.$BbPresetPayload<ExtArgs>
-        fields: Prisma.BbPresetFieldRefs
-        operations: {
-          findUnique: {
-            args: Prisma.BbPresetFindUniqueArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$BbPresetPayload> | null
-          }
-          findUniqueOrThrow: {
-            args: Prisma.BbPresetFindUniqueOrThrowArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$BbPresetPayload>
-          }
-          findFirst: {
-            args: Prisma.BbPresetFindFirstArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$BbPresetPayload> | null
-          }
-          findFirstOrThrow: {
-            args: Prisma.BbPresetFindFirstOrThrowArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$BbPresetPayload>
-          }
-          findMany: {
-            args: Prisma.BbPresetFindManyArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$BbPresetPayload>[]
-          }
-          create: {
-            args: Prisma.BbPresetCreateArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$BbPresetPayload>
-          }
-          createMany: {
-            args: Prisma.BbPresetCreateManyArgs<ExtArgs>
-            result: BatchPayload
-          }
-          createManyAndReturn: {
-            args: Prisma.BbPresetCreateManyAndReturnArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$BbPresetPayload>[]
-          }
-          delete: {
-            args: Prisma.BbPresetDeleteArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$BbPresetPayload>
-          }
-          update: {
-            args: Prisma.BbPresetUpdateArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$BbPresetPayload>
-          }
-          deleteMany: {
-            args: Prisma.BbPresetDeleteManyArgs<ExtArgs>
-            result: BatchPayload
-          }
-          updateMany: {
-            args: Prisma.BbPresetUpdateManyArgs<ExtArgs>
-            result: BatchPayload
-          }
-          updateManyAndReturn: {
-            args: Prisma.BbPresetUpdateManyAndReturnArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$BbPresetPayload>[]
-          }
-          upsert: {
-            args: Prisma.BbPresetUpsertArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$BbPresetPayload>
-          }
-          aggregate: {
-            args: Prisma.BbPresetAggregateArgs<ExtArgs>
-            result: $Utils.Optional<AggregateBbPreset>
-          }
-          groupBy: {
-            args: Prisma.BbPresetGroupByArgs<ExtArgs>
-            result: $Utils.Optional<BbPresetGroupByOutputType>[]
-          }
-          count: {
-            args: Prisma.BbPresetCountArgs<ExtArgs>
-            result: $Utils.Optional<BbPresetCountAggregateOutputType> | number
-          }
-        }
-      }
-      SourcePresetBinding: {
-        payload: Prisma.$SourcePresetBindingPayload<ExtArgs>
-        fields: Prisma.SourcePresetBindingFieldRefs
-        operations: {
-          findUnique: {
-            args: Prisma.SourcePresetBindingFindUniqueArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$SourcePresetBindingPayload> | null
-          }
-          findUniqueOrThrow: {
-            args: Prisma.SourcePresetBindingFindUniqueOrThrowArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$SourcePresetBindingPayload>
-          }
-          findFirst: {
-            args: Prisma.SourcePresetBindingFindFirstArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$SourcePresetBindingPayload> | null
-          }
-          findFirstOrThrow: {
-            args: Prisma.SourcePresetBindingFindFirstOrThrowArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$SourcePresetBindingPayload>
-          }
-          findMany: {
-            args: Prisma.SourcePresetBindingFindManyArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$SourcePresetBindingPayload>[]
-          }
-          create: {
-            args: Prisma.SourcePresetBindingCreateArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$SourcePresetBindingPayload>
-          }
-          createMany: {
-            args: Prisma.SourcePresetBindingCreateManyArgs<ExtArgs>
-            result: BatchPayload
-          }
-          createManyAndReturn: {
-            args: Prisma.SourcePresetBindingCreateManyAndReturnArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$SourcePresetBindingPayload>[]
-          }
-          delete: {
-            args: Prisma.SourcePresetBindingDeleteArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$SourcePresetBindingPayload>
-          }
-          update: {
-            args: Prisma.SourcePresetBindingUpdateArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$SourcePresetBindingPayload>
-          }
-          deleteMany: {
-            args: Prisma.SourcePresetBindingDeleteManyArgs<ExtArgs>
-            result: BatchPayload
-          }
-          updateMany: {
-            args: Prisma.SourcePresetBindingUpdateManyArgs<ExtArgs>
-            result: BatchPayload
-          }
-          updateManyAndReturn: {
-            args: Prisma.SourcePresetBindingUpdateManyAndReturnArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$SourcePresetBindingPayload>[]
-          }
-          upsert: {
-            args: Prisma.SourcePresetBindingUpsertArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$SourcePresetBindingPayload>
-          }
-          aggregate: {
-            args: Prisma.SourcePresetBindingAggregateArgs<ExtArgs>
-            result: $Utils.Optional<AggregateSourcePresetBinding>
-          }
-          groupBy: {
-            args: Prisma.SourcePresetBindingGroupByArgs<ExtArgs>
-            result: $Utils.Optional<SourcePresetBindingGroupByOutputType>[]
-          }
-          count: {
-            args: Prisma.SourcePresetBindingCountArgs<ExtArgs>
-            result: $Utils.Optional<SourcePresetBindingCountAggregateOutputType> | number
-          }
-        }
-      }
-      BbPresetSyncLog: {
-        payload: Prisma.$BbPresetSyncLogPayload<ExtArgs>
-        fields: Prisma.BbPresetSyncLogFieldRefs
-        operations: {
-          findUnique: {
-            args: Prisma.BbPresetSyncLogFindUniqueArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$BbPresetSyncLogPayload> | null
-          }
-          findUniqueOrThrow: {
-            args: Prisma.BbPresetSyncLogFindUniqueOrThrowArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$BbPresetSyncLogPayload>
-          }
-          findFirst: {
-            args: Prisma.BbPresetSyncLogFindFirstArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$BbPresetSyncLogPayload> | null
-          }
-          findFirstOrThrow: {
-            args: Prisma.BbPresetSyncLogFindFirstOrThrowArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$BbPresetSyncLogPayload>
-          }
-          findMany: {
-            args: Prisma.BbPresetSyncLogFindManyArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$BbPresetSyncLogPayload>[]
-          }
-          create: {
-            args: Prisma.BbPresetSyncLogCreateArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$BbPresetSyncLogPayload>
-          }
-          createMany: {
-            args: Prisma.BbPresetSyncLogCreateManyArgs<ExtArgs>
-            result: BatchPayload
-          }
-          createManyAndReturn: {
-            args: Prisma.BbPresetSyncLogCreateManyAndReturnArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$BbPresetSyncLogPayload>[]
-          }
-          delete: {
-            args: Prisma.BbPresetSyncLogDeleteArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$BbPresetSyncLogPayload>
-          }
-          update: {
-            args: Prisma.BbPresetSyncLogUpdateArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$BbPresetSyncLogPayload>
-          }
-          deleteMany: {
-            args: Prisma.BbPresetSyncLogDeleteManyArgs<ExtArgs>
-            result: BatchPayload
-          }
-          updateMany: {
-            args: Prisma.BbPresetSyncLogUpdateManyArgs<ExtArgs>
-            result: BatchPayload
-          }
-          updateManyAndReturn: {
-            args: Prisma.BbPresetSyncLogUpdateManyAndReturnArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$BbPresetSyncLogPayload>[]
-          }
-          upsert: {
-            args: Prisma.BbPresetSyncLogUpsertArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$BbPresetSyncLogPayload>
-          }
-          aggregate: {
-            args: Prisma.BbPresetSyncLogAggregateArgs<ExtArgs>
-            result: $Utils.Optional<AggregateBbPresetSyncLog>
-          }
-          groupBy: {
-            args: Prisma.BbPresetSyncLogGroupByArgs<ExtArgs>
-            result: $Utils.Optional<BbPresetSyncLogGroupByOutputType>[]
-          }
-          count: {
-            args: Prisma.BbPresetSyncLogCountArgs<ExtArgs>
-            result: $Utils.Optional<BbPresetSyncLogCountAggregateOutputType> | number
           }
         }
       }
@@ -3593,9 +3298,6 @@ export namespace Prisma {
     credential?: CredentialOmit
     source?: SourceOmit
     sourceIdentity?: SourceIdentityOmit
-    bbPreset?: BbPresetOmit
-    sourcePresetBinding?: SourcePresetBindingOmit
-    bbPresetSyncLog?: BbPresetSyncLogOmit
     webSourceConfig?: WebSourceConfigOmit
     darknetSourceConfig?: DarknetSourceConfigOmit
     searchEngineSourceConfig?: SearchEngineSourceConfigOmit
@@ -3884,14 +3586,12 @@ export namespace Prisma {
    */
 
   export type SourceCountOutputType = {
-    presetBindings: number
     queries: number
     derivedKeywords: number
     querySourcePolicies: number
   }
 
   export type SourceCountOutputTypeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    presetBindings?: boolean | SourceCountOutputTypeCountPresetBindingsArgs
     queries?: boolean | SourceCountOutputTypeCountQueriesArgs
     derivedKeywords?: boolean | SourceCountOutputTypeCountDerivedKeywordsArgs
     querySourcePolicies?: boolean | SourceCountOutputTypeCountQuerySourcePoliciesArgs
@@ -3906,13 +3606,6 @@ export namespace Prisma {
      * Select specific fields to fetch from the SourceCountOutputType
      */
     select?: SourceCountOutputTypeSelect<ExtArgs> | null
-  }
-
-  /**
-   * SourceCountOutputType without action
-   */
-  export type SourceCountOutputTypeCountPresetBindingsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    where?: SourcePresetBindingWhereInput
   }
 
   /**
@@ -3934,37 +3627,6 @@ export namespace Prisma {
    */
   export type SourceCountOutputTypeCountQuerySourcePoliciesArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     where?: QuerySourcePolicyWhereInput
-  }
-
-
-  /**
-   * Count Type BbPresetCountOutputType
-   */
-
-  export type BbPresetCountOutputType = {
-    sourceBindings: number
-  }
-
-  export type BbPresetCountOutputTypeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    sourceBindings?: boolean | BbPresetCountOutputTypeCountSourceBindingsArgs
-  }
-
-  // Custom InputTypes
-  /**
-   * BbPresetCountOutputType without action
-   */
-  export type BbPresetCountOutputTypeDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the BbPresetCountOutputType
-     */
-    select?: BbPresetCountOutputTypeSelect<ExtArgs> | null
-  }
-
-  /**
-   * BbPresetCountOutputType without action
-   */
-  export type BbPresetCountOutputTypeCountSourceBindingsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    where?: SourcePresetBindingWhereInput
   }
 
 
@@ -9219,7 +8881,6 @@ export namespace Prisma {
     search?: boolean | Source$searchArgs<ExtArgs>
     social?: boolean | Source$socialArgs<ExtArgs>
     identity?: boolean | Source$identityArgs<ExtArgs>
-    presetBindings?: boolean | Source$presetBindingsArgs<ExtArgs>
     queries?: boolean | Source$queriesArgs<ExtArgs>
     derivedKeywords?: boolean | Source$derivedKeywordsArgs<ExtArgs>
     querySourcePolicies?: boolean | Source$querySourcePoliciesArgs<ExtArgs>
@@ -9287,7 +8948,6 @@ export namespace Prisma {
     search?: boolean | Source$searchArgs<ExtArgs>
     social?: boolean | Source$socialArgs<ExtArgs>
     identity?: boolean | Source$identityArgs<ExtArgs>
-    presetBindings?: boolean | Source$presetBindingsArgs<ExtArgs>
     queries?: boolean | Source$queriesArgs<ExtArgs>
     derivedKeywords?: boolean | Source$derivedKeywordsArgs<ExtArgs>
     querySourcePolicies?: boolean | Source$querySourcePoliciesArgs<ExtArgs>
@@ -9312,7 +8972,6 @@ export namespace Prisma {
       search: Prisma.$SearchEngineSourceConfigPayload<ExtArgs> | null
       social: Prisma.$SocialMediaSourceConfigPayload<ExtArgs> | null
       identity: Prisma.$SourceIdentityPayload<ExtArgs> | null
-      presetBindings: Prisma.$SourcePresetBindingPayload<ExtArgs>[]
       queries: Prisma.$QueryPayload<ExtArgs>[]
       derivedKeywords: Prisma.$KeywordPayload<ExtArgs>[]
       querySourcePolicies: Prisma.$QuerySourcePolicyPayload<ExtArgs>[]
@@ -9732,7 +9391,6 @@ export namespace Prisma {
     search<T extends Source$searchArgs<ExtArgs> = {}>(args?: Subset<T, Source$searchArgs<ExtArgs>>): Prisma__SearchEngineSourceConfigClient<$Result.GetResult<Prisma.$SearchEngineSourceConfigPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
     social<T extends Source$socialArgs<ExtArgs> = {}>(args?: Subset<T, Source$socialArgs<ExtArgs>>): Prisma__SocialMediaSourceConfigClient<$Result.GetResult<Prisma.$SocialMediaSourceConfigPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
     identity<T extends Source$identityArgs<ExtArgs> = {}>(args?: Subset<T, Source$identityArgs<ExtArgs>>): Prisma__SourceIdentityClient<$Result.GetResult<Prisma.$SourceIdentityPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
-    presetBindings<T extends Source$presetBindingsArgs<ExtArgs> = {}>(args?: Subset<T, Source$presetBindingsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SourcePresetBindingPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     queries<T extends Source$queriesArgs<ExtArgs> = {}>(args?: Subset<T, Source$queriesArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$QueryPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     derivedKeywords<T extends Source$derivedKeywordsArgs<ExtArgs> = {}>(args?: Subset<T, Source$derivedKeywordsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$KeywordPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     querySourcePolicies<T extends Source$querySourcePoliciesArgs<ExtArgs> = {}>(args?: Subset<T, Source$querySourcePoliciesArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$QuerySourcePolicyPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
@@ -10304,30 +9962,6 @@ export namespace Prisma {
      */
     include?: SourceIdentityInclude<ExtArgs> | null
     where?: SourceIdentityWhereInput
-  }
-
-  /**
-   * Source.presetBindings
-   */
-  export type Source$presetBindingsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the SourcePresetBinding
-     */
-    select?: SourcePresetBindingSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the SourcePresetBinding
-     */
-    omit?: SourcePresetBindingOmit<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: SourcePresetBindingInclude<ExtArgs> | null
-    where?: SourcePresetBindingWhereInput
-    orderBy?: SourcePresetBindingOrderByWithRelationInput | SourcePresetBindingOrderByWithRelationInput[]
-    cursor?: SourcePresetBindingWhereUniqueInput
-    take?: number
-    skip?: number
-    distinct?: SourcePresetBindingScalarFieldEnum | SourcePresetBindingScalarFieldEnum[]
   }
 
   /**
@@ -11541,3418 +11175,6 @@ export namespace Prisma {
      * Choose, which related nodes to fetch as well
      */
     include?: SourceIdentityInclude<ExtArgs> | null
-  }
-
-
-  /**
-   * Model BbPreset
-   */
-
-  export type AggregateBbPreset = {
-    _count: BbPresetCountAggregateOutputType | null
-    _min: BbPresetMinAggregateOutputType | null
-    _max: BbPresetMaxAggregateOutputType | null
-  }
-
-  export type BbPresetMinAggregateOutputType = {
-    id: string | null
-    key: string | null
-    version: string | null
-    name: string | null
-    description: string | null
-    platform: string | null
-    scriptRelPath: string | null
-    scriptHash: string | null
-    scriptSnapshotKey: string | null
-    status: $Enums.BbPresetStatus | null
-    isActive: boolean | null
-    createdAt: Date | null
-    updatedAt: Date | null
-  }
-
-  export type BbPresetMaxAggregateOutputType = {
-    id: string | null
-    key: string | null
-    version: string | null
-    name: string | null
-    description: string | null
-    platform: string | null
-    scriptRelPath: string | null
-    scriptHash: string | null
-    scriptSnapshotKey: string | null
-    status: $Enums.BbPresetStatus | null
-    isActive: boolean | null
-    createdAt: Date | null
-    updatedAt: Date | null
-  }
-
-  export type BbPresetCountAggregateOutputType = {
-    id: number
-    key: number
-    version: number
-    name: number
-    description: number
-    platform: number
-    scriptRelPath: number
-    scriptHash: number
-    scriptSnapshotKey: number
-    argsSchema: number
-    outputSchema: number
-    status: number
-    isActive: number
-    createdAt: number
-    updatedAt: number
-    _all: number
-  }
-
-
-  export type BbPresetMinAggregateInputType = {
-    id?: true
-    key?: true
-    version?: true
-    name?: true
-    description?: true
-    platform?: true
-    scriptRelPath?: true
-    scriptHash?: true
-    scriptSnapshotKey?: true
-    status?: true
-    isActive?: true
-    createdAt?: true
-    updatedAt?: true
-  }
-
-  export type BbPresetMaxAggregateInputType = {
-    id?: true
-    key?: true
-    version?: true
-    name?: true
-    description?: true
-    platform?: true
-    scriptRelPath?: true
-    scriptHash?: true
-    scriptSnapshotKey?: true
-    status?: true
-    isActive?: true
-    createdAt?: true
-    updatedAt?: true
-  }
-
-  export type BbPresetCountAggregateInputType = {
-    id?: true
-    key?: true
-    version?: true
-    name?: true
-    description?: true
-    platform?: true
-    scriptRelPath?: true
-    scriptHash?: true
-    scriptSnapshotKey?: true
-    argsSchema?: true
-    outputSchema?: true
-    status?: true
-    isActive?: true
-    createdAt?: true
-    updatedAt?: true
-    _all?: true
-  }
-
-  export type BbPresetAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Filter which BbPreset to aggregate.
-     */
-    where?: BbPresetWhereInput
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
-     * 
-     * Determine the order of BbPresets to fetch.
-     */
-    orderBy?: BbPresetOrderByWithRelationInput | BbPresetOrderByWithRelationInput[]
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
-     * 
-     * Sets the start position
-     */
-    cursor?: BbPresetWhereUniqueInput
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
-     * Take `±n` BbPresets from the position of the cursor.
-     */
-    take?: number
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
-     * Skip the first `n` BbPresets.
-     */
-    skip?: number
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
-     * 
-     * Count returned BbPresets
-    **/
-    _count?: true | BbPresetCountAggregateInputType
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
-     * 
-     * Select which fields to find the minimum value
-    **/
-    _min?: BbPresetMinAggregateInputType
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
-     * 
-     * Select which fields to find the maximum value
-    **/
-    _max?: BbPresetMaxAggregateInputType
-  }
-
-  export type GetBbPresetAggregateType<T extends BbPresetAggregateArgs> = {
-        [P in keyof T & keyof AggregateBbPreset]: P extends '_count' | 'count'
-      ? T[P] extends true
-        ? number
-        : GetScalarType<T[P], AggregateBbPreset[P]>
-      : GetScalarType<T[P], AggregateBbPreset[P]>
-  }
-
-
-
-
-  export type BbPresetGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    where?: BbPresetWhereInput
-    orderBy?: BbPresetOrderByWithAggregationInput | BbPresetOrderByWithAggregationInput[]
-    by: BbPresetScalarFieldEnum[] | BbPresetScalarFieldEnum
-    having?: BbPresetScalarWhereWithAggregatesInput
-    take?: number
-    skip?: number
-    _count?: BbPresetCountAggregateInputType | true
-    _min?: BbPresetMinAggregateInputType
-    _max?: BbPresetMaxAggregateInputType
-  }
-
-  export type BbPresetGroupByOutputType = {
-    id: string
-    key: string
-    version: string
-    name: string
-    description: string | null
-    platform: string
-    scriptRelPath: string
-    scriptHash: string
-    scriptSnapshotKey: string | null
-    argsSchema: JsonValue
-    outputSchema: JsonValue
-    status: $Enums.BbPresetStatus
-    isActive: boolean
-    createdAt: Date
-    updatedAt: Date
-    _count: BbPresetCountAggregateOutputType | null
-    _min: BbPresetMinAggregateOutputType | null
-    _max: BbPresetMaxAggregateOutputType | null
-  }
-
-  type GetBbPresetGroupByPayload<T extends BbPresetGroupByArgs> = Prisma.PrismaPromise<
-    Array<
-      PickEnumerable<BbPresetGroupByOutputType, T['by']> &
-        {
-          [P in ((keyof T) & (keyof BbPresetGroupByOutputType))]: P extends '_count'
-            ? T[P] extends boolean
-              ? number
-              : GetScalarType<T[P], BbPresetGroupByOutputType[P]>
-            : GetScalarType<T[P], BbPresetGroupByOutputType[P]>
-        }
-      >
-    >
-
-
-  export type BbPresetSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
-    id?: boolean
-    key?: boolean
-    version?: boolean
-    name?: boolean
-    description?: boolean
-    platform?: boolean
-    scriptRelPath?: boolean
-    scriptHash?: boolean
-    scriptSnapshotKey?: boolean
-    argsSchema?: boolean
-    outputSchema?: boolean
-    status?: boolean
-    isActive?: boolean
-    createdAt?: boolean
-    updatedAt?: boolean
-    sourceBindings?: boolean | BbPreset$sourceBindingsArgs<ExtArgs>
-    _count?: boolean | BbPresetCountOutputTypeDefaultArgs<ExtArgs>
-  }, ExtArgs["result"]["bbPreset"]>
-
-  export type BbPresetSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
-    id?: boolean
-    key?: boolean
-    version?: boolean
-    name?: boolean
-    description?: boolean
-    platform?: boolean
-    scriptRelPath?: boolean
-    scriptHash?: boolean
-    scriptSnapshotKey?: boolean
-    argsSchema?: boolean
-    outputSchema?: boolean
-    status?: boolean
-    isActive?: boolean
-    createdAt?: boolean
-    updatedAt?: boolean
-  }, ExtArgs["result"]["bbPreset"]>
-
-  export type BbPresetSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
-    id?: boolean
-    key?: boolean
-    version?: boolean
-    name?: boolean
-    description?: boolean
-    platform?: boolean
-    scriptRelPath?: boolean
-    scriptHash?: boolean
-    scriptSnapshotKey?: boolean
-    argsSchema?: boolean
-    outputSchema?: boolean
-    status?: boolean
-    isActive?: boolean
-    createdAt?: boolean
-    updatedAt?: boolean
-  }, ExtArgs["result"]["bbPreset"]>
-
-  export type BbPresetSelectScalar = {
-    id?: boolean
-    key?: boolean
-    version?: boolean
-    name?: boolean
-    description?: boolean
-    platform?: boolean
-    scriptRelPath?: boolean
-    scriptHash?: boolean
-    scriptSnapshotKey?: boolean
-    argsSchema?: boolean
-    outputSchema?: boolean
-    status?: boolean
-    isActive?: boolean
-    createdAt?: boolean
-    updatedAt?: boolean
-  }
-
-  export type BbPresetOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "key" | "version" | "name" | "description" | "platform" | "scriptRelPath" | "scriptHash" | "scriptSnapshotKey" | "argsSchema" | "outputSchema" | "status" | "isActive" | "createdAt" | "updatedAt", ExtArgs["result"]["bbPreset"]>
-  export type BbPresetInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    sourceBindings?: boolean | BbPreset$sourceBindingsArgs<ExtArgs>
-    _count?: boolean | BbPresetCountOutputTypeDefaultArgs<ExtArgs>
-  }
-  export type BbPresetIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {}
-  export type BbPresetIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {}
-
-  export type $BbPresetPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    name: "BbPreset"
-    objects: {
-      sourceBindings: Prisma.$SourcePresetBindingPayload<ExtArgs>[]
-    }
-    scalars: $Extensions.GetPayloadResult<{
-      id: string
-      key: string
-      version: string
-      name: string
-      description: string | null
-      platform: string
-      scriptRelPath: string
-      scriptHash: string
-      scriptSnapshotKey: string | null
-      argsSchema: Prisma.JsonValue
-      outputSchema: Prisma.JsonValue
-      status: $Enums.BbPresetStatus
-      isActive: boolean
-      createdAt: Date
-      updatedAt: Date
-    }, ExtArgs["result"]["bbPreset"]>
-    composites: {}
-  }
-
-  type BbPresetGetPayload<S extends boolean | null | undefined | BbPresetDefaultArgs> = $Result.GetResult<Prisma.$BbPresetPayload, S>
-
-  type BbPresetCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
-    Omit<BbPresetFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
-      select?: BbPresetCountAggregateInputType | true
-    }
-
-  export interface BbPresetDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
-    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['BbPreset'], meta: { name: 'BbPreset' } }
-    /**
-     * Find zero or one BbPreset that matches the filter.
-     * @param {BbPresetFindUniqueArgs} args - Arguments to find a BbPreset
-     * @example
-     * // Get one BbPreset
-     * const bbPreset = await prisma.bbPreset.findUnique({
-     *   where: {
-     *     // ... provide filter here
-     *   }
-     * })
-     */
-    findUnique<T extends BbPresetFindUniqueArgs>(args: SelectSubset<T, BbPresetFindUniqueArgs<ExtArgs>>): Prisma__BbPresetClient<$Result.GetResult<Prisma.$BbPresetPayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
-
-    /**
-     * Find one BbPreset that matches the filter or throw an error with `error.code='P2025'`
-     * if no matches were found.
-     * @param {BbPresetFindUniqueOrThrowArgs} args - Arguments to find a BbPreset
-     * @example
-     * // Get one BbPreset
-     * const bbPreset = await prisma.bbPreset.findUniqueOrThrow({
-     *   where: {
-     *     // ... provide filter here
-     *   }
-     * })
-     */
-    findUniqueOrThrow<T extends BbPresetFindUniqueOrThrowArgs>(args: SelectSubset<T, BbPresetFindUniqueOrThrowArgs<ExtArgs>>): Prisma__BbPresetClient<$Result.GetResult<Prisma.$BbPresetPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
-
-    /**
-     * Find the first BbPreset that matches the filter.
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * @param {BbPresetFindFirstArgs} args - Arguments to find a BbPreset
-     * @example
-     * // Get one BbPreset
-     * const bbPreset = await prisma.bbPreset.findFirst({
-     *   where: {
-     *     // ... provide filter here
-     *   }
-     * })
-     */
-    findFirst<T extends BbPresetFindFirstArgs>(args?: SelectSubset<T, BbPresetFindFirstArgs<ExtArgs>>): Prisma__BbPresetClient<$Result.GetResult<Prisma.$BbPresetPayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
-
-    /**
-     * Find the first BbPreset that matches the filter or
-     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * @param {BbPresetFindFirstOrThrowArgs} args - Arguments to find a BbPreset
-     * @example
-     * // Get one BbPreset
-     * const bbPreset = await prisma.bbPreset.findFirstOrThrow({
-     *   where: {
-     *     // ... provide filter here
-     *   }
-     * })
-     */
-    findFirstOrThrow<T extends BbPresetFindFirstOrThrowArgs>(args?: SelectSubset<T, BbPresetFindFirstOrThrowArgs<ExtArgs>>): Prisma__BbPresetClient<$Result.GetResult<Prisma.$BbPresetPayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
-
-    /**
-     * Find zero or more BbPresets that matches the filter.
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * @param {BbPresetFindManyArgs} args - Arguments to filter and select certain fields only.
-     * @example
-     * // Get all BbPresets
-     * const bbPresets = await prisma.bbPreset.findMany()
-     * 
-     * // Get first 10 BbPresets
-     * const bbPresets = await prisma.bbPreset.findMany({ take: 10 })
-     * 
-     * // Only select the `id`
-     * const bbPresetWithIdOnly = await prisma.bbPreset.findMany({ select: { id: true } })
-     * 
-     */
-    findMany<T extends BbPresetFindManyArgs>(args?: SelectSubset<T, BbPresetFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$BbPresetPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
-
-    /**
-     * Create a BbPreset.
-     * @param {BbPresetCreateArgs} args - Arguments to create a BbPreset.
-     * @example
-     * // Create one BbPreset
-     * const BbPreset = await prisma.bbPreset.create({
-     *   data: {
-     *     // ... data to create a BbPreset
-     *   }
-     * })
-     * 
-     */
-    create<T extends BbPresetCreateArgs>(args: SelectSubset<T, BbPresetCreateArgs<ExtArgs>>): Prisma__BbPresetClient<$Result.GetResult<Prisma.$BbPresetPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
-
-    /**
-     * Create many BbPresets.
-     * @param {BbPresetCreateManyArgs} args - Arguments to create many BbPresets.
-     * @example
-     * // Create many BbPresets
-     * const bbPreset = await prisma.bbPreset.createMany({
-     *   data: [
-     *     // ... provide data here
-     *   ]
-     * })
-     *     
-     */
-    createMany<T extends BbPresetCreateManyArgs>(args?: SelectSubset<T, BbPresetCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
-
-    /**
-     * Create many BbPresets and returns the data saved in the database.
-     * @param {BbPresetCreateManyAndReturnArgs} args - Arguments to create many BbPresets.
-     * @example
-     * // Create many BbPresets
-     * const bbPreset = await prisma.bbPreset.createManyAndReturn({
-     *   data: [
-     *     // ... provide data here
-     *   ]
-     * })
-     * 
-     * // Create many BbPresets and only return the `id`
-     * const bbPresetWithIdOnly = await prisma.bbPreset.createManyAndReturn({
-     *   select: { id: true },
-     *   data: [
-     *     // ... provide data here
-     *   ]
-     * })
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * 
-     */
-    createManyAndReturn<T extends BbPresetCreateManyAndReturnArgs>(args?: SelectSubset<T, BbPresetCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$BbPresetPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
-
-    /**
-     * Delete a BbPreset.
-     * @param {BbPresetDeleteArgs} args - Arguments to delete one BbPreset.
-     * @example
-     * // Delete one BbPreset
-     * const BbPreset = await prisma.bbPreset.delete({
-     *   where: {
-     *     // ... filter to delete one BbPreset
-     *   }
-     * })
-     * 
-     */
-    delete<T extends BbPresetDeleteArgs>(args: SelectSubset<T, BbPresetDeleteArgs<ExtArgs>>): Prisma__BbPresetClient<$Result.GetResult<Prisma.$BbPresetPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
-
-    /**
-     * Update one BbPreset.
-     * @param {BbPresetUpdateArgs} args - Arguments to update one BbPreset.
-     * @example
-     * // Update one BbPreset
-     * const bbPreset = await prisma.bbPreset.update({
-     *   where: {
-     *     // ... provide filter here
-     *   },
-     *   data: {
-     *     // ... provide data here
-     *   }
-     * })
-     * 
-     */
-    update<T extends BbPresetUpdateArgs>(args: SelectSubset<T, BbPresetUpdateArgs<ExtArgs>>): Prisma__BbPresetClient<$Result.GetResult<Prisma.$BbPresetPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
-
-    /**
-     * Delete zero or more BbPresets.
-     * @param {BbPresetDeleteManyArgs} args - Arguments to filter BbPresets to delete.
-     * @example
-     * // Delete a few BbPresets
-     * const { count } = await prisma.bbPreset.deleteMany({
-     *   where: {
-     *     // ... provide filter here
-     *   }
-     * })
-     * 
-     */
-    deleteMany<T extends BbPresetDeleteManyArgs>(args?: SelectSubset<T, BbPresetDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
-
-    /**
-     * Update zero or more BbPresets.
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * @param {BbPresetUpdateManyArgs} args - Arguments to update one or more rows.
-     * @example
-     * // Update many BbPresets
-     * const bbPreset = await prisma.bbPreset.updateMany({
-     *   where: {
-     *     // ... provide filter here
-     *   },
-     *   data: {
-     *     // ... provide data here
-     *   }
-     * })
-     * 
-     */
-    updateMany<T extends BbPresetUpdateManyArgs>(args: SelectSubset<T, BbPresetUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
-
-    /**
-     * Update zero or more BbPresets and returns the data updated in the database.
-     * @param {BbPresetUpdateManyAndReturnArgs} args - Arguments to update many BbPresets.
-     * @example
-     * // Update many BbPresets
-     * const bbPreset = await prisma.bbPreset.updateManyAndReturn({
-     *   where: {
-     *     // ... provide filter here
-     *   },
-     *   data: [
-     *     // ... provide data here
-     *   ]
-     * })
-     * 
-     * // Update zero or more BbPresets and only return the `id`
-     * const bbPresetWithIdOnly = await prisma.bbPreset.updateManyAndReturn({
-     *   select: { id: true },
-     *   where: {
-     *     // ... provide filter here
-     *   },
-     *   data: [
-     *     // ... provide data here
-     *   ]
-     * })
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * 
-     */
-    updateManyAndReturn<T extends BbPresetUpdateManyAndReturnArgs>(args: SelectSubset<T, BbPresetUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$BbPresetPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
-
-    /**
-     * Create or update one BbPreset.
-     * @param {BbPresetUpsertArgs} args - Arguments to update or create a BbPreset.
-     * @example
-     * // Update or create a BbPreset
-     * const bbPreset = await prisma.bbPreset.upsert({
-     *   create: {
-     *     // ... data to create a BbPreset
-     *   },
-     *   update: {
-     *     // ... in case it already exists, update
-     *   },
-     *   where: {
-     *     // ... the filter for the BbPreset we want to update
-     *   }
-     * })
-     */
-    upsert<T extends BbPresetUpsertArgs>(args: SelectSubset<T, BbPresetUpsertArgs<ExtArgs>>): Prisma__BbPresetClient<$Result.GetResult<Prisma.$BbPresetPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
-
-
-    /**
-     * Count the number of BbPresets.
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * @param {BbPresetCountArgs} args - Arguments to filter BbPresets to count.
-     * @example
-     * // Count the number of BbPresets
-     * const count = await prisma.bbPreset.count({
-     *   where: {
-     *     // ... the filter for the BbPresets we want to count
-     *   }
-     * })
-    **/
-    count<T extends BbPresetCountArgs>(
-      args?: Subset<T, BbPresetCountArgs>,
-    ): Prisma.PrismaPromise<
-      T extends $Utils.Record<'select', any>
-        ? T['select'] extends true
-          ? number
-          : GetScalarType<T['select'], BbPresetCountAggregateOutputType>
-        : number
-    >
-
-    /**
-     * Allows you to perform aggregations operations on a BbPreset.
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * @param {BbPresetAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
-     * @example
-     * // Ordered by age ascending
-     * // Where email contains prisma.io
-     * // Limited to the 10 users
-     * const aggregations = await prisma.user.aggregate({
-     *   _avg: {
-     *     age: true,
-     *   },
-     *   where: {
-     *     email: {
-     *       contains: "prisma.io",
-     *     },
-     *   },
-     *   orderBy: {
-     *     age: "asc",
-     *   },
-     *   take: 10,
-     * })
-    **/
-    aggregate<T extends BbPresetAggregateArgs>(args: Subset<T, BbPresetAggregateArgs>): Prisma.PrismaPromise<GetBbPresetAggregateType<T>>
-
-    /**
-     * Group by BbPreset.
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * @param {BbPresetGroupByArgs} args - Group by arguments.
-     * @example
-     * // Group by city, order by createdAt, get count
-     * const result = await prisma.user.groupBy({
-     *   by: ['city', 'createdAt'],
-     *   orderBy: {
-     *     createdAt: true
-     *   },
-     *   _count: {
-     *     _all: true
-     *   },
-     * })
-     * 
-    **/
-    groupBy<
-      T extends BbPresetGroupByArgs,
-      HasSelectOrTake extends Or<
-        Extends<'skip', Keys<T>>,
-        Extends<'take', Keys<T>>
-      >,
-      OrderByArg extends True extends HasSelectOrTake
-        ? { orderBy: BbPresetGroupByArgs['orderBy'] }
-        : { orderBy?: BbPresetGroupByArgs['orderBy'] },
-      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
-      ByFields extends MaybeTupleToUnion<T['by']>,
-      ByValid extends Has<ByFields, OrderFields>,
-      HavingFields extends GetHavingFields<T['having']>,
-      HavingValid extends Has<ByFields, HavingFields>,
-      ByEmpty extends T['by'] extends never[] ? True : False,
-      InputErrors extends ByEmpty extends True
-      ? `Error: "by" must not be empty.`
-      : HavingValid extends False
-      ? {
-          [P in HavingFields]: P extends ByFields
-            ? never
-            : P extends string
-            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
-            : [
-                Error,
-                'Field ',
-                P,
-                ` in "having" needs to be provided in "by"`,
-              ]
-        }[HavingFields]
-      : 'take' extends Keys<T>
-      ? 'orderBy' extends Keys<T>
-        ? ByValid extends True
-          ? {}
-          : {
-              [P in OrderFields]: P extends ByFields
-                ? never
-                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
-            }[OrderFields]
-        : 'Error: If you provide "take", you also need to provide "orderBy"'
-      : 'skip' extends Keys<T>
-      ? 'orderBy' extends Keys<T>
-        ? ByValid extends True
-          ? {}
-          : {
-              [P in OrderFields]: P extends ByFields
-                ? never
-                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
-            }[OrderFields]
-        : 'Error: If you provide "skip", you also need to provide "orderBy"'
-      : ByValid extends True
-      ? {}
-      : {
-          [P in OrderFields]: P extends ByFields
-            ? never
-            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
-        }[OrderFields]
-    >(args: SubsetIntersection<T, BbPresetGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetBbPresetGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
-  /**
-   * Fields of the BbPreset model
-   */
-  readonly fields: BbPresetFieldRefs;
-  }
-
-  /**
-   * The delegate class that acts as a "Promise-like" for BbPreset.
-   * Why is this prefixed with `Prisma__`?
-   * Because we want to prevent naming conflicts as mentioned in
-   * https://github.com/prisma/prisma-client-js/issues/707
-   */
-  export interface Prisma__BbPresetClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
-    readonly [Symbol.toStringTag]: "PrismaPromise"
-    sourceBindings<T extends BbPreset$sourceBindingsArgs<ExtArgs> = {}>(args?: Subset<T, BbPreset$sourceBindingsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SourcePresetBindingPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
-    /**
-     * Attaches callbacks for the resolution and/or rejection of the Promise.
-     * @param onfulfilled The callback to execute when the Promise is resolved.
-     * @param onrejected The callback to execute when the Promise is rejected.
-     * @returns A Promise for the completion of which ever callback is executed.
-     */
-    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
-    /**
-     * Attaches a callback for only the rejection of the Promise.
-     * @param onrejected The callback to execute when the Promise is rejected.
-     * @returns A Promise for the completion of the callback.
-     */
-    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
-    /**
-     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
-     * resolved value cannot be modified from the callback.
-     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
-     * @returns A Promise for the completion of the callback.
-     */
-    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
-  }
-
-
-
-
-  /**
-   * Fields of the BbPreset model
-   */
-  interface BbPresetFieldRefs {
-    readonly id: FieldRef<"BbPreset", 'String'>
-    readonly key: FieldRef<"BbPreset", 'String'>
-    readonly version: FieldRef<"BbPreset", 'String'>
-    readonly name: FieldRef<"BbPreset", 'String'>
-    readonly description: FieldRef<"BbPreset", 'String'>
-    readonly platform: FieldRef<"BbPreset", 'String'>
-    readonly scriptRelPath: FieldRef<"BbPreset", 'String'>
-    readonly scriptHash: FieldRef<"BbPreset", 'String'>
-    readonly scriptSnapshotKey: FieldRef<"BbPreset", 'String'>
-    readonly argsSchema: FieldRef<"BbPreset", 'Json'>
-    readonly outputSchema: FieldRef<"BbPreset", 'Json'>
-    readonly status: FieldRef<"BbPreset", 'BbPresetStatus'>
-    readonly isActive: FieldRef<"BbPreset", 'Boolean'>
-    readonly createdAt: FieldRef<"BbPreset", 'DateTime'>
-    readonly updatedAt: FieldRef<"BbPreset", 'DateTime'>
-  }
-    
-
-  // Custom InputTypes
-  /**
-   * BbPreset findUnique
-   */
-  export type BbPresetFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the BbPreset
-     */
-    select?: BbPresetSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the BbPreset
-     */
-    omit?: BbPresetOmit<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: BbPresetInclude<ExtArgs> | null
-    /**
-     * Filter, which BbPreset to fetch.
-     */
-    where: BbPresetWhereUniqueInput
-  }
-
-  /**
-   * BbPreset findUniqueOrThrow
-   */
-  export type BbPresetFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the BbPreset
-     */
-    select?: BbPresetSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the BbPreset
-     */
-    omit?: BbPresetOmit<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: BbPresetInclude<ExtArgs> | null
-    /**
-     * Filter, which BbPreset to fetch.
-     */
-    where: BbPresetWhereUniqueInput
-  }
-
-  /**
-   * BbPreset findFirst
-   */
-  export type BbPresetFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the BbPreset
-     */
-    select?: BbPresetSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the BbPreset
-     */
-    omit?: BbPresetOmit<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: BbPresetInclude<ExtArgs> | null
-    /**
-     * Filter, which BbPreset to fetch.
-     */
-    where?: BbPresetWhereInput
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
-     * 
-     * Determine the order of BbPresets to fetch.
-     */
-    orderBy?: BbPresetOrderByWithRelationInput | BbPresetOrderByWithRelationInput[]
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
-     * 
-     * Sets the position for searching for BbPresets.
-     */
-    cursor?: BbPresetWhereUniqueInput
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
-     * Take `±n` BbPresets from the position of the cursor.
-     */
-    take?: number
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
-     * Skip the first `n` BbPresets.
-     */
-    skip?: number
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
-     * 
-     * Filter by unique combinations of BbPresets.
-     */
-    distinct?: BbPresetScalarFieldEnum | BbPresetScalarFieldEnum[]
-  }
-
-  /**
-   * BbPreset findFirstOrThrow
-   */
-  export type BbPresetFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the BbPreset
-     */
-    select?: BbPresetSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the BbPreset
-     */
-    omit?: BbPresetOmit<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: BbPresetInclude<ExtArgs> | null
-    /**
-     * Filter, which BbPreset to fetch.
-     */
-    where?: BbPresetWhereInput
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
-     * 
-     * Determine the order of BbPresets to fetch.
-     */
-    orderBy?: BbPresetOrderByWithRelationInput | BbPresetOrderByWithRelationInput[]
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
-     * 
-     * Sets the position for searching for BbPresets.
-     */
-    cursor?: BbPresetWhereUniqueInput
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
-     * Take `±n` BbPresets from the position of the cursor.
-     */
-    take?: number
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
-     * Skip the first `n` BbPresets.
-     */
-    skip?: number
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
-     * 
-     * Filter by unique combinations of BbPresets.
-     */
-    distinct?: BbPresetScalarFieldEnum | BbPresetScalarFieldEnum[]
-  }
-
-  /**
-   * BbPreset findMany
-   */
-  export type BbPresetFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the BbPreset
-     */
-    select?: BbPresetSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the BbPreset
-     */
-    omit?: BbPresetOmit<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: BbPresetInclude<ExtArgs> | null
-    /**
-     * Filter, which BbPresets to fetch.
-     */
-    where?: BbPresetWhereInput
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
-     * 
-     * Determine the order of BbPresets to fetch.
-     */
-    orderBy?: BbPresetOrderByWithRelationInput | BbPresetOrderByWithRelationInput[]
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
-     * 
-     * Sets the position for listing BbPresets.
-     */
-    cursor?: BbPresetWhereUniqueInput
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
-     * Take `±n` BbPresets from the position of the cursor.
-     */
-    take?: number
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
-     * Skip the first `n` BbPresets.
-     */
-    skip?: number
-    distinct?: BbPresetScalarFieldEnum | BbPresetScalarFieldEnum[]
-  }
-
-  /**
-   * BbPreset create
-   */
-  export type BbPresetCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the BbPreset
-     */
-    select?: BbPresetSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the BbPreset
-     */
-    omit?: BbPresetOmit<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: BbPresetInclude<ExtArgs> | null
-    /**
-     * The data needed to create a BbPreset.
-     */
-    data: XOR<BbPresetCreateInput, BbPresetUncheckedCreateInput>
-  }
-
-  /**
-   * BbPreset createMany
-   */
-  export type BbPresetCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * The data used to create many BbPresets.
-     */
-    data: BbPresetCreateManyInput | BbPresetCreateManyInput[]
-    skipDuplicates?: boolean
-  }
-
-  /**
-   * BbPreset createManyAndReturn
-   */
-  export type BbPresetCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the BbPreset
-     */
-    select?: BbPresetSelectCreateManyAndReturn<ExtArgs> | null
-    /**
-     * Omit specific fields from the BbPreset
-     */
-    omit?: BbPresetOmit<ExtArgs> | null
-    /**
-     * The data used to create many BbPresets.
-     */
-    data: BbPresetCreateManyInput | BbPresetCreateManyInput[]
-    skipDuplicates?: boolean
-  }
-
-  /**
-   * BbPreset update
-   */
-  export type BbPresetUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the BbPreset
-     */
-    select?: BbPresetSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the BbPreset
-     */
-    omit?: BbPresetOmit<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: BbPresetInclude<ExtArgs> | null
-    /**
-     * The data needed to update a BbPreset.
-     */
-    data: XOR<BbPresetUpdateInput, BbPresetUncheckedUpdateInput>
-    /**
-     * Choose, which BbPreset to update.
-     */
-    where: BbPresetWhereUniqueInput
-  }
-
-  /**
-   * BbPreset updateMany
-   */
-  export type BbPresetUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * The data used to update BbPresets.
-     */
-    data: XOR<BbPresetUpdateManyMutationInput, BbPresetUncheckedUpdateManyInput>
-    /**
-     * Filter which BbPresets to update
-     */
-    where?: BbPresetWhereInput
-    /**
-     * Limit how many BbPresets to update.
-     */
-    limit?: number
-  }
-
-  /**
-   * BbPreset updateManyAndReturn
-   */
-  export type BbPresetUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the BbPreset
-     */
-    select?: BbPresetSelectUpdateManyAndReturn<ExtArgs> | null
-    /**
-     * Omit specific fields from the BbPreset
-     */
-    omit?: BbPresetOmit<ExtArgs> | null
-    /**
-     * The data used to update BbPresets.
-     */
-    data: XOR<BbPresetUpdateManyMutationInput, BbPresetUncheckedUpdateManyInput>
-    /**
-     * Filter which BbPresets to update
-     */
-    where?: BbPresetWhereInput
-    /**
-     * Limit how many BbPresets to update.
-     */
-    limit?: number
-  }
-
-  /**
-   * BbPreset upsert
-   */
-  export type BbPresetUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the BbPreset
-     */
-    select?: BbPresetSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the BbPreset
-     */
-    omit?: BbPresetOmit<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: BbPresetInclude<ExtArgs> | null
-    /**
-     * The filter to search for the BbPreset to update in case it exists.
-     */
-    where: BbPresetWhereUniqueInput
-    /**
-     * In case the BbPreset found by the `where` argument doesn't exist, create a new BbPreset with this data.
-     */
-    create: XOR<BbPresetCreateInput, BbPresetUncheckedCreateInput>
-    /**
-     * In case the BbPreset was found with the provided `where` argument, update it with this data.
-     */
-    update: XOR<BbPresetUpdateInput, BbPresetUncheckedUpdateInput>
-  }
-
-  /**
-   * BbPreset delete
-   */
-  export type BbPresetDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the BbPreset
-     */
-    select?: BbPresetSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the BbPreset
-     */
-    omit?: BbPresetOmit<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: BbPresetInclude<ExtArgs> | null
-    /**
-     * Filter which BbPreset to delete.
-     */
-    where: BbPresetWhereUniqueInput
-  }
-
-  /**
-   * BbPreset deleteMany
-   */
-  export type BbPresetDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Filter which BbPresets to delete
-     */
-    where?: BbPresetWhereInput
-    /**
-     * Limit how many BbPresets to delete.
-     */
-    limit?: number
-  }
-
-  /**
-   * BbPreset.sourceBindings
-   */
-  export type BbPreset$sourceBindingsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the SourcePresetBinding
-     */
-    select?: SourcePresetBindingSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the SourcePresetBinding
-     */
-    omit?: SourcePresetBindingOmit<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: SourcePresetBindingInclude<ExtArgs> | null
-    where?: SourcePresetBindingWhereInput
-    orderBy?: SourcePresetBindingOrderByWithRelationInput | SourcePresetBindingOrderByWithRelationInput[]
-    cursor?: SourcePresetBindingWhereUniqueInput
-    take?: number
-    skip?: number
-    distinct?: SourcePresetBindingScalarFieldEnum | SourcePresetBindingScalarFieldEnum[]
-  }
-
-  /**
-   * BbPreset without action
-   */
-  export type BbPresetDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the BbPreset
-     */
-    select?: BbPresetSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the BbPreset
-     */
-    omit?: BbPresetOmit<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: BbPresetInclude<ExtArgs> | null
-  }
-
-
-  /**
-   * Model SourcePresetBinding
-   */
-
-  export type AggregateSourcePresetBinding = {
-    _count: SourcePresetBindingCountAggregateOutputType | null
-    _min: SourcePresetBindingMinAggregateOutputType | null
-    _max: SourcePresetBindingMaxAggregateOutputType | null
-  }
-
-  export type SourcePresetBindingMinAggregateOutputType = {
-    id: string | null
-    sourceId: string | null
-    presetId: string | null
-    enabled: boolean | null
-    createdAt: Date | null
-    updatedAt: Date | null
-  }
-
-  export type SourcePresetBindingMaxAggregateOutputType = {
-    id: string | null
-    sourceId: string | null
-    presetId: string | null
-    enabled: boolean | null
-    createdAt: Date | null
-    updatedAt: Date | null
-  }
-
-  export type SourcePresetBindingCountAggregateOutputType = {
-    id: number
-    sourceId: number
-    presetId: number
-    args: number
-    enabled: number
-    createdAt: number
-    updatedAt: number
-    _all: number
-  }
-
-
-  export type SourcePresetBindingMinAggregateInputType = {
-    id?: true
-    sourceId?: true
-    presetId?: true
-    enabled?: true
-    createdAt?: true
-    updatedAt?: true
-  }
-
-  export type SourcePresetBindingMaxAggregateInputType = {
-    id?: true
-    sourceId?: true
-    presetId?: true
-    enabled?: true
-    createdAt?: true
-    updatedAt?: true
-  }
-
-  export type SourcePresetBindingCountAggregateInputType = {
-    id?: true
-    sourceId?: true
-    presetId?: true
-    args?: true
-    enabled?: true
-    createdAt?: true
-    updatedAt?: true
-    _all?: true
-  }
-
-  export type SourcePresetBindingAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Filter which SourcePresetBinding to aggregate.
-     */
-    where?: SourcePresetBindingWhereInput
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
-     * 
-     * Determine the order of SourcePresetBindings to fetch.
-     */
-    orderBy?: SourcePresetBindingOrderByWithRelationInput | SourcePresetBindingOrderByWithRelationInput[]
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
-     * 
-     * Sets the start position
-     */
-    cursor?: SourcePresetBindingWhereUniqueInput
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
-     * Take `±n` SourcePresetBindings from the position of the cursor.
-     */
-    take?: number
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
-     * Skip the first `n` SourcePresetBindings.
-     */
-    skip?: number
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
-     * 
-     * Count returned SourcePresetBindings
-    **/
-    _count?: true | SourcePresetBindingCountAggregateInputType
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
-     * 
-     * Select which fields to find the minimum value
-    **/
-    _min?: SourcePresetBindingMinAggregateInputType
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
-     * 
-     * Select which fields to find the maximum value
-    **/
-    _max?: SourcePresetBindingMaxAggregateInputType
-  }
-
-  export type GetSourcePresetBindingAggregateType<T extends SourcePresetBindingAggregateArgs> = {
-        [P in keyof T & keyof AggregateSourcePresetBinding]: P extends '_count' | 'count'
-      ? T[P] extends true
-        ? number
-        : GetScalarType<T[P], AggregateSourcePresetBinding[P]>
-      : GetScalarType<T[P], AggregateSourcePresetBinding[P]>
-  }
-
-
-
-
-  export type SourcePresetBindingGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    where?: SourcePresetBindingWhereInput
-    orderBy?: SourcePresetBindingOrderByWithAggregationInput | SourcePresetBindingOrderByWithAggregationInput[]
-    by: SourcePresetBindingScalarFieldEnum[] | SourcePresetBindingScalarFieldEnum
-    having?: SourcePresetBindingScalarWhereWithAggregatesInput
-    take?: number
-    skip?: number
-    _count?: SourcePresetBindingCountAggregateInputType | true
-    _min?: SourcePresetBindingMinAggregateInputType
-    _max?: SourcePresetBindingMaxAggregateInputType
-  }
-
-  export type SourcePresetBindingGroupByOutputType = {
-    id: string
-    sourceId: string
-    presetId: string
-    args: JsonValue
-    enabled: boolean
-    createdAt: Date
-    updatedAt: Date
-    _count: SourcePresetBindingCountAggregateOutputType | null
-    _min: SourcePresetBindingMinAggregateOutputType | null
-    _max: SourcePresetBindingMaxAggregateOutputType | null
-  }
-
-  type GetSourcePresetBindingGroupByPayload<T extends SourcePresetBindingGroupByArgs> = Prisma.PrismaPromise<
-    Array<
-      PickEnumerable<SourcePresetBindingGroupByOutputType, T['by']> &
-        {
-          [P in ((keyof T) & (keyof SourcePresetBindingGroupByOutputType))]: P extends '_count'
-            ? T[P] extends boolean
-              ? number
-              : GetScalarType<T[P], SourcePresetBindingGroupByOutputType[P]>
-            : GetScalarType<T[P], SourcePresetBindingGroupByOutputType[P]>
-        }
-      >
-    >
-
-
-  export type SourcePresetBindingSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
-    id?: boolean
-    sourceId?: boolean
-    presetId?: boolean
-    args?: boolean
-    enabled?: boolean
-    createdAt?: boolean
-    updatedAt?: boolean
-    source?: boolean | SourceDefaultArgs<ExtArgs>
-    preset?: boolean | BbPresetDefaultArgs<ExtArgs>
-  }, ExtArgs["result"]["sourcePresetBinding"]>
-
-  export type SourcePresetBindingSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
-    id?: boolean
-    sourceId?: boolean
-    presetId?: boolean
-    args?: boolean
-    enabled?: boolean
-    createdAt?: boolean
-    updatedAt?: boolean
-    source?: boolean | SourceDefaultArgs<ExtArgs>
-    preset?: boolean | BbPresetDefaultArgs<ExtArgs>
-  }, ExtArgs["result"]["sourcePresetBinding"]>
-
-  export type SourcePresetBindingSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
-    id?: boolean
-    sourceId?: boolean
-    presetId?: boolean
-    args?: boolean
-    enabled?: boolean
-    createdAt?: boolean
-    updatedAt?: boolean
-    source?: boolean | SourceDefaultArgs<ExtArgs>
-    preset?: boolean | BbPresetDefaultArgs<ExtArgs>
-  }, ExtArgs["result"]["sourcePresetBinding"]>
-
-  export type SourcePresetBindingSelectScalar = {
-    id?: boolean
-    sourceId?: boolean
-    presetId?: boolean
-    args?: boolean
-    enabled?: boolean
-    createdAt?: boolean
-    updatedAt?: boolean
-  }
-
-  export type SourcePresetBindingOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "sourceId" | "presetId" | "args" | "enabled" | "createdAt" | "updatedAt", ExtArgs["result"]["sourcePresetBinding"]>
-  export type SourcePresetBindingInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    source?: boolean | SourceDefaultArgs<ExtArgs>
-    preset?: boolean | BbPresetDefaultArgs<ExtArgs>
-  }
-  export type SourcePresetBindingIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    source?: boolean | SourceDefaultArgs<ExtArgs>
-    preset?: boolean | BbPresetDefaultArgs<ExtArgs>
-  }
-  export type SourcePresetBindingIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    source?: boolean | SourceDefaultArgs<ExtArgs>
-    preset?: boolean | BbPresetDefaultArgs<ExtArgs>
-  }
-
-  export type $SourcePresetBindingPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    name: "SourcePresetBinding"
-    objects: {
-      source: Prisma.$SourcePayload<ExtArgs>
-      preset: Prisma.$BbPresetPayload<ExtArgs>
-    }
-    scalars: $Extensions.GetPayloadResult<{
-      id: string
-      sourceId: string
-      presetId: string
-      args: Prisma.JsonValue
-      enabled: boolean
-      createdAt: Date
-      updatedAt: Date
-    }, ExtArgs["result"]["sourcePresetBinding"]>
-    composites: {}
-  }
-
-  type SourcePresetBindingGetPayload<S extends boolean | null | undefined | SourcePresetBindingDefaultArgs> = $Result.GetResult<Prisma.$SourcePresetBindingPayload, S>
-
-  type SourcePresetBindingCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
-    Omit<SourcePresetBindingFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
-      select?: SourcePresetBindingCountAggregateInputType | true
-    }
-
-  export interface SourcePresetBindingDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
-    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['SourcePresetBinding'], meta: { name: 'SourcePresetBinding' } }
-    /**
-     * Find zero or one SourcePresetBinding that matches the filter.
-     * @param {SourcePresetBindingFindUniqueArgs} args - Arguments to find a SourcePresetBinding
-     * @example
-     * // Get one SourcePresetBinding
-     * const sourcePresetBinding = await prisma.sourcePresetBinding.findUnique({
-     *   where: {
-     *     // ... provide filter here
-     *   }
-     * })
-     */
-    findUnique<T extends SourcePresetBindingFindUniqueArgs>(args: SelectSubset<T, SourcePresetBindingFindUniqueArgs<ExtArgs>>): Prisma__SourcePresetBindingClient<$Result.GetResult<Prisma.$SourcePresetBindingPayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
-
-    /**
-     * Find one SourcePresetBinding that matches the filter or throw an error with `error.code='P2025'`
-     * if no matches were found.
-     * @param {SourcePresetBindingFindUniqueOrThrowArgs} args - Arguments to find a SourcePresetBinding
-     * @example
-     * // Get one SourcePresetBinding
-     * const sourcePresetBinding = await prisma.sourcePresetBinding.findUniqueOrThrow({
-     *   where: {
-     *     // ... provide filter here
-     *   }
-     * })
-     */
-    findUniqueOrThrow<T extends SourcePresetBindingFindUniqueOrThrowArgs>(args: SelectSubset<T, SourcePresetBindingFindUniqueOrThrowArgs<ExtArgs>>): Prisma__SourcePresetBindingClient<$Result.GetResult<Prisma.$SourcePresetBindingPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
-
-    /**
-     * Find the first SourcePresetBinding that matches the filter.
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * @param {SourcePresetBindingFindFirstArgs} args - Arguments to find a SourcePresetBinding
-     * @example
-     * // Get one SourcePresetBinding
-     * const sourcePresetBinding = await prisma.sourcePresetBinding.findFirst({
-     *   where: {
-     *     // ... provide filter here
-     *   }
-     * })
-     */
-    findFirst<T extends SourcePresetBindingFindFirstArgs>(args?: SelectSubset<T, SourcePresetBindingFindFirstArgs<ExtArgs>>): Prisma__SourcePresetBindingClient<$Result.GetResult<Prisma.$SourcePresetBindingPayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
-
-    /**
-     * Find the first SourcePresetBinding that matches the filter or
-     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * @param {SourcePresetBindingFindFirstOrThrowArgs} args - Arguments to find a SourcePresetBinding
-     * @example
-     * // Get one SourcePresetBinding
-     * const sourcePresetBinding = await prisma.sourcePresetBinding.findFirstOrThrow({
-     *   where: {
-     *     // ... provide filter here
-     *   }
-     * })
-     */
-    findFirstOrThrow<T extends SourcePresetBindingFindFirstOrThrowArgs>(args?: SelectSubset<T, SourcePresetBindingFindFirstOrThrowArgs<ExtArgs>>): Prisma__SourcePresetBindingClient<$Result.GetResult<Prisma.$SourcePresetBindingPayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
-
-    /**
-     * Find zero or more SourcePresetBindings that matches the filter.
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * @param {SourcePresetBindingFindManyArgs} args - Arguments to filter and select certain fields only.
-     * @example
-     * // Get all SourcePresetBindings
-     * const sourcePresetBindings = await prisma.sourcePresetBinding.findMany()
-     * 
-     * // Get first 10 SourcePresetBindings
-     * const sourcePresetBindings = await prisma.sourcePresetBinding.findMany({ take: 10 })
-     * 
-     * // Only select the `id`
-     * const sourcePresetBindingWithIdOnly = await prisma.sourcePresetBinding.findMany({ select: { id: true } })
-     * 
-     */
-    findMany<T extends SourcePresetBindingFindManyArgs>(args?: SelectSubset<T, SourcePresetBindingFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SourcePresetBindingPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
-
-    /**
-     * Create a SourcePresetBinding.
-     * @param {SourcePresetBindingCreateArgs} args - Arguments to create a SourcePresetBinding.
-     * @example
-     * // Create one SourcePresetBinding
-     * const SourcePresetBinding = await prisma.sourcePresetBinding.create({
-     *   data: {
-     *     // ... data to create a SourcePresetBinding
-     *   }
-     * })
-     * 
-     */
-    create<T extends SourcePresetBindingCreateArgs>(args: SelectSubset<T, SourcePresetBindingCreateArgs<ExtArgs>>): Prisma__SourcePresetBindingClient<$Result.GetResult<Prisma.$SourcePresetBindingPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
-
-    /**
-     * Create many SourcePresetBindings.
-     * @param {SourcePresetBindingCreateManyArgs} args - Arguments to create many SourcePresetBindings.
-     * @example
-     * // Create many SourcePresetBindings
-     * const sourcePresetBinding = await prisma.sourcePresetBinding.createMany({
-     *   data: [
-     *     // ... provide data here
-     *   ]
-     * })
-     *     
-     */
-    createMany<T extends SourcePresetBindingCreateManyArgs>(args?: SelectSubset<T, SourcePresetBindingCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
-
-    /**
-     * Create many SourcePresetBindings and returns the data saved in the database.
-     * @param {SourcePresetBindingCreateManyAndReturnArgs} args - Arguments to create many SourcePresetBindings.
-     * @example
-     * // Create many SourcePresetBindings
-     * const sourcePresetBinding = await prisma.sourcePresetBinding.createManyAndReturn({
-     *   data: [
-     *     // ... provide data here
-     *   ]
-     * })
-     * 
-     * // Create many SourcePresetBindings and only return the `id`
-     * const sourcePresetBindingWithIdOnly = await prisma.sourcePresetBinding.createManyAndReturn({
-     *   select: { id: true },
-     *   data: [
-     *     // ... provide data here
-     *   ]
-     * })
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * 
-     */
-    createManyAndReturn<T extends SourcePresetBindingCreateManyAndReturnArgs>(args?: SelectSubset<T, SourcePresetBindingCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SourcePresetBindingPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
-
-    /**
-     * Delete a SourcePresetBinding.
-     * @param {SourcePresetBindingDeleteArgs} args - Arguments to delete one SourcePresetBinding.
-     * @example
-     * // Delete one SourcePresetBinding
-     * const SourcePresetBinding = await prisma.sourcePresetBinding.delete({
-     *   where: {
-     *     // ... filter to delete one SourcePresetBinding
-     *   }
-     * })
-     * 
-     */
-    delete<T extends SourcePresetBindingDeleteArgs>(args: SelectSubset<T, SourcePresetBindingDeleteArgs<ExtArgs>>): Prisma__SourcePresetBindingClient<$Result.GetResult<Prisma.$SourcePresetBindingPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
-
-    /**
-     * Update one SourcePresetBinding.
-     * @param {SourcePresetBindingUpdateArgs} args - Arguments to update one SourcePresetBinding.
-     * @example
-     * // Update one SourcePresetBinding
-     * const sourcePresetBinding = await prisma.sourcePresetBinding.update({
-     *   where: {
-     *     // ... provide filter here
-     *   },
-     *   data: {
-     *     // ... provide data here
-     *   }
-     * })
-     * 
-     */
-    update<T extends SourcePresetBindingUpdateArgs>(args: SelectSubset<T, SourcePresetBindingUpdateArgs<ExtArgs>>): Prisma__SourcePresetBindingClient<$Result.GetResult<Prisma.$SourcePresetBindingPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
-
-    /**
-     * Delete zero or more SourcePresetBindings.
-     * @param {SourcePresetBindingDeleteManyArgs} args - Arguments to filter SourcePresetBindings to delete.
-     * @example
-     * // Delete a few SourcePresetBindings
-     * const { count } = await prisma.sourcePresetBinding.deleteMany({
-     *   where: {
-     *     // ... provide filter here
-     *   }
-     * })
-     * 
-     */
-    deleteMany<T extends SourcePresetBindingDeleteManyArgs>(args?: SelectSubset<T, SourcePresetBindingDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
-
-    /**
-     * Update zero or more SourcePresetBindings.
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * @param {SourcePresetBindingUpdateManyArgs} args - Arguments to update one or more rows.
-     * @example
-     * // Update many SourcePresetBindings
-     * const sourcePresetBinding = await prisma.sourcePresetBinding.updateMany({
-     *   where: {
-     *     // ... provide filter here
-     *   },
-     *   data: {
-     *     // ... provide data here
-     *   }
-     * })
-     * 
-     */
-    updateMany<T extends SourcePresetBindingUpdateManyArgs>(args: SelectSubset<T, SourcePresetBindingUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
-
-    /**
-     * Update zero or more SourcePresetBindings and returns the data updated in the database.
-     * @param {SourcePresetBindingUpdateManyAndReturnArgs} args - Arguments to update many SourcePresetBindings.
-     * @example
-     * // Update many SourcePresetBindings
-     * const sourcePresetBinding = await prisma.sourcePresetBinding.updateManyAndReturn({
-     *   where: {
-     *     // ... provide filter here
-     *   },
-     *   data: [
-     *     // ... provide data here
-     *   ]
-     * })
-     * 
-     * // Update zero or more SourcePresetBindings and only return the `id`
-     * const sourcePresetBindingWithIdOnly = await prisma.sourcePresetBinding.updateManyAndReturn({
-     *   select: { id: true },
-     *   where: {
-     *     // ... provide filter here
-     *   },
-     *   data: [
-     *     // ... provide data here
-     *   ]
-     * })
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * 
-     */
-    updateManyAndReturn<T extends SourcePresetBindingUpdateManyAndReturnArgs>(args: SelectSubset<T, SourcePresetBindingUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SourcePresetBindingPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
-
-    /**
-     * Create or update one SourcePresetBinding.
-     * @param {SourcePresetBindingUpsertArgs} args - Arguments to update or create a SourcePresetBinding.
-     * @example
-     * // Update or create a SourcePresetBinding
-     * const sourcePresetBinding = await prisma.sourcePresetBinding.upsert({
-     *   create: {
-     *     // ... data to create a SourcePresetBinding
-     *   },
-     *   update: {
-     *     // ... in case it already exists, update
-     *   },
-     *   where: {
-     *     // ... the filter for the SourcePresetBinding we want to update
-     *   }
-     * })
-     */
-    upsert<T extends SourcePresetBindingUpsertArgs>(args: SelectSubset<T, SourcePresetBindingUpsertArgs<ExtArgs>>): Prisma__SourcePresetBindingClient<$Result.GetResult<Prisma.$SourcePresetBindingPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
-
-
-    /**
-     * Count the number of SourcePresetBindings.
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * @param {SourcePresetBindingCountArgs} args - Arguments to filter SourcePresetBindings to count.
-     * @example
-     * // Count the number of SourcePresetBindings
-     * const count = await prisma.sourcePresetBinding.count({
-     *   where: {
-     *     // ... the filter for the SourcePresetBindings we want to count
-     *   }
-     * })
-    **/
-    count<T extends SourcePresetBindingCountArgs>(
-      args?: Subset<T, SourcePresetBindingCountArgs>,
-    ): Prisma.PrismaPromise<
-      T extends $Utils.Record<'select', any>
-        ? T['select'] extends true
-          ? number
-          : GetScalarType<T['select'], SourcePresetBindingCountAggregateOutputType>
-        : number
-    >
-
-    /**
-     * Allows you to perform aggregations operations on a SourcePresetBinding.
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * @param {SourcePresetBindingAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
-     * @example
-     * // Ordered by age ascending
-     * // Where email contains prisma.io
-     * // Limited to the 10 users
-     * const aggregations = await prisma.user.aggregate({
-     *   _avg: {
-     *     age: true,
-     *   },
-     *   where: {
-     *     email: {
-     *       contains: "prisma.io",
-     *     },
-     *   },
-     *   orderBy: {
-     *     age: "asc",
-     *   },
-     *   take: 10,
-     * })
-    **/
-    aggregate<T extends SourcePresetBindingAggregateArgs>(args: Subset<T, SourcePresetBindingAggregateArgs>): Prisma.PrismaPromise<GetSourcePresetBindingAggregateType<T>>
-
-    /**
-     * Group by SourcePresetBinding.
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * @param {SourcePresetBindingGroupByArgs} args - Group by arguments.
-     * @example
-     * // Group by city, order by createdAt, get count
-     * const result = await prisma.user.groupBy({
-     *   by: ['city', 'createdAt'],
-     *   orderBy: {
-     *     createdAt: true
-     *   },
-     *   _count: {
-     *     _all: true
-     *   },
-     * })
-     * 
-    **/
-    groupBy<
-      T extends SourcePresetBindingGroupByArgs,
-      HasSelectOrTake extends Or<
-        Extends<'skip', Keys<T>>,
-        Extends<'take', Keys<T>>
-      >,
-      OrderByArg extends True extends HasSelectOrTake
-        ? { orderBy: SourcePresetBindingGroupByArgs['orderBy'] }
-        : { orderBy?: SourcePresetBindingGroupByArgs['orderBy'] },
-      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
-      ByFields extends MaybeTupleToUnion<T['by']>,
-      ByValid extends Has<ByFields, OrderFields>,
-      HavingFields extends GetHavingFields<T['having']>,
-      HavingValid extends Has<ByFields, HavingFields>,
-      ByEmpty extends T['by'] extends never[] ? True : False,
-      InputErrors extends ByEmpty extends True
-      ? `Error: "by" must not be empty.`
-      : HavingValid extends False
-      ? {
-          [P in HavingFields]: P extends ByFields
-            ? never
-            : P extends string
-            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
-            : [
-                Error,
-                'Field ',
-                P,
-                ` in "having" needs to be provided in "by"`,
-              ]
-        }[HavingFields]
-      : 'take' extends Keys<T>
-      ? 'orderBy' extends Keys<T>
-        ? ByValid extends True
-          ? {}
-          : {
-              [P in OrderFields]: P extends ByFields
-                ? never
-                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
-            }[OrderFields]
-        : 'Error: If you provide "take", you also need to provide "orderBy"'
-      : 'skip' extends Keys<T>
-      ? 'orderBy' extends Keys<T>
-        ? ByValid extends True
-          ? {}
-          : {
-              [P in OrderFields]: P extends ByFields
-                ? never
-                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
-            }[OrderFields]
-        : 'Error: If you provide "skip", you also need to provide "orderBy"'
-      : ByValid extends True
-      ? {}
-      : {
-          [P in OrderFields]: P extends ByFields
-            ? never
-            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
-        }[OrderFields]
-    >(args: SubsetIntersection<T, SourcePresetBindingGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetSourcePresetBindingGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
-  /**
-   * Fields of the SourcePresetBinding model
-   */
-  readonly fields: SourcePresetBindingFieldRefs;
-  }
-
-  /**
-   * The delegate class that acts as a "Promise-like" for SourcePresetBinding.
-   * Why is this prefixed with `Prisma__`?
-   * Because we want to prevent naming conflicts as mentioned in
-   * https://github.com/prisma/prisma-client-js/issues/707
-   */
-  export interface Prisma__SourcePresetBindingClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
-    readonly [Symbol.toStringTag]: "PrismaPromise"
-    source<T extends SourceDefaultArgs<ExtArgs> = {}>(args?: Subset<T, SourceDefaultArgs<ExtArgs>>): Prisma__SourceClient<$Result.GetResult<Prisma.$SourcePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
-    preset<T extends BbPresetDefaultArgs<ExtArgs> = {}>(args?: Subset<T, BbPresetDefaultArgs<ExtArgs>>): Prisma__BbPresetClient<$Result.GetResult<Prisma.$BbPresetPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
-    /**
-     * Attaches callbacks for the resolution and/or rejection of the Promise.
-     * @param onfulfilled The callback to execute when the Promise is resolved.
-     * @param onrejected The callback to execute when the Promise is rejected.
-     * @returns A Promise for the completion of which ever callback is executed.
-     */
-    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
-    /**
-     * Attaches a callback for only the rejection of the Promise.
-     * @param onrejected The callback to execute when the Promise is rejected.
-     * @returns A Promise for the completion of the callback.
-     */
-    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
-    /**
-     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
-     * resolved value cannot be modified from the callback.
-     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
-     * @returns A Promise for the completion of the callback.
-     */
-    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
-  }
-
-
-
-
-  /**
-   * Fields of the SourcePresetBinding model
-   */
-  interface SourcePresetBindingFieldRefs {
-    readonly id: FieldRef<"SourcePresetBinding", 'String'>
-    readonly sourceId: FieldRef<"SourcePresetBinding", 'String'>
-    readonly presetId: FieldRef<"SourcePresetBinding", 'String'>
-    readonly args: FieldRef<"SourcePresetBinding", 'Json'>
-    readonly enabled: FieldRef<"SourcePresetBinding", 'Boolean'>
-    readonly createdAt: FieldRef<"SourcePresetBinding", 'DateTime'>
-    readonly updatedAt: FieldRef<"SourcePresetBinding", 'DateTime'>
-  }
-    
-
-  // Custom InputTypes
-  /**
-   * SourcePresetBinding findUnique
-   */
-  export type SourcePresetBindingFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the SourcePresetBinding
-     */
-    select?: SourcePresetBindingSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the SourcePresetBinding
-     */
-    omit?: SourcePresetBindingOmit<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: SourcePresetBindingInclude<ExtArgs> | null
-    /**
-     * Filter, which SourcePresetBinding to fetch.
-     */
-    where: SourcePresetBindingWhereUniqueInput
-  }
-
-  /**
-   * SourcePresetBinding findUniqueOrThrow
-   */
-  export type SourcePresetBindingFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the SourcePresetBinding
-     */
-    select?: SourcePresetBindingSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the SourcePresetBinding
-     */
-    omit?: SourcePresetBindingOmit<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: SourcePresetBindingInclude<ExtArgs> | null
-    /**
-     * Filter, which SourcePresetBinding to fetch.
-     */
-    where: SourcePresetBindingWhereUniqueInput
-  }
-
-  /**
-   * SourcePresetBinding findFirst
-   */
-  export type SourcePresetBindingFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the SourcePresetBinding
-     */
-    select?: SourcePresetBindingSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the SourcePresetBinding
-     */
-    omit?: SourcePresetBindingOmit<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: SourcePresetBindingInclude<ExtArgs> | null
-    /**
-     * Filter, which SourcePresetBinding to fetch.
-     */
-    where?: SourcePresetBindingWhereInput
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
-     * 
-     * Determine the order of SourcePresetBindings to fetch.
-     */
-    orderBy?: SourcePresetBindingOrderByWithRelationInput | SourcePresetBindingOrderByWithRelationInput[]
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
-     * 
-     * Sets the position for searching for SourcePresetBindings.
-     */
-    cursor?: SourcePresetBindingWhereUniqueInput
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
-     * Take `±n` SourcePresetBindings from the position of the cursor.
-     */
-    take?: number
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
-     * Skip the first `n` SourcePresetBindings.
-     */
-    skip?: number
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
-     * 
-     * Filter by unique combinations of SourcePresetBindings.
-     */
-    distinct?: SourcePresetBindingScalarFieldEnum | SourcePresetBindingScalarFieldEnum[]
-  }
-
-  /**
-   * SourcePresetBinding findFirstOrThrow
-   */
-  export type SourcePresetBindingFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the SourcePresetBinding
-     */
-    select?: SourcePresetBindingSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the SourcePresetBinding
-     */
-    omit?: SourcePresetBindingOmit<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: SourcePresetBindingInclude<ExtArgs> | null
-    /**
-     * Filter, which SourcePresetBinding to fetch.
-     */
-    where?: SourcePresetBindingWhereInput
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
-     * 
-     * Determine the order of SourcePresetBindings to fetch.
-     */
-    orderBy?: SourcePresetBindingOrderByWithRelationInput | SourcePresetBindingOrderByWithRelationInput[]
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
-     * 
-     * Sets the position for searching for SourcePresetBindings.
-     */
-    cursor?: SourcePresetBindingWhereUniqueInput
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
-     * Take `±n` SourcePresetBindings from the position of the cursor.
-     */
-    take?: number
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
-     * Skip the first `n` SourcePresetBindings.
-     */
-    skip?: number
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
-     * 
-     * Filter by unique combinations of SourcePresetBindings.
-     */
-    distinct?: SourcePresetBindingScalarFieldEnum | SourcePresetBindingScalarFieldEnum[]
-  }
-
-  /**
-   * SourcePresetBinding findMany
-   */
-  export type SourcePresetBindingFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the SourcePresetBinding
-     */
-    select?: SourcePresetBindingSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the SourcePresetBinding
-     */
-    omit?: SourcePresetBindingOmit<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: SourcePresetBindingInclude<ExtArgs> | null
-    /**
-     * Filter, which SourcePresetBindings to fetch.
-     */
-    where?: SourcePresetBindingWhereInput
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
-     * 
-     * Determine the order of SourcePresetBindings to fetch.
-     */
-    orderBy?: SourcePresetBindingOrderByWithRelationInput | SourcePresetBindingOrderByWithRelationInput[]
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
-     * 
-     * Sets the position for listing SourcePresetBindings.
-     */
-    cursor?: SourcePresetBindingWhereUniqueInput
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
-     * Take `±n` SourcePresetBindings from the position of the cursor.
-     */
-    take?: number
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
-     * Skip the first `n` SourcePresetBindings.
-     */
-    skip?: number
-    distinct?: SourcePresetBindingScalarFieldEnum | SourcePresetBindingScalarFieldEnum[]
-  }
-
-  /**
-   * SourcePresetBinding create
-   */
-  export type SourcePresetBindingCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the SourcePresetBinding
-     */
-    select?: SourcePresetBindingSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the SourcePresetBinding
-     */
-    omit?: SourcePresetBindingOmit<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: SourcePresetBindingInclude<ExtArgs> | null
-    /**
-     * The data needed to create a SourcePresetBinding.
-     */
-    data: XOR<SourcePresetBindingCreateInput, SourcePresetBindingUncheckedCreateInput>
-  }
-
-  /**
-   * SourcePresetBinding createMany
-   */
-  export type SourcePresetBindingCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * The data used to create many SourcePresetBindings.
-     */
-    data: SourcePresetBindingCreateManyInput | SourcePresetBindingCreateManyInput[]
-    skipDuplicates?: boolean
-  }
-
-  /**
-   * SourcePresetBinding createManyAndReturn
-   */
-  export type SourcePresetBindingCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the SourcePresetBinding
-     */
-    select?: SourcePresetBindingSelectCreateManyAndReturn<ExtArgs> | null
-    /**
-     * Omit specific fields from the SourcePresetBinding
-     */
-    omit?: SourcePresetBindingOmit<ExtArgs> | null
-    /**
-     * The data used to create many SourcePresetBindings.
-     */
-    data: SourcePresetBindingCreateManyInput | SourcePresetBindingCreateManyInput[]
-    skipDuplicates?: boolean
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: SourcePresetBindingIncludeCreateManyAndReturn<ExtArgs> | null
-  }
-
-  /**
-   * SourcePresetBinding update
-   */
-  export type SourcePresetBindingUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the SourcePresetBinding
-     */
-    select?: SourcePresetBindingSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the SourcePresetBinding
-     */
-    omit?: SourcePresetBindingOmit<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: SourcePresetBindingInclude<ExtArgs> | null
-    /**
-     * The data needed to update a SourcePresetBinding.
-     */
-    data: XOR<SourcePresetBindingUpdateInput, SourcePresetBindingUncheckedUpdateInput>
-    /**
-     * Choose, which SourcePresetBinding to update.
-     */
-    where: SourcePresetBindingWhereUniqueInput
-  }
-
-  /**
-   * SourcePresetBinding updateMany
-   */
-  export type SourcePresetBindingUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * The data used to update SourcePresetBindings.
-     */
-    data: XOR<SourcePresetBindingUpdateManyMutationInput, SourcePresetBindingUncheckedUpdateManyInput>
-    /**
-     * Filter which SourcePresetBindings to update
-     */
-    where?: SourcePresetBindingWhereInput
-    /**
-     * Limit how many SourcePresetBindings to update.
-     */
-    limit?: number
-  }
-
-  /**
-   * SourcePresetBinding updateManyAndReturn
-   */
-  export type SourcePresetBindingUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the SourcePresetBinding
-     */
-    select?: SourcePresetBindingSelectUpdateManyAndReturn<ExtArgs> | null
-    /**
-     * Omit specific fields from the SourcePresetBinding
-     */
-    omit?: SourcePresetBindingOmit<ExtArgs> | null
-    /**
-     * The data used to update SourcePresetBindings.
-     */
-    data: XOR<SourcePresetBindingUpdateManyMutationInput, SourcePresetBindingUncheckedUpdateManyInput>
-    /**
-     * Filter which SourcePresetBindings to update
-     */
-    where?: SourcePresetBindingWhereInput
-    /**
-     * Limit how many SourcePresetBindings to update.
-     */
-    limit?: number
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: SourcePresetBindingIncludeUpdateManyAndReturn<ExtArgs> | null
-  }
-
-  /**
-   * SourcePresetBinding upsert
-   */
-  export type SourcePresetBindingUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the SourcePresetBinding
-     */
-    select?: SourcePresetBindingSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the SourcePresetBinding
-     */
-    omit?: SourcePresetBindingOmit<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: SourcePresetBindingInclude<ExtArgs> | null
-    /**
-     * The filter to search for the SourcePresetBinding to update in case it exists.
-     */
-    where: SourcePresetBindingWhereUniqueInput
-    /**
-     * In case the SourcePresetBinding found by the `where` argument doesn't exist, create a new SourcePresetBinding with this data.
-     */
-    create: XOR<SourcePresetBindingCreateInput, SourcePresetBindingUncheckedCreateInput>
-    /**
-     * In case the SourcePresetBinding was found with the provided `where` argument, update it with this data.
-     */
-    update: XOR<SourcePresetBindingUpdateInput, SourcePresetBindingUncheckedUpdateInput>
-  }
-
-  /**
-   * SourcePresetBinding delete
-   */
-  export type SourcePresetBindingDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the SourcePresetBinding
-     */
-    select?: SourcePresetBindingSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the SourcePresetBinding
-     */
-    omit?: SourcePresetBindingOmit<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: SourcePresetBindingInclude<ExtArgs> | null
-    /**
-     * Filter which SourcePresetBinding to delete.
-     */
-    where: SourcePresetBindingWhereUniqueInput
-  }
-
-  /**
-   * SourcePresetBinding deleteMany
-   */
-  export type SourcePresetBindingDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Filter which SourcePresetBindings to delete
-     */
-    where?: SourcePresetBindingWhereInput
-    /**
-     * Limit how many SourcePresetBindings to delete.
-     */
-    limit?: number
-  }
-
-  /**
-   * SourcePresetBinding without action
-   */
-  export type SourcePresetBindingDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the SourcePresetBinding
-     */
-    select?: SourcePresetBindingSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the SourcePresetBinding
-     */
-    omit?: SourcePresetBindingOmit<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: SourcePresetBindingInclude<ExtArgs> | null
-  }
-
-
-  /**
-   * Model BbPresetSyncLog
-   */
-
-  export type AggregateBbPresetSyncLog = {
-    _count: BbPresetSyncLogCountAggregateOutputType | null
-    _avg: BbPresetSyncLogAvgAggregateOutputType | null
-    _sum: BbPresetSyncLogSumAggregateOutputType | null
-    _min: BbPresetSyncLogMinAggregateOutputType | null
-    _max: BbPresetSyncLogMaxAggregateOutputType | null
-  }
-
-  export type BbPresetSyncLogAvgAggregateOutputType = {
-    scannedCount: number | null
-    createdCount: number | null
-    changedCount: number | null
-    brokenCount: number | null
-    skippedCount: number | null
-  }
-
-  export type BbPresetSyncLogSumAggregateOutputType = {
-    scannedCount: number | null
-    createdCount: number | null
-    changedCount: number | null
-    brokenCount: number | null
-    skippedCount: number | null
-  }
-
-  export type BbPresetSyncLogMinAggregateOutputType = {
-    id: string | null
-    rootPath: string | null
-    status: $Enums.BbPresetSyncStatus | null
-    startedAt: Date | null
-    finishedAt: Date | null
-    scannedCount: number | null
-    createdCount: number | null
-    changedCount: number | null
-    brokenCount: number | null
-    skippedCount: number | null
-    error: string | null
-  }
-
-  export type BbPresetSyncLogMaxAggregateOutputType = {
-    id: string | null
-    rootPath: string | null
-    status: $Enums.BbPresetSyncStatus | null
-    startedAt: Date | null
-    finishedAt: Date | null
-    scannedCount: number | null
-    createdCount: number | null
-    changedCount: number | null
-    brokenCount: number | null
-    skippedCount: number | null
-    error: string | null
-  }
-
-  export type BbPresetSyncLogCountAggregateOutputType = {
-    id: number
-    rootPath: number
-    status: number
-    startedAt: number
-    finishedAt: number
-    scannedCount: number
-    createdCount: number
-    changedCount: number
-    brokenCount: number
-    skippedCount: number
-    diff: number
-    error: number
-    _all: number
-  }
-
-
-  export type BbPresetSyncLogAvgAggregateInputType = {
-    scannedCount?: true
-    createdCount?: true
-    changedCount?: true
-    brokenCount?: true
-    skippedCount?: true
-  }
-
-  export type BbPresetSyncLogSumAggregateInputType = {
-    scannedCount?: true
-    createdCount?: true
-    changedCount?: true
-    brokenCount?: true
-    skippedCount?: true
-  }
-
-  export type BbPresetSyncLogMinAggregateInputType = {
-    id?: true
-    rootPath?: true
-    status?: true
-    startedAt?: true
-    finishedAt?: true
-    scannedCount?: true
-    createdCount?: true
-    changedCount?: true
-    brokenCount?: true
-    skippedCount?: true
-    error?: true
-  }
-
-  export type BbPresetSyncLogMaxAggregateInputType = {
-    id?: true
-    rootPath?: true
-    status?: true
-    startedAt?: true
-    finishedAt?: true
-    scannedCount?: true
-    createdCount?: true
-    changedCount?: true
-    brokenCount?: true
-    skippedCount?: true
-    error?: true
-  }
-
-  export type BbPresetSyncLogCountAggregateInputType = {
-    id?: true
-    rootPath?: true
-    status?: true
-    startedAt?: true
-    finishedAt?: true
-    scannedCount?: true
-    createdCount?: true
-    changedCount?: true
-    brokenCount?: true
-    skippedCount?: true
-    diff?: true
-    error?: true
-    _all?: true
-  }
-
-  export type BbPresetSyncLogAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Filter which BbPresetSyncLog to aggregate.
-     */
-    where?: BbPresetSyncLogWhereInput
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
-     * 
-     * Determine the order of BbPresetSyncLogs to fetch.
-     */
-    orderBy?: BbPresetSyncLogOrderByWithRelationInput | BbPresetSyncLogOrderByWithRelationInput[]
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
-     * 
-     * Sets the start position
-     */
-    cursor?: BbPresetSyncLogWhereUniqueInput
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
-     * Take `±n` BbPresetSyncLogs from the position of the cursor.
-     */
-    take?: number
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
-     * Skip the first `n` BbPresetSyncLogs.
-     */
-    skip?: number
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
-     * 
-     * Count returned BbPresetSyncLogs
-    **/
-    _count?: true | BbPresetSyncLogCountAggregateInputType
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
-     * 
-     * Select which fields to average
-    **/
-    _avg?: BbPresetSyncLogAvgAggregateInputType
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
-     * 
-     * Select which fields to sum
-    **/
-    _sum?: BbPresetSyncLogSumAggregateInputType
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
-     * 
-     * Select which fields to find the minimum value
-    **/
-    _min?: BbPresetSyncLogMinAggregateInputType
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
-     * 
-     * Select which fields to find the maximum value
-    **/
-    _max?: BbPresetSyncLogMaxAggregateInputType
-  }
-
-  export type GetBbPresetSyncLogAggregateType<T extends BbPresetSyncLogAggregateArgs> = {
-        [P in keyof T & keyof AggregateBbPresetSyncLog]: P extends '_count' | 'count'
-      ? T[P] extends true
-        ? number
-        : GetScalarType<T[P], AggregateBbPresetSyncLog[P]>
-      : GetScalarType<T[P], AggregateBbPresetSyncLog[P]>
-  }
-
-
-
-
-  export type BbPresetSyncLogGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    where?: BbPresetSyncLogWhereInput
-    orderBy?: BbPresetSyncLogOrderByWithAggregationInput | BbPresetSyncLogOrderByWithAggregationInput[]
-    by: BbPresetSyncLogScalarFieldEnum[] | BbPresetSyncLogScalarFieldEnum
-    having?: BbPresetSyncLogScalarWhereWithAggregatesInput
-    take?: number
-    skip?: number
-    _count?: BbPresetSyncLogCountAggregateInputType | true
-    _avg?: BbPresetSyncLogAvgAggregateInputType
-    _sum?: BbPresetSyncLogSumAggregateInputType
-    _min?: BbPresetSyncLogMinAggregateInputType
-    _max?: BbPresetSyncLogMaxAggregateInputType
-  }
-
-  export type BbPresetSyncLogGroupByOutputType = {
-    id: string
-    rootPath: string
-    status: $Enums.BbPresetSyncStatus
-    startedAt: Date
-    finishedAt: Date | null
-    scannedCount: number
-    createdCount: number
-    changedCount: number
-    brokenCount: number
-    skippedCount: number
-    diff: JsonValue | null
-    error: string | null
-    _count: BbPresetSyncLogCountAggregateOutputType | null
-    _avg: BbPresetSyncLogAvgAggregateOutputType | null
-    _sum: BbPresetSyncLogSumAggregateOutputType | null
-    _min: BbPresetSyncLogMinAggregateOutputType | null
-    _max: BbPresetSyncLogMaxAggregateOutputType | null
-  }
-
-  type GetBbPresetSyncLogGroupByPayload<T extends BbPresetSyncLogGroupByArgs> = Prisma.PrismaPromise<
-    Array<
-      PickEnumerable<BbPresetSyncLogGroupByOutputType, T['by']> &
-        {
-          [P in ((keyof T) & (keyof BbPresetSyncLogGroupByOutputType))]: P extends '_count'
-            ? T[P] extends boolean
-              ? number
-              : GetScalarType<T[P], BbPresetSyncLogGroupByOutputType[P]>
-            : GetScalarType<T[P], BbPresetSyncLogGroupByOutputType[P]>
-        }
-      >
-    >
-
-
-  export type BbPresetSyncLogSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
-    id?: boolean
-    rootPath?: boolean
-    status?: boolean
-    startedAt?: boolean
-    finishedAt?: boolean
-    scannedCount?: boolean
-    createdCount?: boolean
-    changedCount?: boolean
-    brokenCount?: boolean
-    skippedCount?: boolean
-    diff?: boolean
-    error?: boolean
-  }, ExtArgs["result"]["bbPresetSyncLog"]>
-
-  export type BbPresetSyncLogSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
-    id?: boolean
-    rootPath?: boolean
-    status?: boolean
-    startedAt?: boolean
-    finishedAt?: boolean
-    scannedCount?: boolean
-    createdCount?: boolean
-    changedCount?: boolean
-    brokenCount?: boolean
-    skippedCount?: boolean
-    diff?: boolean
-    error?: boolean
-  }, ExtArgs["result"]["bbPresetSyncLog"]>
-
-  export type BbPresetSyncLogSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
-    id?: boolean
-    rootPath?: boolean
-    status?: boolean
-    startedAt?: boolean
-    finishedAt?: boolean
-    scannedCount?: boolean
-    createdCount?: boolean
-    changedCount?: boolean
-    brokenCount?: boolean
-    skippedCount?: boolean
-    diff?: boolean
-    error?: boolean
-  }, ExtArgs["result"]["bbPresetSyncLog"]>
-
-  export type BbPresetSyncLogSelectScalar = {
-    id?: boolean
-    rootPath?: boolean
-    status?: boolean
-    startedAt?: boolean
-    finishedAt?: boolean
-    scannedCount?: boolean
-    createdCount?: boolean
-    changedCount?: boolean
-    brokenCount?: boolean
-    skippedCount?: boolean
-    diff?: boolean
-    error?: boolean
-  }
-
-  export type BbPresetSyncLogOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "rootPath" | "status" | "startedAt" | "finishedAt" | "scannedCount" | "createdCount" | "changedCount" | "brokenCount" | "skippedCount" | "diff" | "error", ExtArgs["result"]["bbPresetSyncLog"]>
-
-  export type $BbPresetSyncLogPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    name: "BbPresetSyncLog"
-    objects: {}
-    scalars: $Extensions.GetPayloadResult<{
-      id: string
-      rootPath: string
-      status: $Enums.BbPresetSyncStatus
-      startedAt: Date
-      finishedAt: Date | null
-      scannedCount: number
-      createdCount: number
-      changedCount: number
-      brokenCount: number
-      skippedCount: number
-      diff: Prisma.JsonValue | null
-      error: string | null
-    }, ExtArgs["result"]["bbPresetSyncLog"]>
-    composites: {}
-  }
-
-  type BbPresetSyncLogGetPayload<S extends boolean | null | undefined | BbPresetSyncLogDefaultArgs> = $Result.GetResult<Prisma.$BbPresetSyncLogPayload, S>
-
-  type BbPresetSyncLogCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
-    Omit<BbPresetSyncLogFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
-      select?: BbPresetSyncLogCountAggregateInputType | true
-    }
-
-  export interface BbPresetSyncLogDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
-    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['BbPresetSyncLog'], meta: { name: 'BbPresetSyncLog' } }
-    /**
-     * Find zero or one BbPresetSyncLog that matches the filter.
-     * @param {BbPresetSyncLogFindUniqueArgs} args - Arguments to find a BbPresetSyncLog
-     * @example
-     * // Get one BbPresetSyncLog
-     * const bbPresetSyncLog = await prisma.bbPresetSyncLog.findUnique({
-     *   where: {
-     *     // ... provide filter here
-     *   }
-     * })
-     */
-    findUnique<T extends BbPresetSyncLogFindUniqueArgs>(args: SelectSubset<T, BbPresetSyncLogFindUniqueArgs<ExtArgs>>): Prisma__BbPresetSyncLogClient<$Result.GetResult<Prisma.$BbPresetSyncLogPayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
-
-    /**
-     * Find one BbPresetSyncLog that matches the filter or throw an error with `error.code='P2025'`
-     * if no matches were found.
-     * @param {BbPresetSyncLogFindUniqueOrThrowArgs} args - Arguments to find a BbPresetSyncLog
-     * @example
-     * // Get one BbPresetSyncLog
-     * const bbPresetSyncLog = await prisma.bbPresetSyncLog.findUniqueOrThrow({
-     *   where: {
-     *     // ... provide filter here
-     *   }
-     * })
-     */
-    findUniqueOrThrow<T extends BbPresetSyncLogFindUniqueOrThrowArgs>(args: SelectSubset<T, BbPresetSyncLogFindUniqueOrThrowArgs<ExtArgs>>): Prisma__BbPresetSyncLogClient<$Result.GetResult<Prisma.$BbPresetSyncLogPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
-
-    /**
-     * Find the first BbPresetSyncLog that matches the filter.
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * @param {BbPresetSyncLogFindFirstArgs} args - Arguments to find a BbPresetSyncLog
-     * @example
-     * // Get one BbPresetSyncLog
-     * const bbPresetSyncLog = await prisma.bbPresetSyncLog.findFirst({
-     *   where: {
-     *     // ... provide filter here
-     *   }
-     * })
-     */
-    findFirst<T extends BbPresetSyncLogFindFirstArgs>(args?: SelectSubset<T, BbPresetSyncLogFindFirstArgs<ExtArgs>>): Prisma__BbPresetSyncLogClient<$Result.GetResult<Prisma.$BbPresetSyncLogPayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
-
-    /**
-     * Find the first BbPresetSyncLog that matches the filter or
-     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * @param {BbPresetSyncLogFindFirstOrThrowArgs} args - Arguments to find a BbPresetSyncLog
-     * @example
-     * // Get one BbPresetSyncLog
-     * const bbPresetSyncLog = await prisma.bbPresetSyncLog.findFirstOrThrow({
-     *   where: {
-     *     // ... provide filter here
-     *   }
-     * })
-     */
-    findFirstOrThrow<T extends BbPresetSyncLogFindFirstOrThrowArgs>(args?: SelectSubset<T, BbPresetSyncLogFindFirstOrThrowArgs<ExtArgs>>): Prisma__BbPresetSyncLogClient<$Result.GetResult<Prisma.$BbPresetSyncLogPayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
-
-    /**
-     * Find zero or more BbPresetSyncLogs that matches the filter.
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * @param {BbPresetSyncLogFindManyArgs} args - Arguments to filter and select certain fields only.
-     * @example
-     * // Get all BbPresetSyncLogs
-     * const bbPresetSyncLogs = await prisma.bbPresetSyncLog.findMany()
-     * 
-     * // Get first 10 BbPresetSyncLogs
-     * const bbPresetSyncLogs = await prisma.bbPresetSyncLog.findMany({ take: 10 })
-     * 
-     * // Only select the `id`
-     * const bbPresetSyncLogWithIdOnly = await prisma.bbPresetSyncLog.findMany({ select: { id: true } })
-     * 
-     */
-    findMany<T extends BbPresetSyncLogFindManyArgs>(args?: SelectSubset<T, BbPresetSyncLogFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$BbPresetSyncLogPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
-
-    /**
-     * Create a BbPresetSyncLog.
-     * @param {BbPresetSyncLogCreateArgs} args - Arguments to create a BbPresetSyncLog.
-     * @example
-     * // Create one BbPresetSyncLog
-     * const BbPresetSyncLog = await prisma.bbPresetSyncLog.create({
-     *   data: {
-     *     // ... data to create a BbPresetSyncLog
-     *   }
-     * })
-     * 
-     */
-    create<T extends BbPresetSyncLogCreateArgs>(args: SelectSubset<T, BbPresetSyncLogCreateArgs<ExtArgs>>): Prisma__BbPresetSyncLogClient<$Result.GetResult<Prisma.$BbPresetSyncLogPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
-
-    /**
-     * Create many BbPresetSyncLogs.
-     * @param {BbPresetSyncLogCreateManyArgs} args - Arguments to create many BbPresetSyncLogs.
-     * @example
-     * // Create many BbPresetSyncLogs
-     * const bbPresetSyncLog = await prisma.bbPresetSyncLog.createMany({
-     *   data: [
-     *     // ... provide data here
-     *   ]
-     * })
-     *     
-     */
-    createMany<T extends BbPresetSyncLogCreateManyArgs>(args?: SelectSubset<T, BbPresetSyncLogCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
-
-    /**
-     * Create many BbPresetSyncLogs and returns the data saved in the database.
-     * @param {BbPresetSyncLogCreateManyAndReturnArgs} args - Arguments to create many BbPresetSyncLogs.
-     * @example
-     * // Create many BbPresetSyncLogs
-     * const bbPresetSyncLog = await prisma.bbPresetSyncLog.createManyAndReturn({
-     *   data: [
-     *     // ... provide data here
-     *   ]
-     * })
-     * 
-     * // Create many BbPresetSyncLogs and only return the `id`
-     * const bbPresetSyncLogWithIdOnly = await prisma.bbPresetSyncLog.createManyAndReturn({
-     *   select: { id: true },
-     *   data: [
-     *     // ... provide data here
-     *   ]
-     * })
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * 
-     */
-    createManyAndReturn<T extends BbPresetSyncLogCreateManyAndReturnArgs>(args?: SelectSubset<T, BbPresetSyncLogCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$BbPresetSyncLogPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
-
-    /**
-     * Delete a BbPresetSyncLog.
-     * @param {BbPresetSyncLogDeleteArgs} args - Arguments to delete one BbPresetSyncLog.
-     * @example
-     * // Delete one BbPresetSyncLog
-     * const BbPresetSyncLog = await prisma.bbPresetSyncLog.delete({
-     *   where: {
-     *     // ... filter to delete one BbPresetSyncLog
-     *   }
-     * })
-     * 
-     */
-    delete<T extends BbPresetSyncLogDeleteArgs>(args: SelectSubset<T, BbPresetSyncLogDeleteArgs<ExtArgs>>): Prisma__BbPresetSyncLogClient<$Result.GetResult<Prisma.$BbPresetSyncLogPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
-
-    /**
-     * Update one BbPresetSyncLog.
-     * @param {BbPresetSyncLogUpdateArgs} args - Arguments to update one BbPresetSyncLog.
-     * @example
-     * // Update one BbPresetSyncLog
-     * const bbPresetSyncLog = await prisma.bbPresetSyncLog.update({
-     *   where: {
-     *     // ... provide filter here
-     *   },
-     *   data: {
-     *     // ... provide data here
-     *   }
-     * })
-     * 
-     */
-    update<T extends BbPresetSyncLogUpdateArgs>(args: SelectSubset<T, BbPresetSyncLogUpdateArgs<ExtArgs>>): Prisma__BbPresetSyncLogClient<$Result.GetResult<Prisma.$BbPresetSyncLogPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
-
-    /**
-     * Delete zero or more BbPresetSyncLogs.
-     * @param {BbPresetSyncLogDeleteManyArgs} args - Arguments to filter BbPresetSyncLogs to delete.
-     * @example
-     * // Delete a few BbPresetSyncLogs
-     * const { count } = await prisma.bbPresetSyncLog.deleteMany({
-     *   where: {
-     *     // ... provide filter here
-     *   }
-     * })
-     * 
-     */
-    deleteMany<T extends BbPresetSyncLogDeleteManyArgs>(args?: SelectSubset<T, BbPresetSyncLogDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
-
-    /**
-     * Update zero or more BbPresetSyncLogs.
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * @param {BbPresetSyncLogUpdateManyArgs} args - Arguments to update one or more rows.
-     * @example
-     * // Update many BbPresetSyncLogs
-     * const bbPresetSyncLog = await prisma.bbPresetSyncLog.updateMany({
-     *   where: {
-     *     // ... provide filter here
-     *   },
-     *   data: {
-     *     // ... provide data here
-     *   }
-     * })
-     * 
-     */
-    updateMany<T extends BbPresetSyncLogUpdateManyArgs>(args: SelectSubset<T, BbPresetSyncLogUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
-
-    /**
-     * Update zero or more BbPresetSyncLogs and returns the data updated in the database.
-     * @param {BbPresetSyncLogUpdateManyAndReturnArgs} args - Arguments to update many BbPresetSyncLogs.
-     * @example
-     * // Update many BbPresetSyncLogs
-     * const bbPresetSyncLog = await prisma.bbPresetSyncLog.updateManyAndReturn({
-     *   where: {
-     *     // ... provide filter here
-     *   },
-     *   data: [
-     *     // ... provide data here
-     *   ]
-     * })
-     * 
-     * // Update zero or more BbPresetSyncLogs and only return the `id`
-     * const bbPresetSyncLogWithIdOnly = await prisma.bbPresetSyncLog.updateManyAndReturn({
-     *   select: { id: true },
-     *   where: {
-     *     // ... provide filter here
-     *   },
-     *   data: [
-     *     // ... provide data here
-     *   ]
-     * })
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * 
-     */
-    updateManyAndReturn<T extends BbPresetSyncLogUpdateManyAndReturnArgs>(args: SelectSubset<T, BbPresetSyncLogUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$BbPresetSyncLogPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
-
-    /**
-     * Create or update one BbPresetSyncLog.
-     * @param {BbPresetSyncLogUpsertArgs} args - Arguments to update or create a BbPresetSyncLog.
-     * @example
-     * // Update or create a BbPresetSyncLog
-     * const bbPresetSyncLog = await prisma.bbPresetSyncLog.upsert({
-     *   create: {
-     *     // ... data to create a BbPresetSyncLog
-     *   },
-     *   update: {
-     *     // ... in case it already exists, update
-     *   },
-     *   where: {
-     *     // ... the filter for the BbPresetSyncLog we want to update
-     *   }
-     * })
-     */
-    upsert<T extends BbPresetSyncLogUpsertArgs>(args: SelectSubset<T, BbPresetSyncLogUpsertArgs<ExtArgs>>): Prisma__BbPresetSyncLogClient<$Result.GetResult<Prisma.$BbPresetSyncLogPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
-
-
-    /**
-     * Count the number of BbPresetSyncLogs.
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * @param {BbPresetSyncLogCountArgs} args - Arguments to filter BbPresetSyncLogs to count.
-     * @example
-     * // Count the number of BbPresetSyncLogs
-     * const count = await prisma.bbPresetSyncLog.count({
-     *   where: {
-     *     // ... the filter for the BbPresetSyncLogs we want to count
-     *   }
-     * })
-    **/
-    count<T extends BbPresetSyncLogCountArgs>(
-      args?: Subset<T, BbPresetSyncLogCountArgs>,
-    ): Prisma.PrismaPromise<
-      T extends $Utils.Record<'select', any>
-        ? T['select'] extends true
-          ? number
-          : GetScalarType<T['select'], BbPresetSyncLogCountAggregateOutputType>
-        : number
-    >
-
-    /**
-     * Allows you to perform aggregations operations on a BbPresetSyncLog.
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * @param {BbPresetSyncLogAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
-     * @example
-     * // Ordered by age ascending
-     * // Where email contains prisma.io
-     * // Limited to the 10 users
-     * const aggregations = await prisma.user.aggregate({
-     *   _avg: {
-     *     age: true,
-     *   },
-     *   where: {
-     *     email: {
-     *       contains: "prisma.io",
-     *     },
-     *   },
-     *   orderBy: {
-     *     age: "asc",
-     *   },
-     *   take: 10,
-     * })
-    **/
-    aggregate<T extends BbPresetSyncLogAggregateArgs>(args: Subset<T, BbPresetSyncLogAggregateArgs>): Prisma.PrismaPromise<GetBbPresetSyncLogAggregateType<T>>
-
-    /**
-     * Group by BbPresetSyncLog.
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * @param {BbPresetSyncLogGroupByArgs} args - Group by arguments.
-     * @example
-     * // Group by city, order by createdAt, get count
-     * const result = await prisma.user.groupBy({
-     *   by: ['city', 'createdAt'],
-     *   orderBy: {
-     *     createdAt: true
-     *   },
-     *   _count: {
-     *     _all: true
-     *   },
-     * })
-     * 
-    **/
-    groupBy<
-      T extends BbPresetSyncLogGroupByArgs,
-      HasSelectOrTake extends Or<
-        Extends<'skip', Keys<T>>,
-        Extends<'take', Keys<T>>
-      >,
-      OrderByArg extends True extends HasSelectOrTake
-        ? { orderBy: BbPresetSyncLogGroupByArgs['orderBy'] }
-        : { orderBy?: BbPresetSyncLogGroupByArgs['orderBy'] },
-      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
-      ByFields extends MaybeTupleToUnion<T['by']>,
-      ByValid extends Has<ByFields, OrderFields>,
-      HavingFields extends GetHavingFields<T['having']>,
-      HavingValid extends Has<ByFields, HavingFields>,
-      ByEmpty extends T['by'] extends never[] ? True : False,
-      InputErrors extends ByEmpty extends True
-      ? `Error: "by" must not be empty.`
-      : HavingValid extends False
-      ? {
-          [P in HavingFields]: P extends ByFields
-            ? never
-            : P extends string
-            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
-            : [
-                Error,
-                'Field ',
-                P,
-                ` in "having" needs to be provided in "by"`,
-              ]
-        }[HavingFields]
-      : 'take' extends Keys<T>
-      ? 'orderBy' extends Keys<T>
-        ? ByValid extends True
-          ? {}
-          : {
-              [P in OrderFields]: P extends ByFields
-                ? never
-                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
-            }[OrderFields]
-        : 'Error: If you provide "take", you also need to provide "orderBy"'
-      : 'skip' extends Keys<T>
-      ? 'orderBy' extends Keys<T>
-        ? ByValid extends True
-          ? {}
-          : {
-              [P in OrderFields]: P extends ByFields
-                ? never
-                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
-            }[OrderFields]
-        : 'Error: If you provide "skip", you also need to provide "orderBy"'
-      : ByValid extends True
-      ? {}
-      : {
-          [P in OrderFields]: P extends ByFields
-            ? never
-            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
-        }[OrderFields]
-    >(args: SubsetIntersection<T, BbPresetSyncLogGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetBbPresetSyncLogGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
-  /**
-   * Fields of the BbPresetSyncLog model
-   */
-  readonly fields: BbPresetSyncLogFieldRefs;
-  }
-
-  /**
-   * The delegate class that acts as a "Promise-like" for BbPresetSyncLog.
-   * Why is this prefixed with `Prisma__`?
-   * Because we want to prevent naming conflicts as mentioned in
-   * https://github.com/prisma/prisma-client-js/issues/707
-   */
-  export interface Prisma__BbPresetSyncLogClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
-    readonly [Symbol.toStringTag]: "PrismaPromise"
-    /**
-     * Attaches callbacks for the resolution and/or rejection of the Promise.
-     * @param onfulfilled The callback to execute when the Promise is resolved.
-     * @param onrejected The callback to execute when the Promise is rejected.
-     * @returns A Promise for the completion of which ever callback is executed.
-     */
-    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
-    /**
-     * Attaches a callback for only the rejection of the Promise.
-     * @param onrejected The callback to execute when the Promise is rejected.
-     * @returns A Promise for the completion of the callback.
-     */
-    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
-    /**
-     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
-     * resolved value cannot be modified from the callback.
-     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
-     * @returns A Promise for the completion of the callback.
-     */
-    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
-  }
-
-
-
-
-  /**
-   * Fields of the BbPresetSyncLog model
-   */
-  interface BbPresetSyncLogFieldRefs {
-    readonly id: FieldRef<"BbPresetSyncLog", 'String'>
-    readonly rootPath: FieldRef<"BbPresetSyncLog", 'String'>
-    readonly status: FieldRef<"BbPresetSyncLog", 'BbPresetSyncStatus'>
-    readonly startedAt: FieldRef<"BbPresetSyncLog", 'DateTime'>
-    readonly finishedAt: FieldRef<"BbPresetSyncLog", 'DateTime'>
-    readonly scannedCount: FieldRef<"BbPresetSyncLog", 'Int'>
-    readonly createdCount: FieldRef<"BbPresetSyncLog", 'Int'>
-    readonly changedCount: FieldRef<"BbPresetSyncLog", 'Int'>
-    readonly brokenCount: FieldRef<"BbPresetSyncLog", 'Int'>
-    readonly skippedCount: FieldRef<"BbPresetSyncLog", 'Int'>
-    readonly diff: FieldRef<"BbPresetSyncLog", 'Json'>
-    readonly error: FieldRef<"BbPresetSyncLog", 'String'>
-  }
-    
-
-  // Custom InputTypes
-  /**
-   * BbPresetSyncLog findUnique
-   */
-  export type BbPresetSyncLogFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the BbPresetSyncLog
-     */
-    select?: BbPresetSyncLogSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the BbPresetSyncLog
-     */
-    omit?: BbPresetSyncLogOmit<ExtArgs> | null
-    /**
-     * Filter, which BbPresetSyncLog to fetch.
-     */
-    where: BbPresetSyncLogWhereUniqueInput
-  }
-
-  /**
-   * BbPresetSyncLog findUniqueOrThrow
-   */
-  export type BbPresetSyncLogFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the BbPresetSyncLog
-     */
-    select?: BbPresetSyncLogSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the BbPresetSyncLog
-     */
-    omit?: BbPresetSyncLogOmit<ExtArgs> | null
-    /**
-     * Filter, which BbPresetSyncLog to fetch.
-     */
-    where: BbPresetSyncLogWhereUniqueInput
-  }
-
-  /**
-   * BbPresetSyncLog findFirst
-   */
-  export type BbPresetSyncLogFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the BbPresetSyncLog
-     */
-    select?: BbPresetSyncLogSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the BbPresetSyncLog
-     */
-    omit?: BbPresetSyncLogOmit<ExtArgs> | null
-    /**
-     * Filter, which BbPresetSyncLog to fetch.
-     */
-    where?: BbPresetSyncLogWhereInput
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
-     * 
-     * Determine the order of BbPresetSyncLogs to fetch.
-     */
-    orderBy?: BbPresetSyncLogOrderByWithRelationInput | BbPresetSyncLogOrderByWithRelationInput[]
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
-     * 
-     * Sets the position for searching for BbPresetSyncLogs.
-     */
-    cursor?: BbPresetSyncLogWhereUniqueInput
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
-     * Take `±n` BbPresetSyncLogs from the position of the cursor.
-     */
-    take?: number
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
-     * Skip the first `n` BbPresetSyncLogs.
-     */
-    skip?: number
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
-     * 
-     * Filter by unique combinations of BbPresetSyncLogs.
-     */
-    distinct?: BbPresetSyncLogScalarFieldEnum | BbPresetSyncLogScalarFieldEnum[]
-  }
-
-  /**
-   * BbPresetSyncLog findFirstOrThrow
-   */
-  export type BbPresetSyncLogFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the BbPresetSyncLog
-     */
-    select?: BbPresetSyncLogSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the BbPresetSyncLog
-     */
-    omit?: BbPresetSyncLogOmit<ExtArgs> | null
-    /**
-     * Filter, which BbPresetSyncLog to fetch.
-     */
-    where?: BbPresetSyncLogWhereInput
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
-     * 
-     * Determine the order of BbPresetSyncLogs to fetch.
-     */
-    orderBy?: BbPresetSyncLogOrderByWithRelationInput | BbPresetSyncLogOrderByWithRelationInput[]
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
-     * 
-     * Sets the position for searching for BbPresetSyncLogs.
-     */
-    cursor?: BbPresetSyncLogWhereUniqueInput
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
-     * Take `±n` BbPresetSyncLogs from the position of the cursor.
-     */
-    take?: number
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
-     * Skip the first `n` BbPresetSyncLogs.
-     */
-    skip?: number
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
-     * 
-     * Filter by unique combinations of BbPresetSyncLogs.
-     */
-    distinct?: BbPresetSyncLogScalarFieldEnum | BbPresetSyncLogScalarFieldEnum[]
-  }
-
-  /**
-   * BbPresetSyncLog findMany
-   */
-  export type BbPresetSyncLogFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the BbPresetSyncLog
-     */
-    select?: BbPresetSyncLogSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the BbPresetSyncLog
-     */
-    omit?: BbPresetSyncLogOmit<ExtArgs> | null
-    /**
-     * Filter, which BbPresetSyncLogs to fetch.
-     */
-    where?: BbPresetSyncLogWhereInput
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
-     * 
-     * Determine the order of BbPresetSyncLogs to fetch.
-     */
-    orderBy?: BbPresetSyncLogOrderByWithRelationInput | BbPresetSyncLogOrderByWithRelationInput[]
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
-     * 
-     * Sets the position for listing BbPresetSyncLogs.
-     */
-    cursor?: BbPresetSyncLogWhereUniqueInput
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
-     * Take `±n` BbPresetSyncLogs from the position of the cursor.
-     */
-    take?: number
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
-     * Skip the first `n` BbPresetSyncLogs.
-     */
-    skip?: number
-    distinct?: BbPresetSyncLogScalarFieldEnum | BbPresetSyncLogScalarFieldEnum[]
-  }
-
-  /**
-   * BbPresetSyncLog create
-   */
-  export type BbPresetSyncLogCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the BbPresetSyncLog
-     */
-    select?: BbPresetSyncLogSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the BbPresetSyncLog
-     */
-    omit?: BbPresetSyncLogOmit<ExtArgs> | null
-    /**
-     * The data needed to create a BbPresetSyncLog.
-     */
-    data: XOR<BbPresetSyncLogCreateInput, BbPresetSyncLogUncheckedCreateInput>
-  }
-
-  /**
-   * BbPresetSyncLog createMany
-   */
-  export type BbPresetSyncLogCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * The data used to create many BbPresetSyncLogs.
-     */
-    data: BbPresetSyncLogCreateManyInput | BbPresetSyncLogCreateManyInput[]
-    skipDuplicates?: boolean
-  }
-
-  /**
-   * BbPresetSyncLog createManyAndReturn
-   */
-  export type BbPresetSyncLogCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the BbPresetSyncLog
-     */
-    select?: BbPresetSyncLogSelectCreateManyAndReturn<ExtArgs> | null
-    /**
-     * Omit specific fields from the BbPresetSyncLog
-     */
-    omit?: BbPresetSyncLogOmit<ExtArgs> | null
-    /**
-     * The data used to create many BbPresetSyncLogs.
-     */
-    data: BbPresetSyncLogCreateManyInput | BbPresetSyncLogCreateManyInput[]
-    skipDuplicates?: boolean
-  }
-
-  /**
-   * BbPresetSyncLog update
-   */
-  export type BbPresetSyncLogUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the BbPresetSyncLog
-     */
-    select?: BbPresetSyncLogSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the BbPresetSyncLog
-     */
-    omit?: BbPresetSyncLogOmit<ExtArgs> | null
-    /**
-     * The data needed to update a BbPresetSyncLog.
-     */
-    data: XOR<BbPresetSyncLogUpdateInput, BbPresetSyncLogUncheckedUpdateInput>
-    /**
-     * Choose, which BbPresetSyncLog to update.
-     */
-    where: BbPresetSyncLogWhereUniqueInput
-  }
-
-  /**
-   * BbPresetSyncLog updateMany
-   */
-  export type BbPresetSyncLogUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * The data used to update BbPresetSyncLogs.
-     */
-    data: XOR<BbPresetSyncLogUpdateManyMutationInput, BbPresetSyncLogUncheckedUpdateManyInput>
-    /**
-     * Filter which BbPresetSyncLogs to update
-     */
-    where?: BbPresetSyncLogWhereInput
-    /**
-     * Limit how many BbPresetSyncLogs to update.
-     */
-    limit?: number
-  }
-
-  /**
-   * BbPresetSyncLog updateManyAndReturn
-   */
-  export type BbPresetSyncLogUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the BbPresetSyncLog
-     */
-    select?: BbPresetSyncLogSelectUpdateManyAndReturn<ExtArgs> | null
-    /**
-     * Omit specific fields from the BbPresetSyncLog
-     */
-    omit?: BbPresetSyncLogOmit<ExtArgs> | null
-    /**
-     * The data used to update BbPresetSyncLogs.
-     */
-    data: XOR<BbPresetSyncLogUpdateManyMutationInput, BbPresetSyncLogUncheckedUpdateManyInput>
-    /**
-     * Filter which BbPresetSyncLogs to update
-     */
-    where?: BbPresetSyncLogWhereInput
-    /**
-     * Limit how many BbPresetSyncLogs to update.
-     */
-    limit?: number
-  }
-
-  /**
-   * BbPresetSyncLog upsert
-   */
-  export type BbPresetSyncLogUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the BbPresetSyncLog
-     */
-    select?: BbPresetSyncLogSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the BbPresetSyncLog
-     */
-    omit?: BbPresetSyncLogOmit<ExtArgs> | null
-    /**
-     * The filter to search for the BbPresetSyncLog to update in case it exists.
-     */
-    where: BbPresetSyncLogWhereUniqueInput
-    /**
-     * In case the BbPresetSyncLog found by the `where` argument doesn't exist, create a new BbPresetSyncLog with this data.
-     */
-    create: XOR<BbPresetSyncLogCreateInput, BbPresetSyncLogUncheckedCreateInput>
-    /**
-     * In case the BbPresetSyncLog was found with the provided `where` argument, update it with this data.
-     */
-    update: XOR<BbPresetSyncLogUpdateInput, BbPresetSyncLogUncheckedUpdateInput>
-  }
-
-  /**
-   * BbPresetSyncLog delete
-   */
-  export type BbPresetSyncLogDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the BbPresetSyncLog
-     */
-    select?: BbPresetSyncLogSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the BbPresetSyncLog
-     */
-    omit?: BbPresetSyncLogOmit<ExtArgs> | null
-    /**
-     * Filter which BbPresetSyncLog to delete.
-     */
-    where: BbPresetSyncLogWhereUniqueInput
-  }
-
-  /**
-   * BbPresetSyncLog deleteMany
-   */
-  export type BbPresetSyncLogDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Filter which BbPresetSyncLogs to delete
-     */
-    where?: BbPresetSyncLogWhereInput
-    /**
-     * Limit how many BbPresetSyncLogs to delete.
-     */
-    limit?: number
-  }
-
-  /**
-   * BbPresetSyncLog without action
-   */
-  export type BbPresetSyncLogDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the BbPresetSyncLog
-     */
-    select?: BbPresetSyncLogSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the BbPresetSyncLog
-     */
-    omit?: BbPresetSyncLogOmit<ExtArgs> | null
   }
 
 
@@ -38792,58 +35014,6 @@ export namespace Prisma {
   export type SourceIdentityScalarFieldEnum = (typeof SourceIdentityScalarFieldEnum)[keyof typeof SourceIdentityScalarFieldEnum]
 
 
-  export const BbPresetScalarFieldEnum: {
-    id: 'id',
-    key: 'key',
-    version: 'version',
-    name: 'name',
-    description: 'description',
-    platform: 'platform',
-    scriptRelPath: 'scriptRelPath',
-    scriptHash: 'scriptHash',
-    scriptSnapshotKey: 'scriptSnapshotKey',
-    argsSchema: 'argsSchema',
-    outputSchema: 'outputSchema',
-    status: 'status',
-    isActive: 'isActive',
-    createdAt: 'createdAt',
-    updatedAt: 'updatedAt'
-  };
-
-  export type BbPresetScalarFieldEnum = (typeof BbPresetScalarFieldEnum)[keyof typeof BbPresetScalarFieldEnum]
-
-
-  export const SourcePresetBindingScalarFieldEnum: {
-    id: 'id',
-    sourceId: 'sourceId',
-    presetId: 'presetId',
-    args: 'args',
-    enabled: 'enabled',
-    createdAt: 'createdAt',
-    updatedAt: 'updatedAt'
-  };
-
-  export type SourcePresetBindingScalarFieldEnum = (typeof SourcePresetBindingScalarFieldEnum)[keyof typeof SourcePresetBindingScalarFieldEnum]
-
-
-  export const BbPresetSyncLogScalarFieldEnum: {
-    id: 'id',
-    rootPath: 'rootPath',
-    status: 'status',
-    startedAt: 'startedAt',
-    finishedAt: 'finishedAt',
-    scannedCount: 'scannedCount',
-    createdCount: 'createdCount',
-    changedCount: 'changedCount',
-    brokenCount: 'brokenCount',
-    skippedCount: 'skippedCount',
-    diff: 'diff',
-    error: 'error'
-  };
-
-  export type BbPresetSyncLogScalarFieldEnum = (typeof BbPresetSyncLogScalarFieldEnum)[keyof typeof BbPresetSyncLogScalarFieldEnum]
-
-
   export const WebSourceConfigScalarFieldEnum: {
     sourceId: 'sourceId',
     url: 'url',
@@ -39278,34 +35448,6 @@ export namespace Prisma {
    * Reference to a field of type 'Int[]'
    */
   export type ListIntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Int[]'>
-    
-
-
-  /**
-   * Reference to a field of type 'BbPresetStatus'
-   */
-  export type EnumBbPresetStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'BbPresetStatus'>
-    
-
-
-  /**
-   * Reference to a field of type 'BbPresetStatus[]'
-   */
-  export type ListEnumBbPresetStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'BbPresetStatus[]'>
-    
-
-
-  /**
-   * Reference to a field of type 'BbPresetSyncStatus'
-   */
-  export type EnumBbPresetSyncStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'BbPresetSyncStatus'>
-    
-
-
-  /**
-   * Reference to a field of type 'BbPresetSyncStatus[]'
-   */
-  export type ListEnumBbPresetSyncStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'BbPresetSyncStatus[]'>
     
 
 
@@ -39811,7 +35953,6 @@ export namespace Prisma {
     search?: XOR<SearchEngineSourceConfigNullableScalarRelationFilter, SearchEngineSourceConfigWhereInput> | null
     social?: XOR<SocialMediaSourceConfigNullableScalarRelationFilter, SocialMediaSourceConfigWhereInput> | null
     identity?: XOR<SourceIdentityNullableScalarRelationFilter, SourceIdentityWhereInput> | null
-    presetBindings?: SourcePresetBindingListRelationFilter
     queries?: QueryListRelationFilter
     derivedKeywords?: KeywordListRelationFilter
     querySourcePolicies?: QuerySourcePolicyListRelationFilter
@@ -39838,7 +35979,6 @@ export namespace Prisma {
     search?: SearchEngineSourceConfigOrderByWithRelationInput
     social?: SocialMediaSourceConfigOrderByWithRelationInput
     identity?: SourceIdentityOrderByWithRelationInput
-    presetBindings?: SourcePresetBindingOrderByRelationAggregateInput
     queries?: QueryOrderByRelationAggregateInput
     derivedKeywords?: KeywordOrderByRelationAggregateInput
     querySourcePolicies?: QuerySourcePolicyOrderByRelationAggregateInput
@@ -39868,7 +36008,6 @@ export namespace Prisma {
     search?: XOR<SearchEngineSourceConfigNullableScalarRelationFilter, SearchEngineSourceConfigWhereInput> | null
     social?: XOR<SocialMediaSourceConfigNullableScalarRelationFilter, SocialMediaSourceConfigWhereInput> | null
     identity?: XOR<SourceIdentityNullableScalarRelationFilter, SourceIdentityWhereInput> | null
-    presetBindings?: SourcePresetBindingListRelationFilter
     queries?: QueryListRelationFilter
     derivedKeywords?: KeywordListRelationFilter
     querySourcePolicies?: QuerySourcePolicyListRelationFilter
@@ -39993,270 +36132,6 @@ export namespace Prisma {
     intentArgsHash?: StringWithAggregatesFilter<"SourceIdentity"> | string
     createdAt?: DateTimeWithAggregatesFilter<"SourceIdentity"> | Date | string
     updatedAt?: DateTimeWithAggregatesFilter<"SourceIdentity"> | Date | string
-  }
-
-  export type BbPresetWhereInput = {
-    AND?: BbPresetWhereInput | BbPresetWhereInput[]
-    OR?: BbPresetWhereInput[]
-    NOT?: BbPresetWhereInput | BbPresetWhereInput[]
-    id?: StringFilter<"BbPreset"> | string
-    key?: StringFilter<"BbPreset"> | string
-    version?: StringFilter<"BbPreset"> | string
-    name?: StringFilter<"BbPreset"> | string
-    description?: StringNullableFilter<"BbPreset"> | string | null
-    platform?: StringFilter<"BbPreset"> | string
-    scriptRelPath?: StringFilter<"BbPreset"> | string
-    scriptHash?: StringFilter<"BbPreset"> | string
-    scriptSnapshotKey?: StringNullableFilter<"BbPreset"> | string | null
-    argsSchema?: JsonFilter<"BbPreset">
-    outputSchema?: JsonFilter<"BbPreset">
-    status?: EnumBbPresetStatusFilter<"BbPreset"> | $Enums.BbPresetStatus
-    isActive?: BoolFilter<"BbPreset"> | boolean
-    createdAt?: DateTimeFilter<"BbPreset"> | Date | string
-    updatedAt?: DateTimeFilter<"BbPreset"> | Date | string
-    sourceBindings?: SourcePresetBindingListRelationFilter
-  }
-
-  export type BbPresetOrderByWithRelationInput = {
-    id?: SortOrder
-    key?: SortOrder
-    version?: SortOrder
-    name?: SortOrder
-    description?: SortOrderInput | SortOrder
-    platform?: SortOrder
-    scriptRelPath?: SortOrder
-    scriptHash?: SortOrder
-    scriptSnapshotKey?: SortOrderInput | SortOrder
-    argsSchema?: SortOrder
-    outputSchema?: SortOrder
-    status?: SortOrder
-    isActive?: SortOrder
-    createdAt?: SortOrder
-    updatedAt?: SortOrder
-    sourceBindings?: SourcePresetBindingOrderByRelationAggregateInput
-  }
-
-  export type BbPresetWhereUniqueInput = Prisma.AtLeast<{
-    id?: string
-    key_version?: BbPresetKeyVersionCompoundUniqueInput
-    AND?: BbPresetWhereInput | BbPresetWhereInput[]
-    OR?: BbPresetWhereInput[]
-    NOT?: BbPresetWhereInput | BbPresetWhereInput[]
-    key?: StringFilter<"BbPreset"> | string
-    version?: StringFilter<"BbPreset"> | string
-    name?: StringFilter<"BbPreset"> | string
-    description?: StringNullableFilter<"BbPreset"> | string | null
-    platform?: StringFilter<"BbPreset"> | string
-    scriptRelPath?: StringFilter<"BbPreset"> | string
-    scriptHash?: StringFilter<"BbPreset"> | string
-    scriptSnapshotKey?: StringNullableFilter<"BbPreset"> | string | null
-    argsSchema?: JsonFilter<"BbPreset">
-    outputSchema?: JsonFilter<"BbPreset">
-    status?: EnumBbPresetStatusFilter<"BbPreset"> | $Enums.BbPresetStatus
-    isActive?: BoolFilter<"BbPreset"> | boolean
-    createdAt?: DateTimeFilter<"BbPreset"> | Date | string
-    updatedAt?: DateTimeFilter<"BbPreset"> | Date | string
-    sourceBindings?: SourcePresetBindingListRelationFilter
-  }, "id" | "key_version">
-
-  export type BbPresetOrderByWithAggregationInput = {
-    id?: SortOrder
-    key?: SortOrder
-    version?: SortOrder
-    name?: SortOrder
-    description?: SortOrderInput | SortOrder
-    platform?: SortOrder
-    scriptRelPath?: SortOrder
-    scriptHash?: SortOrder
-    scriptSnapshotKey?: SortOrderInput | SortOrder
-    argsSchema?: SortOrder
-    outputSchema?: SortOrder
-    status?: SortOrder
-    isActive?: SortOrder
-    createdAt?: SortOrder
-    updatedAt?: SortOrder
-    _count?: BbPresetCountOrderByAggregateInput
-    _max?: BbPresetMaxOrderByAggregateInput
-    _min?: BbPresetMinOrderByAggregateInput
-  }
-
-  export type BbPresetScalarWhereWithAggregatesInput = {
-    AND?: BbPresetScalarWhereWithAggregatesInput | BbPresetScalarWhereWithAggregatesInput[]
-    OR?: BbPresetScalarWhereWithAggregatesInput[]
-    NOT?: BbPresetScalarWhereWithAggregatesInput | BbPresetScalarWhereWithAggregatesInput[]
-    id?: StringWithAggregatesFilter<"BbPreset"> | string
-    key?: StringWithAggregatesFilter<"BbPreset"> | string
-    version?: StringWithAggregatesFilter<"BbPreset"> | string
-    name?: StringWithAggregatesFilter<"BbPreset"> | string
-    description?: StringNullableWithAggregatesFilter<"BbPreset"> | string | null
-    platform?: StringWithAggregatesFilter<"BbPreset"> | string
-    scriptRelPath?: StringWithAggregatesFilter<"BbPreset"> | string
-    scriptHash?: StringWithAggregatesFilter<"BbPreset"> | string
-    scriptSnapshotKey?: StringNullableWithAggregatesFilter<"BbPreset"> | string | null
-    argsSchema?: JsonWithAggregatesFilter<"BbPreset">
-    outputSchema?: JsonWithAggregatesFilter<"BbPreset">
-    status?: EnumBbPresetStatusWithAggregatesFilter<"BbPreset"> | $Enums.BbPresetStatus
-    isActive?: BoolWithAggregatesFilter<"BbPreset"> | boolean
-    createdAt?: DateTimeWithAggregatesFilter<"BbPreset"> | Date | string
-    updatedAt?: DateTimeWithAggregatesFilter<"BbPreset"> | Date | string
-  }
-
-  export type SourcePresetBindingWhereInput = {
-    AND?: SourcePresetBindingWhereInput | SourcePresetBindingWhereInput[]
-    OR?: SourcePresetBindingWhereInput[]
-    NOT?: SourcePresetBindingWhereInput | SourcePresetBindingWhereInput[]
-    id?: StringFilter<"SourcePresetBinding"> | string
-    sourceId?: StringFilter<"SourcePresetBinding"> | string
-    presetId?: StringFilter<"SourcePresetBinding"> | string
-    args?: JsonFilter<"SourcePresetBinding">
-    enabled?: BoolFilter<"SourcePresetBinding"> | boolean
-    createdAt?: DateTimeFilter<"SourcePresetBinding"> | Date | string
-    updatedAt?: DateTimeFilter<"SourcePresetBinding"> | Date | string
-    source?: XOR<SourceScalarRelationFilter, SourceWhereInput>
-    preset?: XOR<BbPresetScalarRelationFilter, BbPresetWhereInput>
-  }
-
-  export type SourcePresetBindingOrderByWithRelationInput = {
-    id?: SortOrder
-    sourceId?: SortOrder
-    presetId?: SortOrder
-    args?: SortOrder
-    enabled?: SortOrder
-    createdAt?: SortOrder
-    updatedAt?: SortOrder
-    source?: SourceOrderByWithRelationInput
-    preset?: BbPresetOrderByWithRelationInput
-  }
-
-  export type SourcePresetBindingWhereUniqueInput = Prisma.AtLeast<{
-    id?: string
-    sourceId_presetId?: SourcePresetBindingSourceIdPresetIdCompoundUniqueInput
-    AND?: SourcePresetBindingWhereInput | SourcePresetBindingWhereInput[]
-    OR?: SourcePresetBindingWhereInput[]
-    NOT?: SourcePresetBindingWhereInput | SourcePresetBindingWhereInput[]
-    sourceId?: StringFilter<"SourcePresetBinding"> | string
-    presetId?: StringFilter<"SourcePresetBinding"> | string
-    args?: JsonFilter<"SourcePresetBinding">
-    enabled?: BoolFilter<"SourcePresetBinding"> | boolean
-    createdAt?: DateTimeFilter<"SourcePresetBinding"> | Date | string
-    updatedAt?: DateTimeFilter<"SourcePresetBinding"> | Date | string
-    source?: XOR<SourceScalarRelationFilter, SourceWhereInput>
-    preset?: XOR<BbPresetScalarRelationFilter, BbPresetWhereInput>
-  }, "id" | "sourceId_presetId">
-
-  export type SourcePresetBindingOrderByWithAggregationInput = {
-    id?: SortOrder
-    sourceId?: SortOrder
-    presetId?: SortOrder
-    args?: SortOrder
-    enabled?: SortOrder
-    createdAt?: SortOrder
-    updatedAt?: SortOrder
-    _count?: SourcePresetBindingCountOrderByAggregateInput
-    _max?: SourcePresetBindingMaxOrderByAggregateInput
-    _min?: SourcePresetBindingMinOrderByAggregateInput
-  }
-
-  export type SourcePresetBindingScalarWhereWithAggregatesInput = {
-    AND?: SourcePresetBindingScalarWhereWithAggregatesInput | SourcePresetBindingScalarWhereWithAggregatesInput[]
-    OR?: SourcePresetBindingScalarWhereWithAggregatesInput[]
-    NOT?: SourcePresetBindingScalarWhereWithAggregatesInput | SourcePresetBindingScalarWhereWithAggregatesInput[]
-    id?: StringWithAggregatesFilter<"SourcePresetBinding"> | string
-    sourceId?: StringWithAggregatesFilter<"SourcePresetBinding"> | string
-    presetId?: StringWithAggregatesFilter<"SourcePresetBinding"> | string
-    args?: JsonWithAggregatesFilter<"SourcePresetBinding">
-    enabled?: BoolWithAggregatesFilter<"SourcePresetBinding"> | boolean
-    createdAt?: DateTimeWithAggregatesFilter<"SourcePresetBinding"> | Date | string
-    updatedAt?: DateTimeWithAggregatesFilter<"SourcePresetBinding"> | Date | string
-  }
-
-  export type BbPresetSyncLogWhereInput = {
-    AND?: BbPresetSyncLogWhereInput | BbPresetSyncLogWhereInput[]
-    OR?: BbPresetSyncLogWhereInput[]
-    NOT?: BbPresetSyncLogWhereInput | BbPresetSyncLogWhereInput[]
-    id?: StringFilter<"BbPresetSyncLog"> | string
-    rootPath?: StringFilter<"BbPresetSyncLog"> | string
-    status?: EnumBbPresetSyncStatusFilter<"BbPresetSyncLog"> | $Enums.BbPresetSyncStatus
-    startedAt?: DateTimeFilter<"BbPresetSyncLog"> | Date | string
-    finishedAt?: DateTimeNullableFilter<"BbPresetSyncLog"> | Date | string | null
-    scannedCount?: IntFilter<"BbPresetSyncLog"> | number
-    createdCount?: IntFilter<"BbPresetSyncLog"> | number
-    changedCount?: IntFilter<"BbPresetSyncLog"> | number
-    brokenCount?: IntFilter<"BbPresetSyncLog"> | number
-    skippedCount?: IntFilter<"BbPresetSyncLog"> | number
-    diff?: JsonNullableFilter<"BbPresetSyncLog">
-    error?: StringNullableFilter<"BbPresetSyncLog"> | string | null
-  }
-
-  export type BbPresetSyncLogOrderByWithRelationInput = {
-    id?: SortOrder
-    rootPath?: SortOrder
-    status?: SortOrder
-    startedAt?: SortOrder
-    finishedAt?: SortOrderInput | SortOrder
-    scannedCount?: SortOrder
-    createdCount?: SortOrder
-    changedCount?: SortOrder
-    brokenCount?: SortOrder
-    skippedCount?: SortOrder
-    diff?: SortOrderInput | SortOrder
-    error?: SortOrderInput | SortOrder
-  }
-
-  export type BbPresetSyncLogWhereUniqueInput = Prisma.AtLeast<{
-    id?: string
-    AND?: BbPresetSyncLogWhereInput | BbPresetSyncLogWhereInput[]
-    OR?: BbPresetSyncLogWhereInput[]
-    NOT?: BbPresetSyncLogWhereInput | BbPresetSyncLogWhereInput[]
-    rootPath?: StringFilter<"BbPresetSyncLog"> | string
-    status?: EnumBbPresetSyncStatusFilter<"BbPresetSyncLog"> | $Enums.BbPresetSyncStatus
-    startedAt?: DateTimeFilter<"BbPresetSyncLog"> | Date | string
-    finishedAt?: DateTimeNullableFilter<"BbPresetSyncLog"> | Date | string | null
-    scannedCount?: IntFilter<"BbPresetSyncLog"> | number
-    createdCount?: IntFilter<"BbPresetSyncLog"> | number
-    changedCount?: IntFilter<"BbPresetSyncLog"> | number
-    brokenCount?: IntFilter<"BbPresetSyncLog"> | number
-    skippedCount?: IntFilter<"BbPresetSyncLog"> | number
-    diff?: JsonNullableFilter<"BbPresetSyncLog">
-    error?: StringNullableFilter<"BbPresetSyncLog"> | string | null
-  }, "id">
-
-  export type BbPresetSyncLogOrderByWithAggregationInput = {
-    id?: SortOrder
-    rootPath?: SortOrder
-    status?: SortOrder
-    startedAt?: SortOrder
-    finishedAt?: SortOrderInput | SortOrder
-    scannedCount?: SortOrder
-    createdCount?: SortOrder
-    changedCount?: SortOrder
-    brokenCount?: SortOrder
-    skippedCount?: SortOrder
-    diff?: SortOrderInput | SortOrder
-    error?: SortOrderInput | SortOrder
-    _count?: BbPresetSyncLogCountOrderByAggregateInput
-    _avg?: BbPresetSyncLogAvgOrderByAggregateInput
-    _max?: BbPresetSyncLogMaxOrderByAggregateInput
-    _min?: BbPresetSyncLogMinOrderByAggregateInput
-    _sum?: BbPresetSyncLogSumOrderByAggregateInput
-  }
-
-  export type BbPresetSyncLogScalarWhereWithAggregatesInput = {
-    AND?: BbPresetSyncLogScalarWhereWithAggregatesInput | BbPresetSyncLogScalarWhereWithAggregatesInput[]
-    OR?: BbPresetSyncLogScalarWhereWithAggregatesInput[]
-    NOT?: BbPresetSyncLogScalarWhereWithAggregatesInput | BbPresetSyncLogScalarWhereWithAggregatesInput[]
-    id?: StringWithAggregatesFilter<"BbPresetSyncLog"> | string
-    rootPath?: StringWithAggregatesFilter<"BbPresetSyncLog"> | string
-    status?: EnumBbPresetSyncStatusWithAggregatesFilter<"BbPresetSyncLog"> | $Enums.BbPresetSyncStatus
-    startedAt?: DateTimeWithAggregatesFilter<"BbPresetSyncLog"> | Date | string
-    finishedAt?: DateTimeNullableWithAggregatesFilter<"BbPresetSyncLog"> | Date | string | null
-    scannedCount?: IntWithAggregatesFilter<"BbPresetSyncLog"> | number
-    createdCount?: IntWithAggregatesFilter<"BbPresetSyncLog"> | number
-    changedCount?: IntWithAggregatesFilter<"BbPresetSyncLog"> | number
-    brokenCount?: IntWithAggregatesFilter<"BbPresetSyncLog"> | number
-    skippedCount?: IntWithAggregatesFilter<"BbPresetSyncLog"> | number
-    diff?: JsonNullableWithAggregatesFilter<"BbPresetSyncLog">
-    error?: StringNullableWithAggregatesFilter<"BbPresetSyncLog"> | string | null
   }
 
   export type WebSourceConfigWhereInput = {
@@ -42172,7 +38047,6 @@ export namespace Prisma {
     search?: SearchEngineSourceConfigCreateNestedOneWithoutSourceInput
     social?: SocialMediaSourceConfigCreateNestedOneWithoutSourceInput
     identity?: SourceIdentityCreateNestedOneWithoutSourceInput
-    presetBindings?: SourcePresetBindingCreateNestedManyWithoutSourceInput
     queries?: QueryCreateNestedManyWithoutSourcesInput
     derivedKeywords?: KeywordCreateNestedManyWithoutDeriveSourceInput
     querySourcePolicies?: QuerySourcePolicyCreateNestedManyWithoutSourceInput
@@ -42197,7 +38071,6 @@ export namespace Prisma {
     search?: SearchEngineSourceConfigUncheckedCreateNestedOneWithoutSourceInput
     social?: SocialMediaSourceConfigUncheckedCreateNestedOneWithoutSourceInput
     identity?: SourceIdentityUncheckedCreateNestedOneWithoutSourceInput
-    presetBindings?: SourcePresetBindingUncheckedCreateNestedManyWithoutSourceInput
     queries?: QueryUncheckedCreateNestedManyWithoutSourcesInput
     derivedKeywords?: KeywordUncheckedCreateNestedManyWithoutDeriveSourceInput
     querySourcePolicies?: QuerySourcePolicyUncheckedCreateNestedManyWithoutSourceInput
@@ -42222,7 +38095,6 @@ export namespace Prisma {
     search?: SearchEngineSourceConfigUpdateOneWithoutSourceNestedInput
     social?: SocialMediaSourceConfigUpdateOneWithoutSourceNestedInput
     identity?: SourceIdentityUpdateOneWithoutSourceNestedInput
-    presetBindings?: SourcePresetBindingUpdateManyWithoutSourceNestedInput
     queries?: QueryUpdateManyWithoutSourcesNestedInput
     derivedKeywords?: KeywordUpdateManyWithoutDeriveSourceNestedInput
     querySourcePolicies?: QuerySourcePolicyUpdateManyWithoutSourceNestedInput
@@ -42247,7 +38119,6 @@ export namespace Prisma {
     search?: SearchEngineSourceConfigUncheckedUpdateOneWithoutSourceNestedInput
     social?: SocialMediaSourceConfigUncheckedUpdateOneWithoutSourceNestedInput
     identity?: SourceIdentityUncheckedUpdateOneWithoutSourceNestedInput
-    presetBindings?: SourcePresetBindingUncheckedUpdateManyWithoutSourceNestedInput
     queries?: QueryUncheckedUpdateManyWithoutSourcesNestedInput
     derivedKeywords?: KeywordUncheckedUpdateManyWithoutDeriveSourceNestedInput
     querySourcePolicies?: QuerySourcePolicyUncheckedUpdateManyWithoutSourceNestedInput
@@ -42387,309 +38258,6 @@ export namespace Prisma {
     intentArgsHash?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-  }
-
-  export type BbPresetCreateInput = {
-    id?: string
-    key: string
-    version: string
-    name: string
-    description?: string | null
-    platform: string
-    scriptRelPath: string
-    scriptHash: string
-    scriptSnapshotKey?: string | null
-    argsSchema: JsonNullValueInput | InputJsonValue
-    outputSchema: JsonNullValueInput | InputJsonValue
-    status?: $Enums.BbPresetStatus
-    isActive?: boolean
-    createdAt?: Date | string
-    updatedAt?: Date | string
-    sourceBindings?: SourcePresetBindingCreateNestedManyWithoutPresetInput
-  }
-
-  export type BbPresetUncheckedCreateInput = {
-    id?: string
-    key: string
-    version: string
-    name: string
-    description?: string | null
-    platform: string
-    scriptRelPath: string
-    scriptHash: string
-    scriptSnapshotKey?: string | null
-    argsSchema: JsonNullValueInput | InputJsonValue
-    outputSchema: JsonNullValueInput | InputJsonValue
-    status?: $Enums.BbPresetStatus
-    isActive?: boolean
-    createdAt?: Date | string
-    updatedAt?: Date | string
-    sourceBindings?: SourcePresetBindingUncheckedCreateNestedManyWithoutPresetInput
-  }
-
-  export type BbPresetUpdateInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    key?: StringFieldUpdateOperationsInput | string
-    version?: StringFieldUpdateOperationsInput | string
-    name?: StringFieldUpdateOperationsInput | string
-    description?: NullableStringFieldUpdateOperationsInput | string | null
-    platform?: StringFieldUpdateOperationsInput | string
-    scriptRelPath?: StringFieldUpdateOperationsInput | string
-    scriptHash?: StringFieldUpdateOperationsInput | string
-    scriptSnapshotKey?: NullableStringFieldUpdateOperationsInput | string | null
-    argsSchema?: JsonNullValueInput | InputJsonValue
-    outputSchema?: JsonNullValueInput | InputJsonValue
-    status?: EnumBbPresetStatusFieldUpdateOperationsInput | $Enums.BbPresetStatus
-    isActive?: BoolFieldUpdateOperationsInput | boolean
-    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    sourceBindings?: SourcePresetBindingUpdateManyWithoutPresetNestedInput
-  }
-
-  export type BbPresetUncheckedUpdateInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    key?: StringFieldUpdateOperationsInput | string
-    version?: StringFieldUpdateOperationsInput | string
-    name?: StringFieldUpdateOperationsInput | string
-    description?: NullableStringFieldUpdateOperationsInput | string | null
-    platform?: StringFieldUpdateOperationsInput | string
-    scriptRelPath?: StringFieldUpdateOperationsInput | string
-    scriptHash?: StringFieldUpdateOperationsInput | string
-    scriptSnapshotKey?: NullableStringFieldUpdateOperationsInput | string | null
-    argsSchema?: JsonNullValueInput | InputJsonValue
-    outputSchema?: JsonNullValueInput | InputJsonValue
-    status?: EnumBbPresetStatusFieldUpdateOperationsInput | $Enums.BbPresetStatus
-    isActive?: BoolFieldUpdateOperationsInput | boolean
-    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    sourceBindings?: SourcePresetBindingUncheckedUpdateManyWithoutPresetNestedInput
-  }
-
-  export type BbPresetCreateManyInput = {
-    id?: string
-    key: string
-    version: string
-    name: string
-    description?: string | null
-    platform: string
-    scriptRelPath: string
-    scriptHash: string
-    scriptSnapshotKey?: string | null
-    argsSchema: JsonNullValueInput | InputJsonValue
-    outputSchema: JsonNullValueInput | InputJsonValue
-    status?: $Enums.BbPresetStatus
-    isActive?: boolean
-    createdAt?: Date | string
-    updatedAt?: Date | string
-  }
-
-  export type BbPresetUpdateManyMutationInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    key?: StringFieldUpdateOperationsInput | string
-    version?: StringFieldUpdateOperationsInput | string
-    name?: StringFieldUpdateOperationsInput | string
-    description?: NullableStringFieldUpdateOperationsInput | string | null
-    platform?: StringFieldUpdateOperationsInput | string
-    scriptRelPath?: StringFieldUpdateOperationsInput | string
-    scriptHash?: StringFieldUpdateOperationsInput | string
-    scriptSnapshotKey?: NullableStringFieldUpdateOperationsInput | string | null
-    argsSchema?: JsonNullValueInput | InputJsonValue
-    outputSchema?: JsonNullValueInput | InputJsonValue
-    status?: EnumBbPresetStatusFieldUpdateOperationsInput | $Enums.BbPresetStatus
-    isActive?: BoolFieldUpdateOperationsInput | boolean
-    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-  }
-
-  export type BbPresetUncheckedUpdateManyInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    key?: StringFieldUpdateOperationsInput | string
-    version?: StringFieldUpdateOperationsInput | string
-    name?: StringFieldUpdateOperationsInput | string
-    description?: NullableStringFieldUpdateOperationsInput | string | null
-    platform?: StringFieldUpdateOperationsInput | string
-    scriptRelPath?: StringFieldUpdateOperationsInput | string
-    scriptHash?: StringFieldUpdateOperationsInput | string
-    scriptSnapshotKey?: NullableStringFieldUpdateOperationsInput | string | null
-    argsSchema?: JsonNullValueInput | InputJsonValue
-    outputSchema?: JsonNullValueInput | InputJsonValue
-    status?: EnumBbPresetStatusFieldUpdateOperationsInput | $Enums.BbPresetStatus
-    isActive?: BoolFieldUpdateOperationsInput | boolean
-    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-  }
-
-  export type SourcePresetBindingCreateInput = {
-    id?: string
-    args: JsonNullValueInput | InputJsonValue
-    enabled?: boolean
-    createdAt?: Date | string
-    updatedAt?: Date | string
-    source: SourceCreateNestedOneWithoutPresetBindingsInput
-    preset: BbPresetCreateNestedOneWithoutSourceBindingsInput
-  }
-
-  export type SourcePresetBindingUncheckedCreateInput = {
-    id?: string
-    sourceId: string
-    presetId: string
-    args: JsonNullValueInput | InputJsonValue
-    enabled?: boolean
-    createdAt?: Date | string
-    updatedAt?: Date | string
-  }
-
-  export type SourcePresetBindingUpdateInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    args?: JsonNullValueInput | InputJsonValue
-    enabled?: BoolFieldUpdateOperationsInput | boolean
-    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    source?: SourceUpdateOneRequiredWithoutPresetBindingsNestedInput
-    preset?: BbPresetUpdateOneRequiredWithoutSourceBindingsNestedInput
-  }
-
-  export type SourcePresetBindingUncheckedUpdateInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    sourceId?: StringFieldUpdateOperationsInput | string
-    presetId?: StringFieldUpdateOperationsInput | string
-    args?: JsonNullValueInput | InputJsonValue
-    enabled?: BoolFieldUpdateOperationsInput | boolean
-    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-  }
-
-  export type SourcePresetBindingCreateManyInput = {
-    id?: string
-    sourceId: string
-    presetId: string
-    args: JsonNullValueInput | InputJsonValue
-    enabled?: boolean
-    createdAt?: Date | string
-    updatedAt?: Date | string
-  }
-
-  export type SourcePresetBindingUpdateManyMutationInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    args?: JsonNullValueInput | InputJsonValue
-    enabled?: BoolFieldUpdateOperationsInput | boolean
-    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-  }
-
-  export type SourcePresetBindingUncheckedUpdateManyInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    sourceId?: StringFieldUpdateOperationsInput | string
-    presetId?: StringFieldUpdateOperationsInput | string
-    args?: JsonNullValueInput | InputJsonValue
-    enabled?: BoolFieldUpdateOperationsInput | boolean
-    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-  }
-
-  export type BbPresetSyncLogCreateInput = {
-    id?: string
-    rootPath: string
-    status: $Enums.BbPresetSyncStatus
-    startedAt?: Date | string
-    finishedAt?: Date | string | null
-    scannedCount?: number
-    createdCount?: number
-    changedCount?: number
-    brokenCount?: number
-    skippedCount?: number
-    diff?: NullableJsonNullValueInput | InputJsonValue
-    error?: string | null
-  }
-
-  export type BbPresetSyncLogUncheckedCreateInput = {
-    id?: string
-    rootPath: string
-    status: $Enums.BbPresetSyncStatus
-    startedAt?: Date | string
-    finishedAt?: Date | string | null
-    scannedCount?: number
-    createdCount?: number
-    changedCount?: number
-    brokenCount?: number
-    skippedCount?: number
-    diff?: NullableJsonNullValueInput | InputJsonValue
-    error?: string | null
-  }
-
-  export type BbPresetSyncLogUpdateInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    rootPath?: StringFieldUpdateOperationsInput | string
-    status?: EnumBbPresetSyncStatusFieldUpdateOperationsInput | $Enums.BbPresetSyncStatus
-    startedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    finishedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-    scannedCount?: IntFieldUpdateOperationsInput | number
-    createdCount?: IntFieldUpdateOperationsInput | number
-    changedCount?: IntFieldUpdateOperationsInput | number
-    brokenCount?: IntFieldUpdateOperationsInput | number
-    skippedCount?: IntFieldUpdateOperationsInput | number
-    diff?: NullableJsonNullValueInput | InputJsonValue
-    error?: NullableStringFieldUpdateOperationsInput | string | null
-  }
-
-  export type BbPresetSyncLogUncheckedUpdateInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    rootPath?: StringFieldUpdateOperationsInput | string
-    status?: EnumBbPresetSyncStatusFieldUpdateOperationsInput | $Enums.BbPresetSyncStatus
-    startedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    finishedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-    scannedCount?: IntFieldUpdateOperationsInput | number
-    createdCount?: IntFieldUpdateOperationsInput | number
-    changedCount?: IntFieldUpdateOperationsInput | number
-    brokenCount?: IntFieldUpdateOperationsInput | number
-    skippedCount?: IntFieldUpdateOperationsInput | number
-    diff?: NullableJsonNullValueInput | InputJsonValue
-    error?: NullableStringFieldUpdateOperationsInput | string | null
-  }
-
-  export type BbPresetSyncLogCreateManyInput = {
-    id?: string
-    rootPath: string
-    status: $Enums.BbPresetSyncStatus
-    startedAt?: Date | string
-    finishedAt?: Date | string | null
-    scannedCount?: number
-    createdCount?: number
-    changedCount?: number
-    brokenCount?: number
-    skippedCount?: number
-    diff?: NullableJsonNullValueInput | InputJsonValue
-    error?: string | null
-  }
-
-  export type BbPresetSyncLogUpdateManyMutationInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    rootPath?: StringFieldUpdateOperationsInput | string
-    status?: EnumBbPresetSyncStatusFieldUpdateOperationsInput | $Enums.BbPresetSyncStatus
-    startedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    finishedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-    scannedCount?: IntFieldUpdateOperationsInput | number
-    createdCount?: IntFieldUpdateOperationsInput | number
-    changedCount?: IntFieldUpdateOperationsInput | number
-    brokenCount?: IntFieldUpdateOperationsInput | number
-    skippedCount?: IntFieldUpdateOperationsInput | number
-    diff?: NullableJsonNullValueInput | InputJsonValue
-    error?: NullableStringFieldUpdateOperationsInput | string | null
-  }
-
-  export type BbPresetSyncLogUncheckedUpdateManyInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    rootPath?: StringFieldUpdateOperationsInput | string
-    status?: EnumBbPresetSyncStatusFieldUpdateOperationsInput | $Enums.BbPresetSyncStatus
-    startedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    finishedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-    scannedCount?: IntFieldUpdateOperationsInput | number
-    createdCount?: IntFieldUpdateOperationsInput | number
-    changedCount?: IntFieldUpdateOperationsInput | number
-    brokenCount?: IntFieldUpdateOperationsInput | number
-    skippedCount?: IntFieldUpdateOperationsInput | number
-    diff?: NullableJsonNullValueInput | InputJsonValue
-    error?: NullableStringFieldUpdateOperationsInput | string | null
   }
 
   export type WebSourceConfigCreateInput = {
@@ -44809,20 +40377,10 @@ export namespace Prisma {
     isNot?: SourceIdentityWhereInput | null
   }
 
-  export type SourcePresetBindingListRelationFilter = {
-    every?: SourcePresetBindingWhereInput
-    some?: SourcePresetBindingWhereInput
-    none?: SourcePresetBindingWhereInput
-  }
-
   export type QuerySourcePolicyListRelationFilter = {
     every?: QuerySourcePolicyWhereInput
     some?: QuerySourcePolicyWhereInput
     none?: QuerySourcePolicyWhereInput
-  }
-
-  export type SourcePresetBindingOrderByRelationAggregateInput = {
-    _count?: SortOrder
   }
 
   export type QuerySourcePolicyOrderByRelationAggregateInput = {
@@ -44977,134 +40535,6 @@ export namespace Prisma {
     createdAt?: SortOrder
     updatedAt?: SortOrder
   }
-
-  export type EnumBbPresetStatusFilter<$PrismaModel = never> = {
-    equals?: $Enums.BbPresetStatus | EnumBbPresetStatusFieldRefInput<$PrismaModel>
-    in?: $Enums.BbPresetStatus[] | ListEnumBbPresetStatusFieldRefInput<$PrismaModel>
-    notIn?: $Enums.BbPresetStatus[] | ListEnumBbPresetStatusFieldRefInput<$PrismaModel>
-    not?: NestedEnumBbPresetStatusFilter<$PrismaModel> | $Enums.BbPresetStatus
-  }
-
-  export type BbPresetKeyVersionCompoundUniqueInput = {
-    key: string
-    version: string
-  }
-
-  export type BbPresetCountOrderByAggregateInput = {
-    id?: SortOrder
-    key?: SortOrder
-    version?: SortOrder
-    name?: SortOrder
-    description?: SortOrder
-    platform?: SortOrder
-    scriptRelPath?: SortOrder
-    scriptHash?: SortOrder
-    scriptSnapshotKey?: SortOrder
-    argsSchema?: SortOrder
-    outputSchema?: SortOrder
-    status?: SortOrder
-    isActive?: SortOrder
-    createdAt?: SortOrder
-    updatedAt?: SortOrder
-  }
-
-  export type BbPresetMaxOrderByAggregateInput = {
-    id?: SortOrder
-    key?: SortOrder
-    version?: SortOrder
-    name?: SortOrder
-    description?: SortOrder
-    platform?: SortOrder
-    scriptRelPath?: SortOrder
-    scriptHash?: SortOrder
-    scriptSnapshotKey?: SortOrder
-    status?: SortOrder
-    isActive?: SortOrder
-    createdAt?: SortOrder
-    updatedAt?: SortOrder
-  }
-
-  export type BbPresetMinOrderByAggregateInput = {
-    id?: SortOrder
-    key?: SortOrder
-    version?: SortOrder
-    name?: SortOrder
-    description?: SortOrder
-    platform?: SortOrder
-    scriptRelPath?: SortOrder
-    scriptHash?: SortOrder
-    scriptSnapshotKey?: SortOrder
-    status?: SortOrder
-    isActive?: SortOrder
-    createdAt?: SortOrder
-    updatedAt?: SortOrder
-  }
-
-  export type EnumBbPresetStatusWithAggregatesFilter<$PrismaModel = never> = {
-    equals?: $Enums.BbPresetStatus | EnumBbPresetStatusFieldRefInput<$PrismaModel>
-    in?: $Enums.BbPresetStatus[] | ListEnumBbPresetStatusFieldRefInput<$PrismaModel>
-    notIn?: $Enums.BbPresetStatus[] | ListEnumBbPresetStatusFieldRefInput<$PrismaModel>
-    not?: NestedEnumBbPresetStatusWithAggregatesFilter<$PrismaModel> | $Enums.BbPresetStatus
-    _count?: NestedIntFilter<$PrismaModel>
-    _min?: NestedEnumBbPresetStatusFilter<$PrismaModel>
-    _max?: NestedEnumBbPresetStatusFilter<$PrismaModel>
-  }
-
-  export type BbPresetScalarRelationFilter = {
-    is?: BbPresetWhereInput
-    isNot?: BbPresetWhereInput
-  }
-
-  export type SourcePresetBindingSourceIdPresetIdCompoundUniqueInput = {
-    sourceId: string
-    presetId: string
-  }
-
-  export type SourcePresetBindingCountOrderByAggregateInput = {
-    id?: SortOrder
-    sourceId?: SortOrder
-    presetId?: SortOrder
-    args?: SortOrder
-    enabled?: SortOrder
-    createdAt?: SortOrder
-    updatedAt?: SortOrder
-  }
-
-  export type SourcePresetBindingMaxOrderByAggregateInput = {
-    id?: SortOrder
-    sourceId?: SortOrder
-    presetId?: SortOrder
-    enabled?: SortOrder
-    createdAt?: SortOrder
-    updatedAt?: SortOrder
-  }
-
-  export type SourcePresetBindingMinOrderByAggregateInput = {
-    id?: SortOrder
-    sourceId?: SortOrder
-    presetId?: SortOrder
-    enabled?: SortOrder
-    createdAt?: SortOrder
-    updatedAt?: SortOrder
-  }
-
-  export type EnumBbPresetSyncStatusFilter<$PrismaModel = never> = {
-    equals?: $Enums.BbPresetSyncStatus | EnumBbPresetSyncStatusFieldRefInput<$PrismaModel>
-    in?: $Enums.BbPresetSyncStatus[] | ListEnumBbPresetSyncStatusFieldRefInput<$PrismaModel>
-    notIn?: $Enums.BbPresetSyncStatus[] | ListEnumBbPresetSyncStatusFieldRefInput<$PrismaModel>
-    not?: NestedEnumBbPresetSyncStatusFilter<$PrismaModel> | $Enums.BbPresetSyncStatus
-  }
-
-  export type IntFilter<$PrismaModel = never> = {
-    equals?: number | IntFieldRefInput<$PrismaModel>
-    in?: number[] | ListIntFieldRefInput<$PrismaModel>
-    notIn?: number[] | ListIntFieldRefInput<$PrismaModel>
-    lt?: number | IntFieldRefInput<$PrismaModel>
-    lte?: number | IntFieldRefInput<$PrismaModel>
-    gt?: number | IntFieldRefInput<$PrismaModel>
-    gte?: number | IntFieldRefInput<$PrismaModel>
-    not?: NestedIntFilter<$PrismaModel> | number
-  }
   export type JsonNullableFilter<$PrismaModel = never> =
     | PatchUndefined<
         Either<Required<JsonNullableFilterBase<$PrismaModel>>, Exclude<keyof Required<JsonNullableFilterBase<$PrismaModel>>, 'path'>>,
@@ -45127,117 +40557,6 @@ export namespace Prisma {
     gt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
     gte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
     not?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
-  }
-
-  export type BbPresetSyncLogCountOrderByAggregateInput = {
-    id?: SortOrder
-    rootPath?: SortOrder
-    status?: SortOrder
-    startedAt?: SortOrder
-    finishedAt?: SortOrder
-    scannedCount?: SortOrder
-    createdCount?: SortOrder
-    changedCount?: SortOrder
-    brokenCount?: SortOrder
-    skippedCount?: SortOrder
-    diff?: SortOrder
-    error?: SortOrder
-  }
-
-  export type BbPresetSyncLogAvgOrderByAggregateInput = {
-    scannedCount?: SortOrder
-    createdCount?: SortOrder
-    changedCount?: SortOrder
-    brokenCount?: SortOrder
-    skippedCount?: SortOrder
-  }
-
-  export type BbPresetSyncLogMaxOrderByAggregateInput = {
-    id?: SortOrder
-    rootPath?: SortOrder
-    status?: SortOrder
-    startedAt?: SortOrder
-    finishedAt?: SortOrder
-    scannedCount?: SortOrder
-    createdCount?: SortOrder
-    changedCount?: SortOrder
-    brokenCount?: SortOrder
-    skippedCount?: SortOrder
-    error?: SortOrder
-  }
-
-  export type BbPresetSyncLogMinOrderByAggregateInput = {
-    id?: SortOrder
-    rootPath?: SortOrder
-    status?: SortOrder
-    startedAt?: SortOrder
-    finishedAt?: SortOrder
-    scannedCount?: SortOrder
-    createdCount?: SortOrder
-    changedCount?: SortOrder
-    brokenCount?: SortOrder
-    skippedCount?: SortOrder
-    error?: SortOrder
-  }
-
-  export type BbPresetSyncLogSumOrderByAggregateInput = {
-    scannedCount?: SortOrder
-    createdCount?: SortOrder
-    changedCount?: SortOrder
-    brokenCount?: SortOrder
-    skippedCount?: SortOrder
-  }
-
-  export type EnumBbPresetSyncStatusWithAggregatesFilter<$PrismaModel = never> = {
-    equals?: $Enums.BbPresetSyncStatus | EnumBbPresetSyncStatusFieldRefInput<$PrismaModel>
-    in?: $Enums.BbPresetSyncStatus[] | ListEnumBbPresetSyncStatusFieldRefInput<$PrismaModel>
-    notIn?: $Enums.BbPresetSyncStatus[] | ListEnumBbPresetSyncStatusFieldRefInput<$PrismaModel>
-    not?: NestedEnumBbPresetSyncStatusWithAggregatesFilter<$PrismaModel> | $Enums.BbPresetSyncStatus
-    _count?: NestedIntFilter<$PrismaModel>
-    _min?: NestedEnumBbPresetSyncStatusFilter<$PrismaModel>
-    _max?: NestedEnumBbPresetSyncStatusFilter<$PrismaModel>
-  }
-
-  export type IntWithAggregatesFilter<$PrismaModel = never> = {
-    equals?: number | IntFieldRefInput<$PrismaModel>
-    in?: number[] | ListIntFieldRefInput<$PrismaModel>
-    notIn?: number[] | ListIntFieldRefInput<$PrismaModel>
-    lt?: number | IntFieldRefInput<$PrismaModel>
-    lte?: number | IntFieldRefInput<$PrismaModel>
-    gt?: number | IntFieldRefInput<$PrismaModel>
-    gte?: number | IntFieldRefInput<$PrismaModel>
-    not?: NestedIntWithAggregatesFilter<$PrismaModel> | number
-    _count?: NestedIntFilter<$PrismaModel>
-    _avg?: NestedFloatFilter<$PrismaModel>
-    _sum?: NestedIntFilter<$PrismaModel>
-    _min?: NestedIntFilter<$PrismaModel>
-    _max?: NestedIntFilter<$PrismaModel>
-  }
-  export type JsonNullableWithAggregatesFilter<$PrismaModel = never> =
-    | PatchUndefined<
-        Either<Required<JsonNullableWithAggregatesFilterBase<$PrismaModel>>, Exclude<keyof Required<JsonNullableWithAggregatesFilterBase<$PrismaModel>>, 'path'>>,
-        Required<JsonNullableWithAggregatesFilterBase<$PrismaModel>>
-      >
-    | OptionalFlat<Omit<Required<JsonNullableWithAggregatesFilterBase<$PrismaModel>>, 'path'>>
-
-  export type JsonNullableWithAggregatesFilterBase<$PrismaModel = never> = {
-    equals?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
-    path?: string[]
-    mode?: QueryMode | EnumQueryModeFieldRefInput<$PrismaModel>
-    string_contains?: string | StringFieldRefInput<$PrismaModel>
-    string_starts_with?: string | StringFieldRefInput<$PrismaModel>
-    string_ends_with?: string | StringFieldRefInput<$PrismaModel>
-    array_starts_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
-    array_ends_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
-    array_contains?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
-    lt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
-    lte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
-    gt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
-    gte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
-    not?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
-    _count?: NestedIntNullableFilter<$PrismaModel>
-    _min?: NestedJsonNullableFilter<$PrismaModel>
-    _max?: NestedJsonNullableFilter<$PrismaModel>
   }
 
   export type EnumCrawlerEngineFilter<$PrismaModel = never> = {
@@ -45278,6 +40597,32 @@ export namespace Prisma {
     proxyId?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
+  }
+  export type JsonNullableWithAggregatesFilter<$PrismaModel = never> =
+    | PatchUndefined<
+        Either<Required<JsonNullableWithAggregatesFilterBase<$PrismaModel>>, Exclude<keyof Required<JsonNullableWithAggregatesFilterBase<$PrismaModel>>, 'path'>>,
+        Required<JsonNullableWithAggregatesFilterBase<$PrismaModel>>
+      >
+    | OptionalFlat<Omit<Required<JsonNullableWithAggregatesFilterBase<$PrismaModel>>, 'path'>>
+
+  export type JsonNullableWithAggregatesFilterBase<$PrismaModel = never> = {
+    equals?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
+    path?: string[]
+    mode?: QueryMode | EnumQueryModeFieldRefInput<$PrismaModel>
+    string_contains?: string | StringFieldRefInput<$PrismaModel>
+    string_starts_with?: string | StringFieldRefInput<$PrismaModel>
+    string_ends_with?: string | StringFieldRefInput<$PrismaModel>
+    array_starts_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    array_ends_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    array_contains?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    lt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    lte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    gt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    gte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    not?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
+    _count?: NestedIntNullableFilter<$PrismaModel>
+    _min?: NestedJsonNullableFilter<$PrismaModel>
+    _max?: NestedJsonNullableFilter<$PrismaModel>
   }
 
   export type EnumCrawlerEngineWithAggregatesFilter<$PrismaModel = never> = {
@@ -45580,6 +40925,17 @@ export namespace Prisma {
     not?: NestedEnumTaskStatusFilter<$PrismaModel> | $Enums.TaskStatus
   }
 
+  export type IntFilter<$PrismaModel = never> = {
+    equals?: number | IntFieldRefInput<$PrismaModel>
+    in?: number[] | ListIntFieldRefInput<$PrismaModel>
+    notIn?: number[] | ListIntFieldRefInput<$PrismaModel>
+    lt?: number | IntFieldRefInput<$PrismaModel>
+    lte?: number | IntFieldRefInput<$PrismaModel>
+    gt?: number | IntFieldRefInput<$PrismaModel>
+    gte?: number | IntFieldRefInput<$PrismaModel>
+    not?: NestedIntFilter<$PrismaModel> | number
+  }
+
   export type TaskEventListRelationFilter = {
     every?: TaskEventWhereInput
     some?: TaskEventWhereInput
@@ -45643,6 +40999,22 @@ export namespace Prisma {
     _count?: NestedIntFilter<$PrismaModel>
     _min?: NestedEnumTaskStatusFilter<$PrismaModel>
     _max?: NestedEnumTaskStatusFilter<$PrismaModel>
+  }
+
+  export type IntWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: number | IntFieldRefInput<$PrismaModel>
+    in?: number[] | ListIntFieldRefInput<$PrismaModel>
+    notIn?: number[] | ListIntFieldRefInput<$PrismaModel>
+    lt?: number | IntFieldRefInput<$PrismaModel>
+    lte?: number | IntFieldRefInput<$PrismaModel>
+    gt?: number | IntFieldRefInput<$PrismaModel>
+    gte?: number | IntFieldRefInput<$PrismaModel>
+    not?: NestedIntWithAggregatesFilter<$PrismaModel> | number
+    _count?: NestedIntFilter<$PrismaModel>
+    _avg?: NestedFloatFilter<$PrismaModel>
+    _sum?: NestedIntFilter<$PrismaModel>
+    _min?: NestedIntFilter<$PrismaModel>
+    _max?: NestedIntFilter<$PrismaModel>
   }
 
   export type QueryRunScalarRelationFilter = {
@@ -46903,13 +42275,6 @@ export namespace Prisma {
     connect?: SourceIdentityWhereUniqueInput
   }
 
-  export type SourcePresetBindingCreateNestedManyWithoutSourceInput = {
-    create?: XOR<SourcePresetBindingCreateWithoutSourceInput, SourcePresetBindingUncheckedCreateWithoutSourceInput> | SourcePresetBindingCreateWithoutSourceInput[] | SourcePresetBindingUncheckedCreateWithoutSourceInput[]
-    connectOrCreate?: SourcePresetBindingCreateOrConnectWithoutSourceInput | SourcePresetBindingCreateOrConnectWithoutSourceInput[]
-    createMany?: SourcePresetBindingCreateManySourceInputEnvelope
-    connect?: SourcePresetBindingWhereUniqueInput | SourcePresetBindingWhereUniqueInput[]
-  }
-
   export type QueryCreateNestedManyWithoutSourcesInput = {
     create?: XOR<QueryCreateWithoutSourcesInput, QueryUncheckedCreateWithoutSourcesInput> | QueryCreateWithoutSourcesInput[] | QueryUncheckedCreateWithoutSourcesInput[]
     connectOrCreate?: QueryCreateOrConnectWithoutSourcesInput | QueryCreateOrConnectWithoutSourcesInput[]
@@ -46958,13 +42323,6 @@ export namespace Prisma {
     create?: XOR<SourceIdentityCreateWithoutSourceInput, SourceIdentityUncheckedCreateWithoutSourceInput>
     connectOrCreate?: SourceIdentityCreateOrConnectWithoutSourceInput
     connect?: SourceIdentityWhereUniqueInput
-  }
-
-  export type SourcePresetBindingUncheckedCreateNestedManyWithoutSourceInput = {
-    create?: XOR<SourcePresetBindingCreateWithoutSourceInput, SourcePresetBindingUncheckedCreateWithoutSourceInput> | SourcePresetBindingCreateWithoutSourceInput[] | SourcePresetBindingUncheckedCreateWithoutSourceInput[]
-    connectOrCreate?: SourcePresetBindingCreateOrConnectWithoutSourceInput | SourcePresetBindingCreateOrConnectWithoutSourceInput[]
-    createMany?: SourcePresetBindingCreateManySourceInputEnvelope
-    connect?: SourcePresetBindingWhereUniqueInput | SourcePresetBindingWhereUniqueInput[]
   }
 
   export type QueryUncheckedCreateNestedManyWithoutSourcesInput = {
@@ -47073,20 +42431,6 @@ export namespace Prisma {
     update?: XOR<XOR<SourceIdentityUpdateToOneWithWhereWithoutSourceInput, SourceIdentityUpdateWithoutSourceInput>, SourceIdentityUncheckedUpdateWithoutSourceInput>
   }
 
-  export type SourcePresetBindingUpdateManyWithoutSourceNestedInput = {
-    create?: XOR<SourcePresetBindingCreateWithoutSourceInput, SourcePresetBindingUncheckedCreateWithoutSourceInput> | SourcePresetBindingCreateWithoutSourceInput[] | SourcePresetBindingUncheckedCreateWithoutSourceInput[]
-    connectOrCreate?: SourcePresetBindingCreateOrConnectWithoutSourceInput | SourcePresetBindingCreateOrConnectWithoutSourceInput[]
-    upsert?: SourcePresetBindingUpsertWithWhereUniqueWithoutSourceInput | SourcePresetBindingUpsertWithWhereUniqueWithoutSourceInput[]
-    createMany?: SourcePresetBindingCreateManySourceInputEnvelope
-    set?: SourcePresetBindingWhereUniqueInput | SourcePresetBindingWhereUniqueInput[]
-    disconnect?: SourcePresetBindingWhereUniqueInput | SourcePresetBindingWhereUniqueInput[]
-    delete?: SourcePresetBindingWhereUniqueInput | SourcePresetBindingWhereUniqueInput[]
-    connect?: SourcePresetBindingWhereUniqueInput | SourcePresetBindingWhereUniqueInput[]
-    update?: SourcePresetBindingUpdateWithWhereUniqueWithoutSourceInput | SourcePresetBindingUpdateWithWhereUniqueWithoutSourceInput[]
-    updateMany?: SourcePresetBindingUpdateManyWithWhereWithoutSourceInput | SourcePresetBindingUpdateManyWithWhereWithoutSourceInput[]
-    deleteMany?: SourcePresetBindingScalarWhereInput | SourcePresetBindingScalarWhereInput[]
-  }
-
   export type QueryUpdateManyWithoutSourcesNestedInput = {
     create?: XOR<QueryCreateWithoutSourcesInput, QueryUncheckedCreateWithoutSourcesInput> | QueryCreateWithoutSourcesInput[] | QueryUncheckedCreateWithoutSourcesInput[]
     connectOrCreate?: QueryCreateOrConnectWithoutSourcesInput | QueryCreateOrConnectWithoutSourcesInput[]
@@ -47178,20 +42522,6 @@ export namespace Prisma {
     update?: XOR<XOR<SourceIdentityUpdateToOneWithWhereWithoutSourceInput, SourceIdentityUpdateWithoutSourceInput>, SourceIdentityUncheckedUpdateWithoutSourceInput>
   }
 
-  export type SourcePresetBindingUncheckedUpdateManyWithoutSourceNestedInput = {
-    create?: XOR<SourcePresetBindingCreateWithoutSourceInput, SourcePresetBindingUncheckedCreateWithoutSourceInput> | SourcePresetBindingCreateWithoutSourceInput[] | SourcePresetBindingUncheckedCreateWithoutSourceInput[]
-    connectOrCreate?: SourcePresetBindingCreateOrConnectWithoutSourceInput | SourcePresetBindingCreateOrConnectWithoutSourceInput[]
-    upsert?: SourcePresetBindingUpsertWithWhereUniqueWithoutSourceInput | SourcePresetBindingUpsertWithWhereUniqueWithoutSourceInput[]
-    createMany?: SourcePresetBindingCreateManySourceInputEnvelope
-    set?: SourcePresetBindingWhereUniqueInput | SourcePresetBindingWhereUniqueInput[]
-    disconnect?: SourcePresetBindingWhereUniqueInput | SourcePresetBindingWhereUniqueInput[]
-    delete?: SourcePresetBindingWhereUniqueInput | SourcePresetBindingWhereUniqueInput[]
-    connect?: SourcePresetBindingWhereUniqueInput | SourcePresetBindingWhereUniqueInput[]
-    update?: SourcePresetBindingUpdateWithWhereUniqueWithoutSourceInput | SourcePresetBindingUpdateWithWhereUniqueWithoutSourceInput[]
-    updateMany?: SourcePresetBindingUpdateManyWithWhereWithoutSourceInput | SourcePresetBindingUpdateManyWithWhereWithoutSourceInput[]
-    deleteMany?: SourcePresetBindingScalarWhereInput | SourcePresetBindingScalarWhereInput[]
-  }
-
   export type QueryUncheckedUpdateManyWithoutSourcesNestedInput = {
     create?: XOR<QueryCreateWithoutSourcesInput, QueryUncheckedCreateWithoutSourcesInput> | QueryCreateWithoutSourcesInput[] | QueryUncheckedCreateWithoutSourcesInput[]
     connectOrCreate?: QueryCreateOrConnectWithoutSourcesInput | QueryCreateOrConnectWithoutSourcesInput[]
@@ -47245,92 +42575,6 @@ export namespace Prisma {
     upsert?: SourceUpsertWithoutIdentityInput
     connect?: SourceWhereUniqueInput
     update?: XOR<XOR<SourceUpdateToOneWithWhereWithoutIdentityInput, SourceUpdateWithoutIdentityInput>, SourceUncheckedUpdateWithoutIdentityInput>
-  }
-
-  export type SourcePresetBindingCreateNestedManyWithoutPresetInput = {
-    create?: XOR<SourcePresetBindingCreateWithoutPresetInput, SourcePresetBindingUncheckedCreateWithoutPresetInput> | SourcePresetBindingCreateWithoutPresetInput[] | SourcePresetBindingUncheckedCreateWithoutPresetInput[]
-    connectOrCreate?: SourcePresetBindingCreateOrConnectWithoutPresetInput | SourcePresetBindingCreateOrConnectWithoutPresetInput[]
-    createMany?: SourcePresetBindingCreateManyPresetInputEnvelope
-    connect?: SourcePresetBindingWhereUniqueInput | SourcePresetBindingWhereUniqueInput[]
-  }
-
-  export type SourcePresetBindingUncheckedCreateNestedManyWithoutPresetInput = {
-    create?: XOR<SourcePresetBindingCreateWithoutPresetInput, SourcePresetBindingUncheckedCreateWithoutPresetInput> | SourcePresetBindingCreateWithoutPresetInput[] | SourcePresetBindingUncheckedCreateWithoutPresetInput[]
-    connectOrCreate?: SourcePresetBindingCreateOrConnectWithoutPresetInput | SourcePresetBindingCreateOrConnectWithoutPresetInput[]
-    createMany?: SourcePresetBindingCreateManyPresetInputEnvelope
-    connect?: SourcePresetBindingWhereUniqueInput | SourcePresetBindingWhereUniqueInput[]
-  }
-
-  export type EnumBbPresetStatusFieldUpdateOperationsInput = {
-    set?: $Enums.BbPresetStatus
-  }
-
-  export type SourcePresetBindingUpdateManyWithoutPresetNestedInput = {
-    create?: XOR<SourcePresetBindingCreateWithoutPresetInput, SourcePresetBindingUncheckedCreateWithoutPresetInput> | SourcePresetBindingCreateWithoutPresetInput[] | SourcePresetBindingUncheckedCreateWithoutPresetInput[]
-    connectOrCreate?: SourcePresetBindingCreateOrConnectWithoutPresetInput | SourcePresetBindingCreateOrConnectWithoutPresetInput[]
-    upsert?: SourcePresetBindingUpsertWithWhereUniqueWithoutPresetInput | SourcePresetBindingUpsertWithWhereUniqueWithoutPresetInput[]
-    createMany?: SourcePresetBindingCreateManyPresetInputEnvelope
-    set?: SourcePresetBindingWhereUniqueInput | SourcePresetBindingWhereUniqueInput[]
-    disconnect?: SourcePresetBindingWhereUniqueInput | SourcePresetBindingWhereUniqueInput[]
-    delete?: SourcePresetBindingWhereUniqueInput | SourcePresetBindingWhereUniqueInput[]
-    connect?: SourcePresetBindingWhereUniqueInput | SourcePresetBindingWhereUniqueInput[]
-    update?: SourcePresetBindingUpdateWithWhereUniqueWithoutPresetInput | SourcePresetBindingUpdateWithWhereUniqueWithoutPresetInput[]
-    updateMany?: SourcePresetBindingUpdateManyWithWhereWithoutPresetInput | SourcePresetBindingUpdateManyWithWhereWithoutPresetInput[]
-    deleteMany?: SourcePresetBindingScalarWhereInput | SourcePresetBindingScalarWhereInput[]
-  }
-
-  export type SourcePresetBindingUncheckedUpdateManyWithoutPresetNestedInput = {
-    create?: XOR<SourcePresetBindingCreateWithoutPresetInput, SourcePresetBindingUncheckedCreateWithoutPresetInput> | SourcePresetBindingCreateWithoutPresetInput[] | SourcePresetBindingUncheckedCreateWithoutPresetInput[]
-    connectOrCreate?: SourcePresetBindingCreateOrConnectWithoutPresetInput | SourcePresetBindingCreateOrConnectWithoutPresetInput[]
-    upsert?: SourcePresetBindingUpsertWithWhereUniqueWithoutPresetInput | SourcePresetBindingUpsertWithWhereUniqueWithoutPresetInput[]
-    createMany?: SourcePresetBindingCreateManyPresetInputEnvelope
-    set?: SourcePresetBindingWhereUniqueInput | SourcePresetBindingWhereUniqueInput[]
-    disconnect?: SourcePresetBindingWhereUniqueInput | SourcePresetBindingWhereUniqueInput[]
-    delete?: SourcePresetBindingWhereUniqueInput | SourcePresetBindingWhereUniqueInput[]
-    connect?: SourcePresetBindingWhereUniqueInput | SourcePresetBindingWhereUniqueInput[]
-    update?: SourcePresetBindingUpdateWithWhereUniqueWithoutPresetInput | SourcePresetBindingUpdateWithWhereUniqueWithoutPresetInput[]
-    updateMany?: SourcePresetBindingUpdateManyWithWhereWithoutPresetInput | SourcePresetBindingUpdateManyWithWhereWithoutPresetInput[]
-    deleteMany?: SourcePresetBindingScalarWhereInput | SourcePresetBindingScalarWhereInput[]
-  }
-
-  export type SourceCreateNestedOneWithoutPresetBindingsInput = {
-    create?: XOR<SourceCreateWithoutPresetBindingsInput, SourceUncheckedCreateWithoutPresetBindingsInput>
-    connectOrCreate?: SourceCreateOrConnectWithoutPresetBindingsInput
-    connect?: SourceWhereUniqueInput
-  }
-
-  export type BbPresetCreateNestedOneWithoutSourceBindingsInput = {
-    create?: XOR<BbPresetCreateWithoutSourceBindingsInput, BbPresetUncheckedCreateWithoutSourceBindingsInput>
-    connectOrCreate?: BbPresetCreateOrConnectWithoutSourceBindingsInput
-    connect?: BbPresetWhereUniqueInput
-  }
-
-  export type SourceUpdateOneRequiredWithoutPresetBindingsNestedInput = {
-    create?: XOR<SourceCreateWithoutPresetBindingsInput, SourceUncheckedCreateWithoutPresetBindingsInput>
-    connectOrCreate?: SourceCreateOrConnectWithoutPresetBindingsInput
-    upsert?: SourceUpsertWithoutPresetBindingsInput
-    connect?: SourceWhereUniqueInput
-    update?: XOR<XOR<SourceUpdateToOneWithWhereWithoutPresetBindingsInput, SourceUpdateWithoutPresetBindingsInput>, SourceUncheckedUpdateWithoutPresetBindingsInput>
-  }
-
-  export type BbPresetUpdateOneRequiredWithoutSourceBindingsNestedInput = {
-    create?: XOR<BbPresetCreateWithoutSourceBindingsInput, BbPresetUncheckedCreateWithoutSourceBindingsInput>
-    connectOrCreate?: BbPresetCreateOrConnectWithoutSourceBindingsInput
-    upsert?: BbPresetUpsertWithoutSourceBindingsInput
-    connect?: BbPresetWhereUniqueInput
-    update?: XOR<XOR<BbPresetUpdateToOneWithWhereWithoutSourceBindingsInput, BbPresetUpdateWithoutSourceBindingsInput>, BbPresetUncheckedUpdateWithoutSourceBindingsInput>
-  }
-
-  export type EnumBbPresetSyncStatusFieldUpdateOperationsInput = {
-    set?: $Enums.BbPresetSyncStatus
-  }
-
-  export type IntFieldUpdateOperationsInput = {
-    set?: number
-    increment?: number
-    decrement?: number
-    multiply?: number
-    divide?: number
   }
 
   export type WebSourceConfigCreateurlInput = {
@@ -47719,6 +42963,14 @@ export namespace Prisma {
 
   export type EnumTaskStatusFieldUpdateOperationsInput = {
     set?: $Enums.TaskStatus
+  }
+
+  export type IntFieldUpdateOperationsInput = {
+    set?: number
+    increment?: number
+    decrement?: number
+    multiply?: number
+    divide?: number
   }
 
   export type QueryUpdateOneRequiredWithoutQueryRunsNestedInput = {
@@ -48701,65 +43953,11 @@ export namespace Prisma {
     _max?: NestedDateTimeNullableFilter<$PrismaModel>
   }
 
-  export type NestedEnumBbPresetStatusFilter<$PrismaModel = never> = {
-    equals?: $Enums.BbPresetStatus | EnumBbPresetStatusFieldRefInput<$PrismaModel>
-    in?: $Enums.BbPresetStatus[] | ListEnumBbPresetStatusFieldRefInput<$PrismaModel>
-    notIn?: $Enums.BbPresetStatus[] | ListEnumBbPresetStatusFieldRefInput<$PrismaModel>
-    not?: NestedEnumBbPresetStatusFilter<$PrismaModel> | $Enums.BbPresetStatus
-  }
-
-  export type NestedEnumBbPresetStatusWithAggregatesFilter<$PrismaModel = never> = {
-    equals?: $Enums.BbPresetStatus | EnumBbPresetStatusFieldRefInput<$PrismaModel>
-    in?: $Enums.BbPresetStatus[] | ListEnumBbPresetStatusFieldRefInput<$PrismaModel>
-    notIn?: $Enums.BbPresetStatus[] | ListEnumBbPresetStatusFieldRefInput<$PrismaModel>
-    not?: NestedEnumBbPresetStatusWithAggregatesFilter<$PrismaModel> | $Enums.BbPresetStatus
-    _count?: NestedIntFilter<$PrismaModel>
-    _min?: NestedEnumBbPresetStatusFilter<$PrismaModel>
-    _max?: NestedEnumBbPresetStatusFilter<$PrismaModel>
-  }
-
-  export type NestedEnumBbPresetSyncStatusFilter<$PrismaModel = never> = {
-    equals?: $Enums.BbPresetSyncStatus | EnumBbPresetSyncStatusFieldRefInput<$PrismaModel>
-    in?: $Enums.BbPresetSyncStatus[] | ListEnumBbPresetSyncStatusFieldRefInput<$PrismaModel>
-    notIn?: $Enums.BbPresetSyncStatus[] | ListEnumBbPresetSyncStatusFieldRefInput<$PrismaModel>
-    not?: NestedEnumBbPresetSyncStatusFilter<$PrismaModel> | $Enums.BbPresetSyncStatus
-  }
-
-  export type NestedEnumBbPresetSyncStatusWithAggregatesFilter<$PrismaModel = never> = {
-    equals?: $Enums.BbPresetSyncStatus | EnumBbPresetSyncStatusFieldRefInput<$PrismaModel>
-    in?: $Enums.BbPresetSyncStatus[] | ListEnumBbPresetSyncStatusFieldRefInput<$PrismaModel>
-    notIn?: $Enums.BbPresetSyncStatus[] | ListEnumBbPresetSyncStatusFieldRefInput<$PrismaModel>
-    not?: NestedEnumBbPresetSyncStatusWithAggregatesFilter<$PrismaModel> | $Enums.BbPresetSyncStatus
-    _count?: NestedIntFilter<$PrismaModel>
-    _min?: NestedEnumBbPresetSyncStatusFilter<$PrismaModel>
-    _max?: NestedEnumBbPresetSyncStatusFilter<$PrismaModel>
-  }
-
-  export type NestedIntWithAggregatesFilter<$PrismaModel = never> = {
-    equals?: number | IntFieldRefInput<$PrismaModel>
-    in?: number[] | ListIntFieldRefInput<$PrismaModel>
-    notIn?: number[] | ListIntFieldRefInput<$PrismaModel>
-    lt?: number | IntFieldRefInput<$PrismaModel>
-    lte?: number | IntFieldRefInput<$PrismaModel>
-    gt?: number | IntFieldRefInput<$PrismaModel>
-    gte?: number | IntFieldRefInput<$PrismaModel>
-    not?: NestedIntWithAggregatesFilter<$PrismaModel> | number
-    _count?: NestedIntFilter<$PrismaModel>
-    _avg?: NestedFloatFilter<$PrismaModel>
-    _sum?: NestedIntFilter<$PrismaModel>
-    _min?: NestedIntFilter<$PrismaModel>
-    _max?: NestedIntFilter<$PrismaModel>
-  }
-
-  export type NestedFloatFilter<$PrismaModel = never> = {
-    equals?: number | FloatFieldRefInput<$PrismaModel>
-    in?: number[] | ListFloatFieldRefInput<$PrismaModel>
-    notIn?: number[] | ListFloatFieldRefInput<$PrismaModel>
-    lt?: number | FloatFieldRefInput<$PrismaModel>
-    lte?: number | FloatFieldRefInput<$PrismaModel>
-    gt?: number | FloatFieldRefInput<$PrismaModel>
-    gte?: number | FloatFieldRefInput<$PrismaModel>
-    not?: NestedFloatFilter<$PrismaModel> | number
+  export type NestedEnumCrawlerEngineFilter<$PrismaModel = never> = {
+    equals?: $Enums.CrawlerEngine | EnumCrawlerEngineFieldRefInput<$PrismaModel>
+    in?: $Enums.CrawlerEngine[] | ListEnumCrawlerEngineFieldRefInput<$PrismaModel>
+    notIn?: $Enums.CrawlerEngine[] | ListEnumCrawlerEngineFieldRefInput<$PrismaModel>
+    not?: NestedEnumCrawlerEngineFilter<$PrismaModel> | $Enums.CrawlerEngine
   }
   export type NestedJsonNullableFilter<$PrismaModel = never> =
     | PatchUndefined<
@@ -48783,13 +43981,6 @@ export namespace Prisma {
     gt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
     gte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
     not?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
-  }
-
-  export type NestedEnumCrawlerEngineFilter<$PrismaModel = never> = {
-    equals?: $Enums.CrawlerEngine | EnumCrawlerEngineFieldRefInput<$PrismaModel>
-    in?: $Enums.CrawlerEngine[] | ListEnumCrawlerEngineFieldRefInput<$PrismaModel>
-    notIn?: $Enums.CrawlerEngine[] | ListEnumCrawlerEngineFieldRefInput<$PrismaModel>
-    not?: NestedEnumCrawlerEngineFilter<$PrismaModel> | $Enums.CrawlerEngine
   }
 
   export type NestedEnumCrawlerEngineWithAggregatesFilter<$PrismaModel = never> = {
@@ -48902,6 +44093,33 @@ export namespace Prisma {
     _count?: NestedIntFilter<$PrismaModel>
     _min?: NestedEnumTaskStatusFilter<$PrismaModel>
     _max?: NestedEnumTaskStatusFilter<$PrismaModel>
+  }
+
+  export type NestedIntWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: number | IntFieldRefInput<$PrismaModel>
+    in?: number[] | ListIntFieldRefInput<$PrismaModel>
+    notIn?: number[] | ListIntFieldRefInput<$PrismaModel>
+    lt?: number | IntFieldRefInput<$PrismaModel>
+    lte?: number | IntFieldRefInput<$PrismaModel>
+    gt?: number | IntFieldRefInput<$PrismaModel>
+    gte?: number | IntFieldRefInput<$PrismaModel>
+    not?: NestedIntWithAggregatesFilter<$PrismaModel> | number
+    _count?: NestedIntFilter<$PrismaModel>
+    _avg?: NestedFloatFilter<$PrismaModel>
+    _sum?: NestedIntFilter<$PrismaModel>
+    _min?: NestedIntFilter<$PrismaModel>
+    _max?: NestedIntFilter<$PrismaModel>
+  }
+
+  export type NestedFloatFilter<$PrismaModel = never> = {
+    equals?: number | FloatFieldRefInput<$PrismaModel>
+    in?: number[] | ListFloatFieldRefInput<$PrismaModel>
+    notIn?: number[] | ListFloatFieldRefInput<$PrismaModel>
+    lt?: number | FloatFieldRefInput<$PrismaModel>
+    lte?: number | FloatFieldRefInput<$PrismaModel>
+    gt?: number | FloatFieldRefInput<$PrismaModel>
+    gte?: number | FloatFieldRefInput<$PrismaModel>
+    not?: NestedFloatFilter<$PrismaModel> | number
   }
 
   export type NestedEnumContentTypeFilter<$PrismaModel = never> = {
@@ -49112,7 +44330,6 @@ export namespace Prisma {
     search?: SearchEngineSourceConfigCreateNestedOneWithoutSourceInput
     social?: SocialMediaSourceConfigCreateNestedOneWithoutSourceInput
     identity?: SourceIdentityCreateNestedOneWithoutSourceInput
-    presetBindings?: SourcePresetBindingCreateNestedManyWithoutSourceInput
     queries?: QueryCreateNestedManyWithoutSourcesInput
     querySourcePolicies?: QuerySourcePolicyCreateNestedManyWithoutSourceInput
   }
@@ -49136,7 +44353,6 @@ export namespace Prisma {
     search?: SearchEngineSourceConfigUncheckedCreateNestedOneWithoutSourceInput
     social?: SocialMediaSourceConfigUncheckedCreateNestedOneWithoutSourceInput
     identity?: SourceIdentityUncheckedCreateNestedOneWithoutSourceInput
-    presetBindings?: SourcePresetBindingUncheckedCreateNestedManyWithoutSourceInput
     queries?: QueryUncheckedCreateNestedManyWithoutSourcesInput
     querySourcePolicies?: QuerySourcePolicyUncheckedCreateNestedManyWithoutSourceInput
   }
@@ -49298,7 +44514,6 @@ export namespace Prisma {
     search?: SearchEngineSourceConfigUpdateOneWithoutSourceNestedInput
     social?: SocialMediaSourceConfigUpdateOneWithoutSourceNestedInput
     identity?: SourceIdentityUpdateOneWithoutSourceNestedInput
-    presetBindings?: SourcePresetBindingUpdateManyWithoutSourceNestedInput
     queries?: QueryUpdateManyWithoutSourcesNestedInput
     querySourcePolicies?: QuerySourcePolicyUpdateManyWithoutSourceNestedInput
   }
@@ -49322,7 +44537,6 @@ export namespace Prisma {
     search?: SearchEngineSourceConfigUncheckedUpdateOneWithoutSourceNestedInput
     social?: SocialMediaSourceConfigUncheckedUpdateOneWithoutSourceNestedInput
     identity?: SourceIdentityUncheckedUpdateOneWithoutSourceNestedInput
-    presetBindings?: SourcePresetBindingUncheckedUpdateManyWithoutSourceNestedInput
     queries?: QueryUncheckedUpdateManyWithoutSourcesNestedInput
     querySourcePolicies?: QuerySourcePolicyUncheckedUpdateManyWithoutSourceNestedInput
   }
@@ -49436,7 +44650,6 @@ export namespace Prisma {
     search?: SearchEngineSourceConfigCreateNestedOneWithoutSourceInput
     social?: SocialMediaSourceConfigCreateNestedOneWithoutSourceInput
     identity?: SourceIdentityCreateNestedOneWithoutSourceInput
-    presetBindings?: SourcePresetBindingCreateNestedManyWithoutSourceInput
     queries?: QueryCreateNestedManyWithoutSourcesInput
     derivedKeywords?: KeywordCreateNestedManyWithoutDeriveSourceInput
     querySourcePolicies?: QuerySourcePolicyCreateNestedManyWithoutSourceInput
@@ -49460,7 +44673,6 @@ export namespace Prisma {
     search?: SearchEngineSourceConfigUncheckedCreateNestedOneWithoutSourceInput
     social?: SocialMediaSourceConfigUncheckedCreateNestedOneWithoutSourceInput
     identity?: SourceIdentityUncheckedCreateNestedOneWithoutSourceInput
-    presetBindings?: SourcePresetBindingUncheckedCreateNestedManyWithoutSourceInput
     queries?: QueryUncheckedCreateNestedManyWithoutSourcesInput
     derivedKeywords?: KeywordUncheckedCreateNestedManyWithoutDeriveSourceInput
     querySourcePolicies?: QuerySourcePolicyUncheckedCreateNestedManyWithoutSourceInput
@@ -49718,7 +44930,6 @@ export namespace Prisma {
     search?: SearchEngineSourceConfigCreateNestedOneWithoutSourceInput
     social?: SocialMediaSourceConfigCreateNestedOneWithoutSourceInput
     identity?: SourceIdentityCreateNestedOneWithoutSourceInput
-    presetBindings?: SourcePresetBindingCreateNestedManyWithoutSourceInput
     queries?: QueryCreateNestedManyWithoutSourcesInput
     derivedKeywords?: KeywordCreateNestedManyWithoutDeriveSourceInput
     querySourcePolicies?: QuerySourcePolicyCreateNestedManyWithoutSourceInput
@@ -49742,7 +44953,6 @@ export namespace Prisma {
     search?: SearchEngineSourceConfigUncheckedCreateNestedOneWithoutSourceInput
     social?: SocialMediaSourceConfigUncheckedCreateNestedOneWithoutSourceInput
     identity?: SourceIdentityUncheckedCreateNestedOneWithoutSourceInput
-    presetBindings?: SourcePresetBindingUncheckedCreateNestedManyWithoutSourceInput
     queries?: QueryUncheckedCreateNestedManyWithoutSourcesInput
     derivedKeywords?: KeywordUncheckedCreateNestedManyWithoutDeriveSourceInput
     querySourcePolicies?: QuerySourcePolicyUncheckedCreateNestedManyWithoutSourceInput
@@ -50081,34 +45291,6 @@ export namespace Prisma {
   export type SourceIdentityCreateOrConnectWithoutSourceInput = {
     where: SourceIdentityWhereUniqueInput
     create: XOR<SourceIdentityCreateWithoutSourceInput, SourceIdentityUncheckedCreateWithoutSourceInput>
-  }
-
-  export type SourcePresetBindingCreateWithoutSourceInput = {
-    id?: string
-    args: JsonNullValueInput | InputJsonValue
-    enabled?: boolean
-    createdAt?: Date | string
-    updatedAt?: Date | string
-    preset: BbPresetCreateNestedOneWithoutSourceBindingsInput
-  }
-
-  export type SourcePresetBindingUncheckedCreateWithoutSourceInput = {
-    id?: string
-    presetId: string
-    args: JsonNullValueInput | InputJsonValue
-    enabled?: boolean
-    createdAt?: Date | string
-    updatedAt?: Date | string
-  }
-
-  export type SourcePresetBindingCreateOrConnectWithoutSourceInput = {
-    where: SourcePresetBindingWhereUniqueInput
-    create: XOR<SourcePresetBindingCreateWithoutSourceInput, SourcePresetBindingUncheckedCreateWithoutSourceInput>
-  }
-
-  export type SourcePresetBindingCreateManySourceInputEnvelope = {
-    data: SourcePresetBindingCreateManySourceInput | SourcePresetBindingCreateManySourceInput[]
-    skipDuplicates?: boolean
   }
 
   export type QueryCreateWithoutSourcesInput = {
@@ -50463,35 +45645,6 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
-  export type SourcePresetBindingUpsertWithWhereUniqueWithoutSourceInput = {
-    where: SourcePresetBindingWhereUniqueInput
-    update: XOR<SourcePresetBindingUpdateWithoutSourceInput, SourcePresetBindingUncheckedUpdateWithoutSourceInput>
-    create: XOR<SourcePresetBindingCreateWithoutSourceInput, SourcePresetBindingUncheckedCreateWithoutSourceInput>
-  }
-
-  export type SourcePresetBindingUpdateWithWhereUniqueWithoutSourceInput = {
-    where: SourcePresetBindingWhereUniqueInput
-    data: XOR<SourcePresetBindingUpdateWithoutSourceInput, SourcePresetBindingUncheckedUpdateWithoutSourceInput>
-  }
-
-  export type SourcePresetBindingUpdateManyWithWhereWithoutSourceInput = {
-    where: SourcePresetBindingScalarWhereInput
-    data: XOR<SourcePresetBindingUpdateManyMutationInput, SourcePresetBindingUncheckedUpdateManyWithoutSourceInput>
-  }
-
-  export type SourcePresetBindingScalarWhereInput = {
-    AND?: SourcePresetBindingScalarWhereInput | SourcePresetBindingScalarWhereInput[]
-    OR?: SourcePresetBindingScalarWhereInput[]
-    NOT?: SourcePresetBindingScalarWhereInput | SourcePresetBindingScalarWhereInput[]
-    id?: StringFilter<"SourcePresetBinding"> | string
-    sourceId?: StringFilter<"SourcePresetBinding"> | string
-    presetId?: StringFilter<"SourcePresetBinding"> | string
-    args?: JsonFilter<"SourcePresetBinding">
-    enabled?: BoolFilter<"SourcePresetBinding"> | boolean
-    createdAt?: DateTimeFilter<"SourcePresetBinding"> | Date | string
-    updatedAt?: DateTimeFilter<"SourcePresetBinding"> | Date | string
-  }
-
   export type QueryUpsertWithWhereUniqueWithoutSourcesInput = {
     where: QueryWhereUniqueInput
     update: XOR<QueryUpdateWithoutSourcesInput, QueryUncheckedUpdateWithoutSourcesInput>
@@ -50571,7 +45724,6 @@ export namespace Prisma {
     darknet?: DarknetSourceConfigCreateNestedOneWithoutSourceInput
     search?: SearchEngineSourceConfigCreateNestedOneWithoutSourceInput
     social?: SocialMediaSourceConfigCreateNestedOneWithoutSourceInput
-    presetBindings?: SourcePresetBindingCreateNestedManyWithoutSourceInput
     queries?: QueryCreateNestedManyWithoutSourcesInput
     derivedKeywords?: KeywordCreateNestedManyWithoutDeriveSourceInput
     querySourcePolicies?: QuerySourcePolicyCreateNestedManyWithoutSourceInput
@@ -50595,7 +45747,6 @@ export namespace Prisma {
     darknet?: DarknetSourceConfigUncheckedCreateNestedOneWithoutSourceInput
     search?: SearchEngineSourceConfigUncheckedCreateNestedOneWithoutSourceInput
     social?: SocialMediaSourceConfigUncheckedCreateNestedOneWithoutSourceInput
-    presetBindings?: SourcePresetBindingUncheckedCreateNestedManyWithoutSourceInput
     queries?: QueryUncheckedCreateNestedManyWithoutSourcesInput
     derivedKeywords?: KeywordUncheckedCreateNestedManyWithoutDeriveSourceInput
     querySourcePolicies?: QuerySourcePolicyUncheckedCreateNestedManyWithoutSourceInput
@@ -50635,7 +45786,6 @@ export namespace Prisma {
     darknet?: DarknetSourceConfigUpdateOneWithoutSourceNestedInput
     search?: SearchEngineSourceConfigUpdateOneWithoutSourceNestedInput
     social?: SocialMediaSourceConfigUpdateOneWithoutSourceNestedInput
-    presetBindings?: SourcePresetBindingUpdateManyWithoutSourceNestedInput
     queries?: QueryUpdateManyWithoutSourcesNestedInput
     derivedKeywords?: KeywordUpdateManyWithoutDeriveSourceNestedInput
     querySourcePolicies?: QuerySourcePolicyUpdateManyWithoutSourceNestedInput
@@ -50659,254 +45809,9 @@ export namespace Prisma {
     darknet?: DarknetSourceConfigUncheckedUpdateOneWithoutSourceNestedInput
     search?: SearchEngineSourceConfigUncheckedUpdateOneWithoutSourceNestedInput
     social?: SocialMediaSourceConfigUncheckedUpdateOneWithoutSourceNestedInput
-    presetBindings?: SourcePresetBindingUncheckedUpdateManyWithoutSourceNestedInput
     queries?: QueryUncheckedUpdateManyWithoutSourcesNestedInput
     derivedKeywords?: KeywordUncheckedUpdateManyWithoutDeriveSourceNestedInput
     querySourcePolicies?: QuerySourcePolicyUncheckedUpdateManyWithoutSourceNestedInput
-  }
-
-  export type SourcePresetBindingCreateWithoutPresetInput = {
-    id?: string
-    args: JsonNullValueInput | InputJsonValue
-    enabled?: boolean
-    createdAt?: Date | string
-    updatedAt?: Date | string
-    source: SourceCreateNestedOneWithoutPresetBindingsInput
-  }
-
-  export type SourcePresetBindingUncheckedCreateWithoutPresetInput = {
-    id?: string
-    sourceId: string
-    args: JsonNullValueInput | InputJsonValue
-    enabled?: boolean
-    createdAt?: Date | string
-    updatedAt?: Date | string
-  }
-
-  export type SourcePresetBindingCreateOrConnectWithoutPresetInput = {
-    where: SourcePresetBindingWhereUniqueInput
-    create: XOR<SourcePresetBindingCreateWithoutPresetInput, SourcePresetBindingUncheckedCreateWithoutPresetInput>
-  }
-
-  export type SourcePresetBindingCreateManyPresetInputEnvelope = {
-    data: SourcePresetBindingCreateManyPresetInput | SourcePresetBindingCreateManyPresetInput[]
-    skipDuplicates?: boolean
-  }
-
-  export type SourcePresetBindingUpsertWithWhereUniqueWithoutPresetInput = {
-    where: SourcePresetBindingWhereUniqueInput
-    update: XOR<SourcePresetBindingUpdateWithoutPresetInput, SourcePresetBindingUncheckedUpdateWithoutPresetInput>
-    create: XOR<SourcePresetBindingCreateWithoutPresetInput, SourcePresetBindingUncheckedCreateWithoutPresetInput>
-  }
-
-  export type SourcePresetBindingUpdateWithWhereUniqueWithoutPresetInput = {
-    where: SourcePresetBindingWhereUniqueInput
-    data: XOR<SourcePresetBindingUpdateWithoutPresetInput, SourcePresetBindingUncheckedUpdateWithoutPresetInput>
-  }
-
-  export type SourcePresetBindingUpdateManyWithWhereWithoutPresetInput = {
-    where: SourcePresetBindingScalarWhereInput
-    data: XOR<SourcePresetBindingUpdateManyMutationInput, SourcePresetBindingUncheckedUpdateManyWithoutPresetInput>
-  }
-
-  export type SourceCreateWithoutPresetBindingsInput = {
-    id?: string
-    name: string
-    description?: string | null
-    category: $Enums.SourceCategory
-    isDarknet?: boolean
-    active?: boolean
-    rateLimit?: number | null
-    lastFetchedAt?: Date | string | null
-    lastStatus?: string | null
-    createdAt?: Date | string
-    updatedAt?: Date | string
-    proxy?: ProxyCreateNestedOneWithoutSourcesInput
-    credential?: CredentialCreateNestedOneWithoutSourcesInput
-    web?: WebSourceConfigCreateNestedOneWithoutSourceInput
-    darknet?: DarknetSourceConfigCreateNestedOneWithoutSourceInput
-    search?: SearchEngineSourceConfigCreateNestedOneWithoutSourceInput
-    social?: SocialMediaSourceConfigCreateNestedOneWithoutSourceInput
-    identity?: SourceIdentityCreateNestedOneWithoutSourceInput
-    queries?: QueryCreateNestedManyWithoutSourcesInput
-    derivedKeywords?: KeywordCreateNestedManyWithoutDeriveSourceInput
-    querySourcePolicies?: QuerySourcePolicyCreateNestedManyWithoutSourceInput
-  }
-
-  export type SourceUncheckedCreateWithoutPresetBindingsInput = {
-    id?: string
-    name: string
-    description?: string | null
-    category: $Enums.SourceCategory
-    isDarknet?: boolean
-    active?: boolean
-    rateLimit?: number | null
-    lastFetchedAt?: Date | string | null
-    lastStatus?: string | null
-    proxyId?: string | null
-    credentialId?: string | null
-    createdAt?: Date | string
-    updatedAt?: Date | string
-    web?: WebSourceConfigUncheckedCreateNestedOneWithoutSourceInput
-    darknet?: DarknetSourceConfigUncheckedCreateNestedOneWithoutSourceInput
-    search?: SearchEngineSourceConfigUncheckedCreateNestedOneWithoutSourceInput
-    social?: SocialMediaSourceConfigUncheckedCreateNestedOneWithoutSourceInput
-    identity?: SourceIdentityUncheckedCreateNestedOneWithoutSourceInput
-    queries?: QueryUncheckedCreateNestedManyWithoutSourcesInput
-    derivedKeywords?: KeywordUncheckedCreateNestedManyWithoutDeriveSourceInput
-    querySourcePolicies?: QuerySourcePolicyUncheckedCreateNestedManyWithoutSourceInput
-  }
-
-  export type SourceCreateOrConnectWithoutPresetBindingsInput = {
-    where: SourceWhereUniqueInput
-    create: XOR<SourceCreateWithoutPresetBindingsInput, SourceUncheckedCreateWithoutPresetBindingsInput>
-  }
-
-  export type BbPresetCreateWithoutSourceBindingsInput = {
-    id?: string
-    key: string
-    version: string
-    name: string
-    description?: string | null
-    platform: string
-    scriptRelPath: string
-    scriptHash: string
-    scriptSnapshotKey?: string | null
-    argsSchema: JsonNullValueInput | InputJsonValue
-    outputSchema: JsonNullValueInput | InputJsonValue
-    status?: $Enums.BbPresetStatus
-    isActive?: boolean
-    createdAt?: Date | string
-    updatedAt?: Date | string
-  }
-
-  export type BbPresetUncheckedCreateWithoutSourceBindingsInput = {
-    id?: string
-    key: string
-    version: string
-    name: string
-    description?: string | null
-    platform: string
-    scriptRelPath: string
-    scriptHash: string
-    scriptSnapshotKey?: string | null
-    argsSchema: JsonNullValueInput | InputJsonValue
-    outputSchema: JsonNullValueInput | InputJsonValue
-    status?: $Enums.BbPresetStatus
-    isActive?: boolean
-    createdAt?: Date | string
-    updatedAt?: Date | string
-  }
-
-  export type BbPresetCreateOrConnectWithoutSourceBindingsInput = {
-    where: BbPresetWhereUniqueInput
-    create: XOR<BbPresetCreateWithoutSourceBindingsInput, BbPresetUncheckedCreateWithoutSourceBindingsInput>
-  }
-
-  export type SourceUpsertWithoutPresetBindingsInput = {
-    update: XOR<SourceUpdateWithoutPresetBindingsInput, SourceUncheckedUpdateWithoutPresetBindingsInput>
-    create: XOR<SourceCreateWithoutPresetBindingsInput, SourceUncheckedCreateWithoutPresetBindingsInput>
-    where?: SourceWhereInput
-  }
-
-  export type SourceUpdateToOneWithWhereWithoutPresetBindingsInput = {
-    where?: SourceWhereInput
-    data: XOR<SourceUpdateWithoutPresetBindingsInput, SourceUncheckedUpdateWithoutPresetBindingsInput>
-  }
-
-  export type SourceUpdateWithoutPresetBindingsInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    name?: StringFieldUpdateOperationsInput | string
-    description?: NullableStringFieldUpdateOperationsInput | string | null
-    category?: EnumSourceCategoryFieldUpdateOperationsInput | $Enums.SourceCategory
-    isDarknet?: BoolFieldUpdateOperationsInput | boolean
-    active?: BoolFieldUpdateOperationsInput | boolean
-    rateLimit?: NullableIntFieldUpdateOperationsInput | number | null
-    lastFetchedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-    lastStatus?: NullableStringFieldUpdateOperationsInput | string | null
-    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    proxy?: ProxyUpdateOneWithoutSourcesNestedInput
-    credential?: CredentialUpdateOneWithoutSourcesNestedInput
-    web?: WebSourceConfigUpdateOneWithoutSourceNestedInput
-    darknet?: DarknetSourceConfigUpdateOneWithoutSourceNestedInput
-    search?: SearchEngineSourceConfigUpdateOneWithoutSourceNestedInput
-    social?: SocialMediaSourceConfigUpdateOneWithoutSourceNestedInput
-    identity?: SourceIdentityUpdateOneWithoutSourceNestedInput
-    queries?: QueryUpdateManyWithoutSourcesNestedInput
-    derivedKeywords?: KeywordUpdateManyWithoutDeriveSourceNestedInput
-    querySourcePolicies?: QuerySourcePolicyUpdateManyWithoutSourceNestedInput
-  }
-
-  export type SourceUncheckedUpdateWithoutPresetBindingsInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    name?: StringFieldUpdateOperationsInput | string
-    description?: NullableStringFieldUpdateOperationsInput | string | null
-    category?: EnumSourceCategoryFieldUpdateOperationsInput | $Enums.SourceCategory
-    isDarknet?: BoolFieldUpdateOperationsInput | boolean
-    active?: BoolFieldUpdateOperationsInput | boolean
-    rateLimit?: NullableIntFieldUpdateOperationsInput | number | null
-    lastFetchedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-    lastStatus?: NullableStringFieldUpdateOperationsInput | string | null
-    proxyId?: NullableStringFieldUpdateOperationsInput | string | null
-    credentialId?: NullableStringFieldUpdateOperationsInput | string | null
-    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    web?: WebSourceConfigUncheckedUpdateOneWithoutSourceNestedInput
-    darknet?: DarknetSourceConfigUncheckedUpdateOneWithoutSourceNestedInput
-    search?: SearchEngineSourceConfigUncheckedUpdateOneWithoutSourceNestedInput
-    social?: SocialMediaSourceConfigUncheckedUpdateOneWithoutSourceNestedInput
-    identity?: SourceIdentityUncheckedUpdateOneWithoutSourceNestedInput
-    queries?: QueryUncheckedUpdateManyWithoutSourcesNestedInput
-    derivedKeywords?: KeywordUncheckedUpdateManyWithoutDeriveSourceNestedInput
-    querySourcePolicies?: QuerySourcePolicyUncheckedUpdateManyWithoutSourceNestedInput
-  }
-
-  export type BbPresetUpsertWithoutSourceBindingsInput = {
-    update: XOR<BbPresetUpdateWithoutSourceBindingsInput, BbPresetUncheckedUpdateWithoutSourceBindingsInput>
-    create: XOR<BbPresetCreateWithoutSourceBindingsInput, BbPresetUncheckedCreateWithoutSourceBindingsInput>
-    where?: BbPresetWhereInput
-  }
-
-  export type BbPresetUpdateToOneWithWhereWithoutSourceBindingsInput = {
-    where?: BbPresetWhereInput
-    data: XOR<BbPresetUpdateWithoutSourceBindingsInput, BbPresetUncheckedUpdateWithoutSourceBindingsInput>
-  }
-
-  export type BbPresetUpdateWithoutSourceBindingsInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    key?: StringFieldUpdateOperationsInput | string
-    version?: StringFieldUpdateOperationsInput | string
-    name?: StringFieldUpdateOperationsInput | string
-    description?: NullableStringFieldUpdateOperationsInput | string | null
-    platform?: StringFieldUpdateOperationsInput | string
-    scriptRelPath?: StringFieldUpdateOperationsInput | string
-    scriptHash?: StringFieldUpdateOperationsInput | string
-    scriptSnapshotKey?: NullableStringFieldUpdateOperationsInput | string | null
-    argsSchema?: JsonNullValueInput | InputJsonValue
-    outputSchema?: JsonNullValueInput | InputJsonValue
-    status?: EnumBbPresetStatusFieldUpdateOperationsInput | $Enums.BbPresetStatus
-    isActive?: BoolFieldUpdateOperationsInput | boolean
-    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-  }
-
-  export type BbPresetUncheckedUpdateWithoutSourceBindingsInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    key?: StringFieldUpdateOperationsInput | string
-    version?: StringFieldUpdateOperationsInput | string
-    name?: StringFieldUpdateOperationsInput | string
-    description?: NullableStringFieldUpdateOperationsInput | string | null
-    platform?: StringFieldUpdateOperationsInput | string
-    scriptRelPath?: StringFieldUpdateOperationsInput | string
-    scriptHash?: StringFieldUpdateOperationsInput | string
-    scriptSnapshotKey?: NullableStringFieldUpdateOperationsInput | string | null
-    argsSchema?: JsonNullValueInput | InputJsonValue
-    outputSchema?: JsonNullValueInput | InputJsonValue
-    status?: EnumBbPresetStatusFieldUpdateOperationsInput | $Enums.BbPresetStatus
-    isActive?: BoolFieldUpdateOperationsInput | boolean
-    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
   export type SourceCreateWithoutWebInput = {
@@ -50927,7 +45832,6 @@ export namespace Prisma {
     search?: SearchEngineSourceConfigCreateNestedOneWithoutSourceInput
     social?: SocialMediaSourceConfigCreateNestedOneWithoutSourceInput
     identity?: SourceIdentityCreateNestedOneWithoutSourceInput
-    presetBindings?: SourcePresetBindingCreateNestedManyWithoutSourceInput
     queries?: QueryCreateNestedManyWithoutSourcesInput
     derivedKeywords?: KeywordCreateNestedManyWithoutDeriveSourceInput
     querySourcePolicies?: QuerySourcePolicyCreateNestedManyWithoutSourceInput
@@ -50951,7 +45855,6 @@ export namespace Prisma {
     search?: SearchEngineSourceConfigUncheckedCreateNestedOneWithoutSourceInput
     social?: SocialMediaSourceConfigUncheckedCreateNestedOneWithoutSourceInput
     identity?: SourceIdentityUncheckedCreateNestedOneWithoutSourceInput
-    presetBindings?: SourcePresetBindingUncheckedCreateNestedManyWithoutSourceInput
     queries?: QueryUncheckedCreateNestedManyWithoutSourcesInput
     derivedKeywords?: KeywordUncheckedCreateNestedManyWithoutDeriveSourceInput
     querySourcePolicies?: QuerySourcePolicyUncheckedCreateNestedManyWithoutSourceInput
@@ -51022,7 +45925,6 @@ export namespace Prisma {
     search?: SearchEngineSourceConfigUpdateOneWithoutSourceNestedInput
     social?: SocialMediaSourceConfigUpdateOneWithoutSourceNestedInput
     identity?: SourceIdentityUpdateOneWithoutSourceNestedInput
-    presetBindings?: SourcePresetBindingUpdateManyWithoutSourceNestedInput
     queries?: QueryUpdateManyWithoutSourcesNestedInput
     derivedKeywords?: KeywordUpdateManyWithoutDeriveSourceNestedInput
     querySourcePolicies?: QuerySourcePolicyUpdateManyWithoutSourceNestedInput
@@ -51046,7 +45948,6 @@ export namespace Prisma {
     search?: SearchEngineSourceConfigUncheckedUpdateOneWithoutSourceNestedInput
     social?: SocialMediaSourceConfigUncheckedUpdateOneWithoutSourceNestedInput
     identity?: SourceIdentityUncheckedUpdateOneWithoutSourceNestedInput
-    presetBindings?: SourcePresetBindingUncheckedUpdateManyWithoutSourceNestedInput
     queries?: QueryUncheckedUpdateManyWithoutSourcesNestedInput
     derivedKeywords?: KeywordUncheckedUpdateManyWithoutDeriveSourceNestedInput
     querySourcePolicies?: QuerySourcePolicyUncheckedUpdateManyWithoutSourceNestedInput
@@ -51107,7 +46008,6 @@ export namespace Prisma {
     search?: SearchEngineSourceConfigCreateNestedOneWithoutSourceInput
     social?: SocialMediaSourceConfigCreateNestedOneWithoutSourceInput
     identity?: SourceIdentityCreateNestedOneWithoutSourceInput
-    presetBindings?: SourcePresetBindingCreateNestedManyWithoutSourceInput
     queries?: QueryCreateNestedManyWithoutSourcesInput
     derivedKeywords?: KeywordCreateNestedManyWithoutDeriveSourceInput
     querySourcePolicies?: QuerySourcePolicyCreateNestedManyWithoutSourceInput
@@ -51131,7 +46031,6 @@ export namespace Prisma {
     search?: SearchEngineSourceConfigUncheckedCreateNestedOneWithoutSourceInput
     social?: SocialMediaSourceConfigUncheckedCreateNestedOneWithoutSourceInput
     identity?: SourceIdentityUncheckedCreateNestedOneWithoutSourceInput
-    presetBindings?: SourcePresetBindingUncheckedCreateNestedManyWithoutSourceInput
     queries?: QueryUncheckedCreateNestedManyWithoutSourcesInput
     derivedKeywords?: KeywordUncheckedCreateNestedManyWithoutDeriveSourceInput
     querySourcePolicies?: QuerySourcePolicyUncheckedCreateNestedManyWithoutSourceInput
@@ -51202,7 +46101,6 @@ export namespace Prisma {
     search?: SearchEngineSourceConfigUpdateOneWithoutSourceNestedInput
     social?: SocialMediaSourceConfigUpdateOneWithoutSourceNestedInput
     identity?: SourceIdentityUpdateOneWithoutSourceNestedInput
-    presetBindings?: SourcePresetBindingUpdateManyWithoutSourceNestedInput
     queries?: QueryUpdateManyWithoutSourcesNestedInput
     derivedKeywords?: KeywordUpdateManyWithoutDeriveSourceNestedInput
     querySourcePolicies?: QuerySourcePolicyUpdateManyWithoutSourceNestedInput
@@ -51226,7 +46124,6 @@ export namespace Prisma {
     search?: SearchEngineSourceConfigUncheckedUpdateOneWithoutSourceNestedInput
     social?: SocialMediaSourceConfigUncheckedUpdateOneWithoutSourceNestedInput
     identity?: SourceIdentityUncheckedUpdateOneWithoutSourceNestedInput
-    presetBindings?: SourcePresetBindingUncheckedUpdateManyWithoutSourceNestedInput
     queries?: QueryUncheckedUpdateManyWithoutSourcesNestedInput
     derivedKeywords?: KeywordUncheckedUpdateManyWithoutDeriveSourceNestedInput
     querySourcePolicies?: QuerySourcePolicyUncheckedUpdateManyWithoutSourceNestedInput
@@ -51287,7 +46184,6 @@ export namespace Prisma {
     darknet?: DarknetSourceConfigCreateNestedOneWithoutSourceInput
     social?: SocialMediaSourceConfigCreateNestedOneWithoutSourceInput
     identity?: SourceIdentityCreateNestedOneWithoutSourceInput
-    presetBindings?: SourcePresetBindingCreateNestedManyWithoutSourceInput
     queries?: QueryCreateNestedManyWithoutSourcesInput
     derivedKeywords?: KeywordCreateNestedManyWithoutDeriveSourceInput
     querySourcePolicies?: QuerySourcePolicyCreateNestedManyWithoutSourceInput
@@ -51311,7 +46207,6 @@ export namespace Prisma {
     darknet?: DarknetSourceConfigUncheckedCreateNestedOneWithoutSourceInput
     social?: SocialMediaSourceConfigUncheckedCreateNestedOneWithoutSourceInput
     identity?: SourceIdentityUncheckedCreateNestedOneWithoutSourceInput
-    presetBindings?: SourcePresetBindingUncheckedCreateNestedManyWithoutSourceInput
     queries?: QueryUncheckedCreateNestedManyWithoutSourcesInput
     derivedKeywords?: KeywordUncheckedCreateNestedManyWithoutDeriveSourceInput
     querySourcePolicies?: QuerySourcePolicyUncheckedCreateNestedManyWithoutSourceInput
@@ -51378,7 +46273,6 @@ export namespace Prisma {
     darknet?: DarknetSourceConfigUpdateOneWithoutSourceNestedInput
     social?: SocialMediaSourceConfigUpdateOneWithoutSourceNestedInput
     identity?: SourceIdentityUpdateOneWithoutSourceNestedInput
-    presetBindings?: SourcePresetBindingUpdateManyWithoutSourceNestedInput
     queries?: QueryUpdateManyWithoutSourcesNestedInput
     derivedKeywords?: KeywordUpdateManyWithoutDeriveSourceNestedInput
     querySourcePolicies?: QuerySourcePolicyUpdateManyWithoutSourceNestedInput
@@ -51402,7 +46296,6 @@ export namespace Prisma {
     darknet?: DarknetSourceConfigUncheckedUpdateOneWithoutSourceNestedInput
     social?: SocialMediaSourceConfigUncheckedUpdateOneWithoutSourceNestedInput
     identity?: SourceIdentityUncheckedUpdateOneWithoutSourceNestedInput
-    presetBindings?: SourcePresetBindingUncheckedUpdateManyWithoutSourceNestedInput
     queries?: QueryUncheckedUpdateManyWithoutSourcesNestedInput
     derivedKeywords?: KeywordUncheckedUpdateManyWithoutDeriveSourceNestedInput
     querySourcePolicies?: QuerySourcePolicyUncheckedUpdateManyWithoutSourceNestedInput
@@ -51459,7 +46352,6 @@ export namespace Prisma {
     darknet?: DarknetSourceConfigCreateNestedOneWithoutSourceInput
     search?: SearchEngineSourceConfigCreateNestedOneWithoutSourceInput
     identity?: SourceIdentityCreateNestedOneWithoutSourceInput
-    presetBindings?: SourcePresetBindingCreateNestedManyWithoutSourceInput
     queries?: QueryCreateNestedManyWithoutSourcesInput
     derivedKeywords?: KeywordCreateNestedManyWithoutDeriveSourceInput
     querySourcePolicies?: QuerySourcePolicyCreateNestedManyWithoutSourceInput
@@ -51483,7 +46375,6 @@ export namespace Prisma {
     darknet?: DarknetSourceConfigUncheckedCreateNestedOneWithoutSourceInput
     search?: SearchEngineSourceConfigUncheckedCreateNestedOneWithoutSourceInput
     identity?: SourceIdentityUncheckedCreateNestedOneWithoutSourceInput
-    presetBindings?: SourcePresetBindingUncheckedCreateNestedManyWithoutSourceInput
     queries?: QueryUncheckedCreateNestedManyWithoutSourcesInput
     derivedKeywords?: KeywordUncheckedCreateNestedManyWithoutDeriveSourceInput
     querySourcePolicies?: QuerySourcePolicyUncheckedCreateNestedManyWithoutSourceInput
@@ -51581,7 +46472,6 @@ export namespace Prisma {
     darknet?: DarknetSourceConfigUpdateOneWithoutSourceNestedInput
     search?: SearchEngineSourceConfigUpdateOneWithoutSourceNestedInput
     identity?: SourceIdentityUpdateOneWithoutSourceNestedInput
-    presetBindings?: SourcePresetBindingUpdateManyWithoutSourceNestedInput
     queries?: QueryUpdateManyWithoutSourcesNestedInput
     derivedKeywords?: KeywordUpdateManyWithoutDeriveSourceNestedInput
     querySourcePolicies?: QuerySourcePolicyUpdateManyWithoutSourceNestedInput
@@ -51605,7 +46495,6 @@ export namespace Prisma {
     darknet?: DarknetSourceConfigUncheckedUpdateOneWithoutSourceNestedInput
     search?: SearchEngineSourceConfigUncheckedUpdateOneWithoutSourceNestedInput
     identity?: SourceIdentityUncheckedUpdateOneWithoutSourceNestedInput
-    presetBindings?: SourcePresetBindingUncheckedUpdateManyWithoutSourceNestedInput
     queries?: QueryUncheckedUpdateManyWithoutSourcesNestedInput
     derivedKeywords?: KeywordUncheckedUpdateManyWithoutDeriveSourceNestedInput
     querySourcePolicies?: QuerySourcePolicyUncheckedUpdateManyWithoutSourceNestedInput
@@ -51743,7 +46632,6 @@ export namespace Prisma {
     search?: SearchEngineSourceConfigCreateNestedOneWithoutSourceInput
     social?: SocialMediaSourceConfigCreateNestedOneWithoutSourceInput
     identity?: SourceIdentityCreateNestedOneWithoutSourceInput
-    presetBindings?: SourcePresetBindingCreateNestedManyWithoutSourceInput
     derivedKeywords?: KeywordCreateNestedManyWithoutDeriveSourceInput
     querySourcePolicies?: QuerySourcePolicyCreateNestedManyWithoutSourceInput
   }
@@ -51767,7 +46655,6 @@ export namespace Prisma {
     search?: SearchEngineSourceConfigUncheckedCreateNestedOneWithoutSourceInput
     social?: SocialMediaSourceConfigUncheckedCreateNestedOneWithoutSourceInput
     identity?: SourceIdentityUncheckedCreateNestedOneWithoutSourceInput
-    presetBindings?: SourcePresetBindingUncheckedCreateNestedManyWithoutSourceInput
     derivedKeywords?: KeywordUncheckedCreateNestedManyWithoutDeriveSourceInput
     querySourcePolicies?: QuerySourcePolicyUncheckedCreateNestedManyWithoutSourceInput
   }
@@ -51977,7 +46864,6 @@ export namespace Prisma {
     search?: SearchEngineSourceConfigCreateNestedOneWithoutSourceInput
     social?: SocialMediaSourceConfigCreateNestedOneWithoutSourceInput
     identity?: SourceIdentityCreateNestedOneWithoutSourceInput
-    presetBindings?: SourcePresetBindingCreateNestedManyWithoutSourceInput
     queries?: QueryCreateNestedManyWithoutSourcesInput
     derivedKeywords?: KeywordCreateNestedManyWithoutDeriveSourceInput
   }
@@ -52001,7 +46887,6 @@ export namespace Prisma {
     search?: SearchEngineSourceConfigUncheckedCreateNestedOneWithoutSourceInput
     social?: SocialMediaSourceConfigUncheckedCreateNestedOneWithoutSourceInput
     identity?: SourceIdentityUncheckedCreateNestedOneWithoutSourceInput
-    presetBindings?: SourcePresetBindingUncheckedCreateNestedManyWithoutSourceInput
     queries?: QueryUncheckedCreateNestedManyWithoutSourcesInput
     derivedKeywords?: KeywordUncheckedCreateNestedManyWithoutDeriveSourceInput
   }
@@ -52084,7 +46969,6 @@ export namespace Prisma {
     search?: SearchEngineSourceConfigUpdateOneWithoutSourceNestedInput
     social?: SocialMediaSourceConfigUpdateOneWithoutSourceNestedInput
     identity?: SourceIdentityUpdateOneWithoutSourceNestedInput
-    presetBindings?: SourcePresetBindingUpdateManyWithoutSourceNestedInput
     queries?: QueryUpdateManyWithoutSourcesNestedInput
     derivedKeywords?: KeywordUpdateManyWithoutDeriveSourceNestedInput
   }
@@ -52108,7 +46992,6 @@ export namespace Prisma {
     search?: SearchEngineSourceConfigUncheckedUpdateOneWithoutSourceNestedInput
     social?: SocialMediaSourceConfigUncheckedUpdateOneWithoutSourceNestedInput
     identity?: SourceIdentityUncheckedUpdateOneWithoutSourceNestedInput
-    presetBindings?: SourcePresetBindingUncheckedUpdateManyWithoutSourceNestedInput
     queries?: QueryUncheckedUpdateManyWithoutSourcesNestedInput
     derivedKeywords?: KeywordUncheckedUpdateManyWithoutDeriveSourceNestedInput
   }
@@ -54136,7 +49019,6 @@ export namespace Prisma {
     search?: SearchEngineSourceConfigUpdateOneWithoutSourceNestedInput
     social?: SocialMediaSourceConfigUpdateOneWithoutSourceNestedInput
     identity?: SourceIdentityUpdateOneWithoutSourceNestedInput
-    presetBindings?: SourcePresetBindingUpdateManyWithoutSourceNestedInput
     queries?: QueryUpdateManyWithoutSourcesNestedInput
     derivedKeywords?: KeywordUpdateManyWithoutDeriveSourceNestedInput
     querySourcePolicies?: QuerySourcePolicyUpdateManyWithoutSourceNestedInput
@@ -54160,7 +49042,6 @@ export namespace Prisma {
     search?: SearchEngineSourceConfigUncheckedUpdateOneWithoutSourceNestedInput
     social?: SocialMediaSourceConfigUncheckedUpdateOneWithoutSourceNestedInput
     identity?: SourceIdentityUncheckedUpdateOneWithoutSourceNestedInput
-    presetBindings?: SourcePresetBindingUncheckedUpdateManyWithoutSourceNestedInput
     queries?: QueryUncheckedUpdateManyWithoutSourcesNestedInput
     derivedKeywords?: KeywordUncheckedUpdateManyWithoutDeriveSourceNestedInput
     querySourcePolicies?: QuerySourcePolicyUncheckedUpdateManyWithoutSourceNestedInput
@@ -54335,7 +49216,6 @@ export namespace Prisma {
     search?: SearchEngineSourceConfigUpdateOneWithoutSourceNestedInput
     social?: SocialMediaSourceConfigUpdateOneWithoutSourceNestedInput
     identity?: SourceIdentityUpdateOneWithoutSourceNestedInput
-    presetBindings?: SourcePresetBindingUpdateManyWithoutSourceNestedInput
     queries?: QueryUpdateManyWithoutSourcesNestedInput
     derivedKeywords?: KeywordUpdateManyWithoutDeriveSourceNestedInput
     querySourcePolicies?: QuerySourcePolicyUpdateManyWithoutSourceNestedInput
@@ -54359,7 +49239,6 @@ export namespace Prisma {
     search?: SearchEngineSourceConfigUncheckedUpdateOneWithoutSourceNestedInput
     social?: SocialMediaSourceConfigUncheckedUpdateOneWithoutSourceNestedInput
     identity?: SourceIdentityUncheckedUpdateOneWithoutSourceNestedInput
-    presetBindings?: SourcePresetBindingUncheckedUpdateManyWithoutSourceNestedInput
     queries?: QueryUncheckedUpdateManyWithoutSourcesNestedInput
     derivedKeywords?: KeywordUncheckedUpdateManyWithoutDeriveSourceNestedInput
     querySourcePolicies?: QuerySourcePolicyUncheckedUpdateManyWithoutSourceNestedInput
@@ -54446,15 +49325,6 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
-  export type SourcePresetBindingCreateManySourceInput = {
-    id?: string
-    presetId: string
-    args: JsonNullValueInput | InputJsonValue
-    enabled?: boolean
-    createdAt?: Date | string
-    updatedAt?: Date | string
-  }
-
   export type KeywordCreateManyDeriveSourceInput = {
     id?: string
     name: string
@@ -54478,33 +49348,6 @@ export namespace Prisma {
     contentFilterMode?: $Enums.QueryContentFilterMode
     createdAt?: Date | string
     updatedAt?: Date | string
-  }
-
-  export type SourcePresetBindingUpdateWithoutSourceInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    args?: JsonNullValueInput | InputJsonValue
-    enabled?: BoolFieldUpdateOperationsInput | boolean
-    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    preset?: BbPresetUpdateOneRequiredWithoutSourceBindingsNestedInput
-  }
-
-  export type SourcePresetBindingUncheckedUpdateWithoutSourceInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    presetId?: StringFieldUpdateOperationsInput | string
-    args?: JsonNullValueInput | InputJsonValue
-    enabled?: BoolFieldUpdateOperationsInput | boolean
-    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-  }
-
-  export type SourcePresetBindingUncheckedUpdateManyWithoutSourceInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    presetId?: StringFieldUpdateOperationsInput | string
-    args?: JsonNullValueInput | InputJsonValue
-    enabled?: BoolFieldUpdateOperationsInput | boolean
-    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
   export type QueryUpdateWithoutSourcesInput = {
@@ -54633,42 +49476,6 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
-  export type SourcePresetBindingCreateManyPresetInput = {
-    id?: string
-    sourceId: string
-    args: JsonNullValueInput | InputJsonValue
-    enabled?: boolean
-    createdAt?: Date | string
-    updatedAt?: Date | string
-  }
-
-  export type SourcePresetBindingUpdateWithoutPresetInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    args?: JsonNullValueInput | InputJsonValue
-    enabled?: BoolFieldUpdateOperationsInput | boolean
-    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    source?: SourceUpdateOneRequiredWithoutPresetBindingsNestedInput
-  }
-
-  export type SourcePresetBindingUncheckedUpdateWithoutPresetInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    sourceId?: StringFieldUpdateOperationsInput | string
-    args?: JsonNullValueInput | InputJsonValue
-    enabled?: BoolFieldUpdateOperationsInput | boolean
-    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-  }
-
-  export type SourcePresetBindingUncheckedUpdateManyWithoutPresetInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    sourceId?: StringFieldUpdateOperationsInput | string
-    args?: JsonNullValueInput | InputJsonValue
-    enabled?: BoolFieldUpdateOperationsInput | boolean
-    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-  }
-
   export type QuerySourcePolicyCreateManyQueryInput = {
     id?: string
     sourceId: string
@@ -54764,7 +49571,6 @@ export namespace Prisma {
     search?: SearchEngineSourceConfigUpdateOneWithoutSourceNestedInput
     social?: SocialMediaSourceConfigUpdateOneWithoutSourceNestedInput
     identity?: SourceIdentityUpdateOneWithoutSourceNestedInput
-    presetBindings?: SourcePresetBindingUpdateManyWithoutSourceNestedInput
     derivedKeywords?: KeywordUpdateManyWithoutDeriveSourceNestedInput
     querySourcePolicies?: QuerySourcePolicyUpdateManyWithoutSourceNestedInput
   }
@@ -54788,7 +49594,6 @@ export namespace Prisma {
     search?: SearchEngineSourceConfigUncheckedUpdateOneWithoutSourceNestedInput
     social?: SocialMediaSourceConfigUncheckedUpdateOneWithoutSourceNestedInput
     identity?: SourceIdentityUncheckedUpdateOneWithoutSourceNestedInput
-    presetBindings?: SourcePresetBindingUncheckedUpdateManyWithoutSourceNestedInput
     derivedKeywords?: KeywordUncheckedUpdateManyWithoutDeriveSourceNestedInput
     querySourcePolicies?: QuerySourcePolicyUncheckedUpdateManyWithoutSourceNestedInput
   }

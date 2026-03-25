@@ -13,7 +13,6 @@ import {
   listMissingRequirements,
   sourceIdentityFromSource,
 } from "@/lib/source-batch";
-import { syncSocialPresetBinding } from "@/lib/source-preset-binding";
 
 const BatchCreateItemSchema = z.object({
   key: z.string().trim().min(1),
@@ -295,10 +294,6 @@ export async function POST(req: Request) {
                 proxyId: typeof social.proxyId === "string" ? social.proxyId : null,
                 keywordStrategy: String(social.keywordStrategy ?? "AUTO") as any,
               },
-            });
-            await syncSocialPresetBinding(tx, {
-              sourceId: base.id,
-              config: social.config,
             });
           }
 
