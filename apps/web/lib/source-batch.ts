@@ -86,6 +86,19 @@ const REQUIRED_INTENT_ARGS = new Set([
 ]);
 
 const DEFAULT_RECALL_BINDING_ARG_KEYS = ["query"];
+const NON_IDENTITY_INTENT_ARG_KEYS = new Set([
+  "limit",
+  "count",
+  "page",
+  "offset",
+  "cursor",
+  "sort",
+  "time",
+  "since",
+  "until",
+  "max_results",
+  "scroll_times",
+]);
 
 function hasTag(tags: string[], value: string): boolean {
   const lower = value.toLowerCase();
@@ -514,6 +527,38 @@ function toPrismaJsonObject(value: unknown): Prisma.InputJsonObject {
   return toPrismaJsonValue(value) as Prisma.InputJsonObject;
 }
 
+function toDisplayArgValue(value: unknown): string | null {
+  if (value === null || value === undefined) return null;
+  if (typeof value === "string") {
+    const normalized = value.trim();
+    return normalized.length > 0 ? normalized : null;
+  }
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+  return null;
+}
+
+function resolveIntentArgContext(config: Record<string, unknown>): string | null {
+  const intent = asRecord(config.intent);
+  const args = asRecord(intent.args);
+  const allEntries = Object.entries(args)
+    .map(([key, rawValue]) => ({
+      key: key.trim(),
+      value: toDisplayArgValue(rawValue),
+    }))
+    .filter((item): item is { key: string; value: string } => Boolean(item.key && item.value));
+
+  if (allEntries.length === 0) return null;
+
+  const identityEntries = allEntries.filter(
+    (item) => !NON_IDENTITY_INTENT_ARG_KEYS.has(item.key.toLowerCase())
+  );
+  const picked = (identityEntries.length > 0 ? identityEntries : allEntries).slice(0, 2);
+
+  return picked.map((item) => `${item.key}: ${item.value}`).join(", ");
+}
+
 export function resolveCredentialId(
   template: BatchTemplate,
   config: Record<string, unknown>,
@@ -560,6 +605,13 @@ export function buildSourceCreateData(input: {
   identity: BatchIdentity;
 }) {
   const { template, config, defaults, credentialRefs, identity } = input;
+  const intentArgContext = resolveIntentArgContext(config);
+  const resolvedName = intentArgContext
+    ? `${template.title} (${intentArgContext})`
+    : `${template.title} (${identity.intentArgsHash.slice(0, 6)})`;
+  const resolvedDescription = intentArgContext
+    ? `${template.description}(${intentArgContext})`
+    : template.description;
 
   const resolvedProxyId =
     typeof config.proxyId === "string" && config.proxyId.trim()
@@ -568,8 +620,8 @@ export function buildSourceCreateData(input: {
   const resolvedCredentialId = resolveCredentialId(template, config, credentialRefs);
 
   const base = {
-    name: `${template.title} (${identity.intentArgsHash.slice(0, 6)})`,
-    description: template.description,
+    name: resolvedName,
+    description: resolvedDescription,
     category: template.category,
     isDarknet: template.isDarknet,
     active: defaults?.active ?? true,
