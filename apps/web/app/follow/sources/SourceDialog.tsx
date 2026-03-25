@@ -332,7 +332,7 @@ function getInitialScriptState(source?: SourceWithRelations): {
       platform: "",
       intentType: "",
       scriptArgs: {},
-      recallBindingArgKeys: ["query"],
+      recallBindingArgKeys: [],
       poolEnabled: true,
       poolIdleTimeoutMs: 120000,
       headless: false,
@@ -400,7 +400,7 @@ function getInitialScriptState(source?: SourceWithRelations): {
             ? recallBinding.argKeys
                 .map((item) => String(item).trim())
                 .filter(Boolean)
-            : ["query"],
+            : [],
       poolEnabled:
         typeof driver.poolEnabled === "boolean"
           ? driver.poolEnabled
@@ -467,12 +467,27 @@ function getInitialScriptState(source?: SourceWithRelations): {
       source.search.options && typeof source.search.options === "object"
         ? (source.search.options as Record<string, unknown>)
         : {};
+    const optionRecallBinding = asRecord(options.recallBinding);
+    const optionIntent = asRecord(options.intent);
+    const optionIntentRecallBinding = asRecord(optionIntent.recallBinding);
+    const optionRecallBindingArgKeys = normalizeStringArray(
+      optionIntentRecallBinding.argKeys
+    ).length
+      ? normalizeStringArray(optionIntentRecallBinding.argKeys)
+      : normalizeStringArray(optionRecallBinding.argKeys);
+    const optionRecallBindingEnabled =
+      typeof optionIntentRecallBinding.enabled === "boolean"
+        ? optionIntentRecallBinding.enabled
+        : typeof optionRecallBinding.enabled === "boolean"
+          ? optionRecallBinding.enabled
+          : undefined;
     return {
       category: "RETRIEVAL",
       platform: String(options.provider ?? source.search.platform ?? ""),
       intentType: "search",
       scriptArgs: { query: source.search.objective ?? "" },
-      recallBindingArgKeys: ["query"],
+      recallBindingArgKeys:
+        optionRecallBindingEnabled === false ? [] : optionRecallBindingArgKeys,
       poolEnabled: true,
       poolIdleTimeoutMs: 120000,
       headless: false,
@@ -490,6 +505,20 @@ function getInitialScriptState(source?: SourceWithRelations): {
     const parseRules = asRecord(source.web.parseRules);
     const gather = asRecord(parseRules.gather);
     const gatherIntentArgs = asRecord(gather.intentArgs);
+    const gatherRecallBinding = asRecord(gather.recallBinding);
+    const gatherIntent = asRecord(gather.intent);
+    const gatherIntentRecallBinding = asRecord(gatherIntent.recallBinding);
+    const gatherRecallBindingArgKeys = normalizeStringArray(
+      gatherIntentRecallBinding.argKeys
+    ).length
+      ? normalizeStringArray(gatherIntentRecallBinding.argKeys)
+      : normalizeStringArray(gatherRecallBinding.argKeys);
+    const gatherRecallBindingEnabled =
+      typeof gatherIntentRecallBinding.enabled === "boolean"
+        ? gatherIntentRecallBinding.enabled
+        : typeof gatherRecallBinding.enabled === "boolean"
+          ? gatherRecallBinding.enabled
+          : undefined;
     const marker =
       parseGatherMarker(source.description) ??
       parseGatherMarker(source.name);
@@ -507,7 +536,8 @@ function getInitialScriptState(source?: SourceWithRelations): {
         Object.keys(gatherIntentArgs).length > 0
           ? gatherIntentArgs
           : { url: source.web.url ?? [] },
-      recallBindingArgKeys: ["query"],
+      recallBindingArgKeys:
+        gatherRecallBindingEnabled === false ? [] : gatherRecallBindingArgKeys,
       poolEnabled: true,
       poolIdleTimeoutMs: 120000,
       headless: false,
@@ -532,7 +562,7 @@ function getInitialScriptState(source?: SourceWithRelations): {
       platform: "DARKWEBGO",
       intentType: "search",
       scriptArgs: { url: source.darknet.url ?? [] },
-      recallBindingArgKeys: ["query"],
+      recallBindingArgKeys: [],
       poolEnabled: true,
       poolIdleTimeoutMs: 120000,
       headless: false,
@@ -551,7 +581,7 @@ function getInitialScriptState(source?: SourceWithRelations): {
     platform: "",
     intentType: "",
     scriptArgs: {},
-    recallBindingArgKeys: ["query"],
+    recallBindingArgKeys: [],
     poolEnabled: true,
     poolIdleTimeoutMs: 120000,
     headless: false,
