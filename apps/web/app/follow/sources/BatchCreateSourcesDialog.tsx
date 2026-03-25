@@ -69,6 +69,7 @@ type ItemFormState = {
 };
 
 const EMPTY_ARG_ENTRY = { key: "", value: "" };
+const INDEXED_ARG_KEY_RE = /^(.*)\[(\d+)\]$/;
 
 type ScriptArgEntry = {
   key: string;
@@ -131,6 +132,17 @@ function toScriptArgs(entries: ScriptArgEntry[]): Record<string, string> {
     .map((entry) => ({ key: entry.key.trim(), value: entry.value.trim() }))
     .filter((entry) => entry.key.length > 0);
   return Object.fromEntries(pairs.map((entry) => [entry.key, entry.value]));
+}
+
+function parseIndexedArgKey(rawKey: string): { baseKey: string; index: number } | null {
+  const key = rawKey.trim();
+  if (!key) return null;
+  const matched = key.match(INDEXED_ARG_KEY_RE);
+  if (!matched) return null;
+  const baseKey = matched[1]?.trim();
+  const index = Number(matched[2]);
+  if (!baseKey || !Number.isInteger(index) || index < 0) return null;
+  return { baseKey, index };
 }
 
 function normalizeBindingArgKeys(value: unknown): string[] {
@@ -400,6 +412,104 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
     handleConfigChange(template.key, "intent.args", toScriptArgs(rows));
   };
 
+  const duplicateArgGroup = (template: BatchTemplate) => {
+    const rows = getScriptArgRows(template);
+    const validRows = rows
+      .map((entry) => ({ key: entry.key.trim(), value: entry.value }))
+      .filter((entry) => entry.key.length > 0);
+
+    if (validRows.length === 0) {
+      toast.error("没有可复制的参数。");
+      return;
+    }
+
+    const hasIndexed = validRows.some((entry) => parseIndexedArgKey(entry.key));
+    if (!hasIndexed) {
+      const indexedRows: ScriptArgEntry[] = [
+        ...validRows.map((entry) => ({ key: `${entry.key}[0]`, value: entry.value })),
+        ...validRows.map((entry) => ({ key: `${entry.key}[1]`, value: entry.value })),
+      ];
+      updateScriptArgRows(template, indexedRows);
+      return;
+    }
+
+    let maxIndex = -1;
+    const byBaseKey = new Map<string, Array<{ index: number; value: string }>>();
+    for (const row of validRows) {
+      const parsed = parseIndexedArgKey(row.key);
+      if (!parsed) continue;
+      maxIndex = Math.max(maxIndex, parsed.index);
+      const entries = byBaseKey.get(parsed.baseKey) ?? [];
+      entries.push({ index: parsed.index, value: row.value });
+      byBaseKey.set(parsed.baseKey, entries);
+    }
+
+    const nextIndex = maxIndex + 1;
+    const appended: ScriptArgEntry[] = Array.from(byBaseKey.entries()).map(
+      ([baseKey, values]) => {
+        const sortedValues = values.sort((a, b) => a.index - b.index);
+        const seed = sortedValues[sortedValues.length - 1]?.value ?? "";
+        return { key: `${baseKey}[${nextIndex}]`, value: seed };
+      }
+    );
+
+    updateScriptArgRows(template, [...validRows, ...appended]);
+  };
+
+  const expandIndexedConfigVariants = (
+    config: Record<string, unknown>
+  ): Array<{ index: number | null; config: Record<string, unknown> }> => {
+    const rawArgs = getByPath(config, "intent.args");
+    if (!rawArgs || typeof rawArgs !== "object" || Array.isArray(rawArgs)) {
+      return [{ index: null, config }];
+    }
+
+    const argsObject = rawArgs as Record<string, unknown>;
+    const sharedArgs: Record<string, unknown> = {};
+    const indexedArgs = new Map<number, Record<string, unknown>>();
+
+    for (const [rawKey, rawValue] of Object.entries(argsObject)) {
+      const parsed = parseIndexedArgKey(rawKey);
+      if (!parsed) {
+        sharedArgs[rawKey] = rawValue;
+        continue;
+      }
+      const bucket = indexedArgs.get(parsed.index) ?? {};
+      bucket[parsed.baseKey] = rawValue;
+      indexedArgs.set(parsed.index, bucket);
+    }
+
+    if (indexedArgs.size === 0) {
+      return [{ index: null, config }];
+    }
+
+    const bindingEnabled = getByPath(config, "intent.recallBinding.enabled");
+    const bindingKeys = getRecallBindingArgKeys(config);
+
+    return Array.from(indexedArgs.entries())
+      .sort(([a], [b]) => a - b)
+      .map(([index, args]) => {
+        const nextArgs = { ...sharedArgs, ...args };
+        let nextConfig = setByPath(config, "intent.args", nextArgs);
+        if (bindingEnabled !== false) {
+          const nextBindingKeys = bindingKeys
+            .map((item) => {
+              const parsed = parseIndexedArgKey(item);
+              if (!parsed) return item;
+              return parsed.index === index ? parsed.baseKey : "";
+            })
+            .filter(Boolean);
+          nextConfig = setByPath(nextConfig, "intent.recallBinding.argKeys", nextBindingKeys);
+          nextConfig = setByPath(
+            nextConfig,
+            "intent.recallBinding.enabled",
+            nextBindingKeys.length > 0
+          );
+        }
+        return { index, config: nextConfig };
+      });
+  };
+
   const getRequiredAuth = (template: BatchTemplate) =>
     template.credentialRequirements.find((requirement) => requirement.required) ?? null;
 
@@ -555,17 +665,20 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
   const getLocalMissing = (template: BatchTemplate): string[] => {
     const missing: string[] = [];
     const config = getCurrentConfig(template);
-    const boundKeys = getRecallBindingArgKeys(config);
+    const variants = expandIndexedConfigVariants(config);
 
-    for (const field of template.requiredFields) {
-      if (field.startsWith("intent.args.")) {
-        const argKey = field.slice("intent.args.".length).trim();
-        if (argKey && boundKeys.includes(argKey)) {
-          continue;
+    for (const variant of variants) {
+      const boundKeys = getRecallBindingArgKeys(variant.config);
+      for (const field of template.requiredFields) {
+        if (field.startsWith("intent.args.")) {
+          const argKey = field.slice("intent.args.".length).trim();
+          if (argKey && boundKeys.includes(argKey)) {
+            continue;
+          }
         }
-      }
-      if (isEmptyValue(getByPath(config, field))) {
-        missing.push(field);
+        if (isEmptyValue(getByPath(variant.config, field))) {
+          missing.push(variant.index === null ? field : `${field}[${variant.index}]`);
+        }
       }
     }
 
@@ -604,6 +717,48 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
     setInvalidMap({});
 
     try {
+      const payloadItems = templates.flatMap((template) => {
+        const enabled = Boolean(state[template.key]?.enabled);
+        const baseConfig = {
+          ...getCurrentConfig(template),
+          proxyId:
+            platformProxyRefs[template.platform] !== undefined
+              ? platformProxyRefs[template.platform]
+              : (getCurrentConfig(template).proxyId as string | null | undefined) ?? null,
+        };
+        const refs = { ...(state[template.key]?.credentialRefs ?? {}) };
+        const requiredAuth = getRequiredAuth(template);
+        if (requiredAuth && !refs[requiredAuth.kind]) {
+          const effectiveCredentialId = getEffectiveCredentialId(
+            template.platform,
+            requiredAuth.kind,
+            template.key
+          );
+          if (effectiveCredentialId) {
+            refs[requiredAuth.kind] = effectiveCredentialId;
+          }
+        }
+
+        if (!enabled) {
+          return [
+            {
+              key: template.key,
+              enabled: false,
+              config: baseConfig,
+              credentialRefs: refs,
+            },
+          ];
+        }
+
+        const variants = expandIndexedConfigVariants(baseConfig);
+        return variants.map((variant) => ({
+          key: template.key,
+          enabled: true,
+          config: variant.config,
+          credentialRefs: refs,
+        }));
+      });
+
       const response = await fetch("/api/follow/sources/batch-create", {
         method: "POST",
         headers: {
@@ -611,32 +766,7 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
           "x-user-id": "default-user-id",
         },
         body: JSON.stringify({
-          items: templates.map((template) => ({
-            key: template.key,
-            enabled: Boolean(state[template.key]?.enabled),
-            config: {
-              ...getCurrentConfig(template),
-              proxyId:
-                platformProxyRefs[template.platform] !== undefined
-                  ? platformProxyRefs[template.platform]
-                  : (getCurrentConfig(template).proxyId as string | null | undefined) ?? null,
-            },
-            credentialRefs: (() => {
-              const refs = { ...(state[template.key]?.credentialRefs ?? {}) };
-              const requiredAuth = getRequiredAuth(template);
-              if (requiredAuth && !refs[requiredAuth.kind]) {
-                const effectiveCredentialId = getEffectiveCredentialId(
-                  template.platform,
-                  requiredAuth.kind,
-                  template.key
-                );
-                if (effectiveCredentialId) {
-                  refs[requiredAuth.kind] = effectiveCredentialId;
-                }
-              }
-              return refs;
-            })(),
-          })),
+          items: payloadItems,
           defaults,
         }),
       });
@@ -1052,7 +1182,17 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
                                     </Button>
                                   </div>
                                   <div className="space-y-2">
-                                    <Label>Script Args</Label>
+                                    <div className="flex items-center justify-between gap-2">
+                                      <Label>Script Args</Label>
+                                      <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => duplicateArgGroup(template)}
+                                      >
+                                        复制参数组
+                                      </Button>
+                                    </div>
                                     <div className="grid gap-2">
                                       {getScriptArgRows(template).map(
                                         (entry, index, list) => (
@@ -1225,7 +1365,8 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
                                       )}
                                     </div>
                                     <p className="text-xs text-muted-foreground">
-                                      顺序：key | value | 召回词关联 | + | -（绑定状态下 value 不可编辑）。
+                                      顺序：key | value | 召回词关联 | + | -。点击“复制参数组”后将使用
+                                      `args.key[index]` 批量创建多个实例（绑定也按 index 对齐）。
                                     </p>
                                   </div>
 
