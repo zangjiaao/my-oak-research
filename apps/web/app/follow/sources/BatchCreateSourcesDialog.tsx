@@ -2,7 +2,7 @@
 
 import { type ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link2, Loader2, Minus, Plus, PlusIcon, Unlink2, X } from "lucide-react";
+import { Copy, Link2, Loader2, Minus, Plus, PlusIcon, Unlink2, X } from "lucide-react";
 import { toast } from "sonner";
 
 import type { Proxy } from "@/app/generated/prisma";
@@ -412,48 +412,41 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
     handleConfigChange(template.key, "intent.args", toScriptArgs(rows));
   };
 
-  const duplicateArgGroup = (template: BatchTemplate) => {
+  const duplicateArgRow = (template: BatchTemplate, rowIndex: number) => {
     const rows = getScriptArgRows(template);
-    const validRows = rows
-      .map((entry) => ({ key: entry.key.trim(), value: entry.value }))
-      .filter((entry) => entry.key.length > 0);
-
-    if (validRows.length === 0) {
-      toast.error("没有可复制的参数。");
+    const target = rows[rowIndex];
+    const rawKey = target?.key?.trim();
+    if (!rawKey) {
+      toast.error("请先填写参数 key。");
       return;
     }
 
-    const hasIndexed = validRows.some((entry) => parseIndexedArgKey(entry.key));
-    if (!hasIndexed) {
-      const indexedRows: ScriptArgEntry[] = [
-        ...validRows.map((entry) => ({ key: `${entry.key}[0]`, value: entry.value })),
-        ...validRows.map((entry) => ({ key: `${entry.key}[1]`, value: entry.value })),
-      ];
-      updateScriptArgRows(template, indexedRows);
+    const parsed = parseIndexedArgKey(rawKey);
+    if (parsed) {
+      const maxIndex = rows.reduce((acc, row) => {
+        const item = parseIndexedArgKey(row.key);
+        if (!item || item.baseKey !== parsed.baseKey) return acc;
+        return Math.max(acc, item.index);
+      }, -1);
+      const next = [...rows];
+      next.splice(rowIndex + 1, 0, {
+        key: `${parsed.baseKey}[${maxIndex + 1}]`,
+        value: target.value,
+      });
+      updateScriptArgRows(template, next);
       return;
     }
 
-    let maxIndex = -1;
-    const byBaseKey = new Map<string, Array<{ index: number; value: string }>>();
-    for (const row of validRows) {
-      const parsed = parseIndexedArgKey(row.key);
-      if (!parsed) continue;
-      maxIndex = Math.max(maxIndex, parsed.index);
-      const entries = byBaseKey.get(parsed.baseKey) ?? [];
-      entries.push({ index: parsed.index, value: row.value });
-      byBaseKey.set(parsed.baseKey, entries);
-    }
-
-    const nextIndex = maxIndex + 1;
-    const appended: ScriptArgEntry[] = Array.from(byBaseKey.entries()).map(
-      ([baseKey, values]) => {
-        const sortedValues = values.sort((a, b) => a.index - b.index);
-        const seed = sortedValues[sortedValues.length - 1]?.value ?? "";
-        return { key: `${baseKey}[${nextIndex}]`, value: seed };
-      }
-    );
-
-    updateScriptArgRows(template, [...validRows, ...appended]);
+    const next = [...rows];
+    next[rowIndex] = {
+      key: `${rawKey}[0]`,
+      value: target.value,
+    };
+    next.splice(rowIndex + 1, 0, {
+      key: `${rawKey}[1]`,
+      value: target.value,
+    });
+    updateScriptArgRows(template, next);
   };
 
   const expandIndexedConfigVariants = (
@@ -1182,23 +1175,13 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
                                     </Button>
                                   </div>
                                   <div className="space-y-2">
-                                    <div className="flex items-center justify-between gap-2">
-                                      <Label>Script Args</Label>
-                                      <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => duplicateArgGroup(template)}
-                                      >
-                                        复制参数组
-                                      </Button>
-                                    </div>
+                                    <Label>Script Args</Label>
                                     <div className="grid gap-2">
                                       {getScriptArgRows(template).map(
                                         (entry, index, list) => (
                                           <div
                                             key={`${template.key}-arg-${index}`}
-                                            className="grid grid-cols-[1fr_1fr_auto_auto_auto] gap-2"
+                                            className="grid grid-cols-[1fr_1fr_auto_auto_auto_auto] gap-2"
                                           >
                                             <Input
                                               placeholder="key"
@@ -1310,6 +1293,32 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
                                                 </Button>
                                               );
                                             })()}
+                                            {(() => {
+                                              const normalizedEntryKey = entry.key.trim();
+                                              const boundKeys = getRecallBindingArgKeys(
+                                                getCurrentConfig(template)
+                                              );
+                                              const isBound =
+                                                normalizedEntryKey.length > 0 &&
+                                                boundKeys.includes(normalizedEntryKey);
+                                              return (
+                                                <Button
+                                                  type="button"
+                                                  variant="outline"
+                                                  size="icon"
+                                                  aria-label="Copy arg row"
+                                                  disabled={isBound}
+                                                  title={
+                                                    isBound
+                                                      ? "绑定激活时不可复制"
+                                                      : "复制参数"
+                                                  }
+                                                  onClick={() => duplicateArgRow(template, index)}
+                                                >
+                                                  <Copy className="size-4" />
+                                                </Button>
+                                              );
+                                            })()}
                                             <Button
                                               type="button"
                                               variant="outline"
@@ -1365,8 +1374,8 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
                                       )}
                                     </div>
                                     <p className="text-xs text-muted-foreground">
-                                      顺序：key | value | 召回词关联 | + | -。点击“复制参数组”后将使用
-                                      `args.key[index]` 批量创建多个实例（绑定也按 index 对齐）。
+                                      顺序：key | value | 召回词关联 | 复制 | + | -。复制会生成
+                                      `args.key[index]`，提交时按 index 批量创建。
                                     </p>
                                   </div>
 
