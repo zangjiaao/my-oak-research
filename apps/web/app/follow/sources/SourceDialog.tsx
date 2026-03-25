@@ -1183,18 +1183,33 @@ const SourceDialog = ({
       normalizePlatform(selectedPlatform),
       selectedCapability?.authRequirement.kind ?? "",
     ],
-    queryFn: () =>
-      apiFetcher(
-        selectedCapability?.authRequirement.kind
-          ? `/api/follow/credentials?kind=${encodeURIComponent(
-              selectedCapability.authRequirement.kind
-            )}`
-          : selectedPlatform
-            ? `/api/follow/credentials?platform=${encodeURIComponent(
-                normalizePlatform(selectedPlatform).toLowerCase()
-              )}`
-            : "/api/follow/credentials"
-      ),
+    queryFn: async () => {
+      const authKind =
+        typeof selectedCapability?.authRequirement.kind === "string"
+          ? selectedCapability.authRequirement.kind.trim().toLowerCase()
+          : "";
+      const platform =
+        selectedPlatform ? normalizePlatform(selectedPlatform).toLowerCase() : "";
+
+      if (authKind) {
+        const byKind = (await apiFetcher(
+          `/api/follow/credentials?kind=${encodeURIComponent(authKind)}`
+        )) as CredentialListResponse;
+        if ((byKind.credentials?.length ?? 0) > 0 || !platform) {
+          return byKind;
+        }
+        return apiFetcher(
+          `/api/follow/credentials?platform=${encodeURIComponent(platform)}`
+        ) as Promise<CredentialListResponse>;
+      }
+
+      if (platform) {
+        return apiFetcher(
+          `/api/follow/credentials?platform=${encodeURIComponent(platform)}`
+        ) as Promise<CredentialListResponse>;
+      }
+      return apiFetcher("/api/follow/credentials") as Promise<CredentialListResponse>;
+    },
     enabled: open,
   });
 
