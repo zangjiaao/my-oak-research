@@ -1,6 +1,6 @@
 "use client";
 
-import { type ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
+import { type ChangeEvent, type KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Copy, Link2, Loader2, Minus, Plus, PlusIcon, Unlink2, X } from "lucide-react";
 import { toast } from "sonner";
@@ -313,6 +313,7 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
     EXISTS: false,
   });
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const valueInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   const queryClient = useQueryClient();
 
@@ -484,6 +485,20 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
     const normalizedRows = normalizeScriptArgRows(rows);
     setScriptArgRowsMap((prev) => ({ ...prev, [template.key]: normalizedRows }));
     handleConfigChange(template.key, "intent.args", toScriptArgs(normalizedRows));
+  };
+
+  const focusNextValueInput = (
+    event: KeyboardEvent<HTMLInputElement>,
+    template: BatchTemplate,
+    rowIndex: number
+  ) => {
+    if (event.key !== "Tab" || event.shiftKey) return;
+    const nextRefKey = `${template.key}-${rowIndex + 1}`;
+    const nextInput = valueInputRefs.current[nextRefKey];
+    if (!nextInput) return;
+    event.preventDefault();
+    nextInput.focus();
+    nextInput.select();
   };
 
   const duplicateArgRow = (template: BatchTemplate, rowIndex: number) => {
@@ -1295,6 +1310,9 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
                                             <Input
                                               placeholder="value"
                                               value={entry.value}
+                                              ref={(node) => {
+                                                valueInputRefs.current[`${template.key}-${index}`] = node;
+                                              }}
                                               disabled={(() => {
                                                 const normalizedEntryKey = entry.key.trim();
                                                 if (!normalizedEntryKey) return false;
@@ -1303,6 +1321,9 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
                                                 );
                                                 return boundKeys.includes(normalizedEntryKey);
                                               })()}
+                                              onKeyDown={(event) =>
+                                                focusNextValueInput(event, template, index)
+                                              }
                                               onChange={(event) => {
                                                 const next = getScriptArgRows(template);
                                                 next[index] = {
