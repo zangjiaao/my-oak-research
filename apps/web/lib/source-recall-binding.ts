@@ -22,8 +22,7 @@ function hasLockedRecallBinding(recallBinding: unknown): boolean {
   const binding = asObject(recallBinding);
   if (Object.keys(binding).length === 0) return false;
 
-  const enabled =
-    typeof binding.enabled === "boolean" ? binding.enabled : true;
+  const enabled = binding.enabled === true;
   const argKeys = toStringArray(binding.argKeys);
   return enabled && argKeys.length > 0;
 }
