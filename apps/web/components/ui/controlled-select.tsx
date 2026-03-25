@@ -1,3 +1,5 @@
+import { Children } from "react";
+
 import {
   Select,
   SelectTrigger,
@@ -20,10 +22,16 @@ export const ControlledSelect = ({
   onValueChange,
   placeholder,
   children,
-  nullValue = "",
-  nullLabel = "None",
+  nullValue,
+  nullLabel,
 }: ControlledSelectProps) => {
-  const effectiveNullValue = nullValue.trim().length > 0 ? nullValue : "__NULL__";
+  const resolvedNullValue = nullValue ?? "";
+  const resolvedNullLabel = nullLabel ?? "None";
+  const hasExplicitNullOptionConfig = nullValue !== undefined || nullLabel !== undefined;
+  const childCount = Children.count(children);
+  const showNullOption = hasExplicitNullOptionConfig || childCount === 0;
+  const effectiveNullValue =
+    resolvedNullValue.trim().length > 0 ? resolvedNullValue : "__NULL__";
 
   return (
     <Select
@@ -34,7 +42,9 @@ export const ControlledSelect = ({
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
       <SelectContent>
-        <SelectItem value={effectiveNullValue}>{nullLabel}</SelectItem>
+        {showNullOption ? (
+          <SelectItem value={effectiveNullValue}>{resolvedNullLabel}</SelectItem>
+        ) : null}
         {children}
       </SelectContent>
     </Select>
