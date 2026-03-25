@@ -147,7 +147,7 @@ function parseIndexedArgKey(rawKey: string): { baseKey: string; index: number } 
 
 function normalizeScriptArgRows(rows: ScriptArgEntry[]): ScriptArgEntry[] {
   const copied = rows.map((row) => ({ ...row }));
-  const groups = new Map<string, number[]>();
+  const indexedGroups = new Map<string, number[]>();
   const nonIndexedKeys = new Set<string>();
 
   for (let i = 0; i < copied.length; i += 1) {
@@ -157,12 +157,12 @@ function normalizeScriptArgRows(rows: ScriptArgEntry[]): ScriptArgEntry[] {
       if (key) nonIndexedKeys.add(key);
       continue;
     }
-    const indexes = groups.get(parsed.baseKey) ?? [];
+    const indexes = indexedGroups.get(parsed.baseKey) ?? [];
     indexes.push(i);
-    groups.set(parsed.baseKey, indexes);
+    indexedGroups.set(parsed.baseKey, indexes);
   }
 
-  for (const [baseKey, rowIndexes] of groups.entries()) {
+  for (const [baseKey, rowIndexes] of indexedGroups.entries()) {
     if (rowIndexes.length === 1 && !nonIndexedKeys.has(baseKey)) {
       const rowIndex = rowIndexes[0];
       const parsed = parseIndexedArgKey(copied[rowIndex].key);
@@ -172,28 +172,50 @@ function normalizeScriptArgRows(rows: ScriptArgEntry[]): ScriptArgEntry[] {
     }
   }
 
-  return copied.sort((a, b) => {
-    const aParsed = parseIndexedArgKey(a.key);
-    const bParsed = parseIndexedArgKey(b.key);
-    if (aParsed && bParsed) {
-      const byBase = aParsed.baseKey.localeCompare(bParsed.baseKey);
-      if (byBase !== 0) return byBase;
-      return aParsed.index - bParsed.index;
+  const plainRowsByBase = new Map<string, ScriptArgEntry[]>();
+  const indexedRowsByBase = new Map<string, ScriptArgEntry[]>();
+
+  for (const row of copied) {
+    const key = row.key.trim();
+    if (!key) continue;
+    const parsed = parseIndexedArgKey(key);
+    if (!parsed) {
+      const current = plainRowsByBase.get(key) ?? [];
+      current.push({ ...row });
+      plainRowsByBase.set(key, current);
+      continue;
     }
-    if (aParsed && !bParsed) {
-      const bKey = b.key.trim();
-      const byBase = aParsed.baseKey.localeCompare(bKey);
-      if (byBase !== 0) return byBase;
-      return 1;
+    const current = indexedRowsByBase.get(parsed.baseKey) ?? [];
+    current.push({ ...row });
+    indexedRowsByBase.set(parsed.baseKey, current);
+  }
+
+  const output: ScriptArgEntry[] = [];
+  const emittedBaseKeys = new Set<string>();
+
+  for (const row of copied) {
+    const key = row.key.trim();
+    if (!key) {
+      output.push({ ...row });
+      continue;
     }
-    if (!aParsed && bParsed) {
-      const aKey = a.key.trim();
-      const byBase = aKey.localeCompare(bParsed.baseKey);
-      if (byBase !== 0) return byBase;
-      return -1;
-    }
-    return a.key.localeCompare(b.key);
-  });
+    const parsed = parseIndexedArgKey(key);
+    const baseKey = parsed?.baseKey ?? key;
+    if (emittedBaseKeys.has(baseKey)) continue;
+    emittedBaseKeys.add(baseKey);
+
+    const plainRows = plainRowsByBase.get(baseKey) ?? [];
+    const indexedRows = (indexedRowsByBase.get(baseKey) ?? []).sort((a, b) => {
+      const aParsed = parseIndexedArgKey(a.key);
+      const bParsed = parseIndexedArgKey(b.key);
+      return (aParsed?.index ?? 0) - (bParsed?.index ?? 0);
+    });
+
+    if (plainRows.length > 0) output.push(...plainRows);
+    if (indexedRows.length > 0) output.push(...indexedRows);
+  }
+
+  return output;
 }
 
 function normalizeBindingArgKeys(value: unknown): string[] {
