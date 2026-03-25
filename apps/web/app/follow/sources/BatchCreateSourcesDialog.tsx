@@ -145,6 +145,57 @@ function parseIndexedArgKey(rawKey: string): { baseKey: string; index: number } 
   return { baseKey, index };
 }
 
+function normalizeScriptArgRows(rows: ScriptArgEntry[]): ScriptArgEntry[] {
+  const copied = rows.map((row) => ({ ...row }));
+  const groups = new Map<string, number[]>();
+  const nonIndexedKeys = new Set<string>();
+
+  for (let i = 0; i < copied.length; i += 1) {
+    const parsed = parseIndexedArgKey(copied[i].key);
+    if (!parsed) {
+      const key = copied[i].key.trim();
+      if (key) nonIndexedKeys.add(key);
+      continue;
+    }
+    const indexes = groups.get(parsed.baseKey) ?? [];
+    indexes.push(i);
+    groups.set(parsed.baseKey, indexes);
+  }
+
+  for (const [baseKey, rowIndexes] of groups.entries()) {
+    if (rowIndexes.length === 1 && !nonIndexedKeys.has(baseKey)) {
+      const rowIndex = rowIndexes[0];
+      const parsed = parseIndexedArgKey(copied[rowIndex].key);
+      if (parsed && parsed.index === 0) {
+        copied[rowIndex].key = baseKey;
+      }
+    }
+  }
+
+  return copied.sort((a, b) => {
+    const aParsed = parseIndexedArgKey(a.key);
+    const bParsed = parseIndexedArgKey(b.key);
+    if (aParsed && bParsed) {
+      const byBase = aParsed.baseKey.localeCompare(bParsed.baseKey);
+      if (byBase !== 0) return byBase;
+      return aParsed.index - bParsed.index;
+    }
+    if (aParsed && !bParsed) {
+      const bKey = b.key.trim();
+      const byBase = aParsed.baseKey.localeCompare(bKey);
+      if (byBase !== 0) return byBase;
+      return 1;
+    }
+    if (!aParsed && bParsed) {
+      const aKey = a.key.trim();
+      const byBase = aKey.localeCompare(bParsed.baseKey);
+      if (byBase !== 0) return byBase;
+      return -1;
+    }
+    return a.key.localeCompare(b.key);
+  });
+}
+
 function normalizeBindingArgKeys(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
   return Array.from(
@@ -408,8 +459,9 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
   };
 
   const updateScriptArgRows = (template: BatchTemplate, rows: ScriptArgEntry[]) => {
-    setScriptArgRowsMap((prev) => ({ ...prev, [template.key]: rows }));
-    handleConfigChange(template.key, "intent.args", toScriptArgs(rows));
+    const normalizedRows = normalizeScriptArgRows(rows);
+    setScriptArgRowsMap((prev) => ({ ...prev, [template.key]: normalizedRows }));
+    handleConfigChange(template.key, "intent.args", toScriptArgs(normalizedRows));
   };
 
   const duplicateArgRow = (template: BatchTemplate, rowIndex: number) => {
