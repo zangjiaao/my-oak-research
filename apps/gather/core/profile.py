@@ -1,15 +1,40 @@
-import api.services.runtime_chunk5 as _runtime_chunk_prev
+"""Auth-state file and browser-profile management."""
 
-globals().update(vars(_runtime_chunk_prev))
+import hashlib
+import io
+import json
+import logging
+import re
+import shutil
+import zipfile
+from typing import Any
+
+from fastapi import HTTPException, UploadFile
+
+from core.config import (
+    AUTH_DIR,
+    MAX_PROFILE_SIZE,
+    PROFILE_NAME_PATTERN,
+    STATE_FILE_NAME_PATTERN,
+)
+from libs.auth_verify import playwright_verify_auth
+from schemas import (
+    SaveAuthStateRequest,
+    SaveAuthStateResponse,
+    UploadProfileResponse,
+    VerifyAuthRequest,
+)
+
+logger = logging.getLogger("gather")
 
 
-async def list_scripts_catalog():
-    payload = _build_scripts_catalog()
-    _log_api_io("/v1/scripts/catalog", {}, payload, 200)
-    return payload
+# ---------------------------------------------------------------------------
+# State files
+# ---------------------------------------------------------------------------
 
-
-def _build_state_file_name(platform: str, alias: str | None, auth_data: dict[str, Any]) -> str:
+def _build_state_file_name(
+    platform: str, alias: str | None, auth_data: dict[str, Any]
+) -> str:
     normalized_platform = re.sub(r"[^a-z0-9_-]+", "-", platform.lower()).strip("-") or "social"
     normalized_alias = re.sub(r"[^a-z0-9_-]+", "-", (alias or "default").lower()).strip("-") or "default"
     payload_hash = hashlib.sha256(
@@ -54,8 +79,10 @@ async def save_auth_state_file(request: SaveAuthStateRequest):
     )
 
 
-async def delete_auth_state_file(request: DeleteAuthStateRequest):
+async def delete_auth_state_file(request):
     raw_state_file = request.state_file.strip()
+    from pathlib import Path
+
     file_name = Path(raw_state_file).name
     if not STATE_FILE_NAME_PATTERN.match(file_name):
         raise HTTPException(status_code=400, detail="invalid state file name")
@@ -67,162 +94,114 @@ async def delete_auth_state_file(request: DeleteAuthStateRequest):
     return {"success": True, "stateFile": f".auth/{file_name}"}
 
 
+# ---------------------------------------------------------------------------
+# Browser profiles
+# ---------------------------------------------------------------------------
+
 async def upload_profile(
     file: UploadFile,
     profile_name: str,
     platform: str = "whatsapp",
 ):
-    """
-    Upload and verify a browser profile (e.g., WhatsApp).
-    """
     import uuid
+
     platform = platform.lower()
-    
-    # Only WhatsApp uses profile-based auth for now
+
     if platform != "whatsapp":
         raise HTTPException(
             status_code=400,
-            detail=f"Platform '{platform}' does not support profile-based authentication"
+            detail=f"Platform '{platform}' does not support profile-based authentication",
         )
-    
-    # 1. Validate profile name format (whitelist)
+
     if not PROFILE_NAME_PATTERN.match(profile_name):
         raise HTTPException(
             status_code=400,
-            detail="Invalid profile name. Use only alphanumeric characters, underscores, and hyphens (1-64 chars)"
+            detail="Invalid profile name. Use only alphanumeric characters, underscores, and hyphens (1-64 chars)",
         )
-    
-    # 2. Read and validate file size
+
     content = await file.read()
     if len(content) > MAX_PROFILE_SIZE:
         raise HTTPException(
             status_code=400,
-            detail=f"File too large. Maximum size is {MAX_PROFILE_SIZE // (1024*1024)}MB"
+            detail=f"File too large. Maximum size is {MAX_PROFILE_SIZE // (1024 * 1024)}MB",
         )
-    
-    # 3. Verify it's a valid ZIP file
+
     if not zipfile.is_zipfile(io.BytesIO(content)):
         raise HTTPException(
             status_code=400,
-            detail="Invalid file format. Please upload a ZIP file"
+            detail="Invalid file format. Please upload a ZIP file",
         )
-    
-    # Generate a unique directory name using UUID to avoid collisions
-    # Format: whatsapp_profile_{alias}_{uuid_short}
+
     unique_suffix = str(uuid.uuid4())[:8]
-    # Sanitized name for directory
     safe_name = f"{profile_name}_{unique_suffix}"
-    
+
     AUTH_DIR.mkdir(exist_ok=True)
     target_dir = AUTH_DIR / f"whatsapp_profile_{safe_name}"
     target_dir_resolved = target_dir.resolve()
     auth_dir_resolved = AUTH_DIR.resolve()
-    
-    # Ensure target is within AUTH_DIR
+
     if not str(target_dir_resolved).startswith(str(auth_dir_resolved)):
-        raise HTTPException(
-            status_code=400,
-            detail="Invalid profile path"
-        )
-    
-    # 5. Extract with security checks
+        raise HTTPException(status_code=400, detail="Invalid profile path")
+
     try:
         with zipfile.ZipFile(io.BytesIO(content)) as zf:
-            # Check each file before extraction
             for info in zf.infolist():
-                # Skip directories
                 if info.is_dir():
                     continue
-                
-                # Normalize the filename and check for path traversal
                 filename = info.filename
-                
-                # Block absolute paths
-                if filename.startswith('/') or filename.startswith('\\'):
-                    raise HTTPException(
-                        status_code=400,
-                        detail=f"Absolute paths not allowed: {filename}"
-                    )
-                
-                # Block parent directory references
-                if '..' in filename:
-                    raise HTTPException(
-                        status_code=400,
-                        detail=f"Path traversal detected: {filename}"
-                    )
-                
-                # Check resolved path is within target
+                if filename.startswith("/") or filename.startswith("\\"):
+                    raise HTTPException(status_code=400, detail=f"Absolute paths not allowed: {filename}")
+                if ".." in filename:
+                    raise HTTPException(status_code=400, detail=f"Path traversal detected: {filename}")
                 extracted_path = (target_dir / filename).resolve()
                 if not str(extracted_path).startswith(str(target_dir_resolved)):
-                    raise HTTPException(
-                        status_code=400,
-                        detail=f"Path traversal detected: {filename}"
-                    )
-                
-                # Block symlinks (check file attributes)
-                # Unix symlink has external_attr with mode 0o120000
+                    raise HTTPException(status_code=400, detail=f"Path traversal detected: {filename}")
                 unix_mode = info.external_attr >> 16
                 if unix_mode != 0 and (unix_mode & 0o170000) == 0o120000:
-                    print(f"[gather] Skipping symbolic link (not allowed for security): {filename}")
+                    logger.debug("skipping symbolic link: %s", filename)
                     continue
-            
-            # Remove existing directory if it exists
+
             if target_dir.exists():
                 shutil.rmtree(target_dir)
-            
-            # Create target directory
             target_dir.mkdir(parents=True, exist_ok=True)
-            
-            # Extract all files
             zf.extractall(target_dir)
-            
-            # --- Auto-flatten logic ---
-            # If the ZIP was created by compressing the folder rather than its contents,
-            # we'll have target_dir/folder_name/Default instead of target_dir/Default.
+
             content_items = [p for p in target_dir.iterdir() if p.name != "__MACOSX"]
             if len(content_items) == 1 and content_items[0].is_dir():
                 nested_dir = content_items[0]
-                print(f"[gather] Detected nested directory '{nested_dir.name}', flattening...")
+                logger.debug("detected nested directory '%s', flattening", nested_dir.name)
                 for item in nested_dir.iterdir():
-                    # Move everything up one level
                     shutil.move(str(item), str(target_dir))
-                # Remove the now empty nested directory
                 nested_dir.rmdir()
-            # ---------------------------
-            
+
     except zipfile.BadZipFile:
-        raise HTTPException(
-            status_code=400,
-            detail="Corrupted ZIP file"
-        )
+        raise HTTPException(status_code=400, detail="Corrupted ZIP file")
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to extract profile: {str(e)}"
-        )
-    
-    print(f"[gather] Profile extracted to: {target_dir.absolute()}")
-    
-    # Check for expected Chromium profile structure
+        raise HTTPException(status_code=500, detail=f"Failed to extract profile: {str(e)}")
+
+    logger.debug("profile extracted to: %s", target_dir.absolute())
+
     if (target_dir / "Default").exists():
-        print("[gather] Found 'Default' directory in profile")
+        logger.debug("found 'Default' directory in profile")
     else:
-        print("[gather] Warning: 'Default' directory NOT found in profile. Is this a complete Chrome profile?")
-        # List files for debugging
+        logger.warning("'Default' directory NOT found in profile — may be incomplete")
         files = list(target_dir.glob("*"))[:10]
-        print(f"[gather] First few files in profile: {[f.name for f in files]}")
-    
-    # 6. Verify the profile with playwright profile probe
+        logger.debug("first few files in profile: %s", [f.name for f in files])
+
     try:
-        print(f"[gather] Starting verification for: {profile_name}")
+        logger.debug("starting verification for: %s", profile_name)
         verify_result = await playwright_verify_auth(
-            VerifyAuthRequest(platform="whatsapp", auth_data={"profileName": target_dir.name}, headless=False),
+            VerifyAuthRequest(
+                platform="whatsapp",
+                auth_data={"profileName": target_dir.name},
+                headless=False,
+            ),
             auth_dir=AUTH_DIR,
         )
         is_valid = bool(verify_result and verify_result.valid)
-        print(f"[gather] Verification result for {profile_name}: {is_valid}")
+        logger.debug("verification result for %s: %s", profile_name, is_valid)
         if is_valid:
             return UploadProfileResponse(
                 success=True,
@@ -239,7 +218,7 @@ async def upload_profile(
             details={"platform": "WhatsApp", "suggestion": "Please re-export the profile after logging in"},
         )
     except Exception as e:
-        print(f"[gather] Profile verification error: {e}")
+        logger.error("profile verification error: %s", e)
         return UploadProfileResponse(
             success=True,
             message=f"Profile uploaded but verification failed: {str(e)}",
@@ -250,32 +229,26 @@ async def upload_profile(
 
 
 async def delete_profile(profile_name: str):
-    """
-    Delete a browser profile directory from the filesystem.
-    """
-    # 1. Basic validation of profile name format (security)
-    if not PROFILE_NAME_PATTERN.match(profile_name.split('/')[-1]) and not profile_name.startswith("whatsapp_profile_"):
-         # More relaxed check but still ensuring it's one of ours
-         pass
-         
-    # Stricter check: only allow deleting things in AUTH_DIR and starting with known prefix
+    if not PROFILE_NAME_PATTERN.match(profile_name.split("/")[-1]) and not profile_name.startswith("whatsapp_profile_"):
+        pass
+
     target_dir = (AUTH_DIR / profile_name).resolve()
-    
+
     if not str(target_dir).startswith(str(AUTH_DIR.resolve())):
         raise HTTPException(status_code=400, detail="Invalid profile path")
-        
+
     if not target_dir.exists():
         return {"success": True, "message": "Profile already deleted or not found"}
-        
+
     try:
         if target_dir.is_dir():
             shutil.rmtree(target_dir)
-            print(f"[gather] Deleted profile directory: {target_dir}")
+            logger.debug("deleted profile directory: %s", target_dir)
         else:
             target_dir.unlink()
-            print(f"[gather] Deleted profile file: {target_dir}")
-            
+            logger.debug("deleted profile file: %s", target_dir)
+
         return {"success": True, "message": f"Profile {profile_name} deleted successfully"}
     except Exception as e:
-        print(f"[gather] Error deleting profile: {e}")
+        logger.error("error deleting profile: %s", e)
         raise HTTPException(status_code=500, detail=f"Failed to delete profile: {str(e)}")

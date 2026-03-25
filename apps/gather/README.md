@@ -53,13 +53,13 @@ uv run tools/export_chrome_cookies.py whatsapp
 ### 3. 启动服务
 
 ```bash
-python -m api.app
+python -m app
 ```
 
 或：
 
 ```bash
-uvicorn api.app:app --host 0.0.0.0 --port 8000 --reload
+uvicorn app:app --host 0.0.0.0 --port 8000 --reload
 ```
 
 ## API 接口（/v1）
@@ -350,16 +350,33 @@ for item in fetch_resp.json().get("items", []):
 
 ```text
 apps/gather/
-├── api/app.py                     # FastAPI 装配入口（include routers）
-├── api/routes/                    # 按 endpoint/domain 拆分路由
-├── api/services/runtime_service.py# fetch/auth/catalog 运行时服务
-├── schemas.py                     # 请求/响应模型
-├── libs/auth_verify.py            # 认证校验探针
-├── libs/fetch_processing.py       # 输出映射与关键词过滤
-├── libs/script_framework.py       # 脚本注册与模板构建
+├── app.py                         # FastAPI 主入口（uvicorn 启动点）
+├── schemas.py                     # 请求/响应 Pydantic 模型
+├── api/                           # HTTP 路由层（薄 wrapper）
+│   ├── auth.py                    # /v1/verify-auth, /v1/auth/*
+│   ├── catalog.py                 # /v1/scripts/catalog
+│   ├── fetch.py                   # /v1/fetch
+│   └── system.py                  # /（健康检查）
+├── core/                          # 业务逻辑层
+│   ├── browser_pool.py            # Playwright 浏览器池生命周期
+│   ├── catalog.py                 # 脚本目录构建
+│   ├── config.py                  # 环境变量、路径常量、intent 注册表
+│   ├── errors.py                  # 标准化错误响应
+│   ├── fetch.py                   # fetch 调度与 driver 注册
+│   ├── intercept/                 # 按平台拆分的 intercept handler
+│   ├── io_logging.py              # API I/O 日志
+│   ├── normalize.py               # 请求规范化与输出字段映射
+│   ├── playwright_runner.py       # Playwright 脚本执行引擎
+│   └── profile.py                 # 认证状态文件与 profile 管理
+├── drivers/                       # Driver 抽象（playwright / xhttp）
+├── libs/                          # 独立工具库
+│   ├── auth_verify.py             # 认证校验探针
+│   ├── fetch_processing.py        # 关键词硬过滤
+│   └── script_framework.py        # 脚本注册与模板构建
 ├── scripts/                       # 源脚本（按平台/intent）
-├── scripts-dist/                  # 运行时脚本
+├── scripts-dist/                  # 编译后运行时脚本
 ├── tools/export_chrome_cookies.py # 浏览器认证数据导出工具
+├── tests/                         # 测试用例
 ├── pyproject.toml
 └── README.md
 ```
@@ -369,8 +386,9 @@ apps/gather/
 1. 在 `scripts/<platform>/<intent>.ts` 增加脚本
 2. 确认脚本可被 `ScriptRegistry` 识别并出现在 `/v1/scripts/catalog`
 3. 如需认证探针，在 `libs/auth_verify.py` 增加平台校验逻辑
-4. 在 `api/services/runtime_service.py` 增加对应 intent 执行映射（如需 `intercept-*`）
-5. 补充/更新对应测试用例
+4. 如需 `intercept-*` 模式，在 `core/intercept/` 增加对应平台 handler
+5. 在 `core/config.py` 注册新平台的 intent 集合
+6. 补充/更新对应测试用例
 
 ## 注意事项
 

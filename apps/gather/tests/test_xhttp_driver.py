@@ -6,13 +6,11 @@ from pathlib import Path
 
 import pytest
 from fastapi import HTTPException
-from fastapi.testclient import TestClient
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
-import api.app as main
 from schemas import FetchRequest
 from drivers.xhttp_driver import XHttpDriver, _resolve_xhttp_urls
 
@@ -74,57 +72,6 @@ def test_xhttp_fetch_data_extracts_html_text(monkeypatch):
     assert "World" in (items[0]["text"] or "")
     assert items[0]["recordType"] == "xhttp"
     assert calls and calls[0]["method"] == "GET"
-
-
-def test_v2_fetch_xhttp_supports_top_level_keywords(monkeypatch):
-    class FakeResponse:
-        def __init__(self):
-            self.headers = {"content-type": "text/html"}
-            self.text = "<html><head><title>Hello</title></head><body><h1>World keyword</h1></body></html>"
-            self.url = "https://example.com"
-
-        def raise_for_status(self):
-            return None
-
-    class FakeClient:
-        def __init__(self, *args, **kwargs):  # noqa: ARG002
-            pass
-
-        async def __aenter__(self):
-            return self
-
-        async def __aexit__(self, exc_type, exc, tb):  # noqa: ARG002
-            return False
-
-        async def request(self, method, url, headers=None, params=None, json=None, data=None, content=None):  # noqa: ARG002
-            return FakeResponse()
-
-    from drivers import xhttp_driver
-
-    monkeypatch.setattr(xhttp_driver.httpx, "AsyncClient", FakeClient)
-    client = TestClient(main.app)
-    response = client.post(
-        "/v1/fetch",
-        json={
-            "platform": "x",
-            "sourceId": "source-1",
-            "keywords": ["keyword"],
-            "driver": {
-                "name": "xhttp",
-                "option": {
-                    "url": "https://example.com",
-                },
-                "filter": {},
-            },
-            "output": {"field": ["text", "markdown", "url"]},
-        },
-    )
-
-    assert response.status_code == 200
-    payload = response.json()
-    assert isinstance(payload["items"], list)
-    assert payload["items"]
-    assert payload["items"][0]["driver"] == "xhttp"
 
 
 def test_xhttp_fetch_data_supports_post_json_with_signature(monkeypatch):

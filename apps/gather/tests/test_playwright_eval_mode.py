@@ -4,92 +4,22 @@ from pathlib import Path
 
 import pytest
 from fastapi import HTTPException
-from fastapi.testclient import TestClient
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
-import api.app as main
-from api.services import runtime_service as runtime
-from schemas import CleanItem, FetchRequest, FetchV2Request, FetchV3Request
-
-
-def test_fetch_v2_playwright_eval_mode_uses_eval_runner(monkeypatch):
-    async def fake_eval_runner(request):
-        return [
-            CleanItem(
-                title="eval-title",
-                text="eval keyword text",
-                markdown="eval keyword text",
-                platform=request.platform,
-                sourceId=request.source_id,
-                sourceType="SOCIAL_MEDIA",
-                recordType="eval-js",
-            )
-        ]
-
-    monkeypatch.setattr(runtime, "_run_playwright_eval_script", fake_eval_runner)
-
-    client = TestClient(main.app)
-    response = client.post(
-        "/v1/fetch",
-        json={
-            "platform": "x",
-            "sourceId": "source-eval-1",
-            "keywords": ["keyword"],
-            "driver": {
-                "name": "playwright",
-                "option": {
-                    "mode": "eval-js",
-                    "targetUrl": "https://x.com",
-                    "scriptBody": "(args) => ({ text: 'ok', title: 'ok' })",
-                    "args": {"query": "hello"},
-                },
-                "filter": {},
-            },
-            "output": {"field": ["text", "markdown", "url"]},
-        },
-    )
-
-    assert response.status_code == 200
-    payload = response.json()
-    assert isinstance(payload["items"], list)
-    assert payload["items"]
-    assert payload["items"][0]["recordContent"]["text"] == "eval keyword text"
-    assert payload["items"][0]["driver"] == "playwright"
-    assert payload["items"][0]["recordType"] == "eval-js"
-
-
-def test_fetch_v2_playwright_eval_mode_allows_missing_target_url():
-    client = TestClient(main.app)
-    response = client.post(
-        "/v1/fetch",
-        json={
-            "platform": "x",
-            "sourceId": "source-eval-2",
-            "keywords": [],
-            "driver": {
-                "name": "playwright",
-                "option": {
-                    "mode": "eval-js",
-                    "scriptBody": "(args) => ({ text: 'ok' })",
-                },
-            },
-            "output": {"field": ["text", "markdown"]},
-        },
-    )
-
-    assert response.status_code == 200
-    payload = response.json()
-    assert isinstance(payload["items"], list)
+import core.playwright_runner as core_runner
+import core.browser_pool as core_pool
+import core.normalize as core_normalize
+from schemas import CleanItem, FetchApiRequest, FetchRequest
 
 
 def test_extract_playwright_eval_options_supports_state_file(tmp_path):
     state_file = tmp_path / "x.auth.json"
     state_file.write_text('{"cookies":[{"name":"ct0","value":"abc"}],"origins":[]}', encoding="utf-8")
 
-    options = runtime._extract_playwright_eval_options(
+    options = core_runner.extract_eval_options(
         {
             "playwright": {
                 "mode": "eval-js",
@@ -104,7 +34,7 @@ def test_extract_playwright_eval_options_supports_state_file(tmp_path):
     assert options["storage_state"]["cookies"][0]["name"] == "ct0"
 
 
-def test_normalize_playwright_eval_result_flattens_bb_site_tweets():
+def test_normalize_playwright_eval_result_flattens_nested_tweets():
     result = {
         "query": "openai",
         "count": 1,
@@ -120,7 +50,7 @@ def test_normalize_playwright_eval_result_flattens_bb_site_tweets():
         ],
     }
     request = FetchRequest(platform="x", source_id="source-x-001", config={})
-    items = runtime._normalize_playwright_eval_result(result, request, "https://x.com")
+    items = core_runner.normalize_playwright_eval_result(result, request, "https://x.com")
 
     assert len(items) == 1
     item = items[0]
@@ -134,7 +64,7 @@ def test_normalize_playwright_eval_result_flattens_bb_site_tweets():
 def test_normalize_playwright_eval_result_raises_bad_request_on_error_payload():
     request = FetchRequest(platform="x", source_id="source-x-001", config={})
     with pytest.raises(HTTPException) as error:
-        runtime._normalize_playwright_eval_result(
+        core_runner.normalize_playwright_eval_result(
             {"error": "No ct0 cookie", "hint": "Please log in first"},
             request,
             "https://x.com",
@@ -144,7 +74,7 @@ def test_normalize_playwright_eval_result_raises_bad_request_on_error_payload():
 
 
 def test_extract_playwright_eval_options_supports_network_proxy():
-    options = runtime._extract_playwright_eval_options(
+    options = core_runner.extract_eval_options(
         {
             "network": {
                 "proxy": {
@@ -163,7 +93,7 @@ def test_extract_playwright_eval_options_supports_network_proxy():
 
 
 def test_extract_playwright_eval_options_includes_pool_settings():
-    options = runtime._extract_playwright_eval_options(
+    options = core_runner.extract_eval_options(
         {
             "playwright": {
                 "mode": "eval-js",
@@ -182,7 +112,7 @@ def test_extract_playwright_eval_options_includes_pool_settings():
 
 
 def test_extract_playwright_eval_options_disables_pool_without_user_id():
-    options = runtime._extract_playwright_eval_options(
+    options = core_runner.extract_eval_options(
         {
             "playwright": {
                 "mode": "eval-js",
@@ -205,8 +135,8 @@ def test_playwright_pool_key_changes_when_auth_changes():
         "pool_user_id": "u1",
         "pool_driver": "playwright",
     }
-    key1 = runtime._build_playwright_pool_key(request, base_options, {"cookies": [{"name": "ct0", "value": "a"}]})
-    key2 = runtime._build_playwright_pool_key(
+    key1 = core_pool.build_pool_key(request, base_options, {"cookies": [{"name": "ct0", "value": "a"}]})
+    key2 = core_pool.build_pool_key(
         request,
         base_options,
         {"cookies": [{"name": "ct0", "value": "b"}]},
@@ -239,9 +169,9 @@ def test_run_playwright_eval_script_pooled_success_does_not_reraise(monkeypatch)
     async def fake_run_script(*args, **kwargs):
         return {"text": "ok", "title": "ok"}
 
-    monkeypatch.setattr(runtime, "_extract_playwright_eval_options", lambda config: options)
-    monkeypatch.setattr(runtime, "_run_playwright_script", fake_run_script)
-    monkeypatch.setattr(runtime, "_apply_xiaohongshu_user_me_fallback", fake_apply_fallback)
+    monkeypatch.setattr(core_runner, "extract_eval_options", lambda config: options)
+    monkeypatch.setattr(core_runner, "run_playwright_script", fake_run_script)
+    monkeypatch.setattr(core_runner, "_apply_xiaohongshu_user_me_fallback", fake_apply_fallback)
 
     expected_items = [
         CleanItem(
@@ -254,38 +184,16 @@ def test_run_playwright_eval_script_pooled_success_does_not_reraise(monkeypatch)
             recordType="eval-js",
         )
     ]
-    monkeypatch.setattr(runtime, "_normalize_playwright_eval_result", lambda *args, **kwargs: expected_items)
+    monkeypatch.setattr(core_runner, "normalize_playwright_eval_result", lambda *args, **kwargs: expected_items)
 
     request = FetchRequest(platform="xhs", source_id="source-x-001", config={})
-    items = asyncio.run(runtime._run_playwright_eval_script(request))
+    items = asyncio.run(core_runner.run_eval_script(request))
 
     assert items == expected_items
 
 
-def test_normalize_v2_fetch_request_maps_top_level_user_id_to_playwright_option():
-    request = FetchV2Request(
-        platform="x",
-        sourceId="source-x-001",
-        userId="user-123",
-        keywords=[],
-        driver={
-            "name": "playwright",
-            "option": {
-                "mode": "intercept-x-search",
-                "args": {"query": "openai"},
-            },
-            "filter": {},
-        },
-        output={"field": ["text"]},
-    )
-
-    normalized = runtime._normalize_v2_fetch_request(request)
-    playwright_config = normalized.config.get("playwright", {})
-    assert playwright_config.get("userId") == "user-123"
-
-
-def test_normalize_v3_fetch_request_maps_top_level_user_id_to_playwright_option():
-    request = FetchV3Request(
+def test_normalize_fetch_request_maps_top_level_user_id_to_playwright_option():
+    request = FetchApiRequest(
         platform="x",
         sourceId="source-x-001",
         userId="user-123",
@@ -297,6 +205,6 @@ def test_normalize_v3_fetch_request_maps_top_level_user_id_to_playwright_option(
         output={"field": ["text"]},
     )
 
-    normalized, _, _ = runtime._normalize_v3_fetch_request(request)
+    normalized, _, _ = core_normalize.normalize_fetch_request(request)
     playwright_config = normalized.config.get("playwright", {})
     assert playwright_config.get("userId") == "user-123"

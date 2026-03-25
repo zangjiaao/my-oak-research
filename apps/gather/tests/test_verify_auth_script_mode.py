@@ -7,8 +7,8 @@ ROOT_DIR = Path(__file__).resolve().parents[1]
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
-import api.app as main
-from api.services import runtime_service as runtime
+import app as main
+import core.fetch as core_fetch
 from schemas import VerifyAuthResponse
 
 
@@ -99,7 +99,7 @@ def test_verify_auth_uses_playwright_profile_probe_for_whatsapp(monkeypatch):
             details={"verifyMethod": "playwright-profile"},
         )
 
-    monkeypatch.setattr(runtime, "playwright_verify_auth", fake_whatsapp_verify)
+    monkeypatch.setattr(core_fetch, "playwright_verify_auth", fake_whatsapp_verify)
 
     client = TestClient(main.app)
     response = client.post(

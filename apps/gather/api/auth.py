@@ -1,6 +1,12 @@
 from fastapi import APIRouter, File, Form, UploadFile
 
-from api.services import auth_service
+from core.fetch import verify_auth as _verify_auth
+from core.profile import (
+    delete_auth_state_file as _delete_auth_state_file,
+    delete_profile as _delete_profile,
+    save_auth_state_file as _save_auth_state_file,
+    upload_profile as _upload_profile,
+)
 from schemas import (
     DeleteAuthStateRequest,
     SaveAuthStateRequest,
@@ -15,17 +21,17 @@ router = APIRouter()
 
 @router.post("/v1/verify-auth", response_model=VerifyAuthResponse)
 async def verify_auth(request: VerifyAuthRequest):
-    return await auth_service.verify_auth(request)
+    return await _verify_auth(request)
 
 
 @router.post("/v1/auth/state-file", response_model=SaveAuthStateResponse)
 async def save_auth_state_file(request: SaveAuthStateRequest):
-    return await auth_service.save_auth_state_file(request)
+    return await _save_auth_state_file(request)
 
 
 @router.delete("/v1/auth/state-file")
 async def delete_auth_state_file(request: DeleteAuthStateRequest):
-    return await auth_service.delete_auth_state_file(request)
+    return await _delete_auth_state_file(request)
 
 
 @router.post("/v1/auth/profile", response_model=UploadProfileResponse)
@@ -34,9 +40,9 @@ async def upload_profile(
     profile_name: str = Form(...),
     platform: str = Form(default="whatsapp"),
 ):
-    return await auth_service.upload_profile(file=file, profile_name=profile_name, platform=platform)
+    return await _upload_profile(file=file, profile_name=profile_name, platform=platform)
 
 
 @router.delete("/v1/auth/profile/{profile_name}")
 async def delete_profile(profile_name: str):
-    return await auth_service.delete_profile(profile_name)
+    return await _delete_profile(profile_name)

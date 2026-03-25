@@ -1,21 +1,96 @@
-import api.services.runtime_chunk4 as _runtime_chunk_prev
+"""Request normalization and output-field mapping."""
 
-globals().update(vars(_runtime_chunk_prev))
+import json
+import logging
+import re
+from datetime import datetime
+from typing import Any, Dict, List, Optional
 
-def _truncate_text(value: str, max_length: int = 12000) -> str:
+from fastapi import HTTPException
+from pydantic import ValidationError
+
+from core.config import (
+    GATHER_APP_ROOT,
+    SEARCH_ALIAS_COMPAT_ENABLED,
+    SEARCH_INTENTS,
+    V3_DRIVER_STRATEGIES,
+    X_INTERCEPT_INTENTS,
+    REDDIT_INTERCEPT_INTENTS,
+    XHS_INTERCEPT_INTENTS,
+    BBC_INTERCEPT_INTENTS,
+    HACKERNEWS_INTERCEPT_INTENTS,
+    LINKEDIN_INTERCEPT_INTENTS,
+    LINUX_DO_INTERCEPT_INTENTS,
+    YOUTUBE_INTERCEPT_INTENTS,
+    WEIBO_INTERCEPT_INTENTS,
+    ZHIHU_INTERCEPT_INTENTS,
+    BILIBILI_INTERCEPT_INTENTS,
+    KR36_INTERCEPT_INTENTS,
+    ARXIV_INTERCEPT_INTENTS,
+    BAIDU_INTERCEPT_INTENTS,
+    BING_INTERCEPT_INTENTS,
+    CNBLOGS_INTERCEPT_INTENTS,
+    CSDN_INTERCEPT_INTENTS,
+    CTRIP_INTERCEPT_INTENTS,
+    DEVTO_INTERCEPT_INTENTS,
+    DUCKDUCKGO_INTERCEPT_INTENTS,
+    GOOGLE_INTERCEPT_INTENTS,
+    REUTERS_INTERCEPT_INTENTS,
+    TOUTIAO_INTERCEPT_INTENTS,
+    HUPU_INTERCEPT_INTENTS,
+)
+from schemas import (
+    CleanItem,
+    FetchApiRequest,
+    FetchMeta,
+    FetchRequest,
+)
+
+logger = logging.getLogger("gather")
+
+
+# ---------------------------------------------------------------------------
+# Sentinel
+# ---------------------------------------------------------------------------
+
+_MISSING = object()
+
+
+# ---------------------------------------------------------------------------
+# Text helpers
+# ---------------------------------------------------------------------------
+
+def truncate_text(value: str, max_length: int = 12000) -> str:
     if len(value) <= max_length:
         return value
     return f"{value[:max_length]}..."
 
 
-def _extract_x_status_id(url: Optional[str]) -> Optional[str]:
+def extract_x_status_id(url: Optional[str]) -> Optional[str]:
     if not url:
         return None
     matched = re.search(r"/status/(\d+)", url)
     return matched.group(1) if matched else None
 
 
-def _normalize_clean_items(raw_items: list[Any]) -> list[CleanItem]:
+def extract_tweet_id(raw: str | None) -> str:
+    if not isinstance(raw, str):
+        return ""
+    value = raw.strip()
+    if not value:
+        return ""
+    matched = re.search(r"/status/(\d+)", value)
+    if matched:
+        return matched.group(1)
+    digits = re.sub(r"\D", "", value)
+    return digits if digits else value
+
+
+# ---------------------------------------------------------------------------
+# CleanItem normalization
+# ---------------------------------------------------------------------------
+
+def normalize_clean_items(raw_items: list[Any]) -> list[CleanItem]:
     normalized: list[CleanItem] = []
     for item in raw_items:
         if isinstance(item, CleanItem):
@@ -31,8 +106,9 @@ def _normalize_clean_items(raw_items: list[Any]) -> list[CleanItem]:
     return normalized
 
 
-_MISSING = object()
-
+# ---------------------------------------------------------------------------
+# Nested field read/write
+# ---------------------------------------------------------------------------
 
 def _read_nested_field(payload: dict[str, Any], path: list[str]) -> Any:
     current: Any = payload
@@ -89,7 +165,13 @@ def _resolve_source_path(source: dict[str, Any], source_path: list[str]) -> list
     return source_path
 
 
-def _apply_output_field_map(item: CleanItem, source: dict[str, Any], output_field_map: dict[str, str]) -> list[CleanItem]:
+# ---------------------------------------------------------------------------
+# Output field mapping
+# ---------------------------------------------------------------------------
+
+def _apply_output_field_map(
+    item: CleanItem, source: dict[str, Any], output_field_map: dict[str, str]
+) -> list[CleanItem]:
     mappings: list[tuple[list[str], list[str]]] = []
     for target_field, source_field in output_field_map.items():
         if not isinstance(target_field, str) or not target_field.strip():
@@ -168,17 +250,17 @@ def _apply_output_field_map(item: CleanItem, source: dict[str, Any], output_fiel
             if expanded:
                 return expanded
 
-    mapped_content: dict[str, Any] = {}
+    mapped_content_dict: dict[str, Any] = {}
     for target_path, source_path in mappings:
         value = _read_nested_field(source, source_path)
         if value is _MISSING:
             continue
-        _write_nested_field(mapped_content, target_path, value)
-    item.recordContent = mapped_content
+        _write_nested_field(mapped_content_dict, target_path, value)
+    item.recordContent = mapped_content_dict
     return [item]
 
 
-def _apply_output_fields(
+def apply_output_fields(
     items: list[CleanItem],
     output_fields: Optional[List[str]],
     output_field_map: Optional[dict[str, str]],
@@ -215,141 +297,12 @@ def _apply_output_fields(
     return transformed_items
 
 
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
 def _as_dict(value: Any) -> dict[str, Any]:
     return value if isinstance(value, dict) else {}
-
-
-def _normalize_v2_fetch_request(request: FetchV2Request) -> FetchRequest:
-    normalized_driver = request.driver.name.strip().lower()
-    raw_option = dict(request.driver.option)
-    config = raw_option
-    normalized_user_id = request.user_id.strip() if isinstance(request.user_id, str) else ""
-
-    if normalized_driver == "playwright":
-        if "playwright" in raw_option:
-            raise HTTPException(
-                status_code=400,
-                detail="driver.option.playwright has been removed; put playwright fields directly under driver.option",
-            )
-        network = raw_option.get("network")
-        playwright_option = {k: v for k, v in raw_option.items() if k != "network"}
-        if normalized_user_id and not str(playwright_option.get("userId", "")).strip():
-            playwright_option["userId"] = normalized_user_id
-        config = {"playwright": playwright_option}
-        if network is not None:
-            config["network"] = network
-    elif normalized_driver == "xhttp" and "xhttp" in raw_option:
-        raise HTTPException(
-            status_code=400,
-            detail="driver.option.xhttp has been removed; put xhttp fields directly under driver.option",
-        )
-
-    output = request.output.model_dump()
-    output_fields: list[str] = []
-    output_field_map: dict[str, str] = {}
-    output_keyword_scope: list[str] = []
-    output_type: str | None = None
-    raw_fields = output.get("field")
-    if isinstance(raw_fields, dict):
-        output_field_map = {
-            key.strip(): value.strip()
-            for key, value in raw_fields.items()
-            if isinstance(key, str)
-            and key.strip()
-            and isinstance(value, str)
-            and value.strip()
-        }
-    elif isinstance(raw_fields, list):
-        output_fields = [value for value in raw_fields if isinstance(value, str) and value.strip()]
-    raw_keyword_scope = output.get("keywordScope")
-    if isinstance(raw_keyword_scope, list):
-        output_keyword_scope = [
-            value.strip()
-            for value in raw_keyword_scope
-            if isinstance(value, str) and value.strip()
-        ]
-    raw_output_type = output.get("type")
-    if isinstance(raw_output_type, str) and raw_output_type.strip():
-        output_type = raw_output_type.strip()
-
-    filter_options = dict(request.driver.filter)
-    if request.keywords:
-        existing_filters = _as_dict(config.get("filters"))
-        keyword_filter = {
-            **_as_dict(existing_filters.get("keyword")),
-            **filter_options,
-            "keywords": request.keywords,
-        }
-        if output_keyword_scope:
-            keyword_filter["scopeFields"] = output_keyword_scope
-        config["filters"] = {
-            **existing_filters,
-            "keyword": keyword_filter,
-        }
-
-    return FetchRequest(
-        platform=request.platform,
-        config=config,
-        source_id=request.source_id,
-        user_id=normalized_user_id or None,
-        keywords=request.keywords,
-        output_fields=output_fields or None,
-        output_field_map=output_field_map or None,
-        output_keyword_scope=output_keyword_scope or None,
-        output_type=output_type,
-    )
-
-
-def _normalize_v3_fetch_request(request: FetchV3Request) -> tuple[FetchRequest, str, FetchV3Meta]:
-    driver_name = "playwright"
-    driver_option: dict[str, Any] = {}
-    driver_filter: dict[str, Any] = {}
-    if request.driver is not None:
-        if request.driver.name and request.driver.name.strip():
-            driver_name = request.driver.name.strip()
-        driver_filter = dict(request.driver.filter)
-        dumped_driver = request.driver.model_dump(
-            by_alias=True,
-            exclude_none=True,
-        )
-        for reserved in ("name", "script", "filter"):
-            dumped_driver.pop(reserved, None)
-        driver_option = dumped_driver
-    driver_name = driver_name.strip().lower()
-
-    request_intent = request.driver.script if request.driver is not None else None
-    intent_type = request_intent.type.strip().lower() if request_intent and request_intent.type.strip() else "search"
-    intent_args = dict(request_intent.args) if request_intent and isinstance(request_intent.args, dict) else {}
-    adapter = f"{request.platform.lower().strip()}.{intent_type}"
-    driver_option = _merge_v3_intent_into_driver_option(
-        request.platform,
-        intent_type,
-        intent_args,
-        driver_name,
-        driver_option,
-    )
-
-    v2_request = FetchV2Request(
-        platform=request.platform,
-        sourceId=request.source_id,
-        userId=request.user_id,
-        keywords=request.keywords,
-        driver={
-            "name": driver_name,
-            "option": driver_option,
-            "filter": driver_filter,
-        },
-        output=request.output.model_dump(),
-    )
-    normalized_request = _normalize_v2_fetch_request(v2_request)
-    strategy_tried = _V3_DRIVER_STRATEGIES.get(driver_name, [driver_name or "playwright"])
-    meta = FetchV3Meta(
-        adapter=adapter,
-        strategyTried=strategy_tried,
-        strategyUsed=strategy_tried[0],
-        driverUsed=driver_name,
-    )
-    return normalized_request, driver_name, meta
 
 
 def _extract_search_query(
@@ -363,7 +316,7 @@ def _extract_search_query(
 
     raw_keyword = intent_args.get("keyword")
     if isinstance(raw_keyword, str) and raw_keyword.strip():
-        if not _SEARCH_ALIAS_COMPAT_ENABLED:
+        if not SEARCH_ALIAS_COMPAT_ENABLED:
             raise HTTPException(
                 status_code=400,
                 detail=f"driver.script.args.query is required for {platform or 'unknown'} search intent",
@@ -378,7 +331,117 @@ def _extract_search_query(
     return "", False
 
 
-def _merge_v3_intent_into_driver_option(
+# ---------------------------------------------------------------------------
+# Normalize API request → internal FetchRequest
+# ---------------------------------------------------------------------------
+
+def normalize_fetch_request(
+    request: FetchApiRequest,
+) -> tuple[FetchRequest, str, FetchMeta]:
+    driver_name = "playwright"
+    driver_option: dict[str, Any] = {}
+    driver_filter: dict[str, Any] = {}
+    if request.driver is not None:
+        if request.driver.name and request.driver.name.strip():
+            driver_name = request.driver.name.strip()
+        driver_filter = dict(request.driver.filter)
+        dumped_driver = request.driver.model_dump(by_alias=True, exclude_none=True)
+        for reserved in ("name", "script", "filter"):
+            dumped_driver.pop(reserved, None)
+        driver_option = dumped_driver
+    driver_name = driver_name.strip().lower()
+
+    request_intent = request.driver.script if request.driver is not None else None
+    intent_type = request_intent.type.strip().lower() if request_intent and request_intent.type.strip() else "search"
+    intent_args = dict(request_intent.args) if request_intent and isinstance(request_intent.args, dict) else {}
+    adapter = f"{request.platform.lower().strip()}.{intent_type}"
+    driver_option = merge_intent_into_driver_option(
+        request.platform,
+        intent_type,
+        intent_args,
+        driver_name,
+        driver_option,
+    )
+
+    normalized_user_id = request.user_id.strip() if isinstance(request.user_id, str) else ""
+    config: dict[str, Any] = dict(driver_option)
+
+    if driver_name == "playwright":
+        network = config.pop("network", None)
+        playwright_option = dict(config)
+        if normalized_user_id and not str(playwright_option.get("userId", "")).strip():
+            playwright_option["userId"] = normalized_user_id
+        config = {"playwright": playwright_option}
+        if network is not None:
+            config["network"] = network
+
+    output = request.output.model_dump()
+    output_fields: list[str] = []
+    output_field_map: dict[str, str] = {}
+    output_keyword_scope: list[str] = []
+    output_type: str | None = None
+    raw_fields = output.get("field")
+    if isinstance(raw_fields, dict):
+        output_field_map = {
+            key.strip(): value.strip()
+            for key, value in raw_fields.items()
+            if isinstance(key, str) and key.strip()
+            and isinstance(value, str) and value.strip()
+        }
+    elif isinstance(raw_fields, list):
+        output_fields = [value for value in raw_fields if isinstance(value, str) and value.strip()]
+    raw_keyword_scope = output.get("keywordScope")
+    if isinstance(raw_keyword_scope, list):
+        output_keyword_scope = [
+            value.strip()
+            for value in raw_keyword_scope
+            if isinstance(value, str) and value.strip()
+        ]
+    raw_output_type = output.get("type")
+    if isinstance(raw_output_type, str) and raw_output_type.strip():
+        output_type = raw_output_type.strip()
+
+    if request.keywords:
+        existing_filters = _as_dict(config.get("filters"))
+        keyword_filter = {
+            **_as_dict(existing_filters.get("keyword")),
+            **driver_filter,
+            "keywords": request.keywords,
+        }
+        if output_keyword_scope:
+            keyword_filter["scopeFields"] = output_keyword_scope
+        config["filters"] = {
+            **existing_filters,
+            "keyword": keyword_filter,
+        }
+
+    normalized_request = FetchRequest(
+        platform=request.platform,
+        config=config,
+        source_id=request.source_id,
+        user_id=normalized_user_id or None,
+        keywords=request.keywords,
+        output_fields=output_fields or None,
+        output_field_map=output_field_map or None,
+        output_keyword_scope=output_keyword_scope or None,
+        output_type=output_type,
+    )
+
+    strategy_tried = V3_DRIVER_STRATEGIES.get(driver_name, [driver_name or "playwright"])
+    meta = FetchMeta(
+        adapter=adapter,
+        strategyTried=strategy_tried,
+        strategyUsed=strategy_tried[0],
+        driverUsed=driver_name,
+    )
+    return normalized_request, driver_name, meta
+
+
+# ---------------------------------------------------------------------------
+# Intent → driver option merge
+# ---------------------------------------------------------------------------
+
+def merge_intent_into_driver_option(
     platform: str,
     intent_type: str,
     intent_args: dict[str, Any],
@@ -390,12 +453,12 @@ def _merge_v3_intent_into_driver_option(
     normalized_query, used_alias = _extract_search_query(
         normalized_platform,
         intent_args,
-        strict=intent_type in _SEARCH_INTENTS,
+        strict=intent_type in SEARCH_INTENTS,
     )
     if used_alias:
-        print(
-            f"[gather][intent-args][deprecated] "
-            f"{json.dumps({'platform': normalized_platform, 'intent': intent_type, 'message': 'use query instead of keyword'}, ensure_ascii=False)}"
+        logger.warning(
+            "deprecated intent arg 'keyword' used (use 'query' instead): platform=%s intent=%s",
+            normalized_platform, intent_type,
         )
 
     query = normalized_query
@@ -415,11 +478,11 @@ def _merge_v3_intent_into_driver_option(
     normalized_xhs_user_id = xhs_user_id.strip() if isinstance(xhs_user_id, str) else ""
     if normalized_username.lower().startswith("u/"):
         normalized_username = normalized_username[2:]
-    normalized_tweet_id = _extract_tweet_id(tweet_id)
+    normalized_tweet_id = extract_tweet_id(tweet_id)
     normalized_question_id = str(question_id).strip() if question_id is not None else ""
     normalized_bvid = str(bvid).strip() if bvid is not None else ""
     if not normalized_tweet_id and isinstance(url, str):
-        normalized_tweet_id = _extract_tweet_id(url)
+        normalized_tweet_id = extract_tweet_id(url)
     normalized_limit = limit if isinstance(limit, int) and limit > 0 else None
 
     if driver_name == "playwright":
@@ -577,61 +640,40 @@ def _merge_v3_intent_into_driver_option(
             has_script_body = isinstance(merged_option.get("scriptBody"), str) and merged_option.get("scriptBody", "").strip()
             has_script_path = isinstance(merged_option.get("scriptPath"), str) and merged_option.get("scriptPath", "").strip()
             current_mode = str(merged_option.get("mode", "")).strip().lower()
-            if (
-                not has_script_body
-                and not has_script_path
-                and not current_mode
-            ):
-                normalized_platform = (platform or "").strip().lower()
-                if normalized_platform in {"x", "twitter"} and intent_type in _X_INTERCEPT_INTENTS:
-                    merged_option["mode"] = f"intercept-x-{intent_type}"
-                elif normalized_platform == "reddit" and intent_type in _REDDIT_INTERCEPT_INTENTS:
-                    merged_option["mode"] = f"intercept-reddit-{intent_type}"
-                elif normalized_platform in {"xhs", "xiaohongshu"} and intent_type in _XHS_INTERCEPT_INTENTS:
-                    merged_option["mode"] = f"intercept-xhs-{intent_type}"
-                elif normalized_platform == "bbc" and intent_type in _BBC_INTERCEPT_INTENTS:
-                    merged_option["mode"] = f"intercept-bbc-{intent_type}"
-                elif normalized_platform in {"hackernews", "hn"} and intent_type in _HACKERNEWS_INTERCEPT_INTENTS:
-                    merged_option["mode"] = f"intercept-hackernews-{intent_type}"
-                elif normalized_platform == "linkedin" and intent_type in _LINKEDIN_INTERCEPT_INTENTS:
-                    merged_option["mode"] = f"intercept-linkedin-{intent_type}"
-                elif normalized_platform in {"linux-do", "linuxdo"} and intent_type in _LINUX_DO_INTERCEPT_INTENTS:
-                    merged_option["mode"] = f"intercept-linux-do-{intent_type}"
-                elif normalized_platform == "youtube" and intent_type in _YOUTUBE_INTERCEPT_INTENTS:
-                    merged_option["mode"] = f"intercept-youtube-{intent_type}"
-                elif normalized_platform == "weibo" and intent_type in _WEIBO_INTERCEPT_INTENTS:
-                    merged_option["mode"] = f"intercept-weibo-{intent_type}"
-                elif normalized_platform == "zhihu" and intent_type in _ZHIHU_INTERCEPT_INTENTS:
-                    merged_option["mode"] = f"intercept-zhihu-{intent_type}"
-                elif normalized_platform == "bilibili" and intent_type in _BILIBILI_INTERCEPT_INTENTS:
-                    merged_option["mode"] = f"intercept-bilibili-{intent_type}"
-                elif normalized_platform == "36kr" and intent_type in _KR36_INTERCEPT_INTENTS:
-                    merged_option["mode"] = f"intercept-36kr-{intent_type}"
-                elif normalized_platform == "arxiv" and intent_type in _ARXIV_INTERCEPT_INTENTS:
-                    merged_option["mode"] = f"intercept-arxiv-{intent_type}"
-                elif normalized_platform == "baidu" and intent_type in _BAIDU_INTERCEPT_INTENTS:
-                    merged_option["mode"] = f"intercept-baidu-{intent_type}"
-                elif normalized_platform == "bing" and intent_type in _BING_INTERCEPT_INTENTS:
-                    merged_option["mode"] = f"intercept-bing-{intent_type}"
-                elif normalized_platform == "cnblogs" and intent_type in _CNBLOGS_INTERCEPT_INTENTS:
-                    merged_option["mode"] = f"intercept-cnblogs-{intent_type}"
-                elif normalized_platform == "csdn" and intent_type in _CSDN_INTERCEPT_INTENTS:
-                    merged_option["mode"] = f"intercept-csdn-{intent_type}"
-                elif normalized_platform == "ctrip" and intent_type in _CTRIP_INTERCEPT_INTENTS:
-                    merged_option["mode"] = f"intercept-ctrip-{intent_type}"
-                elif normalized_platform == "devto" and intent_type in _DEVTO_INTERCEPT_INTENTS:
-                    merged_option["mode"] = f"intercept-devto-{intent_type}"
-                elif normalized_platform == "duckduckgo" and intent_type in _DUCKDUCKGO_INTERCEPT_INTENTS:
-                    merged_option["mode"] = f"intercept-duckduckgo-{intent_type}"
-                elif normalized_platform == "google" and intent_type in _GOOGLE_INTERCEPT_INTENTS:
-                    merged_option["mode"] = f"intercept-google-{intent_type}"
-                elif normalized_platform == "reuters" and intent_type in _REUTERS_INTERCEPT_INTENTS:
-                    merged_option["mode"] = f"intercept-reuters-{intent_type}"
-                elif normalized_platform == "toutiao" and intent_type in _TOUTIAO_INTERCEPT_INTENTS:
-                    merged_option["mode"] = f"intercept-toutiao-{intent_type}"
-                elif normalized_platform == "hupu" and intent_type in _HUPU_INTERCEPT_INTENTS:
-                    merged_option["mode"] = f"intercept-hupu-{intent_type}"
-                elif intent_type == "search":
+            if not has_script_body and not has_script_path and not current_mode:
+                _intent_to_mode = [
+                    ({"x", "twitter"}, X_INTERCEPT_INTENTS, "intercept-x-"),
+                    ({"reddit"}, REDDIT_INTERCEPT_INTENTS, "intercept-reddit-"),
+                    ({"xhs", "xiaohongshu"}, XHS_INTERCEPT_INTENTS, "intercept-xhs-"),
+                    ({"bbc"}, BBC_INTERCEPT_INTENTS, "intercept-bbc-"),
+                    ({"hackernews", "hn"}, HACKERNEWS_INTERCEPT_INTENTS, "intercept-hackernews-"),
+                    ({"linkedin"}, LINKEDIN_INTERCEPT_INTENTS, "intercept-linkedin-"),
+                    ({"linux-do", "linuxdo"}, LINUX_DO_INTERCEPT_INTENTS, "intercept-linux-do-"),
+                    ({"youtube"}, YOUTUBE_INTERCEPT_INTENTS, "intercept-youtube-"),
+                    ({"weibo"}, WEIBO_INTERCEPT_INTENTS, "intercept-weibo-"),
+                    ({"zhihu"}, ZHIHU_INTERCEPT_INTENTS, "intercept-zhihu-"),
+                    ({"bilibili"}, BILIBILI_INTERCEPT_INTENTS, "intercept-bilibili-"),
+                    ({"36kr"}, KR36_INTERCEPT_INTENTS, "intercept-36kr-"),
+                    ({"arxiv"}, ARXIV_INTERCEPT_INTENTS, "intercept-arxiv-"),
+                    ({"baidu"}, BAIDU_INTERCEPT_INTENTS, "intercept-baidu-"),
+                    ({"bing"}, BING_INTERCEPT_INTENTS, "intercept-bing-"),
+                    ({"cnblogs"}, CNBLOGS_INTERCEPT_INTENTS, "intercept-cnblogs-"),
+                    ({"csdn"}, CSDN_INTERCEPT_INTENTS, "intercept-csdn-"),
+                    ({"ctrip"}, CTRIP_INTERCEPT_INTENTS, "intercept-ctrip-"),
+                    ({"devto"}, DEVTO_INTERCEPT_INTENTS, "intercept-devto-"),
+                    ({"duckduckgo"}, DUCKDUCKGO_INTERCEPT_INTENTS, "intercept-duckduckgo-"),
+                    ({"google"}, GOOGLE_INTERCEPT_INTENTS, "intercept-google-"),
+                    ({"reuters"}, REUTERS_INTERCEPT_INTENTS, "intercept-reuters-"),
+                    ({"toutiao"}, TOUTIAO_INTERCEPT_INTENTS, "intercept-toutiao-"),
+                    ({"hupu"}, HUPU_INTERCEPT_INTENTS, "intercept-hupu-"),
+                ]
+                matched = False
+                for platform_set, intents, prefix in _intent_to_mode:
+                    if normalized_platform in platform_set and intent_type in intents:
+                        merged_option["mode"] = f"{prefix}{intent_type}"
+                        matched = True
+                        break
+                if not matched and intent_type == "search":
                     merged_option["mode"] = "intercept-x-search"
         return merged_option
 
@@ -650,141 +692,4 @@ def _merge_v3_intent_into_driver_option(
 
     return merged_option
 
-
-def _build_validation_error_response(route: str, payload: Dict[str, Any], error: ValidationError) -> JSONResponse:
-    first_error = error.errors()[0] if error.errors() else {}
-    location = ".".join(str(part) for part in first_error.get("loc", []))
-    message = first_error.get("msg", "Invalid request payload")
-    if location:
-        message = f"{location}: {message}"
-    response = build_error_response(
-        status_code=422,
-        code="VALIDATION_ERROR",
-        message=message,
-        retryable=False,
-    )
-    _log_api_io(route, payload, response.body.decode("utf-8"), 422)
-    return response
-
-
-def _normalize_fetch_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
-    # Strict /v1 contract: do not mutate legacy payloads.
-    # Validation should reject deprecated driver.option and top-level intent.
-    return dict(payload)
-
-
-async def _execute_fetch_request(request: FetchRequest, driver_name: str) -> list[CleanItem]:
-    raw_results = await driver_registry.fetch(request, driver_name=driver_name)
-    results = _normalize_clean_items(raw_results)
-    results = _apply_output_fields(results, request.output_fields, request.output_field_map)
-    results = apply_keyword_hard_filter(request, results)
-    if isinstance(request.output_type, str) and request.output_type.strip():
-        for item in results:
-            item.recordType = request.output_type.strip()
-    if driver_name:
-        for item in results:
-            item.driver = driver_name
-    return results
-
-
-driver_registry = DriverRegistry(default_driver="playwright")
-driver_registry.register(
-    "xhttp",
-    XHttpDriver(),
-)
-driver_registry.register(
-    "playwright",
-    PlaywrightDriver(
-        verify_auth_handler=_playwright_verify_auth,
-        fetch_handler=_playwright_fetch_data,
-    ),
-)
-
-
-def _to_driver_http_exception(error: DriverNotFoundError) -> HTTPException:
-    return HTTPException(status_code=400, detail=error.to_detail())
-
-
-def _to_driver_error_response(error: DriverNotFoundError) -> JSONResponse:
-    detail = error.to_detail()
-    return build_error_response(
-        status_code=400,
-        code=detail["code"],
-        message=detail["message"],
-        retryable=False,
-    )
-
-
-async def verify_auth(request: VerifyAuthRequest):
-    try:
-        result = await driver_registry.verify_auth(request)
-        _log_api_io(
-            "/v1/verify-auth",
-            request.model_dump(mode="json", by_alias=True),
-            result.model_dump(mode="json") if isinstance(result, BaseModel) else result,
-            200,
-        )
-        return result
-    except DriverNotFoundError as error:
-        _log_api_io(
-            "/v1/verify-auth",
-            request.model_dump(mode="json", by_alias=True),
-            error.to_detail(),
-            400,
-        )
-        raise _to_driver_http_exception(error)
-
-
-async def fetch_data_v1(payload: Dict[str, Any]):
-    normalized_payload = _normalize_fetch_payload(payload)
-    try:
-        request = FetchV3Request.model_validate(normalized_payload)
-    except ValidationError as e:
-        return _build_validation_error_response("/v1/fetch", payload, e)
-
-    try:
-        normalized_request, driver_name, meta = _normalize_v3_fetch_request(request)
-        items = await _execute_fetch_request(normalized_request, driver_name)
-        response_payload = FetchV3Response(items=items, meta=meta)
-        _log_api_io(
-            "/v1/fetch",
-            payload,
-            response_payload.model_dump(mode="json", by_alias=True, exclude_none=True),
-            200,
-        )
-        return response_payload
-    except DriverNotFoundError as error:
-        response = _to_driver_error_response(error)
-        _log_api_io("/v1/fetch", payload, response.body.decode("utf-8"), 400)
-        return response
-    except HTTPException as e:
-        status_code = e.status_code
-        if isinstance(e.detail, dict):
-            message = str(e.detail.get("message", e.detail))
-        else:
-            message = str(e.detail) if e.detail else "Request failed"
-        code = "FETCH_BAD_REQUEST" if status_code < 500 else "FETCH_INTERNAL_ERROR"
-        retryable = status_code >= 500
-        response = build_error_response(
-            status_code=status_code,
-            code=code,
-            message=message,
-            retryable=retryable,
-        )
-        _log_api_io("/v1/fetch", payload, response.body.decode("utf-8"), status_code)
-        return response
-    except Exception as error:
-        _log_internal_fetch_error("/v1/fetch", payload, error)
-        response = build_error_response(
-            status_code=500,
-            code="FETCH_INTERNAL_ERROR",
-            message=(
-                f"Internal server error: {type(error).__name__}: {error}"
-                if _EXPOSE_INTERNAL_ERROR
-                else "Internal server error"
-            ),
-            retryable=True,
-        )
-        _log_api_io("/v1/fetch", payload, response.body.decode("utf-8"), 500)
-        return response
 

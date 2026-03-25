@@ -2,15 +2,15 @@ from typing import Any, Dict
 
 from fastapi import APIRouter
 
-from api.services import fetch_service
-from schemas import ErrorResponse, FetchV3Response
+from core.fetch import fetch_data_v1 as _fetch_data_v1
+from schemas import ErrorResponse, FetchApiResponse
 
 router = APIRouter()
 
 
 @router.post(
     "/v1/fetch",
-    response_model=FetchV3Response,
+    response_model=FetchApiResponse,
     response_model_exclude_none=True,
     responses={
         400: {"model": ErrorResponse},
@@ -19,4 +19,4 @@ router = APIRouter()
     },
 )
 async def fetch_data_v1(payload: Dict[str, Any]):
-    return await fetch_service.fetch_data(payload)
+    return await _fetch_data_v1(payload)
