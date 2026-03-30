@@ -168,6 +168,8 @@ model Source {
   queries Query[]
   derivedKeywords Keyword[] @relation("KeywordDeriveSource")
   querySourcePolicies QuerySourcePolicy[]
+  topicSources TopicSource[]
+  jobSources JobSource[]
 
   @@unique([name])
   @@index([category])
@@ -285,6 +287,18 @@ enum QueryFrequency {
   CRONTAB // New type for custom cron schedules
 }
 
+enum TopicTermType {
+  CORE
+  EXPANSION
+  EXCLUSION
+}
+
+enum JobType {
+  TOPIC_RETRIEVAL
+  SOURCE_INGEST
+  SOURCE_ONESHOT
+}
+
 enum QueryContentFilterMode {
   TERM_AND_WORD_BOUNDARY
   CONTAINS
@@ -325,6 +339,113 @@ model QuerySourcePolicy {
 
   @@unique([queryId, sourceId])
   @@index([sourceId])
+}
+
+model Topic {
+  id           String      @id @default(cuid())
+  name         String      @unique
+  description  String?
+  enabled      Boolean     @default(true)
+  frequency    QueryFrequency @default(MANUAL)
+  cronSchedule String?
+  vector       Unsupported("vector(1536)")?
+  profile      Json?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  terms        TopicTerm[]
+  sources      TopicSource[]
+  jobTopics    JobTopic[]
+  scores       ContentTopicScore[]
+}
+
+model TopicTerm {
+  id        String       @id @default(cuid())
+  topicId   String
+  topic     Topic        @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  type      TopicTermType
+  value     String
+  weight    Float        @default(1)
+  meta      Json?
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  @@unique([topicId, type, value])
+  @@index([topicId, type])
+}
+
+model TopicSource {
+  id          String   @id @default(cuid())
+  topicId      String
+  sourceId     String
+  enabled      Boolean @default(true)
+  retrievalPolicy Json?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  topic         Topic  @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  source        Source @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@unique([topicId, sourceId])
+  @@index([sourceId])
+}
+
+model Job {
+  id            String         @id @default(cuid())
+  name          String         @unique
+  type          JobType
+  enabled       Boolean        @default(true)
+  frequency     QueryFrequency @default(MANUAL)
+  cronSchedule  String?
+  triggerMode   String?        // manual | scheduled | event
+  config        Json?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  jobTopics     JobTopic[]
+  jobSources    JobSource[]
+  runs          JobRun[]
+}
+
+model JobTopic {
+  id        String   @id @default(cuid())
+  jobId      String
+  topicId    String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  job        Job     @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  topic      Topic   @relation(fields: [topicId], references: [id], onDelete: Cascade)
+
+  @@unique([jobId, topicId])
+  @@index([topicId])
+}
+
+model JobSource {
+  id              String   @id @default(cuid())
+  jobId            String
+  sourceId         String
+  recallBindingOverride Json?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  job              Job     @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  source           Source  @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@unique([jobId, sourceId])
+  @@index([sourceId])
+}
+
+model JobRun {
+  id         String      @id @default(cuid())
+  jobId      String
+  status     TaskStatus  @default(PENDING)
+  progress   Int         @default(0)
+  trigger    String?
+  startedAt  DateTime?
+  finishedAt DateTime?
+  error      String?
+  meta       Json?
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  job        Job         @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([jobId, createdAt])
 }
 
 // ------------------------------
@@ -388,6 +509,7 @@ model Content {
   meta      Json?
   keywords  ContentKeyword[]
   subjectMatches ContentSubjectMatch[]
+  topicScores ContentTopicScore[]
   entities  ContentEntity?
   createdAt DateTime         @default(now())
   updatedAt DateTime         @updatedAt
@@ -437,6 +559,26 @@ model ContentEntity {
   orgs      String[]
   locations String[]
   content   Content  @relation(fields: [contentId], references: [id], onDelete: Cascade)
+}
+
+model ContentTopicScore {
+  id           String   @id @default(cuid())
+  contentId    String
+  topicId      String
+  vectorScore  Float?
+  keywordScore Float?
+  exclusionPenalty Float?
+  finalScore   Float?
+  reason       String?
+  explain      Json?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  content      Content  @relation(fields: [contentId], references: [id], onDelete: Cascade)
+  topic        Topic    @relation(fields: [topicId], references: [id], onDelete: Cascade)
+
+  @@unique([contentId, topicId])
+  @@index([topicId, finalScore])
+  @@index([contentId])
 }
 
 model Favorite {

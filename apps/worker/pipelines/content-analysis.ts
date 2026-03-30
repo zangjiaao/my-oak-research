@@ -99,6 +99,7 @@ type GatherIntentPayload = {
 type SourceRuntimePolicy = {
   contentFilterEnabled: boolean;
   contentFilterMode: QueryContentFilterMode;
+  recallBindingOverride?: unknown;
 };
 type GatherDriverPayload = {
   name: GatherSocialDriver;
@@ -1486,7 +1487,10 @@ async function fetchSocialSource(
   const driverOption = normalizeGatherDriverOption(baseConfig, gatherDriver);
   const gatherUserId = resolveGatherPoolUserId(source, sourceConfigObj, driverOption);
   const normalizedIntentType = intent.type.trim().toLowerCase();
-  const recallBinding = resolveRecallBinding(sourceConfigObj);
+  const recallBinding = resolveRecallBinding(
+    sourceConfigObj,
+    sourcePolicy?.recallBindingOverride
+  );
   const fallbackRecallQueries = Array.from(
     new Set(keywordFilterTerms.map((term) => term.trim()).filter(Boolean))
   );
@@ -1796,16 +1800,36 @@ function injectRecallQueryIntoIntent(
     ...intent,
     args: {
       ...intent.args,
-      [argKeys[0] ?? "query"]: normalizedQuery,
+      [resolveRecallTargetArgKey(intent.args, argKeys)]: normalizedQuery,
     },
   };
 }
 
+function resolveRecallTargetArgKey(
+  args: Record<string, unknown>,
+  argKeys: string[]
+): string {
+  const normalizedArgKeys = normalizeStringArray(argKeys);
+  if (normalizedArgKeys.length === 0) return "query";
+  for (const key of normalizedArgKeys) {
+    if (Object.prototype.hasOwnProperty.call(args, key)) {
+      return key;
+    }
+  }
+  return normalizedArgKeys[0] ?? "query";
+}
+
 function resolveRecallBinding(
-  config: Record<string, unknown>
+  config: Record<string, unknown>,
+  overrides?: unknown
 ): { enabled: boolean; argKeys: string[] } {
+  const topLevelBinding = asObject(config.recallBinding);
   const intent = asObject(config.intent);
-  const recallBinding = asObject(intent.recallBinding);
+  const recallBinding = {
+    ...topLevelBinding,
+    ...asObject(intent.recallBinding),
+    ...asObject(overrides),
+  };
   const argKeys = normalizeStringArray(recallBinding.argKeys);
   return {
     enabled:
