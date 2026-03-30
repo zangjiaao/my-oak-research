@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Copy, PencilIcon, TrashIcon, PlusIcon, Search } from "lucide-react";
+import { Copy, PencilIcon, TrashIcon, PlusIcon, Search, ZapIcon } from "lucide-react";
 import {
   SettingCard,
   DataTable,
@@ -17,6 +17,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { SourceWithRelations } from "@/lib/types";
 import { classifySourceCategory } from "@/lib/source-taxonomy";
 import { reserveCopySourceName } from "./source-copy-name";
+import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  isSourceQuickRunUnsupported,
+  QUICK_RUN_LOCKED_ARG_MESSAGE,
+  quickRunSource,
+} from "./quick-run";
 
 const SEARCH_PLATFORM_LABELS: Record<string, string> = {
   PARALLEL: "Parallel.ai",
@@ -53,6 +61,7 @@ function getSourcePlatformLabel(source: RetrievalSource): string {
 }
 
 const SearchEngineSettingCard = () => {
+  const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
   const [isDialogOpen, setDialogOpen] = useState(false);
   const [editingSource, setEditingSource] = useState<
@@ -61,6 +70,7 @@ const SearchEngineSettingCard = () => {
   const [duplicatingSource, setDuplicatingSource] = useState<
     RetrievalSource | undefined
   >(undefined);
+  const [quickRunningMap, setQuickRunningMap] = useState<Record<string, boolean>>({});
 
   const { sources, proxies, sourcesQuery } = useFollow();
   const { isLoading, error } = sourcesQuery;
@@ -161,6 +171,51 @@ const SearchEngineSettingCard = () => {
   ];
 
   const actions: DataTableAction<RetrievalSource>[] = [
+    {
+      type: "custom",
+      render: (source) => {
+        const isUnsupported = isSourceQuickRunUnsupported(source);
+        const isRunning = Boolean(quickRunningMap[source.id]);
+        const button = (
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={isUnsupported || isRunning}
+            onClick={async () => {
+              setQuickRunningMap((prev) => ({ ...prev, [source.id]: true }));
+              try {
+                const result = await quickRunSource(source.id);
+                toast.success(
+                  result.created
+                    ? `已创建并执行快速 Query（${source.name}）`
+                    : `已执行快速 Query（${source.name}）`
+                );
+                await queryClient.invalidateQueries({ queryKey: ["queries"] });
+              } catch (error) {
+                toast.error(
+                  error instanceof Error ? error.message : "Failed to quick run source"
+                );
+              } finally {
+                setQuickRunningMap((prev) => ({ ...prev, [source.id]: false }));
+              }
+            }}
+            aria-label="Quick run source"
+          >
+            <ZapIcon className="size-3" />
+          </Button>
+        );
+
+        if (!isUnsupported) return button;
+        return (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span>{button}</span>
+            </TooltipTrigger>
+            <TooltipContent sideOffset={6}>{QUICK_RUN_LOCKED_ARG_MESSAGE}</TooltipContent>
+          </Tooltip>
+        );
+      },
+    },
     {
       type: "custom",
       render: (source) => (

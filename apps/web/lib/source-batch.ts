@@ -85,7 +85,6 @@ const REQUIRED_INTENT_ARGS = new Set([
   "uid",
 ]);
 
-const DEFAULT_RECALL_BINDING_ARG_KEYS = ["query"];
 const NON_IDENTITY_INTENT_ARG_KEYS = new Set([
   "limit",
   "count",
@@ -296,8 +295,8 @@ function buildTemplateFromCapabilityIntent(
         type: intentType,
         args,
         recallBinding: {
-          enabled: true,
-          argKeys: DEFAULT_RECALL_BINDING_ARG_KEYS,
+          enabled: false,
+          argKeys: [],
         },
       },
       networkPolicy: inferredNetworkPolicy,
@@ -495,6 +494,24 @@ function toStringArray(value: unknown): string[] {
   return [];
 }
 
+function buildRecallBindingFromIntent(intent: Record<string, unknown>) {
+  const recallBinding = asRecord(intent.recallBinding);
+  const recallBindingArgKeys = toStringArray(recallBinding.argKeys);
+  if (typeof recallBinding.enabled === "boolean" && recallBinding.enabled === false) {
+    return {
+      enabled: false,
+      argKeys: [],
+    };
+  }
+  if (recallBindingArgKeys.length > 0) {
+    return {
+      enabled: true,
+      argKeys: recallBindingArgKeys,
+    };
+  }
+  return null;
+}
+
 function withJsonNull(value: unknown): unknown {
   return value === null ? Prisma.JsonNull : value;
 }
@@ -637,6 +654,7 @@ export function buildSourceCreateData(input: {
         ? intent.type.trim()
         : template.intent.type;
     const intentArgs = asRecord(intent.args);
+    const recallBinding = buildRecallBindingFromIntent(intent);
     const configParseRules = config.parseRules;
     const parseRules =
       configParseRules !== undefined
@@ -646,6 +664,16 @@ export function buildSourceCreateData(input: {
               platform: template.platform,
               intentType,
               intentArgs,
+              ...(recallBinding ? { recallBinding } : {}),
+              ...(recallBinding
+                ? {
+                    intent: {
+                      type: intentType,
+                      args: intentArgs,
+                      recallBinding,
+                    },
+                  }
+                : {}),
             },
           };
     return {
@@ -682,6 +710,11 @@ export function buildSourceCreateData(input: {
   if (template.category === "RETRIEVAL" && !template.isDarknet) {
     const rawIntent = asRecord(config.intent);
     const intentArgs = asRecord(rawIntent.args);
+    const recallBinding = buildRecallBindingFromIntent(rawIntent);
+    const intentType =
+      typeof rawIntent.type === "string" && rawIntent.type.trim()
+        ? rawIntent.type.trim()
+        : template.intent.type;
     const query =
       typeof intentArgs.query === "string" && intentArgs.query.trim()
         ? intentArgs.query.trim()
@@ -695,6 +728,18 @@ export function buildSourceCreateData(input: {
         : template.networkPolicy;
     const optionObject = {
       ...(asRecord(config.options)),
+      intentType,
+      intentArgs,
+      ...(recallBinding ? { recallBinding } : {}),
+      ...(recallBinding
+        ? {
+            intent: {
+              type: intentType,
+              args: intentArgs,
+              recallBinding,
+            },
+          }
+        : {}),
       tags: template.tags,
       networkPolicy: effectiveNetworkPolicy,
       proxyId: resolvedProxyId,
@@ -742,8 +787,8 @@ export function buildSourceCreateData(input: {
     };
   } else {
     intent.recallBinding = {
-      enabled: true,
-      argKeys: DEFAULT_RECALL_BINDING_ARG_KEYS,
+      enabled: false,
+      argKeys: [],
     };
   }
   const effectiveNetworkPolicy =

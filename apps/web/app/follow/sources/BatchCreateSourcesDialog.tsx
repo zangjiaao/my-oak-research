@@ -626,14 +626,18 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
     templateKey?: string
   ) => {
     const selectedPlatformId = platformCredentialRefs[platform];
-    if (selectedPlatformId && getCredentialById(selectedPlatformId)) {
-      return selectedPlatformId;
+    if (typeof selectedPlatformId === "string" && selectedPlatformId.trim()) {
+      return selectedPlatformId.trim();
     }
     if (templateKey) {
       const selectedTemplateId = state[templateKey]?.credentialRefs?.[kind];
-      if (selectedTemplateId && getCredentialById(selectedTemplateId)) {
-        return selectedTemplateId;
+      if (typeof selectedTemplateId === "string" && selectedTemplateId.trim()) {
+        return selectedTemplateId.trim();
       }
+    }
+    const firstOptionId = getAuthOptions(platform, kind)[0]?.id;
+    if (typeof firstOptionId === "string" && firstOptionId.trim()) {
+      return firstOptionId.trim();
     }
     return null;
   };
@@ -1246,6 +1250,7 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
                                 }))
                               }
                               placeholder="No proxy"
+                              nullLabel="No proxy"
                             >
                               {proxies.map((proxy) => (
                                 <SelectItem key={proxy.id} value={proxy.id}>

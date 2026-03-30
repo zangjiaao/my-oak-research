@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Copy, PencilIcon, TrashIcon } from "lucide-react";
+import { Copy, PencilIcon, TrashIcon, ZapIcon } from "lucide-react";
 import { Source, Proxy } from "@/app/generated/prisma";
 import { SourceWithRelations } from "@/lib/types";
 import {
@@ -13,6 +13,14 @@ import {
 import SourceDialog from "./SourceDialog";
 import SourceDeleteAlert from "./SourceDeleteAlert";
 import { reserveCopySourceName } from "./source-copy-name";
+import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  isSourceQuickRunUnsupported,
+  QUICK_RUN_LOCKED_ARG_MESSAGE,
+  quickRunSource,
+} from "./quick-run";
 
 interface Props {
   sources: SourceWithRelations[];
@@ -73,8 +81,10 @@ function getSourcePlatformLabel(source: StreamSource): string {
 }
 
 const WebSites = ({ sources, proxies, allSourceNames }: Props) => {
+  const queryClient = useQueryClient();
   const [editingSource, setEditingSource] = useState<SourceWithRelations | undefined>();
   const [duplicatingSource, setDuplicatingSource] = useState<SourceWithRelations | undefined>();
+  const [quickRunningMap, setQuickRunningMap] = useState<Record<string, boolean>>({});
 
   const handleEdit = (source: SourceWithRelations) => {
     setDuplicatingSource(undefined);
@@ -132,6 +142,51 @@ const WebSites = ({ sources, proxies, allSourceNames }: Props) => {
   ];
 
   const actions: DataTableAction<StreamSource>[] = [
+    {
+      type: "custom",
+      render: (source) => {
+        const isUnsupported = isSourceQuickRunUnsupported(source);
+        const isRunning = Boolean(quickRunningMap[source.id]);
+        const button = (
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={isUnsupported || isRunning}
+            onClick={async () => {
+              setQuickRunningMap((prev) => ({ ...prev, [source.id]: true }));
+              try {
+                const result = await quickRunSource(source.id);
+                toast.success(
+                  result.created
+                    ? `已创建并执行快速 Query（${source.name}）`
+                    : `已执行快速 Query（${source.name}）`
+                );
+                await queryClient.invalidateQueries({ queryKey: ["queries"] });
+              } catch (error) {
+                toast.error(
+                  error instanceof Error ? error.message : "Failed to quick run source"
+                );
+              } finally {
+                setQuickRunningMap((prev) => ({ ...prev, [source.id]: false }));
+              }
+            }}
+            aria-label="Quick run source"
+          >
+            <ZapIcon className="size-3" />
+          </Button>
+        );
+
+        if (!isUnsupported) return button;
+        return (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span>{button}</span>
+            </TooltipTrigger>
+            <TooltipContent sideOffset={6}>{QUICK_RUN_LOCKED_ARG_MESSAGE}</TooltipContent>
+          </Tooltip>
+        );
+      },
+    },
     {
       type: "custom",
       render: (source) => (

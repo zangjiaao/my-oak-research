@@ -201,6 +201,35 @@ function asRecord(value: unknown): Record<string, unknown> {
   return {};
 }
 
+function isCatalogArgRule(value: unknown): value is { required?: unknown; description?: unknown } {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const candidate = value as Record<string, unknown>;
+  return "required" in candidate || "description" in candidate;
+}
+
+function normalizeTemplateIntentArgs(input: Record<string, unknown>): Record<string, unknown> {
+  const args: Record<string, unknown> = {};
+
+  for (const [key, value] of Object.entries(input)) {
+    if (isCatalogArgRule(value)) {
+      args[key] = "";
+      continue;
+    }
+
+    if (value === undefined || value === null) {
+      args[key] = "";
+      continue;
+    }
+    if (typeof value === "string") {
+      args[key] = value;
+      continue;
+    }
+    args[key] = String(value);
+  }
+
+  return args;
+}
+
 function parseGatherMarker(value?: string | null): { platform: string; intentType: string } | null {
   const text = String(value ?? "").trim();
   if (!text) return null;
@@ -246,9 +275,16 @@ function toScriptArgEntries(value: unknown): ScriptArgEntry[] {
   }));
 }
 
-function parseScriptArgValue(raw: string): unknown {
+function isIdLikeArgKey(key: string): boolean {
+  const normalized = key.trim().toLowerCase();
+  if (!normalized) return false;
+  return normalized === "id" || normalized.endsWith("_id") || normalized.endsWith("id");
+}
+
+function parseScriptArgValue(raw: string, key: string): unknown {
   const trimmed = raw.trim();
   if (!trimmed) return "";
+  if (isIdLikeArgKey(key)) return trimmed;
   if (trimmed === "true") return true;
   if (trimmed === "false") return false;
   if (/^-?\d+(\.\d+)?$/.test(trimmed)) return Number(trimmed);
@@ -267,7 +303,7 @@ function entriesToScriptArgs(entries: ScriptArgEntry[]): Record<string, unknown>
   for (const entry of entries) {
     const key = entry.key.trim();
     if (!key) continue;
-    output[key] = parseScriptArgValue(entry.value);
+    output[key] = parseScriptArgValue(entry.value, key);
   }
   return output;
 }
@@ -332,7 +368,7 @@ function getInitialScriptState(source?: SourceWithRelations): {
       platform: "",
       intentType: "",
       scriptArgs: {},
-      recallBindingArgKeys: ["query"],
+      recallBindingArgKeys: [],
       poolEnabled: true,
       poolIdleTimeoutMs: 120000,
       headless: false,
@@ -400,7 +436,7 @@ function getInitialScriptState(source?: SourceWithRelations): {
             ? recallBinding.argKeys
                 .map((item) => String(item).trim())
                 .filter(Boolean)
-            : ["query"],
+            : [],
       poolEnabled:
         typeof driver.poolEnabled === "boolean"
           ? driver.poolEnabled
@@ -467,12 +503,27 @@ function getInitialScriptState(source?: SourceWithRelations): {
       source.search.options && typeof source.search.options === "object"
         ? (source.search.options as Record<string, unknown>)
         : {};
+    const optionRecallBinding = asRecord(options.recallBinding);
+    const optionIntent = asRecord(options.intent);
+    const optionIntentRecallBinding = asRecord(optionIntent.recallBinding);
+    const optionRecallBindingArgKeys = normalizeStringArray(
+      optionIntentRecallBinding.argKeys
+    ).length
+      ? normalizeStringArray(optionIntentRecallBinding.argKeys)
+      : normalizeStringArray(optionRecallBinding.argKeys);
+    const optionRecallBindingEnabled =
+      typeof optionIntentRecallBinding.enabled === "boolean"
+        ? optionIntentRecallBinding.enabled
+        : typeof optionRecallBinding.enabled === "boolean"
+          ? optionRecallBinding.enabled
+          : undefined;
     return {
       category: "RETRIEVAL",
       platform: String(options.provider ?? source.search.platform ?? ""),
       intentType: "search",
       scriptArgs: { query: source.search.objective ?? "" },
-      recallBindingArgKeys: ["query"],
+      recallBindingArgKeys:
+        optionRecallBindingEnabled === false ? [] : optionRecallBindingArgKeys,
       poolEnabled: true,
       poolIdleTimeoutMs: 120000,
       headless: false,
@@ -490,6 +541,20 @@ function getInitialScriptState(source?: SourceWithRelations): {
     const parseRules = asRecord(source.web.parseRules);
     const gather = asRecord(parseRules.gather);
     const gatherIntentArgs = asRecord(gather.intentArgs);
+    const gatherRecallBinding = asRecord(gather.recallBinding);
+    const gatherIntent = asRecord(gather.intent);
+    const gatherIntentRecallBinding = asRecord(gatherIntent.recallBinding);
+    const gatherRecallBindingArgKeys = normalizeStringArray(
+      gatherIntentRecallBinding.argKeys
+    ).length
+      ? normalizeStringArray(gatherIntentRecallBinding.argKeys)
+      : normalizeStringArray(gatherRecallBinding.argKeys);
+    const gatherRecallBindingEnabled =
+      typeof gatherIntentRecallBinding.enabled === "boolean"
+        ? gatherIntentRecallBinding.enabled
+        : typeof gatherRecallBinding.enabled === "boolean"
+          ? gatherRecallBinding.enabled
+          : undefined;
     const marker =
       parseGatherMarker(source.description) ??
       parseGatherMarker(source.name);
@@ -507,7 +572,8 @@ function getInitialScriptState(source?: SourceWithRelations): {
         Object.keys(gatherIntentArgs).length > 0
           ? gatherIntentArgs
           : { url: source.web.url ?? [] },
-      recallBindingArgKeys: ["query"],
+      recallBindingArgKeys:
+        gatherRecallBindingEnabled === false ? [] : gatherRecallBindingArgKeys,
       poolEnabled: true,
       poolIdleTimeoutMs: 120000,
       headless: false,
@@ -532,7 +598,7 @@ function getInitialScriptState(source?: SourceWithRelations): {
       platform: "DARKWEBGO",
       intentType: "search",
       scriptArgs: { url: source.darknet.url ?? [] },
-      recallBindingArgKeys: ["query"],
+      recallBindingArgKeys: [],
       poolEnabled: true,
       poolIdleTimeoutMs: 120000,
       headless: false,
@@ -551,7 +617,7 @@ function getInitialScriptState(source?: SourceWithRelations): {
     platform: "",
     intentType: "",
     scriptArgs: {},
-    recallBindingArgKeys: ["query"],
+    recallBindingArgKeys: [],
     poolEnabled: true,
     poolIdleTimeoutMs: 120000,
     headless: false,
@@ -589,6 +655,18 @@ function buildPayloadFromUnified(input: {
   } =
     input;
   const intentArgs = scriptArgs;
+  const normalizedRecallBindingArgKeys = Array.from(
+    new Set(
+      recallBindingArgKeys.map((key) => key.trim()).filter(Boolean)
+    )
+  );
+  const recallBinding = {
+    enabled: normalizedRecallBindingArgKeys.length > 0,
+    argKeys:
+      normalizedRecallBindingArgKeys.length > 0
+        ? normalizedRecallBindingArgKeys
+        : ["query"],
+  };
   const driver = buildDriverConfig({ intentType, intentArgs, config: driverConfig });
 
   const base = {
@@ -617,6 +695,12 @@ function buildPayloadFromUnified(input: {
               platform: normalizePlatform(platform),
               intentType: intentType || "search",
               intentArgs,
+              intent: {
+                type: intentType || "search",
+                args: intentArgs,
+                recallBinding,
+              },
+              recallBinding,
               driver,
             },
           }
@@ -664,6 +748,12 @@ function buildPayloadFromUnified(input: {
             provider: provider || "CUSTOM",
             intentType,
             intentArgs,
+            intent: {
+              type: intentType || "search",
+              args: intentArgs,
+              recallBinding,
+            },
+            recallBinding,
             driver,
           },
           credentialId: values.credentialId ?? null,
@@ -711,11 +801,7 @@ function buildPayloadFromUnified(input: {
     intent: {
       type: intentType || "search",
       args: intentArgs,
-      recallBinding: {
-        enabled: recallBindingArgKeys.length > 0,
-        argKeys:
-          recallBindingArgKeys.length > 0 ? recallBindingArgKeys : ["query"],
-      },
+      recallBinding,
     },
     playwright: {
       mode: "eval-js",
@@ -823,6 +909,7 @@ const SourceDialog = ({
 
   const [selectedPlatform, setSelectedPlatform] = useState(initialScriptState.platform);
   const [selectedIntentType, setSelectedIntentType] = useState(initialScriptState.intentType);
+  const lastIntentTypeRef = useRef<string | null>(null);
   const [scriptArgEntries, setScriptArgEntries] = useState<ScriptArgEntry[]>(
     (() => {
       const entries = toScriptArgEntries(initialScriptState.scriptArgs);
@@ -858,6 +945,7 @@ const SourceDialog = ({
 
   useEffect(() => {
     if (!open) return;
+    lastIntentTypeRef.current = null;
     setSelectedPlatform(initialScriptState.platform);
     setSelectedIntentType(initialScriptState.intentType);
     setScriptArgEntries(() => {
@@ -1027,25 +1115,33 @@ const SourceDialog = ({
 
   useEffect(() => {
     if (!selectedIntentType) {
+      lastIntentTypeRef.current = null;
       setScriptArgEntries([]);
       return;
     }
-    const sampleArgs = selectedCatalogItem?.sample?.intentArgs ?? {};
+    const rawSampleArgs =
+      selectedCatalogItem?.sample?.intentArgs &&
+      typeof selectedCatalogItem.sample.intentArgs === "object" &&
+      !Array.isArray(selectedCatalogItem.sample.intentArgs)
+        ? (selectedCatalogItem.sample.intentArgs as Record<string, unknown>)
+        : {};
+    const sampleArgs = normalizeTemplateIntentArgs(rawSampleArgs);
     const sampleEntries = toScriptArgEntries(sampleArgs);
-    if (sampleEntries.length === 0) {
-      setScriptArgEntries((prev) => (prev.length > 0 ? prev : [EMPTY_ARG_ENTRY]));
-      return;
+    const fallbackEntries = sampleEntries.length > 0 ? sampleEntries : [{ ...EMPTY_ARG_ENTRY }];
+    const previousIntentType = lastIntentTypeRef.current;
+    const intentChanged =
+      previousIntentType !== null && previousIntentType !== selectedIntentType;
+
+    if (intentChanged) {
+      setScriptArgEntries(fallbackEntries);
+    } else {
+      setScriptArgEntries((prev) => {
+        const prevAllEmpty =
+          prev.length === 0 || prev.every((entry) => !entry.key.trim() && !entry.value.trim());
+        return prevAllEmpty ? fallbackEntries : prev;
+      });
     }
-    setScriptArgEntries((prev) => {
-      const prevAllEmpty = prev.length === 0 || prev.every(
-        (entry) => !entry.key.trim() && !entry.value.trim()
-      );
-      if (prevAllEmpty) return sampleEntries;
-      const existingKeys = new Set(prev.map((entry) => entry.key.trim()).filter(Boolean));
-      const missing = sampleEntries.filter((entry) => !existingKeys.has(entry.key.trim()));
-      if (missing.length === 0) return prev;
-      return [...prev, ...missing.map((entry) => ({ ...entry, value: "" }))];
-    });
+    lastIntentTypeRef.current = selectedIntentType;
   }, [selectedCatalogItem, selectedIntentType, selectedPlatform]);
 
   const scriptArgs = useMemo(() => entriesToScriptArgs(scriptArgEntries), [scriptArgEntries]);
@@ -1089,15 +1185,38 @@ const SourceDialog = ({
     isLoading: loadingCredentials,
     refetch: refetchCredentials,
   } = useQuery<CredentialListResponse>({
-    queryKey: ["source-credentials", normalizePlatform(selectedPlatform)],
-    queryFn: () =>
-      apiFetcher(
-        selectedPlatform
-          ? `/api/follow/credentials?platform=${encodeURIComponent(
-              normalizePlatform(selectedPlatform).toLowerCase()
-            )}`
-          : "/api/follow/credentials"
-      ),
+    queryKey: [
+      "source-credentials",
+      normalizePlatform(selectedPlatform),
+      selectedCapability?.authRequirement.kind ?? "",
+    ],
+    queryFn: async () => {
+      const authKind =
+        typeof selectedCapability?.authRequirement.kind === "string"
+          ? selectedCapability.authRequirement.kind.trim().toLowerCase()
+          : "";
+      const platform =
+        selectedPlatform ? normalizePlatform(selectedPlatform).toLowerCase() : "";
+
+      if (authKind) {
+        const byKind = (await apiFetcher(
+          `/api/follow/credentials?kind=${encodeURIComponent(authKind)}`
+        )) as CredentialListResponse;
+        if ((byKind.credentials?.length ?? 0) > 0 || !platform) {
+          return byKind;
+        }
+        return apiFetcher(
+          `/api/follow/credentials?platform=${encodeURIComponent(platform)}`
+        ) as Promise<CredentialListResponse>;
+      }
+
+      if (platform) {
+        return apiFetcher(
+          `/api/follow/credentials?platform=${encodeURIComponent(platform)}`
+        ) as Promise<CredentialListResponse>;
+      }
+      return apiFetcher("/api/follow/credentials") as Promise<CredentialListResponse>;
+    },
     enabled: open,
   });
 
