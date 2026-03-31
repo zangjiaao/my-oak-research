@@ -70,6 +70,14 @@ export type ContentItem = {
     matchSource: "QUERY" | "GATHER" | "AI" | "FUSED";
     reason: string | null;
   }>;
+  topicScores?: Array<{
+    topicId: string;
+    vectorScore: number | null;
+    keywordScore: number | null;
+    exclusionPenalty: number | null;
+    finalScore: number | null;
+    reason: string | null;
+  }>;
 };
 
 type FollowContentFilters = {
@@ -79,11 +87,18 @@ type FollowContentFilters = {
   to?: string;
   subjectId?: string;
   minMatchScore?: string;
+  topicId?: string;
+  minTopicScore?: string;
   matchSource?: "QUERY" | "GATHER" | "AI" | "FUSED";
-  sort?: "time" | "matchScore";
+  sort?: "time" | "matchScore" | "topicScore";
 };
 
 type SubjectOption = {
+  id: string;
+  name: string;
+};
+
+type TopicOption = {
   id: string;
   name: string;
 };
@@ -107,12 +122,17 @@ type FollowContentContextValue = {
     search: string;
     subjectId: string;
     minMatchScore: string;
+    topicId: string;
+    minTopicScore: string;
     matchSource: string;
-    sort: "time" | "matchScore";
+    sort: "time" | "matchScore" | "topicScore";
   };
   subjectOptions: SubjectOption[];
+  topicOptions: TopicOption[];
   subjectOptionsError: string | null;
   subjectOptionsLoading: boolean;
+  topicOptionsError: string | null;
+  topicOptionsLoading: boolean;
   setPlatform: (val: string) => void;
   setYear: (val: string) => void;
   setMonth: (val: string) => void;
@@ -120,8 +140,10 @@ type FollowContentContextValue = {
   setSearch: (val: string) => void;
   setSubjectId: (val: string) => void;
   setMinMatchScore: (val: string) => void;
+  setTopicId: (val: string) => void;
+  setMinTopicScore: (val: string) => void;
   setMatchSource: (val: string) => void;
-  setSort: (val: "time" | "matchScore") => void;
+  setSort: (val: "time" | "matchScore" | "topicScore") => void;
 };
 
 const FollowContentContext = createContext<
@@ -176,6 +198,12 @@ const fetchContents = async (filters: FollowContentFilters) => {
   if (filters.minMatchScore) {
     params.set("minMatchScore", filters.minMatchScore);
   }
+  if (filters.topicId) {
+    params.set("topicId", filters.topicId);
+  }
+  if (filters.minTopicScore) {
+    params.set("minTopicScore", filters.minTopicScore);
+  }
   if (filters.matchSource) {
     params.set("matchSource", filters.matchSource);
   }
@@ -184,6 +212,7 @@ const fetchContents = async (filters: FollowContentFilters) => {
   }
 
   params.set("includeSubjectMatches", "true");
+  params.set("includeTopicScores", "true");
   params.set("limit", "30");
   const url = `/api/focus-bulletin/content${
     params.toString() ? `?${params.toString()}` : ""
@@ -217,8 +246,10 @@ export const FollowContentProvider = ({
   const [search, setSearch] = useState("");
   const [subjectId, setSubjectId] = useState("");
   const [minMatchScore, setMinMatchScore] = useState("");
+  const [topicId, setTopicId] = useState("");
+  const [minTopicScore, setMinTopicScore] = useState("");
   const [matchSource, setMatchSource] = useState("");
-  const [sort, setSort] = useState<"time" | "matchScore">("time");
+  const [sort, setSort] = useState<"time" | "matchScore" | "topicScore">("time");
   const [selectedContentId, setSelectedContentId] = useState<string | null>(
     null
   );
@@ -246,6 +277,29 @@ export const FollowContentProvider = ({
         .filter((item: SubjectOption) => Boolean(item.id && item.name));
     },
   });
+  const {
+    data: topicOptionsData,
+    error: topicOptionsQueryError,
+    isLoading: topicOptionsLoading,
+  } = useQuery({
+    queryKey: ["topics", "topic-options"],
+    queryFn: async (): Promise<TopicOption[]> => {
+      const response = await fetch("/api/follow/topics", {
+        cache: "no-store",
+      });
+      if (!response.ok) {
+        throw new Error("Can not fetch topics");
+      }
+      const data = await response.json();
+      const items = Array.isArray(data) ? data : [];
+      return items
+        .map((item: { id?: string; name?: string }) => ({
+          id: String(item.id ?? ""),
+          name: String(item.name ?? ""),
+        }))
+        .filter((item: TopicOption) => Boolean(item.id && item.name));
+    },
+  });
 
   const { from, to } = useMemo(
     () => buildDateRange(year, month, day),
@@ -260,13 +314,26 @@ export const FollowContentProvider = ({
       to,
       subjectId,
       minMatchScore,
+      topicId,
+      minTopicScore,
       matchSource:
         matchSource && matchSource !== "__all__"
           ? (matchSource as "QUERY" | "GATHER" | "AI" | "FUSED")
           : undefined,
       sort,
     }),
-    [platform, search, from, to, subjectId, minMatchScore, matchSource, sort]
+    [
+      platform,
+      search,
+      from,
+      to,
+      subjectId,
+      minMatchScore,
+      topicId,
+      minTopicScore,
+      matchSource,
+      sort,
+    ]
   );
 
   const {
@@ -309,6 +376,24 @@ export const FollowContentProvider = ({
 
   const contents: ContentItem[] = useMemo(() => {
     const items: ContentItem[] = data?.items ?? [];
+    if (sort === "topicScore") {
+      return [...items].sort((left, right) => {
+        const leftScore =
+          left.topicScores?.find((score) =>
+            topicId ? score.topicId === topicId : true
+          )?.finalScore ?? -1;
+        const rightScore =
+          right.topicScores?.find((score) =>
+            topicId ? score.topicId === topicId : true
+          )?.finalScore ?? -1;
+        if (leftScore !== rightScore) {
+          return rightScore - leftScore;
+        }
+        const leftTime = new Date(left.detailView?.publishedAt ?? left.time).getTime();
+        const rightTime = new Date(right.detailView?.publishedAt ?? right.time).getTime();
+        return rightTime - leftTime;
+      });
+    }
     if (sort !== "matchScore") {
       return items;
     }
@@ -328,7 +413,7 @@ export const FollowContentProvider = ({
       const rightTime = new Date(right.detailView?.publishedAt ?? right.time).getTime();
       return rightTime - leftTime;
     });
-  }, [data?.items, sort, subjectId]);
+  }, [data?.items, sort, subjectId, topicId]);
 
   useEffect(() => {
     if (isLoading) {
@@ -364,11 +449,17 @@ export const FollowContentProvider = ({
       error: contentQueryError ?? null,
       selectContent,
       subjectOptions: subjectOptionsData ?? [],
+      topicOptions: topicOptionsData ?? [],
       subjectOptionsError:
         subjectOptionsQueryError instanceof Error
           ? subjectOptionsQueryError.message
           : null,
       subjectOptionsLoading,
+      topicOptionsError:
+        topicOptionsQueryError instanceof Error
+          ? topicOptionsQueryError.message
+          : null,
+      topicOptionsLoading,
       filters: {
         platform,
         year,
@@ -377,6 +468,8 @@ export const FollowContentProvider = ({
         search,
         subjectId,
         minMatchScore,
+        topicId,
+        minTopicScore,
         matchSource,
         sort,
       },
@@ -387,6 +480,8 @@ export const FollowContentProvider = ({
       setSearch,
       setSubjectId,
       setMinMatchScore,
+      setTopicId,
+      setMinTopicScore,
       setMatchSource,
       setSort,
     }),
@@ -397,8 +492,11 @@ export const FollowContentProvider = ({
       contentQueryError,
       selectContent,
       subjectOptionsData,
+      topicOptionsData,
       subjectOptionsQueryError,
       subjectOptionsLoading,
+      topicOptionsQueryError,
+      topicOptionsLoading,
       platform,
       year,
       month,
@@ -406,6 +504,8 @@ export const FollowContentProvider = ({
       search,
       subjectId,
       minMatchScore,
+      topicId,
+      minTopicScore,
       matchSource,
       sort,
     ]

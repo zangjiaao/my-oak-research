@@ -58,6 +58,24 @@ const FollowContent = () => {
         return bTime - aTime;
       });
     }
+    if (filters.sort === "topicScore") {
+      return [...contents].sort((a, b) => {
+        const aScore =
+          a.topicScores?.find((score) =>
+            filters.topicId ? score.topicId === filters.topicId : true
+          )?.finalScore ?? -1;
+        const bScore =
+          b.topicScores?.find((score) =>
+            filters.topicId ? score.topicId === filters.topicId : true
+          )?.finalScore ?? -1;
+        if (aScore !== bScore) {
+          return bScore - aScore;
+        }
+        const aTime = new Date(a.detailView?.publishedAt ?? a.time).getTime();
+        const bTime = new Date(b.detailView?.publishedAt ?? b.time).getTime();
+        return bTime - aTime;
+      });
+    }
     return [...contents].sort((a, b) => {
       const aTime = new Date(a.detailView?.publishedAt ?? a.time).getTime();
       const bTime = new Date(b.detailView?.publishedAt ?? b.time).getTime();
@@ -68,7 +86,7 @@ const FollowContent = () => {
       const bIndex = b.relation?.recordIndex ?? Number.MAX_SAFE_INTEGER;
       return aIndex - bIndex;
     });
-  }, [contents, filters.sort, filters.subjectId]);
+  }, [contents, filters.sort, filters.subjectId, filters.topicId]);
 
   useEffect(() => {
     if (!selectedContent?.id) {

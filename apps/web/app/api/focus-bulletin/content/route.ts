@@ -6,12 +6,13 @@ import type {
   Content,
   ContentSubjectMatch,
   ContentSubjectMatchSource,
+  ContentTopicScore,
 } from "@/app/generated/prisma";
 import { buildRecordContentViews } from "@/lib/follow-content/record-content-view";
 
 const contentTypeSchema = z.enum(["Web", "Client", "Darknet"]);
 const matchSourceSchema = z.enum(["QUERY", "GATHER", "AI", "FUSED"]);
-const sortSchema = z.enum(["time", "matchScore"]);
+const sortSchema = z.enum(["time", "matchScore", "topicScore"]);
 const ContentQuerySchema = z.object({
   platform: z.string().trim().min(1).optional(),
   type: contentTypeSchema.optional(),
@@ -20,9 +21,15 @@ const ContentQuerySchema = z.object({
   to: z.string().datetime().optional(),
   subjectId: z.string().min(1).optional(),
   minMatchScore: z.coerce.number().min(0).max(1).optional(),
+  topicId: z.string().min(1).optional(),
+  minTopicScore: z.coerce.number().min(0).optional(),
   matchSource: matchSourceSchema.optional(),
   sort: sortSchema.optional().default("time"),
   includeSubjectMatches: z
+    .enum(["true", "false"])
+    .optional()
+    .transform((value) => value === "true"),
+  includeTopicScores: z
     .enum(["true", "false"])
     .optional()
     .transform((value) => value === "true"),
@@ -31,7 +38,11 @@ const ContentQuerySchema = z.object({
 });
 
 const mapContent = (
-  item: Content & { image?: string | null; subjectMatches?: ContentSubjectMatch[] }
+  item: Content & {
+    image?: string | null;
+    subjectMatches?: ContentSubjectMatch[];
+    topicScores?: ContentTopicScore[];
+  }
 ) => {
   const views = buildRecordContentViews(item);
   return {
@@ -58,6 +69,14 @@ const mapContent = (
       matchedExcludes: match.matchedExcludes,
       matchSource: match.matchSource,
       reason: match.reason,
+    })),
+    topicScores: (item.topicScores ?? []).map((score) => ({
+      topicId: score.topicId,
+      vectorScore: score.vectorScore,
+      keywordScore: score.keywordScore,
+      exclusionPenalty: score.exclusionPenalty,
+      finalScore: score.finalScore,
+      reason: score.reason,
     })),
   };
 };
@@ -91,9 +110,12 @@ export async function GET(request: Request) {
     to,
     subjectId,
     minMatchScore,
+    topicId,
+    minTopicScore,
     matchSource,
     sort,
     includeSubjectMatches,
+    includeTopicScores,
     cursor,
     limit,
   } = parsed.data;
@@ -144,6 +166,15 @@ export async function GET(request: Request) {
     };
   }
 
+  if (topicId || minTopicScore != null) {
+    where.topicScores = {
+      some: {
+        ...(topicId ? { topicId } : {}),
+        ...(minTopicScore != null ? { finalScore: { gte: minTopicScore } } : {}),
+      },
+    };
+  }
+
   const includeSubjectMatchRelation =
     includeSubjectMatches || subjectId || resolvedMinMatchScore != null || matchSource
       ? {
@@ -165,6 +196,22 @@ export async function GET(request: Request) {
             take: 0,
           },
         };
+  const includeTopicScoreRelation =
+    includeTopicScores || topicId || minTopicScore != null
+      ? {
+          topicScores: {
+            where: {
+              ...(topicId ? { topicId } : {}),
+              ...(minTopicScore != null ? { finalScore: { gte: minTopicScore } } : {}),
+            },
+            orderBy: { finalScore: "desc" as const },
+          },
+        }
+      : {
+          topicScores: {
+            take: 0,
+          },
+        };
 
   const contents = await prisma.content.findMany({
     where,
@@ -172,7 +219,10 @@ export async function GET(request: Request) {
     take: limit + 1,
     cursor: cursor ? { id: cursor } : undefined,
     skip: cursor ? 1 : 0,
-    include: includeSubjectMatchRelation,
+    include: {
+      ...includeSubjectMatchRelation,
+      ...includeTopicScoreRelation,
+    },
   });
 
   const hasMore = contents.length > limit;
@@ -185,6 +235,12 @@ export async function GET(request: Request) {
           const rightScore = right.subjectMatches?.[0]?.matchScore ?? -1;
           return rightScore - leftScore;
         })
+      : sort === "topicScore" && topicId
+        ? [...pageItems].sort((left, right) => {
+            const leftScore = left.topicScores?.[0]?.finalScore ?? -1;
+            const rightScore = right.topicScores?.[0]?.finalScore ?? -1;
+            return rightScore - leftScore;
+          })
       : pageItems;
   const items = sortedItems.map((item) => mapContent(item));
 

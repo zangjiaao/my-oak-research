@@ -1,6 +1,10 @@
 import prisma from "@/lib/prisma";
 import { createCollectJobWorker } from "@/lib/queue";
 import { logger } from "@/lib/logger";
+import { runJobCollector } from "../pipelines/content-analysis";
+import { QueryContentFilterMode } from "@/app/generated/prisma";
+import type { SourceWithRelations } from "@/lib/types";
+import { unscheduleCollectJob } from "@/lib/queue";
 
 const prismaAny = prisma as any;
 
@@ -28,26 +32,39 @@ export const collectJobWorker = createCollectJobWorker(async (job) => {
   logger.info("collect-job started", { runId, jobId, trigger });
 
   try {
-    await prismaAny.jobRun.update({
-      where: { id: runId },
-      data: {
-        status: "RUNNING",
-        progress: 15,
-        startedAt: new Date(),
-      },
-    });
-
     const jobConfig = await prismaAny.job.findUnique({
       where: { id: jobId },
       include: {
         jobTopics: {
           include: {
-            topic: true,
+            topic: {
+              include: {
+                terms: true,
+              },
+            },
           },
         },
         jobSources: {
           include: {
-            source: true,
+            source: {
+              include: {
+                web: true,
+                search: {
+                  include: {
+                    credential: true,
+                  },
+                },
+                social: {
+                  include: {
+                    credential: true,
+                    proxy: true,
+                  },
+                },
+                darknet: true,
+                credential: true,
+                proxy: true,
+              },
+            },
           },
         },
       },
@@ -57,20 +74,53 @@ export const collectJobWorker = createCollectJobWorker(async (job) => {
       throw new Error("Job config not found");
     }
 
-    await prismaAny.jobRun.update({
-      where: { id: runId },
-      data: {
-        status: "SUCCEEDED",
-        progress: 100,
-        finishedAt: new Date(),
-        meta: {
-          type: jobConfig.type,
-          topics: jobConfig.jobTopics.length,
-          sources: jobConfig.jobSources.length,
-          note: "Job scaffold executed; connect to retrieval/ingest pipelines next.",
+    const topics = (jobConfig.jobTopics ?? [])
+      .map((binding: any) => binding.topic)
+      .filter(Boolean)
+      .map((topic: any) => ({
+        id: topic.id,
+        name: topic.name,
+        description: topic.description ?? null,
+        terms: (topic.terms ?? []).map((term: any) => ({
+          type: term.type,
+          value: term.value,
+          weight: term.weight,
+        })),
+      }));
+
+    const sourcePolicyBySourceId = new Map<string, {
+      contentFilterEnabled: boolean;
+      contentFilterMode: QueryContentFilterMode;
+      recallBindingOverride?: unknown;
+    }>(
+      (jobConfig.jobSources ?? []).map((binding: any) => [
+        binding.sourceId,
+        {
+          contentFilterEnabled: true,
+          contentFilterMode: QueryContentFilterMode.TERM_AND_WORD_BOUNDARY,
+          recallBindingOverride: binding.recallBindingOverride ?? null,
         },
-      },
+      ])
+    );
+    const sources = (jobConfig.jobSources ?? [])
+      .map((binding: any) => binding.source)
+      .filter(Boolean) as SourceWithRelations[];
+
+    await runJobCollector({
+      runId,
+      jobId,
+      topics,
+      sources,
+      sourcePolicyBySourceId,
     });
+
+    if (jobConfig.type === "SOURCE_ONESHOT") {
+      await prismaAny.job.update({
+        where: { id: jobId },
+        data: { enabled: false },
+      });
+      await unscheduleCollectJob(jobId);
+    }
 
     return { ok: true };
   } catch (error) {

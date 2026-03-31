@@ -35,8 +35,11 @@ export const ContentFilters = () => {
     contents,
     filters,
     subjectOptions,
+    topicOptions,
     subjectOptionsError,
     subjectOptionsLoading,
+    topicOptionsError,
+    topicOptionsLoading,
     setPlatform,
     setYear,
     setMonth,
@@ -44,6 +47,8 @@ export const ContentFilters = () => {
     setSearch,
     setSubjectId,
     setMinMatchScore,
+    setTopicId,
+    setMinTopicScore,
     setMatchSource,
     setSort,
   } = useFollowContent();
@@ -197,6 +202,31 @@ export const ContentFilters = () => {
             </span>
           ) : null}
 
+          <Select
+            value={filters.topicId || "__all__"}
+            onValueChange={(value) => setTopicId(value === "__all__" ? "" : value)}
+          >
+            <SelectTrigger className="min-w-[180px]">
+              <SelectValue placeholder="Topic" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">All Topics</SelectItem>
+              {topicOptions.map((topic) => (
+                <SelectItem key={topic.id} value={topic.id}>
+                  {topic.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {topicOptionsLoading ? (
+            <span className="text-xs text-muted-foreground">Loading topics...</span>
+          ) : null}
+          {topicOptionsError ? (
+            <span className="text-xs text-destructive">
+              Topics 加载失败，请刷新页面重试
+            </span>
+          ) : null}
+
           <Input
             type="number"
             min={0}
@@ -206,6 +236,15 @@ export const ContentFilters = () => {
             className="min-w-[150px]"
             value={filters.minMatchScore}
             onChange={(event) => setMinMatchScore(event.target.value)}
+          />
+          <Input
+            type="number"
+            min={0}
+            step={0.1}
+            placeholder="Min topic score"
+            className="min-w-[150px]"
+            value={filters.minTopicScore}
+            onChange={(event) => setMinTopicScore(event.target.value)}
           />
 
           <Select
@@ -228,7 +267,9 @@ export const ContentFilters = () => {
 
           <Select
             value={filters.sort}
-            onValueChange={(value) => setSort(value as "time" | "matchScore")}
+            onValueChange={(value) =>
+              setSort(value as "time" | "matchScore" | "topicScore")
+            }
           >
             <SelectTrigger className="min-w-[150px]">
               <SelectValue placeholder="Sort" />
@@ -236,6 +277,7 @@ export const ContentFilters = () => {
             <SelectContent>
               <SelectItem value="time">Time Desc</SelectItem>
               <SelectItem value="matchScore">Score Desc</SelectItem>
+              <SelectItem value="topicScore">Topic Score Desc</SelectItem>
             </SelectContent>
           </Select>
 
@@ -244,6 +286,8 @@ export const ContentFilters = () => {
             onClick={() => {
               setSubjectId("");
               setMinMatchScore("");
+              setTopicId("");
+              setMinTopicScore("");
               setMatchSource("");
               setSort("time");
             }}

@@ -86,6 +86,19 @@ type QueryKeyword = {
   synonyms: string[];
 };
 
+type TopicTermLite = {
+  type: "CORE" | "EXPANSION" | "EXCLUSION";
+  value: string;
+  weight?: number | null;
+};
+
+type JobCollectorTopic = {
+  id: string;
+  name: string;
+  description?: string | null;
+  terms: TopicTermLite[];
+};
+
 type GatherSocialDriver = "playwright" | "xhttp";
 type GatherOutputField = string[] | Record<string, string>;
 type GatherOutputPayload = {
@@ -610,11 +623,352 @@ export async function runFocusCollector(runId: string, queryId: string) {
   }
 }
 
+export async function runJobCollector(params: {
+  runId: string;
+  jobId: string;
+  topics: JobCollectorTopic[];
+  sources: SourceWithRelations[];
+  sourcePolicyBySourceId: Map<string, SourceRuntimePolicy>;
+}) {
+  const { runId, jobId, topics, sources, sourcePolicyBySourceId } = params;
+  const send = async (event: unknown) => publishTaskEvent(runId, event);
+  const pseudoQueryId = `job:${jobId}`;
+  const keywords = buildTopicKeywords(topics);
+
+  await prisma.jobRun.update({
+    where: { id: runId },
+    data: { status: "RUNNING", startedAt: new Date(), progress: 0 },
+  });
+  await send({ type: "start", message: "任务开始" });
+
+  await send({ type: "fetch", message: "拉取数据中" });
+  const rawItems = await fetchBySources(
+    sources,
+    runId,
+    pseudoQueryId,
+    keywords,
+    sourcePolicyBySourceId
+  );
+  const cleaned = await cleanAndDedup(rawItems, runId);
+
+  const sourceStats = new Map<
+    string,
+    {
+      sourceName: string;
+      sourceType: SourceCategory;
+      fetched: number;
+      cleaned: number;
+      dedupSkipped: number;
+      inserted: number;
+    }
+  >();
+  for (const source of sources) {
+    sourceStats.set(source.id, {
+      sourceName: source.name,
+      sourceType: source.category,
+      fetched: 0,
+      cleaned: 0,
+      dedupSkipped: 0,
+      inserted: 0,
+    });
+  }
+  for (const item of rawItems) {
+    const stats = sourceStats.get(item.sourceId);
+    if (stats) stats.fetched += 1;
+  }
+  for (const item of cleaned) {
+    const stats = sourceStats.get(item.sourceId);
+    if (stats) stats.cleaned += 1;
+  }
+
+  if (!cleaned.length) {
+    await send({ type: "done", message: "未抓取到内容", progress: 100 });
+    await prisma.jobRun.update({
+      where: { id: runId },
+      data: {
+        status: "SUCCEEDED",
+        progress: 100,
+        finishedAt: new Date(),
+        meta: {
+          summaryCount: 0,
+          topics: topics.length,
+          sources: sources.length,
+        },
+      },
+    });
+    return;
+  }
+
+  const expandedKeywords = keywords.map((kw) => {
+    const parts = [kw.name, ...kw.includes];
+    return Array.from(new Set(parts)).join(", ");
+  });
+  const keywordsStr = expandedKeywords.join("; ") || "无关键词";
+
+  for (let i = 0; i < cleaned.length; i++) {
+    const item = cleaned[i];
+    const existingContent = await findExistingContentBySourceRecord(item);
+    if (existingContent) {
+      const stats = sourceStats.get(item.sourceId);
+      if (stats) stats.dedupSkipped += 1;
+      const progress = Math.min(100, Math.floor(((i + 1) / cleaned.length) * 100));
+      await prisma.jobRun.update({
+        where: { id: runId },
+        data: { progress },
+      });
+      await send({
+        type: "dedup-skip",
+        message: "重复内容已跳过",
+        progress,
+        contentId: existingContent.id,
+        sourceId: item.sourceId,
+        recordId: item.recordId,
+        fingerprint: item.fingerprint,
+      });
+      continue;
+    }
+
+    const shouldRunContentAnalyze = !SKIP_AI_SUMMARY || ENABLE_SUBJECT_AI_SCORE;
+    let contentAnalyzeResult: ContentAnalyzeResult | null = null;
+    if (shouldRunContentAnalyze) {
+      await send({ type: "summary", message: `第 ${i + 1} 条内容AI分析` });
+      contentAnalyzeResult = await analyzeContentWithRetry(
+        item,
+        keywords,
+        keywordsStr,
+        pseudoQueryId,
+        runId
+      );
+    }
+
+    const summary = SKIP_AI_SUMMARY
+      ? { summary: buildFallbackSummary(item), relevance: true }
+      : contentAnalyzeResult
+        ? { summary: contentAnalyzeResult.summary, relevance: contentAnalyzeResult.relevance }
+        : { summary: buildFallbackSummary(item), relevance: true };
+
+    const contentTitle =
+      item.title ??
+      (summary.summary.slice(0, 40).replace(/\s+/g, " ").trim() ||
+        `来源 ${item.platform}`);
+    const contentTime = item.recordTime ?? item.time ?? new Date();
+    const normalizedRecordContent = buildNormalizedRecordContent({
+      platform: item.platform,
+      intent: item.intent,
+      sourceId: item.sourceId,
+      fallbackTitle: contentTitle,
+      fallbackSummary: summary.summary,
+      fallbackMarkdown: item.markdown,
+      fallbackUrl: item.url,
+      fallbackTimeIso: contentTime.toISOString(),
+      recordId: item.recordId,
+      recordType: item.recordType,
+      recordIndex: item.recordIndex,
+      rawRecordContent: item.recordContent,
+    });
+    const sanitizedTitle = stripNullBytes(contentTitle);
+    const sanitizedSummary = stripNullBytes(summary.summary);
+    const sanitizedMarkdown = stripNullBytes(item.markdown);
+    const sanitizedPlatform = stripNullBytes(item.platform);
+    const sanitizedUrl = item.url ? stripNullBytes(item.url) : undefined;
+    const sanitizedRecordContent = sanitizeJsonForDb(
+      normalizedRecordContent
+    ) as Prisma.InputJsonValue;
+    const contentMeta: Record<string, unknown> = {
+      jobId,
+      runId,
+      sourceRequestId: item.sourceRequestId
+        ? stripNullBytes(item.sourceRequestId)
+        : null,
+      sourceFingerprint: item.fingerprint
+        ? stripNullBytes(item.fingerprint)
+        : null,
+      driver: item.driver ? stripNullBytes(item.driver) : null,
+      matchedKeywords: (item.matchedKeywords ?? []).map((term) =>
+        stripNullBytes(term)
+      ),
+      keywordMatchScore: item.keywordMatchScore ?? null,
+      recordId: stripNullBytesNullable(normalizedRecordContent.relation.recordId),
+      recordType: stripNullBytesNullable(normalizedRecordContent.relation.recordType),
+      recordTime: stripNullBytesNullable(normalizedRecordContent.detailView.publishedAt),
+      recordContent: sanitizedRecordContent,
+      schemaVersion: stripNullBytesNullable(normalizedRecordContent.schemaVersion),
+      recordIndex: normalizedRecordContent.relation.recordIndex,
+      keywords: expandedKeywords.map((keywordValue) => stripNullBytes(keywordValue)),
+      summaryRelevance: summary.relevance,
+      sourceId: stripNullBytes(item.sourceId),
+      sourceType: item.sourceType,
+      intent: item.intent ? stripNullBytes(item.intent) : null,
+      topicIds: topics.map((topic) => topic.id),
+    };
+
+    const content = await prisma.content.create({
+      data: {
+        title: sanitizedTitle,
+        summary: sanitizedSummary,
+        markdown: sanitizedMarkdown,
+        platform: sanitizedPlatform,
+        type: mapContentType(item.sourceType, item.sourceIsDarknet),
+        time: contentTime,
+        url: sanitizedUrl,
+        meta: contentMeta as Prisma.InputJsonValue,
+      },
+    });
+
+    if (topics.length > 0) {
+      await upsertContentTopicScores({
+        contentId: content.id,
+        contentText: `${content.title}\n${content.summary}\n${content.markdown}`,
+        topics,
+      });
+    }
+
+    await publishContentEvent({
+      type: "content:created",
+      contentId: content.id,
+      jobId,
+      runId,
+      platform: content.platform,
+      time: content.time.toISOString(),
+    });
+
+    const progress = Math.min(100, Math.floor(((i + 1) / cleaned.length) * 100));
+    const stats = sourceStats.get(item.sourceId);
+    if (stats) stats.inserted += 1;
+    await prisma.jobRun.update({
+      where: { id: runId },
+      data: { progress },
+    });
+    await send({ type: "progress", message: "入库完成", progress });
+  }
+
+  const sourceSummaries = Array.from(sourceStats.entries()).map(([sourceId, stats]) => ({
+    sourceId,
+    sourceName: stats.sourceName,
+    sourceType: stats.sourceType,
+    fetched: stats.fetched,
+    cleaned: stats.cleaned,
+    dedupSkipped: stats.dedupSkipped,
+    inserted: stats.inserted,
+  }));
+  await prisma.jobRun.update({
+    where: { id: runId },
+    data: {
+      status: "SUCCEEDED",
+      finishedAt: new Date(),
+      progress: 100,
+      meta: {
+        summaryCount: cleaned.length,
+        topics: topics.length,
+        sources: sources.length,
+        sourceSummaries,
+      },
+    },
+  });
+
+  await send({
+    type: "done",
+    message: "任务完成",
+    progress: 100,
+    summaryCount: cleaned.length,
+  });
+}
+
 function mapContentType(sourceType: SourceCategory, isDarknet?: boolean): ContentType {
   if (sourceType === "RETRIEVAL" && isDarknet) {
     return ContentType.Darknet;
   }
   return ContentType.Web;
+}
+
+function buildTopicKeywords(topics: JobCollectorTopic[]): QueryKeyword[] {
+  return topics.map((topic) => {
+    const coreTerms = topic.terms
+      .filter((term) => term.type === "CORE")
+      .map((term) => term.value);
+    const expansionTerms = topic.terms
+      .filter((term) => term.type === "EXPANSION")
+      .map((term) => term.value);
+    const exclusionTerms = topic.terms
+      .filter((term) => term.type === "EXCLUSION")
+      .map((term) => term.value);
+    return {
+      id: topic.id,
+      name: topic.name,
+      description: topic.description ?? null,
+      includes: Array.from(new Set([...coreTerms, ...expansionTerms])),
+      excludes: Array.from(new Set(exclusionTerms)),
+      synonyms: [],
+    };
+  });
+}
+
+function countTermMatches(contentText: string, terms: TopicTermLite[]): number {
+  let score = 0;
+  for (const term of terms) {
+    const normalized = term.value.trim().toLowerCase();
+    if (!normalized) continue;
+    if (contentText.includes(normalized)) {
+      score += term.weight ?? 1;
+    }
+  }
+  return score;
+}
+
+async function upsertContentTopicScores(params: {
+  contentId: string;
+  contentText: string;
+  topics: JobCollectorTopic[];
+}) {
+  const normalizedText = params.contentText.toLowerCase();
+  for (const topic of params.topics) {
+    const coreTerms = topic.terms.filter((term) => term.type === "CORE");
+    const expansionTerms = topic.terms.filter((term) => term.type === "EXPANSION");
+    const exclusionTerms = topic.terms.filter((term) => term.type === "EXCLUSION");
+
+    const coreScore = countTermMatches(normalizedText, coreTerms);
+    const expansionScore = countTermMatches(normalizedText, expansionTerms);
+    const exclusionPenalty = countTermMatches(normalizedText, exclusionTerms);
+    const keywordScore = coreScore * 2 + expansionScore;
+    const finalScore = Math.max(0, keywordScore - exclusionPenalty);
+
+    if (keywordScore <= 0 && exclusionPenalty <= 0) {
+      continue;
+    }
+
+    await prisma.contentTopicScore.upsert({
+      where: {
+        contentId_topicId: {
+          contentId: params.contentId,
+          topicId: topic.id,
+        },
+      },
+      create: {
+        contentId: params.contentId,
+        topicId: topic.id,
+        keywordScore,
+        exclusionPenalty,
+        finalScore,
+        reason: `core:${coreScore.toFixed(2)} expansion:${expansionScore.toFixed(2)} exclusion:${exclusionPenalty.toFixed(2)}`,
+        explain: {
+          coreScore,
+          expansionScore,
+          exclusionPenalty,
+        } as Prisma.InputJsonValue,
+      },
+      update: {
+        keywordScore,
+        exclusionPenalty,
+        finalScore,
+        reason: `core:${coreScore.toFixed(2)} expansion:${expansionScore.toFixed(2)} exclusion:${exclusionPenalty.toFixed(2)}`,
+        explain: {
+          coreScore,
+          expansionScore,
+          exclusionPenalty,
+        } as Prisma.InputJsonValue,
+      },
+    });
+  }
 }
 
 function buildKeywordFilterTerms(
