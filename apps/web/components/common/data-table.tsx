@@ -105,11 +105,13 @@ export function DataTable<T extends { id: string }>({
                 ))}
                 {hasActions && (
                   <TableCell className="whitespace-nowrap">
-                    <div className="flex flex-nowrap items-center gap-2 whitespace-nowrap">
+                    <div className="flex flex-nowrap items-center gap-1 whitespace-nowrap">
                       {actions.map((action, actionIndex) => {
                         if (action.render) {
                           return (
-                            <div key={actionIndex}>{action.render(item)}</div>
+                            <div key={actionIndex} className="shrink-0">
+                              {action.render(item)}
+                            </div>
                           );
                         }
 

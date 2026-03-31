@@ -64,11 +64,10 @@ const TopicsTable = ({ topics }: Props) => {
         <Button
           size="sm"
           variant="outline"
-          className="h-8 w-8 p-0 sm:h-9 sm:w-auto sm:px-3"
+          aria-label="Edit topic"
           onClick={() => handleEdit(topic)}
         >
           <PencilIcon className="size-3" />
-          <span className="hidden sm:inline">Edit</span>
         </Button>
       ),
     },
@@ -80,11 +79,10 @@ const TopicsTable = ({ topics }: Props) => {
           triggerButton={
             <Button
               size="sm"
-              variant="destructive"
-              className="h-8 w-8 p-0 sm:h-9 sm:w-auto sm:px-3"
+              variant="outline"
+              aria-label="Delete topic"
             >
               <TrashIcon className="size-3" />
-              <span className="hidden sm:inline">Delete</span>
             </Button>
           }
         />
