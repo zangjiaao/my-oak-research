@@ -16,6 +16,7 @@ import {
   ThumbsUp,
   Trash2,
   User,
+  Sparkles,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { cn } from "@/lib/utils";
@@ -48,6 +49,9 @@ const NewsDetailCard = ({
   onAddKeyword,
   onFeedbackVote,
   onFeedbackNote,
+  onGenerateSummary,
+  summaryGenerating,
+  summaryUpdatedAt,
 }: {
   title?: string;
   summary?: string;
@@ -90,6 +94,9 @@ const NewsDetailCard = ({
   }) => void;
   onFeedbackVote?: (vote: "UP" | "DOWN") => void;
   onFeedbackNote?: () => void;
+  onGenerateSummary?: () => void;
+  summaryGenerating?: boolean;
+  summaryUpdatedAt?: string | null;
 }) => {
   const keywordTagMeta: Record<
     "PERSON" | "ORG" | "TECH" | "LOCATION" | "PRODUCT" | "EVENT" | "CONCEPT",
@@ -206,9 +213,42 @@ const NewsDetailCard = ({
             </Badge>
           </div>
         ) : null}
-        <p className="max-w-3xl text-sm leading-6 text-muted-foreground/90 line-clamp-2">
-          {summary || title || "News Summary"}
-        </p>
+        {onGenerateSummary ? (
+          <div className="space-y-2 pt-1">
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={Boolean(summaryGenerating)}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onGenerateSummary();
+                }}
+              >
+                <Sparkles className="size-3.5" />
+                {summary ? "重新总结" : "AI总结"}
+              </Button>
+              {summaryUpdatedAt ? (
+                <span className="text-xs text-muted-foreground">
+                  更新时间: {new Date(summaryUpdatedAt).toLocaleString()}
+                </span>
+              ) : null}
+            </div>
+            {summary ? (
+              <p className="max-w-3xl text-sm leading-6 text-muted-foreground/90">
+                {summary}
+              </p>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                暂无摘要，点击 AI总结 生成长文摘要
+              </p>
+            )}
+          </div>
+        ) : (
+          <p className="max-w-3xl text-sm leading-6 text-muted-foreground/90 line-clamp-2">
+            {summary || title || "News Summary"}
+          </p>
+        )}
         {expandableKeywords?.length ? (
           <div className="space-y-2 pt-1">
             <p className="text-xs font-medium text-muted-foreground">🔍 可拓展关键词</p>

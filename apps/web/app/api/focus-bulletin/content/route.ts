@@ -54,6 +54,16 @@ const mapContent = (
   }
 ) => {
   const views = buildRecordContentViews(item);
+  const meta =
+    item.meta && typeof item.meta === "object" && !Array.isArray(item.meta)
+      ? (item.meta as Record<string, unknown>)
+      : {};
+  const aiSummary =
+    typeof meta.aiSummary === "string" && meta.aiSummary.trim()
+      ? meta.aiSummary.trim()
+      : null;
+  const aiSummaryUpdatedAt =
+    typeof meta.aiSummaryUpdatedAt === "string" ? meta.aiSummaryUpdatedAt : null;
   return {
     id: item.id,
     title: views.summaryView.title,
@@ -97,6 +107,8 @@ const mapContent = (
           note: item.topicFeedbacks[0].note,
         }
       : null,
+    aiSummary,
+    aiSummaryUpdatedAt,
   };
 };
 

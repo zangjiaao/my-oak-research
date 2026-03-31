@@ -96,6 +96,8 @@ export type ContentItem = {
     vote: "UP" | "DOWN" | "NONE";
     note?: string | null;
   } | null;
+  aiSummary?: string | null;
+  aiSummaryUpdatedAt?: string | null;
 };
 
 type FollowContentFilters = {
