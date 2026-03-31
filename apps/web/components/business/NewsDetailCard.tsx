@@ -155,7 +155,7 @@ const NewsDetailCard = ({
                   </TooltipContent>
                 </Tooltip>
                 <Badge variant="secondary">
-                  相关度:{" "}
+                  匹配度:{" "}
                   {typeof subjectMatch.score === "number"
                     ? subjectMatch.score.toFixed(2)
                     : "N/A"}
@@ -166,7 +166,7 @@ const NewsDetailCard = ({
             {typeof relevanceScore === "number" ? (
               <div className="flex items-center gap-2">
                 <Badge variant="secondary">
-                  🎓 相关度: {Math.max(0, Math.min(100, Math.round(relevanceScore * 100)))}%
+                  匹配度: {Math.max(0, Math.min(100, Math.round(relevanceScore * 100)))}%
                 </Badge>
               </div>
             ) : null}

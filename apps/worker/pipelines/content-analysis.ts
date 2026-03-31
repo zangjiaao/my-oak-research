@@ -41,11 +41,37 @@ const RETRIEVAL_FUSION_ALPHA = Math.min(
   1,
   Math.max(0, Number(process.env.RETRIEVAL_FUSION_ALPHA ?? 0.65))
 );
+const RETRIEVAL_CORE_WEIGHT = Math.max(
+  0,
+  Number(process.env.RETRIEVAL_CORE_WEIGHT ?? 0.1)
+);
+const RETRIEVAL_EXPANSION_WEIGHT = Math.max(
+  0,
+  Number(process.env.RETRIEVAL_EXPANSION_WEIGHT ?? 0.05)
+);
+const RETRIEVAL_EXCLUSION_WEIGHT = Math.max(
+  0,
+  Number(process.env.RETRIEVAL_EXCLUSION_WEIGHT ?? 0.03)
+);
 const RETRIEVAL_HIGH_THRESHOLD = Number(
   process.env.RETRIEVAL_HIGH_THRESHOLD ?? 0.7
 );
 const RETRIEVAL_LOW_THRESHOLD = Number(
   process.env.RETRIEVAL_LOW_THRESHOLD ?? 0.5
+);
+const RETRIEVAL_LLM_RERANK_ENABLED =
+  process.env.RETRIEVAL_LLM_RERANK_ENABLED === "true";
+const RETRIEVAL_LLM_RERANK_TOP_N = Math.max(
+  1,
+  Math.min(20, Number(process.env.RETRIEVAL_LLM_RERANK_TOP_N ?? 8))
+);
+const RETRIEVAL_LLM_RERANK_WEIGHT = Math.max(
+  0,
+  Math.min(0.5, Number(process.env.RETRIEVAL_LLM_RERANK_WEIGHT ?? 0.2))
+);
+const RETRIEVAL_LLM_RERANK_MIN_SCORE = Math.max(
+  0,
+  Math.min(1, Number(process.env.RETRIEVAL_LLM_RERANK_MIN_SCORE ?? 0.55))
 );
 const TOPIC_RECALL_LLM_ENABLED =
   process.env.TOPIC_RECALL_LLM_ENABLED !== "false";
@@ -71,6 +97,16 @@ const ContentAnalyzeSchema = z.object({
 });
 const TopicRecallQueriesSchema = z.object({
   queries: z.array(z.string().min(1).max(180)).min(1).max(16),
+});
+const TopicRerankSchema = z.object({
+  scores: z
+    .array(
+      z.object({
+        topicId: z.string().min(1),
+        score: z.number().min(0).max(1),
+      })
+    )
+    .default([]),
 });
 
 type ContentAnalyzeResult = {
@@ -1254,6 +1290,18 @@ async function upsertContentTopicScores(params: {
   topicMatches: TopicHybridMatch[];
 }) {
   const normalizedText = params.contentText.toLowerCase();
+  const scoreDrafts: Array<{
+    topicId: string;
+    vectorScore: number;
+    keywordScore: number;
+    exclusionPenalty: number;
+    coreScore: number;
+    expansionScore: number;
+    bm25Score: number;
+    fusionScore: number;
+    finalScore: number;
+  }> = [];
+
   for (const match of params.topicMatches) {
     const topic = params.topicsById.get(match.topicId);
     if (!topic) {
@@ -1268,57 +1316,205 @@ async function upsertContentTopicScores(params: {
     const exclusionPenalty = countTermMatches(normalizedText, exclusionTerms);
     const keywordScore = roundScore(match.bm25Score * 10 + coreScore + expansionScore);
     const vectorScore = roundScore(Math.max(0, Math.min(1, match.vectorScore)));
+    const coreBoost = Math.max(
+      0,
+      Math.min(1, normalizeTermScore(coreScore) * RETRIEVAL_CORE_WEIGHT)
+    );
+    const expansionBoost = Math.max(
+      0,
+      Math.min(1, normalizeTermScore(expansionScore) * RETRIEVAL_EXPANSION_WEIGHT)
+    );
+    const exclusionCost = exclusionPenalty * RETRIEVAL_EXCLUSION_WEIGHT;
     const finalScore = roundScore(
-      Math.max(0, match.fusionScore - exclusionPenalty * 0.03)
+      Math.max(0, Math.min(1, match.fusionScore + coreBoost + expansionBoost - exclusionCost))
     );
 
     if (finalScore < RETRIEVAL_LOW_THRESHOLD && exclusionPenalty > 0) {
       continue;
     }
 
+    scoreDrafts.push({
+      topicId: topic.id,
+      vectorScore,
+      keywordScore,
+      exclusionPenalty,
+      coreScore,
+      expansionScore,
+      bm25Score: match.bm25Score,
+      fusionScore: match.fusionScore,
+      finalScore,
+    });
+  }
+
+  const llmRerankScores = await rerankTopicScoresWithLlm({
+    contentId: params.contentId,
+    contentText: params.contentText,
+    topicsById: params.topicsById,
+    scoreDrafts,
+  });
+
+  for (const draft of scoreDrafts) {
+    const llmScore = llmRerankScores.get(draft.topicId);
+    const finalScore =
+      typeof llmScore === "number"
+        ? roundScore(
+            Math.max(
+              0,
+              Math.min(
+                1,
+                draft.finalScore * (1 - RETRIEVAL_LLM_RERANK_WEIGHT) +
+                  llmScore * RETRIEVAL_LLM_RERANK_WEIGHT
+              )
+            )
+          )
+        : draft.finalScore;
+    const reasonCore = `vector:${draft.vectorScore.toFixed(3)} core:${draft.coreScore.toFixed(2)} expansion:${draft.expansionScore.toFixed(2)} exclusion:${draft.exclusionPenalty.toFixed(2)}`;
+    const reason = typeof llmScore === "number" ? `${reasonCore} llm:${llmScore.toFixed(3)}` : reasonCore;
+
     await prisma.contentTopicScore.upsert({
       where: {
         contentId_topicId: {
           contentId: params.contentId,
-          topicId: topic.id,
+          topicId: draft.topicId,
         },
       },
       create: {
         contentId: params.contentId,
-        topicId: topic.id,
-        vectorScore,
-        keywordScore,
-        exclusionPenalty,
+        topicId: draft.topicId,
+        vectorScore: draft.vectorScore,
+        keywordScore: draft.keywordScore,
+        exclusionPenalty: draft.exclusionPenalty,
         finalScore,
-        reason: `vector:${vectorScore.toFixed(3)} core:${coreScore.toFixed(2)} expansion:${expansionScore.toFixed(2)} exclusion:${exclusionPenalty.toFixed(2)}`,
+        reason,
         explain: {
-          bm25Score: match.bm25Score,
-          fusionScore: match.fusionScore,
-          vectorScore,
-          coreScore,
-          expansionScore,
-          exclusionPenalty,
-          keywordScore,
+          bm25Score: draft.bm25Score,
+          fusionScore: draft.fusionScore,
+          vectorScore: draft.vectorScore,
+          coreScore: draft.coreScore,
+          expansionScore: draft.expansionScore,
+          exclusionPenalty: draft.exclusionPenalty,
+          keywordScore: draft.keywordScore,
+          baseFinalScore: draft.finalScore,
+          llmRerankScore: llmScore ?? null,
+          llmRerankWeight:
+            typeof llmScore === "number" ? RETRIEVAL_LLM_RERANK_WEIGHT : 0,
         } as Prisma.InputJsonValue,
       },
       update: {
-        vectorScore,
-        keywordScore,
-        exclusionPenalty,
+        vectorScore: draft.vectorScore,
+        keywordScore: draft.keywordScore,
+        exclusionPenalty: draft.exclusionPenalty,
         finalScore,
-        reason: `vector:${vectorScore.toFixed(3)} core:${coreScore.toFixed(2)} expansion:${expansionScore.toFixed(2)} exclusion:${exclusionPenalty.toFixed(2)}`,
+        reason,
         explain: {
-          bm25Score: match.bm25Score,
-          fusionScore: match.fusionScore,
-          vectorScore,
-          coreScore,
-          expansionScore,
-          exclusionPenalty,
-          keywordScore,
+          bm25Score: draft.bm25Score,
+          fusionScore: draft.fusionScore,
+          vectorScore: draft.vectorScore,
+          coreScore: draft.coreScore,
+          expansionScore: draft.expansionScore,
+          exclusionPenalty: draft.exclusionPenalty,
+          keywordScore: draft.keywordScore,
+          baseFinalScore: draft.finalScore,
+          llmRerankScore: llmScore ?? null,
+          llmRerankWeight:
+            typeof llmScore === "number" ? RETRIEVAL_LLM_RERANK_WEIGHT : 0,
         } as Prisma.InputJsonValue,
       },
     });
   }
+}
+
+function normalizeTermScore(score: number): number {
+  if (!Number.isFinite(score) || score <= 0) {
+    return 0;
+  }
+  return roundScore(Math.min(1, score / 3));
+}
+
+async function rerankTopicScoresWithLlm(params: {
+  contentId: string;
+  contentText: string;
+  topicsById: Map<string, JobCollectorTopic>;
+  scoreDrafts: Array<{
+    topicId: string;
+    finalScore: number;
+  }>;
+}) {
+  const result = new Map<string, number>();
+  if (!RETRIEVAL_LLM_RERANK_ENABLED || RETRIEVAL_LLM_RERANK_WEIGHT <= 0) {
+    return result;
+  }
+  const candidates = [...params.scoreDrafts]
+    .filter((item) => item.finalScore >= RETRIEVAL_LLM_RERANK_MIN_SCORE)
+    .sort((left, right) => right.finalScore - left.finalScore)
+    .slice(0, RETRIEVAL_LLM_RERANK_TOP_N);
+  if (!candidates.length) {
+    return result;
+  }
+
+  const topics = candidates
+    .map((item) => params.topicsById.get(item.topicId))
+    .filter(Boolean) as JobCollectorTopic[];
+  const topicText = topics
+    .map((topic) => {
+      const coreTerms = topic.terms
+        .filter((term) => term.type === "CORE")
+        .map((term) => term.value.trim())
+        .filter(Boolean)
+        .slice(0, 8)
+        .join(", ");
+      const expansionTerms = topic.terms
+        .filter((term) => term.type === "EXPANSION")
+        .map((term) => term.value.trim())
+        .filter(Boolean)
+        .slice(0, 10)
+        .join(", ");
+      return `topicId=${topic.id}\nname=${topic.name}\ncore=${coreTerms}\nexpansion=${expansionTerms}`;
+    })
+    .join("\n\n");
+
+  try {
+    const payload = await llmGateway.json("topic-rerank", {
+      model: process.env.LLM_DEFAULT_MODEL ?? "gpt-5-mini",
+      temperature: 0,
+      metadata: {
+        contentId: params.contentId,
+        topN: candidates.length,
+      },
+      prompt: [
+        "你是内容与主题匹配度评估助手。",
+        "请根据内容与主题定义，为每个 topic 输出 0~1 的匹配度评分。",
+        "评分标准：0=无关，0.5=部分相关，1=高度相关。",
+        "仅输出 JSON，格式：{\"scores\":[{\"topicId\":\"...\",\"score\":0.0}]}。",
+        "",
+        "候选主题：",
+        topicText,
+        "",
+        "内容：",
+        params.contentText.slice(0, 4000),
+      ].join("\n"),
+    });
+    const checked = TopicRerankSchema.safeParse(payload);
+    if (!checked.success) {
+      logger.warn("topic rerank invalid payload", {
+        contentId: params.contentId,
+        details: checked.error.flatten(),
+      });
+      return result;
+    }
+    for (const item of checked.data.scores) {
+      if (!candidates.some((candidate) => candidate.topicId === item.topicId)) {
+        continue;
+      }
+      result.set(item.topicId, roundScore(item.score));
+    }
+  } catch (error) {
+    logger.warn("topic rerank failed", {
+      contentId: params.contentId,
+      error: logger.normalizeError(error),
+    });
+  }
+  return result;
 }
 
 function buildKeywordFilterTerms(
