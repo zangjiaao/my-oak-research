@@ -67,7 +67,7 @@ const RETRIEVAL_LLM_RERANK_TOP_N = Math.max(
 );
 const RETRIEVAL_LLM_RERANK_WEIGHT = Math.max(
   0,
-  Math.min(0.5, Number(process.env.RETRIEVAL_LLM_RERANK_WEIGHT ?? 0.2))
+  Math.min(1, Number(process.env.RETRIEVAL_LLM_RERANK_WEIGHT ?? 0.2))
 );
 const RETRIEVAL_LLM_RERANK_MIN_SCORE = Math.max(
   0,

@@ -183,7 +183,7 @@ export async function POST(
   const llmRerankScore = roundScore(checked.data.score);
   const rerankWeight = Math.max(
     0,
-    Math.min(0.5, Number(process.env.RETRIEVAL_LLM_RERANK_WEIGHT ?? 0.2))
+    Math.min(1, Number(process.env.RETRIEVAL_LLM_RERANK_WEIGHT ?? 0.2))
   );
   const explain = asObject(scoreRecord.explain);
   const baseFinalScore =
@@ -237,4 +237,3 @@ export async function POST(
     },
   });
 }
-
