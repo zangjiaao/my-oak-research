@@ -11,7 +11,24 @@ const RerankSchema = z.object({
 
 const RerankResultSchema = z.object({
   score: z.number().min(0).max(1),
+  keywords: z
+    .array(
+      z.object({
+        category: z.enum([
+          "PERSON",
+          "ORG",
+          "LOCATION",
+          "TECH",
+          "PRODUCT",
+          "EVENT",
+          "CONCEPT",
+        ]),
+        label: z.string().min(1).max(40),
+      })
+    )
+    .default([]),
 });
+type RerankKeyword = z.infer<typeof RerankResultSchema>["keywords"][number];
 
 function asObject(value: unknown): Record<string, unknown> {
   if (value && typeof value === "object" && !Array.isArray(value)) {
@@ -27,6 +44,15 @@ function asStringList(values: string[]): string {
 function roundScore(value: number): number {
   if (!Number.isFinite(value)) return 0;
   return Math.round(value * 1000) / 1000;
+}
+
+function normalizeKeywordLabel(label: string): string | null {
+  const normalized = label.trim();
+  if (!normalized) return null;
+  if (normalized.length < 2 || normalized.length > 40) return null;
+  if (!/[\p{L}\p{Script=Han}]/u.test(normalized)) return null;
+  if (/[:：]/.test(normalized)) return null;
+  return normalized;
 }
 
 function collectTerms(
@@ -141,9 +167,14 @@ export async function POST(
       },
       prompt: [
         "你是内容与主题匹配度评估助手。",
-        "请根据主题定义判断该内容与主题的匹配度，返回 0~1 分数。",
+        "请根据主题定义判断该内容与主题的匹配度，返回 0~1 分数，并提取可用于扩展主题词的关键词。",
         "0=完全无关，0.5=部分相关，1=高度相关。",
-        '只返回 JSON：{"score":0.0}',
+        "关键词要求：",
+        "1) 仅保留与该主题高度相关的人物、组织、地点、技术、产品、事件、概念；",
+        "2) 不要抽取情绪词、口号词、空泛词（例如“爆火”“神器”“自动干活”等）；",
+        "3) 每个词2~40字，不带解释，不重复；",
+        "4) 最多返回12个关键词。",
+        '只返回 JSON：{"score":0.0,"keywords":[{"category":"TECH","label":"..."}]}',
         "",
         `Topic: ${topic.name}`,
         topic.description ? `Topic Description: ${topic.description}` : null,
@@ -181,6 +212,20 @@ export async function POST(
   }
 
   const llmRerankScore = roundScore(checked.data.score);
+  const llmRerankKeywords = Array.from(
+    new Map(
+      checked.data.keywords
+        .map((item) => ({
+          category: item.category,
+          label: normalizeKeywordLabel(item.label),
+        }))
+        .filter(
+          (item): item is { category: RerankKeyword["category"]; label: string } =>
+            Boolean(item.label)
+        )
+        .map((item) => [`${item.category}:${item.label}`, item])
+    ).values()
+  ).slice(0, 12);
   const rerankWeight = Math.max(
     0,
     Math.min(1, Number(process.env.RETRIEVAL_LLM_RERANK_WEIGHT ?? 0.2))
@@ -205,6 +250,7 @@ export async function POST(
     ...explain,
     baseFinalScore,
     llmRerankScore,
+    llmRerankKeywords,
     llmRerankWeight: rerankWeight,
     llmRerankForcedAt: now,
   };
@@ -231,6 +277,7 @@ export async function POST(
       finalScore,
       llmReranked: true,
       llmRerankScore,
+      llmRerankKeywords,
       baseFinalScore,
       llmRerankWeight: rerankWeight,
       llmRerankForcedAt: now,

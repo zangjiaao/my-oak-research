@@ -84,6 +84,7 @@ const NewsDetailCard = ({
   expandableKeywords?: Array<{
     category: "PERSON" | "ORG" | "TECH" | "LOCATION" | "PRODUCT" | "EVENT" | "CONCEPT";
     label: string;
+    source?: "AI" | "RULE";
   }>;
   feedback?: {
     vote: "UP" | "DOWN" | "NONE";
@@ -123,6 +124,9 @@ const NewsDetailCard = ({
     CONCEPT: { icon: FileText, label: "概念" },
   };
   const showFeedbackActions = Boolean(onFeedbackVote || onFeedbackNote);
+  const aiKeywordCount = (expandableKeywords ?? []).filter(
+    (keyword) => keyword.source === "AI"
+  ).length;
   return (
     <Card
       className={cn(
@@ -314,7 +318,17 @@ const NewsDetailCard = ({
         )}
         {expandableKeywords?.length ? (
           <div className="space-y-2 pt-1">
-            <p className="text-xs font-medium text-muted-foreground">🔍 可拓展关键词</p>
+            <div className="flex items-center gap-2">
+              <p className="text-xs font-medium text-muted-foreground">可拓展关键词</p>
+              {aiKeywordCount > 0 ? (
+                <Badge
+                  variant="secondary"
+                  className="h-5 border-violet-200 bg-violet-100 text-[10px] text-violet-800 dark:border-violet-500/40 dark:bg-violet-500/20 dark:text-violet-200"
+                >
+                  AI精选 {aiKeywordCount}
+                </Badge>
+              ) : null}
+            </div>
             <div className="flex flex-wrap gap-2">
               {expandableKeywords.slice(0, 8).map((keyword, index) => {
                 const meta = keywordTagMeta[keyword.category];

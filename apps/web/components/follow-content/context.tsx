@@ -80,6 +80,17 @@ export type ContentItem = {
     baseFinalScore?: number | null;
     llmRerankWeight?: number | null;
     llmRerankForcedAt?: string | null;
+    llmRerankKeywords?: Array<{
+      category:
+        | "PERSON"
+        | "ORG"
+        | "LOCATION"
+        | "TECH"
+        | "PRODUCT"
+        | "EVENT"
+        | "CONCEPT";
+      label: string;
+    }>;
     topicId: string;
     vectorScore: number | null;
     keywordScore: number | null;

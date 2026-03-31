@@ -92,9 +92,37 @@ const mapContent = (
         const baseFinalScoreRaw = explain.baseFinalScore;
         const llmRerankWeightRaw = explain.llmRerankWeight;
         const llmRerankForcedAtRaw = explain.llmRerankForcedAt;
+        const llmRerankKeywordsRaw = Array.isArray(explain.llmRerankKeywords)
+          ? explain.llmRerankKeywords
+          : [];
         const llmReranked =
           typeof llmRerankScoreRaw === "number" &&
           Number.isFinite(llmRerankScoreRaw);
+        const llmRerankKeywords = llmRerankKeywordsRaw
+          .map((item) =>
+            item && typeof item === "object" && !Array.isArray(item)
+              ? (item as Record<string, unknown>)
+              : null
+          )
+          .filter(Boolean)
+          .map((item) => ({
+            category: String(item!.category ?? "").trim(),
+            label: String(item!.label ?? "").trim(),
+          }))
+          .filter(
+            (item) =>
+              [
+                "PERSON",
+                "ORG",
+                "LOCATION",
+                "TECH",
+                "PRODUCT",
+                "EVENT",
+                "CONCEPT",
+              ].includes(item.category) &&
+              item.label.length >= 2 &&
+              item.label.length <= 40
+          );
         return {
           llmReranked,
           llmRerankScore: llmReranked ? llmRerankScoreRaw : null,
@@ -110,6 +138,7 @@ const mapContent = (
               : null,
           llmRerankForcedAt:
             typeof llmRerankForcedAtRaw === "string" ? llmRerankForcedAtRaw : null,
+          llmRerankKeywords,
         };
       })(),
       topicId: score.topicId,

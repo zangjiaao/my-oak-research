@@ -62,6 +62,7 @@ const FollowContent = () => {
     const keywords: Array<{
       category: "PERSON" | "ORG" | "TECH" | "LOCATION" | "PRODUCT" | "EVENT" | "CONCEPT";
       label: string;
+      source?: "AI" | "RULE";
     }> = [];
     const classifyKeywordCategory = (
       label: string
@@ -108,24 +109,29 @@ const FollowContent = () => {
         | "PRODUCT"
         | "EVENT"
         | "CONCEPT",
-      value: string
+      value: string,
+      source: "AI" | "RULE"
     ) => {
       const label = value.trim();
       if (!label) return;
       if (!isEntityLikeTerm(label)) return;
       if (keywords.some((item) => item.category === category && item.label === label)) return;
-      keywords.push({ category, label });
+      keywords.push({ category, label, source });
     };
+    const selectedScore = getSelectedTopicScore(content);
+    for (const aiKeyword of selectedScore?.llmRerankKeywords ?? []) {
+      pushUnique(aiKeyword.category, aiKeyword.label, "AI");
+    }
     for (const person of content.entities?.persons ?? []) {
-      pushUnique("PERSON", person);
+      pushUnique("PERSON", person, "RULE");
     }
     for (const org of content.entities?.orgs ?? []) {
-      pushUnique("ORG", org);
+      pushUnique("ORG", org, "RULE");
     }
     for (const location of content.entities?.locations ?? []) {
-      pushUnique("LOCATION", location);
+      pushUnique("LOCATION", location, "RULE");
     }
-    if (keywords.length < 4) {
+    if (keywords.filter((item) => item.source === "AI").length === 0 && keywords.length < 4) {
       const fallbackText = [content.detailView?.title, content.title, content.summary]
         .filter(Boolean)
         .join(" ");
@@ -138,7 +144,7 @@ const FollowContent = () => {
         )
       ).slice(0, 24);
       for (const term of fallbackTerms) {
-        pushUnique(classifyKeywordCategory(term), term);
+        pushUnique(classifyKeywordCategory(term), term, "RULE");
       }
     }
     return keywords.slice(0, 8);
