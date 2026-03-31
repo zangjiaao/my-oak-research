@@ -109,6 +109,7 @@ export const collectJobWorker = createCollectJobWorker(async (job) => {
     await runJobCollector({
       runId,
       jobId,
+      jobType: jobConfig.type,
       topics,
       sources,
       sourcePolicyBySourceId,

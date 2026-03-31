@@ -11,6 +11,7 @@ import {
   KeywordStrategy,
   ContentSubjectMatchSource,
   QueryContentFilterMode,
+  JobType,
 } from "@/app/generated/prisma";
 import {
   SourceWithRelations,
@@ -45,6 +46,14 @@ const RETRIEVAL_HIGH_THRESHOLD = Number(
 const RETRIEVAL_LOW_THRESHOLD = Number(
   process.env.RETRIEVAL_LOW_THRESHOLD ?? 0.5
 );
+const TOPIC_RECALL_LLM_ENABLED =
+  process.env.TOPIC_RECALL_LLM_ENABLED !== "false";
+const TOPIC_RECALL_QUERY_LIMIT = Number(
+  process.env.TOPIC_RECALL_QUERY_LIMIT ?? 8
+);
+const TOPIC_RECALL_TIMEOUT_MS = Number(
+  process.env.TOPIC_RECALL_TIMEOUT_MS ?? 8000
+);
 
 const ContentAnalyzeSchema = z.object({
   summary: z.string().min(30).max(400),
@@ -58,6 +67,9 @@ const ContentAnalyzeSchema = z.object({
       })
     )
     .default([]),
+});
+const TopicRecallQueriesSchema = z.object({
+  queries: z.array(z.string().min(1).max(180)).min(1).max(16),
 });
 
 type ContentAnalyzeResult = {
@@ -138,6 +150,13 @@ type SourceRuntimePolicy = {
   contentFilterEnabled: boolean;
   contentFilterMode: QueryContentFilterMode;
   recallBindingOverride?: unknown;
+};
+
+type RecallQueryOrigin = "llm_recall" | "static_fallback";
+type SourceRecallQueryBundle = {
+  queries: string[];
+  origin: RecallQueryOrigin;
+  generatedCount: number;
 };
 type GatherDriverPayload = {
   name: GatherSocialDriver;
@@ -651,11 +670,12 @@ export async function runFocusCollector(runId: string, queryId: string) {
 export async function runJobCollector(params: {
   runId: string;
   jobId: string;
+  jobType: JobType;
   topics: JobCollectorTopic[];
   sources: SourceWithRelations[];
   sourcePolicyBySourceId: Map<string, SourceRuntimePolicy>;
 }) {
-  const { runId, jobId, topics, sources, sourcePolicyBySourceId } = params;
+  const { runId, jobId, jobType, topics, sources, sourcePolicyBySourceId } = params;
   const send = async (event: unknown) => publishTaskEvent(runId, event);
   const pseudoQueryId = `job:${jobId}`;
   const keywords = buildTopicKeywords(topics);
@@ -671,13 +691,32 @@ export async function runJobCollector(params: {
   });
   await send({ type: "start", message: "任务开始" });
 
+  const sourceRecallQueryBundles =
+    jobType === JobType.TOPIC_RETRIEVAL
+      ? await buildTopicRecallQueryBundles({
+          runId,
+          jobId,
+          topics,
+          sources,
+          fallbackKeywords: keywords,
+        })
+      : new Map<string, SourceRecallQueryBundle>();
+  const recallSummary = Array.from(sourceRecallQueryBundles.entries()).map(
+    ([sourceId, bundle]) => ({
+      sourceId,
+      origin: bundle.origin,
+      generatedCount: bundle.generatedCount,
+    })
+  );
+
   await send({ type: "fetch", message: "拉取数据中" });
   const rawItems = await fetchBySources(
     sources,
     runId,
     pseudoQueryId,
     keywords,
-    sourcePolicyBySourceId
+    sourcePolicyBySourceId,
+    sourceRecallQueryBundles
   );
   const cleaned = await cleanAndDedup(rawItems, runId);
 
@@ -723,6 +762,7 @@ export async function runJobCollector(params: {
           summaryCount: 0,
           topics: topics.length,
           sources: sources.length,
+          recallSummary,
         },
       },
     });
@@ -973,6 +1013,7 @@ export async function runJobCollector(params: {
         topics: topics.length,
         sources: sources.length,
         sourceSummaries,
+        recallSummary,
       },
     },
   });
@@ -1329,6 +1370,240 @@ function buildRecallQueries(keywords: QueryKeyword[]): string[] {
   return Array.from(new Set(queries.map((query) => query.trim()).filter(Boolean)));
 }
 
+function resolveTopicRecallLimit(): number {
+  if (!Number.isFinite(TOPIC_RECALL_QUERY_LIMIT) || TOPIC_RECALL_QUERY_LIMIT < 1) {
+    return 8;
+  }
+  return Math.max(1, Math.min(Math.floor(TOPIC_RECALL_QUERY_LIMIT), 16));
+}
+
+function resolveTopicRecallTimeoutMs(): number {
+  if (!Number.isFinite(TOPIC_RECALL_TIMEOUT_MS) || TOPIC_RECALL_TIMEOUT_MS < 500) {
+    return 8000;
+  }
+  return Math.max(500, Math.min(Math.floor(TOPIC_RECALL_TIMEOUT_MS), 30_000));
+}
+
+function normalizeRecallQueries(queries: string[], limit: number): string[] {
+  return Array.from(new Set(queries.map((query) => query.trim()).filter(Boolean))).slice(
+    0,
+    Math.max(1, Math.min(limit, 64))
+  );
+}
+
+function isTopicRecallSource(source: SourceWithRelations): boolean {
+  if (source.category === "RETRIEVAL" && !source.isDarknet) {
+    return true;
+  }
+  if (source.category === "INTERACTIVE") {
+    const socialSource = source as SocialMediaSource;
+    const intent = resolveGatherIntent(asObject(socialSource.social?.config)).type
+      .trim()
+      .toLowerCase();
+    return intent === "search";
+  }
+  return false;
+}
+
+function buildSourceRecallContext(source: SourceWithRelations): string {
+  if (source.category === "RETRIEVAL" && !source.isDarknet) {
+    const searchSource = source as SearchEngineSource;
+    const platform = (searchSource.search?.platform ?? "custom").toString();
+    const engine = (searchSource.search?.engine ?? "custom").toString();
+    const objective = (
+      (searchSource.search as unknown as { objective?: string })?.objective ?? ""
+    )
+      .trim()
+      .slice(0, 300);
+    return `sourceType:search\nplatform:${platform}\nengine:${engine}\nobjective:${objective || "none"}`;
+  }
+  if (source.category === "INTERACTIVE") {
+    const socialSource = source as SocialMediaSource;
+    const intent = resolveGatherIntent(asObject(socialSource.social?.config)).type
+      .trim()
+      .toLowerCase();
+    const platform = (socialSource.social?.platform ?? "unknown").toString();
+    return `sourceType:social\nplatform:${platform}\nintent:${intent || "unknown"}`;
+  }
+  return `sourceType:${source.category.toLowerCase()}`;
+}
+
+function buildTopicRecallPrompt(params: {
+  topics: JobCollectorTopic[];
+  source: SourceWithRelations;
+  limit: number;
+}): string {
+  const topicPayload = params.topics.map((topic) => {
+    const coreTerms = topic.terms
+      .filter((term) => term.type === "CORE")
+      .map((term) => term.value.trim())
+      .filter(Boolean);
+    const expansionTerms = topic.terms
+      .filter((term) => term.type === "EXPANSION")
+      .map((term) => term.value.trim())
+      .filter(Boolean);
+    const exclusionTerms = topic.terms
+      .filter((term) => term.type === "EXCLUSION")
+      .map((term) => term.value.trim())
+      .filter(Boolean);
+    return {
+      topicId: topic.id,
+      name: topic.name,
+      description: topic.description ?? "",
+      coreTerms,
+      expansionTerms,
+      exclusionTerms,
+    };
+  });
+  return stripPromptLike(
+    `你是检索 query 生成器。请输出 JSON：{"queries":["..."]}。
+要求：
+1) 仅输出搜索 query 文本数组，数量 3-${params.limit}；
+2) query 需要覆盖主题核心词与扩展词，避免重复；
+3) 保持短句可检索，允许中英混合；
+4) 如存在排除词，请在 query 中尽量体现负向约束（如 -term）；
+5) 不要输出解释、不要输出 markdown。
+
+Source:
+name: ${params.source.name}
+${buildSourceRecallContext(params.source)}
+
+Topics(JSON):
+${JSON.stringify(topicPayload)}`
+  );
+}
+
+async function withTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  message: string
+): Promise<T> {
+  let timer: NodeJS.Timeout | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_, reject) => {
+        timer = setTimeout(() => reject(new Error(message)), timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
+async function buildTopicRecallQueryBundles(params: {
+  runId: string;
+  jobId: string;
+  topics: JobCollectorTopic[];
+  sources: SourceWithRelations[];
+  fallbackKeywords: QueryKeyword[];
+}): Promise<Map<string, SourceRecallQueryBundle>> {
+  const bundles = new Map<string, SourceRecallQueryBundle>();
+  if (params.topics.length === 0) {
+    return bundles;
+  }
+  const recallSources = params.sources.filter((source) => isTopicRecallSource(source));
+  if (recallSources.length === 0) {
+    return bundles;
+  }
+
+  const fallbackQueries = normalizeRecallQueries(
+    buildRecallQueries(params.fallbackKeywords),
+    resolveTopicRecallLimit()
+  );
+  const recallLimit = resolveTopicRecallLimit();
+  const timeoutMs = resolveTopicRecallTimeoutMs();
+
+  for (const source of recallSources) {
+    await publishTaskEvent(params.runId, {
+      type: "recall-generate-start",
+      sourceId: source.id,
+      message: `为 ${source.name} 生成动态召回词`,
+    });
+    if (!TOPIC_RECALL_LLM_ENABLED) {
+      bundles.set(source.id, {
+        queries: fallbackQueries,
+        origin: "static_fallback",
+        generatedCount: fallbackQueries.length,
+      });
+      await publishTaskEvent(params.runId, {
+        type: "recall-generate-fallback",
+        sourceId: source.id,
+        message: "动态召回词已关闭，使用静态词项",
+        generatedCount: fallbackQueries.length,
+      });
+      continue;
+    }
+
+    try {
+      const prompt = buildTopicRecallPrompt({
+        topics: params.topics,
+        source,
+        limit: recallLimit,
+      });
+      const response = await withTimeout(
+        llmGateway.json<z.infer<typeof TopicRecallQueriesSchema>>(
+          "topic-recall-query",
+          {
+            prompt: redact(prompt),
+            schema: TopicRecallQueriesSchema,
+            temperature: 0.2,
+            maxOutputTokens: 512,
+            metadata: {
+              runId: params.runId,
+              jobId: params.jobId,
+              sourceId: source.id,
+              sourceName: source.name,
+            },
+          }
+        ),
+        timeoutMs,
+        `topic recall generation timeout after ${timeoutMs}ms`
+      );
+      const queries = normalizeRecallQueries(response.queries ?? [], recallLimit);
+      const effectiveQueries = queries.length > 0 ? queries : fallbackQueries;
+      const origin: RecallQueryOrigin =
+        queries.length > 0 ? "llm_recall" : "static_fallback";
+      bundles.set(source.id, {
+        queries: effectiveQueries,
+        origin,
+        generatedCount: effectiveQueries.length,
+      });
+      await publishTaskEvent(params.runId, {
+        type: "recall-generate-success",
+        sourceId: source.id,
+        message:
+          origin === "llm_recall"
+            ? `动态召回词生成成功（${effectiveQueries.length}条）`
+            : `动态召回词为空，降级静态词项（${effectiveQueries.length}条）`,
+        origin,
+        generatedCount: effectiveQueries.length,
+      });
+    } catch (error) {
+      logger.warn("topic recall generation failed", {
+        runId: params.runId,
+        jobId: params.jobId,
+        sourceId: source.id,
+        sourceName: source.name,
+        error: logger.normalizeError(error),
+      });
+      bundles.set(source.id, {
+        queries: fallbackQueries,
+        origin: "static_fallback",
+        generatedCount: fallbackQueries.length,
+      });
+      await publishTaskEvent(params.runId, {
+        type: "recall-generate-error",
+        sourceId: source.id,
+        message: "动态召回词生成失败，已降级静态词项",
+        generatedCount: fallbackQueries.length,
+      });
+    }
+  }
+
+  return bundles;
+}
+
 function deduplicateItemsByUrlAndFingerprint(items: CleanItem[]): CleanItem[] {
   const seen = new Set<string>();
   const deduped: CleanItem[] = [];
@@ -1373,7 +1648,8 @@ async function fetchBySources(
   runId: string,
   queryId: string,
   keywords: QueryKeyword[],
-  sourcePolicyBySourceId: Map<string, SourceRuntimePolicy>
+  sourcePolicyBySourceId: Map<string, SourceRuntimePolicy>,
+  sourceRecallQueryBundles?: Map<string, SourceRecallQueryBundle>
 ): Promise<CleanItem[]> {
   const sourceConcurrency = resolveSourceFetchConcurrency();
   const recallQueryLimit = resolveRecallQueryLimit();
@@ -1397,6 +1673,7 @@ async function fetchBySources(
           contentFilterMode: QueryContentFilterMode.TERM_AND_WORD_BOUNDARY,
         };
         const strategy = resolveKeywordStrategy(source);
+        const sourceRecallBundle = sourceRecallQueryBundles?.get(source.id);
         const keywordFilterTerms =
           sourcePolicy.contentFilterEnabled &&
           (strategy === "PRECISION_ONLY" || strategy === "HYBRID")
@@ -1404,7 +1681,7 @@ async function fetchBySources(
             : [];
         const rawRecallQueries =
           strategy === "RECALL_ONLY" || strategy === "HYBRID"
-            ? buildRecallQueries(keywords)
+            ? sourceRecallBundle?.queries ?? buildRecallQueries(keywords)
             : [];
         const recallQueries = rawRecallQueries.slice(0, recallQueryLimit);
         if (rawRecallQueries.length > recallQueries.length) {
@@ -1433,7 +1710,8 @@ async function fetchBySources(
           keywordFilterTerms,
           recallQueries,
           objectiveFallback,
-          sourcePolicy
+          sourcePolicy,
+          sourceRecallBundle?.origin
         );
         console.log(
           `[collector] fetched ${fetched.length} items from ${source.name}`
@@ -1539,7 +1817,8 @@ async function executeFetchDriver(
   keywordFilterTerms: string[],
   recallQueries: string[],
   objectiveFallback?: string,
-  sourcePolicy?: SourceRuntimePolicy
+  sourcePolicy?: SourceRuntimePolicy,
+  recallQueryOrigin?: RecallQueryOrigin
 ): Promise<CleanItem[]> {
   const gatherDispatchSource = resolveGatherDispatchSource(source);
   if (gatherDispatchSource) {
@@ -1547,7 +1826,8 @@ async function executeFetchDriver(
       gatherDispatchSource,
       keywordFilterTerms,
       recallQueries,
-      sourcePolicy
+      sourcePolicy,
+      recallQueryOrigin
     );
   }
 
@@ -1567,18 +1847,20 @@ async function executeFetchDriver(
         queryId,
         keywordFilterTerms,
         recallQueries,
-        sourcePolicy
+        sourcePolicy,
+        recallQueryOrigin
       );
     default:
       return fetchWithDefaultSource(
         source,
         runId,
         queryId,
-      keywordFilterTerms,
-      recallQueries,
-      objectiveFallback,
-      sourcePolicy
-    );
+        keywordFilterTerms,
+        recallQueries,
+        objectiveFallback,
+        sourcePolicy,
+        recallQueryOrigin
+      );
   }
 }
 
@@ -1589,7 +1871,8 @@ async function fetchWithDefaultSource(
   keywordFilterTerms: string[],
   recallQueries: string[],
   objectiveFallback?: string,
-  sourcePolicy?: SourceRuntimePolicy
+  sourcePolicy?: SourceRuntimePolicy,
+  recallQueryOrigin?: RecallQueryOrigin
 ): Promise<CleanItem[]> {
   console.log(
     `[collector] fetchWithDefaultSource ${source.name} (${source.category})`
@@ -1606,6 +1889,7 @@ async function fetchWithDefaultSource(
       queryId,
       recallQueries,
       objectiveFallback,
+      recallQueryOrigin,
     });
   }
   if (source.category === "INTERACTIVE") {
@@ -1613,7 +1897,8 @@ async function fetchWithDefaultSource(
       source as SocialMediaSource,
       keywordFilterTerms,
       recallQueries,
-      sourcePolicy
+      sourcePolicy,
+      recallQueryOrigin
     );
   }
   return [];
@@ -1747,7 +2032,8 @@ async function fetchAICrawlerSource(
   queryId: string,
   keywordFilterTerms: string[],
   recallQueries: string[],
-  sourcePolicy?: SourceRuntimePolicy
+  sourcePolicy?: SourceRuntimePolicy,
+  recallQueryOrigin?: RecallQueryOrigin
 ): Promise<CleanItem[]> {
   if (isWebSource(source) || isDarknetSource(source)) {
     console.log(
@@ -1763,6 +2049,7 @@ async function fetchAICrawlerSource(
       runId,
       queryId,
       recallQueries,
+      recallQueryOrigin,
     });
   }
   console.log(
@@ -1772,7 +2059,8 @@ async function fetchAICrawlerSource(
     source as SocialMediaSource,
     keywordFilterTerms,
     recallQueries,
-    sourcePolicy
+    sourcePolicy,
+    recallQueryOrigin
   );
 }
 
@@ -1859,6 +2147,7 @@ async function fetchSearchSource(
     queryId?: string;
     recallQueries?: string[];
     objectiveFallback?: string;
+    recallQueryOrigin?: RecallQueryOrigin;
   }
 ): Promise<CleanItem[]> {
   console.log(`[collector] fetchSearchSource ${source.name}`);
@@ -1897,6 +2186,7 @@ async function fetchSearchSource(
   }
   const allItems: CleanItem[] = [];
   const searchSuccessSignatures = await loadRunSearchSuccessSignatures(context?.runId);
+  const recallOrigin = context?.recallQueryOrigin ?? "static_fallback";
   for (const recallQuery of searchQueries) {
     const normalizedRecallQuery = recallQuery.trim();
     if (!normalizedRecallQuery) continue;
@@ -1929,7 +2219,7 @@ async function fetchSearchSource(
         recallQueryCount: searchQueries.length,
         queryOrigin:
           context?.recallQueries && context.recallQueries.length > 0
-            ? "recall"
+            ? recallOrigin
             : "objective_fallback",
         rawRecallQueryCount: context?.recallQueries?.length ?? 0,
         effectiveRecallQueryCount: searchQueries.length,
@@ -1986,7 +2276,7 @@ async function fetchSearchSource(
         recallQueryCount: searchQueries.length,
         queryOrigin:
           context?.recallQueries && context.recallQueries.length > 0
-            ? "recall"
+            ? recallOrigin
             : "objective_fallback",
         rawRecallQueryCount: context?.recallQueries?.length ?? 0,
         effectiveRecallQueryCount: searchQueries.length,
@@ -2041,7 +2331,7 @@ async function fetchSearchSource(
         recallQueryCount: searchQueries.length,
         queryOrigin:
           context?.recallQueries && context.recallQueries.length > 0
-            ? "recall"
+            ? recallOrigin
             : "objective_fallback",
         rawRecallQueryCount: context?.recallQueries?.length ?? 0,
         effectiveRecallQueryCount: searchQueries.length,
@@ -2098,7 +2388,8 @@ async function fetchSocialSource(
   source: SocialMediaSource,
   keywordFilterTerms: string[],
   recallQueries: string[],
-  sourcePolicy?: SourceRuntimePolicy
+  sourcePolicy?: SourceRuntimePolicy,
+  _recallQueryOrigin?: RecallQueryOrigin
 ): Promise<CleanItem[]> {
   console.log(`[collector] fetchSocialSource ${source.name} via Python Gather`);
 

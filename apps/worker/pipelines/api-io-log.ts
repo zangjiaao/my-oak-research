@@ -20,7 +20,11 @@ type WorkerApiIoEntry = {
   provider: string;
   recallQuery?: string;
   recallQueryCount?: number;
-  queryOrigin?: "recall" | "objective_fallback";
+  queryOrigin?:
+    | "llm_recall"
+    | "static_fallback"
+    | "objective_fallback"
+    | "recall";
   rawRecallQueryCount?: number;
   effectiveRecallQueryCount?: number;
   skippedByRetryDedup?: boolean;
