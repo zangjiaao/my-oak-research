@@ -93,15 +93,15 @@ const NewsDetailCard = ({
 }) => {
   const keywordTagMeta: Record<
     "PERSON" | "ORG" | "TECH" | "LOCATION" | "PRODUCT" | "EVENT" | "CONCEPT",
-    { icon: React.ComponentType<{ className?: string }>; emoji: string; label: string }
+    { icon: React.ComponentType<{ className?: string }>; label: string }
   > = {
-    PERSON: { icon: User, emoji: "👤", label: "人物" },
-    ORG: { icon: Building2, emoji: "🏫", label: "机构" },
-    TECH: { icon: Cpu, emoji: "⚙️", label: "技术" },
-    LOCATION: { icon: MapPin, emoji: "📍", label: "地点" },
-    PRODUCT: { icon: Cpu, emoji: "🧩", label: "产品" },
-    EVENT: { icon: MessageSquarePlus, emoji: "📅", label: "事件" },
-    CONCEPT: { icon: FileText, emoji: "🏷️", label: "概念" },
+    PERSON: { icon: User, label: "人物" },
+    ORG: { icon: Building2, label: "机构" },
+    TECH: { icon: Cpu, label: "技术" },
+    LOCATION: { icon: MapPin, label: "地点" },
+    PRODUCT: { icon: Cpu, label: "产品" },
+    EVENT: { icon: MessageSquarePlus, label: "事件" },
+    CONCEPT: { icon: FileText, label: "概念" },
   };
   const showFeedbackActions = Boolean(onFeedbackVote || onFeedbackNote);
   return (
@@ -223,7 +223,6 @@ const NewsDetailCard = ({
                     className="flex items-center gap-1.5"
                   >
                     <Icon className="size-3" />
-                    <span>{meta.emoji}</span>
                     <span>{keyword.label}</span>
                     <Button
                       size="icon"
