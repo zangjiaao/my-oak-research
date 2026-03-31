@@ -59,7 +59,7 @@ export const ContentFilters = () => {
         <div className="min-w-[220px] flex-1">
           <Input
             placeholder="搜索内容"
-            className="min-w-0 rounded-full"
+            className="min-w-0 rounded-md"
             icon={<Search size={16} />}
             iconPosition="right"
             value={filters.search}
