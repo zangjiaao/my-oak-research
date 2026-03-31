@@ -96,7 +96,7 @@ export const collectJobWorker = createCollectJobWorker(async (job) => {
       (jobConfig.jobSources ?? []).map((binding: any) => [
         binding.sourceId,
         {
-          contentFilterEnabled: true,
+          contentFilterEnabled: false,
           contentFilterMode: QueryContentFilterMode.TERM_AND_WORD_BOUNDARY,
           recallBindingOverride: binding.recallBindingOverride ?? null,
         },
