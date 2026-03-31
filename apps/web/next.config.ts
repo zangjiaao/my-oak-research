@@ -1,6 +1,12 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  serverExternalPackages: [
+    "node-llama-cpp",
+    "ipull",
+    "@reflink/reflink",
+    "@reflink/reflink-darwin-arm64",
+  ],
   images: {
     remotePatterns: [
       {
