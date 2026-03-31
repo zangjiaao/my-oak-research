@@ -157,6 +157,16 @@ export async function GET(request: Request) {
     cursor,
     limit,
   } = parsed.data;
+  const topicIds = Array.from(
+    new Set(
+      url.searchParams
+        .getAll("topicId")
+        .map((value) => value.trim())
+        .filter(Boolean)
+    )
+  );
+  const effectiveTopicIds = topicIds.length ? topicIds : topicId ? [topicId] : [];
+  const feedbackTopicId = effectiveTopicIds[0];
   const userId = request.headers.get("x-user-id")?.trim() || process.env.DEFAULT_USER_ID || "default-user-id";
 
   const where: Prisma.ContentWhereInput = {};
@@ -205,10 +215,12 @@ export async function GET(request: Request) {
     };
   }
 
-  if (topicId || minTopicScore != null) {
+  if (effectiveTopicIds.length || minTopicScore != null) {
     where.topicScores = {
       some: {
-        ...(topicId ? { topicId } : {}),
+        ...(effectiveTopicIds.length
+          ? { topicId: { in: effectiveTopicIds } }
+          : {}),
         ...(minTopicScore != null ? { finalScore: { gte: minTopicScore } } : {}),
       },
     };
@@ -236,11 +248,13 @@ export async function GET(request: Request) {
           },
         };
   const includeTopicScoreRelation =
-    includeTopicScores || topicId || minTopicScore != null
+    includeTopicScores || effectiveTopicIds.length > 0 || minTopicScore != null
       ? {
           topicScores: {
             where: {
-              ...(topicId ? { topicId } : {}),
+              ...(effectiveTopicIds.length
+                ? { topicId: { in: effectiveTopicIds } }
+                : {}),
               ...(minTopicScore != null ? { finalScore: { gte: minTopicScore } } : {}),
             },
             orderBy: { finalScore: "desc" as const },
@@ -255,11 +269,11 @@ export async function GET(request: Request) {
     ? { entities: true as const }
     : { entities: false as const };
   const includeFeedbackRelation =
-    includeFeedback && topicId
+    includeFeedback && feedbackTopicId
       ? {
           topicFeedbacks: {
             where: {
-              topicId,
+              topicId: feedbackTopicId,
               userId,
             },
             take: 1,
@@ -292,7 +306,7 @@ export async function GET(request: Request) {
           const rightScore = right.subjectMatches?.[0]?.matchScore ?? -1;
           return rightScore - leftScore;
         })
-      : (sort === "topicScore" || sort === "relevance") && topicId
+      : (sort === "topicScore" || sort === "relevance") && effectiveTopicIds.length > 0
         ? [...pageItems].sort((left, right) => {
             const leftScore = left.topicScores?.[0]?.finalScore ?? -1;
             const rightScore = right.topicScores?.[0]?.finalScore ?? -1;

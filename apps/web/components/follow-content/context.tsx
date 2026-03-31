@@ -95,21 +95,9 @@ export type ContentItem = {
 };
 
 type FollowContentFilters = {
-  platform?: string;
   search?: string;
-  from?: string;
-  to?: string;
-  subjectId?: string;
-  minMatchScore?: string;
-  topicId?: string;
-  minTopicScore?: string;
-  matchSource?: "QUERY" | "GATHER" | "AI" | "FUSED";
-  sort?: "time" | "relevance" | "matchScore" | "topicScore";
-};
-
-type SubjectOption = {
-  id: string;
-  name: string;
+  topicIds?: string[];
+  sort?: "time" | "relevance";
 };
 
 type TopicOption = {
@@ -129,97 +117,32 @@ type FollowContentContextValue = {
   error: Error | null;
   selectContent: (id: string) => void;
   filters: {
-    platform: string;
-    year: string;
-    month: string;
-    day: string;
     search: string;
-    subjectId: string;
-    minMatchScore: string;
-    topicId: string;
-    minTopicScore: string;
-    matchSource: string;
-    sort: "time" | "relevance" | "matchScore" | "topicScore";
+    topicIds: string[];
+    sort: "time" | "relevance";
   };
-  subjectOptions: SubjectOption[];
   topicOptions: TopicOption[];
-  subjectOptionsError: string | null;
-  subjectOptionsLoading: boolean;
   topicOptionsError: string | null;
   topicOptionsLoading: boolean;
-  setPlatform: (val: string) => void;
-  setYear: (val: string) => void;
-  setMonth: (val: string) => void;
-  setDay: (val: string) => void;
   setSearch: (val: string) => void;
-  setSubjectId: (val: string) => void;
-  setMinMatchScore: (val: string) => void;
-  setTopicId: (val: string) => void;
-  setMinTopicScore: (val: string) => void;
-  setMatchSource: (val: string) => void;
-  setSort: (val: "time" | "relevance" | "matchScore" | "topicScore") => void;
+  setTopicIds: (val: string[]) => void;
+  setSort: (val: "time" | "relevance") => void;
 };
 
-const FollowContentContext = createContext<
-  FollowContentContextValue | undefined
->(undefined);
-
-const buildDateRange = (year?: string, month?: string, day?: string) => {
-  if (!year) {
-    return { from: undefined, to: undefined };
-  }
-
-  const parsedYear = Number(year);
-  if (Number.isNaN(parsedYear)) {
-    return { from: undefined, to: undefined };
-  }
-
-  const parsedMonth = month ? Number(month) - 1 : 0;
-  const parsedDay = day ? Number(day) : 1;
-  const start = new Date(Date.UTC(parsedYear, parsedMonth, parsedDay));
-
-  let end: Date;
-  if (day) {
-    end = new Date(start);
-    end.setUTCDate(start.getUTCDate() + 1);
-  } else if (month) {
-    end = new Date(Date.UTC(parsedYear, parsedMonth + 1, 1));
-  } else {
-    end = new Date(Date.UTC(parsedYear + 1, 0, 1));
-  }
-
-  return { from: start.toISOString(), to: end.toISOString() };
-};
+const FollowContentContext = createContext<FollowContentContextValue | undefined>(
+  undefined
+);
 
 const fetchContents = async (filters: FollowContentFilters) => {
   const params = new URLSearchParams();
 
-  if (filters.platform) {
-    params.set("platform", filters.platform);
-  }
   if (filters.search) {
     params.set("search", filters.search);
   }
-  if (filters.from) {
-    params.set("from", filters.from);
-  }
-  if (filters.to) {
-    params.set("to", filters.to);
-  }
-  if (filters.subjectId) {
-    params.set("subjectId", filters.subjectId);
-  }
-  if (filters.minMatchScore) {
-    params.set("minMatchScore", filters.minMatchScore);
-  }
-  if (filters.topicId) {
-    params.set("topicId", filters.topicId);
-  }
-  if (filters.minTopicScore) {
-    params.set("minTopicScore", filters.minTopicScore);
-  }
-  if (filters.matchSource) {
-    params.set("matchSource", filters.matchSource);
+  for (const topicId of filters.topicIds ?? []) {
+    if (topicId) {
+      params.append("topicId", topicId);
+    }
   }
   if (filters.sort) {
     params.set("sort", filters.sort);
@@ -255,44 +178,13 @@ export const FollowContentProvider = ({
 }: {
   children: React.ReactNode;
 }) => {
-  const [platform, setPlatform] = useState("");
-  const [year, setYear] = useState("");
-  const [month, setMonth] = useState("");
-  const [day, setDay] = useState("");
   const [search, setSearch] = useState("");
-  const [subjectId, setSubjectId] = useState("");
-  const [minMatchScore, setMinMatchScore] = useState("");
-  const [topicId, setTopicId] = useState("");
-  const [minTopicScore, setMinTopicScore] = useState("");
-  const [matchSource, setMatchSource] = useState("");
-  const [sort, setSort] = useState<"time" | "relevance" | "matchScore" | "topicScore">("relevance");
+  const [topicIds, setTopicIds] = useState<string[]>([]);
+  const [sort, setSort] = useState<"time" | "relevance">("relevance");
   const [selectedContentId, setSelectedContentId] = useState<string | null>(
     null
   );
   const queryClient = useQueryClient();
-  const {
-    data: subjectOptionsData,
-    error: subjectOptionsQueryError,
-    isLoading: subjectOptionsLoading,
-  } = useQuery({
-    queryKey: ["keywords", "subject-options"],
-    queryFn: async (): Promise<SubjectOption[]> => {
-      const response = await fetch("/api/follow/keywords?pageSize=100", {
-        cache: "no-store",
-      });
-      if (!response.ok) {
-        throw new Error("Can not fetch subjects");
-      }
-      const data = await response.json();
-      const items = Array.isArray(data?.items) ? data.items : [];
-      return items
-        .map((item: { id?: string; name?: string }) => ({
-          id: String(item.id ?? ""),
-          name: String(item.name ?? ""),
-        }))
-        .filter((item: SubjectOption) => Boolean(item.id && item.name));
-    },
-  });
   const {
     data: topicOptionsData,
     error: topicOptionsQueryError,
@@ -314,40 +206,18 @@ export const FollowContentProvider = ({
           name: String(item.name ?? ""),
         }))
         .filter((item: TopicOption) => Boolean(item.id && item.name));
-    },
+      },
   });
-
-  const { from, to } = useMemo(
-    () => buildDateRange(year, month, day),
-    [year, month, day]
-  );
 
   const queryFilters = useMemo(
     () => ({
-      platform,
       search,
-      from,
-      to,
-      subjectId,
-      minMatchScore,
-      topicId,
-      minTopicScore,
-      matchSource:
-        matchSource && matchSource !== "__all__"
-          ? (matchSource as "QUERY" | "GATHER" | "AI" | "FUSED")
-          : undefined,
+      topicIds,
       sort,
     }),
     [
-      platform,
       search,
-      from,
-      to,
-      subjectId,
-      minMatchScore,
-      topicId,
-      minTopicScore,
-      matchSource,
+      topicIds,
       sort,
     ]
   );
@@ -392,16 +262,24 @@ export const FollowContentProvider = ({
 
   const contents: ContentItem[] = useMemo(() => {
     const items: ContentItem[] = data?.items ?? [];
-    if (sort === "topicScore" || sort === "relevance") {
+    if (sort === "relevance") {
       return [...items].sort((left, right) => {
-        const leftScore =
-          left.topicScores?.find((score) =>
-            topicId ? score.topicId === topicId : true
-          )?.finalScore ?? -1;
-        const rightScore =
-          right.topicScores?.find((score) =>
-            topicId ? score.topicId === topicId : true
-          )?.finalScore ?? -1;
+        const leftScore = Math.max(
+          ...(left.topicScores ?? [])
+            .filter((score) =>
+              topicIds.length ? topicIds.includes(score.topicId) : true
+            )
+            .map((score) => score.finalScore ?? -1),
+          -1
+        );
+        const rightScore = Math.max(
+          ...(right.topicScores ?? [])
+            .filter((score) =>
+              topicIds.length ? topicIds.includes(score.topicId) : true
+            )
+            .map((score) => score.finalScore ?? -1),
+          -1
+        );
         if (leftScore !== rightScore) {
           return rightScore - leftScore;
         }
@@ -410,26 +288,8 @@ export const FollowContentProvider = ({
         return rightTime - leftTime;
       });
     }
-    if (sort !== "matchScore") {
-      return items;
-    }
-    return [...items].sort((left, right) => {
-      const leftScore =
-        left.subjectMatches?.find((match) =>
-          subjectId ? match.subjectId === subjectId : true
-        )?.score ?? -1;
-      const rightScore =
-        right.subjectMatches?.find((match) =>
-          subjectId ? match.subjectId === subjectId : true
-        )?.score ?? -1;
-      if (leftScore !== rightScore) {
-        return rightScore - leftScore;
-      }
-      const leftTime = new Date(left.detailView?.publishedAt ?? left.time).getTime();
-      const rightTime = new Date(right.detailView?.publishedAt ?? right.time).getTime();
-      return rightTime - leftTime;
-    });
-  }, [data?.items, sort, subjectId, topicId]);
+    return items;
+  }, [data?.items, sort, topicIds]);
 
   useEffect(() => {
     if (isLoading) {
@@ -464,41 +324,19 @@ export const FollowContentProvider = ({
       isLoading,
       error: contentQueryError ?? null,
       selectContent,
-      subjectOptions: subjectOptionsData ?? [],
       topicOptions: topicOptionsData ?? [],
-      subjectOptionsError:
-        subjectOptionsQueryError instanceof Error
-          ? subjectOptionsQueryError.message
-          : null,
-      subjectOptionsLoading,
       topicOptionsError:
         topicOptionsQueryError instanceof Error
           ? topicOptionsQueryError.message
           : null,
       topicOptionsLoading,
       filters: {
-        platform,
-        year,
-        month,
-        day,
         search,
-        subjectId,
-        minMatchScore,
-        topicId,
-        minTopicScore,
-        matchSource,
+        topicIds,
         sort,
       },
-      setPlatform,
-      setYear,
-      setMonth,
-      setDay,
       setSearch,
-      setSubjectId,
-      setMinMatchScore,
-      setTopicId,
-      setMinTopicScore,
-      setMatchSource,
+      setTopicIds,
       setSort,
     }),
     [
@@ -507,22 +345,11 @@ export const FollowContentProvider = ({
       isLoading,
       contentQueryError,
       selectContent,
-      subjectOptionsData,
       topicOptionsData,
-      subjectOptionsQueryError,
-      subjectOptionsLoading,
       topicOptionsQueryError,
       topicOptionsLoading,
-      platform,
-      year,
-      month,
-      day,
       search,
-      subjectId,
-      minMatchScore,
-      topicId,
-      minTopicScore,
-      matchSource,
+      topicIds,
       sort,
     ]
   );

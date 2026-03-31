@@ -52,7 +52,8 @@ const FollowContent = () => {
   );
 
   const isBookmarked = (id: string) => favoriteIds.has(id);
-  const selectedTopicId = filters.topicId || "";
+  const selectedTopicId = filters.topicIds[0] ?? "";
+  const selectedTopicIds = filters.topicIds;
 
   const buildExpandableKeywords = (content: (typeof contents)[number]) => {
     const keywords: Array<{
@@ -90,6 +91,16 @@ const FollowContent = () => {
       pushUnique("TECH", tech);
     }
     return keywords.slice(0, 8);
+  };
+
+  const getRelevanceScore = (content: (typeof contents)[number]) => {
+    const candidateScores = (content.topicScores ?? [])
+      .filter((score) =>
+        selectedTopicIds.length ? selectedTopicIds.includes(score.topicId) : true
+      )
+      .map((score) => score.finalScore ?? -1);
+    const maxScore = Math.max(...candidateScores, -1);
+    return maxScore >= 0 ? maxScore : null;
   };
 
   const submitFeedback = async (input: {
@@ -156,54 +167,7 @@ const FollowContent = () => {
     }
   };
 
-  const sortedContents = useMemo(() => {
-    if (filters.sort === "matchScore") {
-      return [...contents].sort((a, b) => {
-        const aScore =
-          a.subjectMatches?.find((match) =>
-            filters.subjectId ? match.subjectId === filters.subjectId : true
-          )?.score ?? -1;
-        const bScore =
-          b.subjectMatches?.find((match) =>
-            filters.subjectId ? match.subjectId === filters.subjectId : true
-          )?.score ?? -1;
-        if (aScore !== bScore) {
-          return bScore - aScore;
-        }
-        const aTime = new Date(a.detailView?.publishedAt ?? a.time).getTime();
-        const bTime = new Date(b.detailView?.publishedAt ?? b.time).getTime();
-        return bTime - aTime;
-      });
-    }
-    if (filters.sort === "topicScore" || filters.sort === "relevance") {
-      return [...contents].sort((a, b) => {
-        const aScore =
-          a.topicScores?.find((score) =>
-            filters.topicId ? score.topicId === filters.topicId : true
-          )?.finalScore ?? -1;
-        const bScore =
-          b.topicScores?.find((score) =>
-            filters.topicId ? score.topicId === filters.topicId : true
-          )?.finalScore ?? -1;
-        if (aScore !== bScore) {
-          return bScore - aScore;
-        }
-        const aTime = new Date(a.detailView?.publishedAt ?? a.time).getTime();
-        const bTime = new Date(b.detailView?.publishedAt ?? b.time).getTime();
-        return bTime - aTime;
-      });
-    }
-    return [...contents].sort((a, b) => {
-      const aTime = new Date(a.detailView?.publishedAt ?? a.time).getTime();
-      const bTime = new Date(b.detailView?.publishedAt ?? b.time).getTime();
-      if (aTime !== bTime) {
-        return bTime - aTime;
-      }
-      const aIndex = a.relation?.recordIndex ?? Number.MAX_SAFE_INTEGER;
-      const bIndex = b.relation?.recordIndex ?? Number.MAX_SAFE_INTEGER;
-      return aIndex - bIndex;
-    });
-  }, [contents, filters.sort, filters.subjectId, filters.topicId]);
+  const sortedContents = contents;
 
   useEffect(() => {
     if (!selectedContent?.id) {
@@ -324,11 +288,7 @@ const FollowContent = () => {
                 rawContent={content.rawRecordContent}
                 subjectMatch={content.subjectMatches?.[0]}
                 relevanceScore={
-                  content.topicScore?.topicId === selectedTopicId
-                    ? content.topicScore?.finalScore ?? null
-                    : content.topicScores?.find((score) =>
-                        selectedTopicId ? score.topicId === selectedTopicId : true
-                      )?.finalScore ?? null
+                  getRelevanceScore(content)
                 }
                 expandableKeywords={buildExpandableKeywords(content)}
                 feedback={content.feedback ?? null}
