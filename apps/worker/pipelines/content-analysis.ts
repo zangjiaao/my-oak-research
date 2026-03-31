@@ -1068,7 +1068,8 @@ function countTermMatches(contentText: string, terms: TopicTermLite[]): number {
 }
 
 function buildContentVectorInput(item: CleanItem, fallbackSummary: string): string {
-  return [item.title ?? "", fallbackSummary, item.markdown || item.text || ""]
+  const markdownExcerpt = (item.markdown || item.text || "").slice(0, 4000);
+  return [item.title ?? "", fallbackSummary, markdownExcerpt]
     .map((part) => part.trim())
     .filter(Boolean)
     .join("\n");

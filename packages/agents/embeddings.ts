@@ -45,6 +45,30 @@ const LOCAL_GGUF_BATCH_SIZE = Math.max(
   1,
   Math.floor(Number(process.env.LOCAL_EMBED_BATCH_SIZE ?? 16))
 );
+const EMBEDDING_MAX_BATCH_LINES = Math.max(
+  1,
+  Math.floor(Number(process.env.EMBEDDING_MAX_BATCH_LINES ?? 8))
+);
+const EMBEDDING_MAX_INPUT_TOKENS = Math.max(
+  256,
+  Math.floor(Number(process.env.EMBEDDING_MAX_INPUT_TOKENS ?? 6000))
+);
+const EMBEDDING_MAX_INPUT_CHARS = Math.max(
+  512,
+  Math.floor(Number(process.env.EMBEDDING_MAX_INPUT_CHARS ?? 8000))
+);
+const EMBEDDING_RETRY_LIMIT = Math.max(
+  0,
+  Math.floor(Number(process.env.EMBEDDING_RETRY_LIMIT ?? 2))
+);
+const EMBEDDING_RETRY_SHRINK_RATIO = 0.7;
+const PROVIDER_MAX_BATCH_LINES: Record<EmbeddingProvider, number> = {
+  openai: 100,
+  google: 100,
+  deepseek: 100,
+  dashscope: 10,
+  local_gguf: LOCAL_GGUF_BATCH_SIZE,
+};
 
 /**
  * Select the correct embedding model instance based on string identifier
@@ -94,10 +118,56 @@ function resolveEmbeddingProvider(modelId: string): EmbeddingProvider {
   return "openai";
 }
 
-// OpenAI embedding models have a limit of 8192 tokens.
-// We use a character limit as a safety proxy. 
-// 12000 characters is generally safe for both English and Chinese.
-const MAX_INPUT_CHARS = 12000;
+function estimateTokens(text: string): number {
+  const cjkChars = (text.match(/[\u3400-\u9FFF]/g) ?? []).length;
+  const otherChars = Math.max(0, text.length - cjkChars);
+  return Math.ceil(cjkChars * 1.3 + otherChars / 4);
+}
+
+function squeezeWhitespace(value: string): string {
+  return value.replace(/\s+/g, " ").trim();
+}
+
+function applyCharHardLimit(value: string): string {
+  if (value.length <= EMBEDDING_MAX_INPUT_CHARS) {
+    return value;
+  }
+  return value.slice(0, EMBEDDING_MAX_INPUT_CHARS);
+}
+
+function shrinkForRetry(value: string): string {
+  const nextLength = Math.max(
+    32,
+    Math.floor(value.length * EMBEDDING_RETRY_SHRINK_RATIO)
+  );
+  return value.slice(0, nextLength);
+}
+
+function prepareEmbeddingInput(value: string): string {
+  let normalized = squeezeWhitespace(value);
+  if (!normalized) {
+    return " ";
+  }
+  const estimatedTokens = estimateTokens(normalized);
+  if (estimatedTokens > EMBEDDING_MAX_INPUT_TOKENS) {
+    const ratio = EMBEDDING_MAX_INPUT_TOKENS / estimatedTokens;
+    const nextLength = Math.max(64, Math.floor(normalized.length * ratio));
+    normalized = normalized.slice(0, nextLength);
+  }
+  normalized = applyCharHardLimit(normalized);
+  return normalized || " ";
+}
+
+function isInputTooLongError(error: unknown): boolean {
+  const message =
+    error instanceof Error ? error.message : String(error ?? "");
+  const lower = message.toLowerCase();
+  return (
+    lower.includes("range of input length should be [1, 8192]") ||
+    lower.includes("context length") ||
+    lower.includes("token limit")
+  );
+}
 
 function zeros(dim = DEFAULT_EMBEDDING_DIMENSION) {
   return Array.from({ length: dim }, () => 0);
@@ -226,14 +296,47 @@ async function createLocalEmbeddings(
   for (let start = 0; start < inputs.length; start += LOCAL_GGUF_BATCH_SIZE) {
     const batch = inputs.slice(start, start + LOCAL_GGUF_BATCH_SIZE);
     for (const input of batch) {
-      const normalized = input.length > MAX_INPUT_CHARS
-        ? input.slice(0, MAX_INPUT_CHARS)
-        : input;
+      const normalized = prepareEmbeddingInput(input);
       const vector = await engine.embed(normalized);
       embeddings.push(normalizeDimension(vector));
     }
   }
   return embeddings;
+}
+
+async function embedManyWithRetry(params: {
+  model: ReturnType<typeof getEmbeddingModel>;
+  values: string[];
+  provider: EmbeddingProvider;
+  batchIndex: number;
+}): Promise<number[][]> {
+  let attempt = 0;
+  let values = [...params.values];
+  while (true) {
+    try {
+      const { embeddings } = await embedMany({
+        model: params.model,
+        values,
+      });
+      return embeddings;
+    } catch (error) {
+      if (!isInputTooLongError(error) || attempt >= EMBEDDING_RETRY_LIMIT) {
+        throw error;
+      }
+      attempt += 1;
+      values = values.map((value) =>
+        prepareEmbeddingInput(shrinkForRetry(value))
+      );
+      console.warn(
+        `[embeddings] batch ${params.batchIndex} exceeded provider length limit, retrying attempt ${attempt}/${EMBEDDING_RETRY_LIMIT}`
+      );
+      if (params.provider === "dashscope") {
+        console.warn(
+          `[embeddings] provider=dashscope retry with shorter inputs to satisfy max_tokens=8192`
+        );
+      }
+    }
+  }
 }
 
 export async function createEmbeddings(
@@ -250,32 +353,40 @@ export async function createEmbeddings(
       return await createLocalEmbeddings(inputs, model);
     }
 
-    const BATCH_SIZE = 100;
+    const providerBatchCap = PROVIDER_MAX_BATCH_LINES[provider] ?? 100;
+    const BATCH_SIZE = Math.max(
+      1,
+      Math.min(providerBatchCap, EMBEDDING_MAX_BATCH_LINES)
+    );
     const CONCURRENCY = 2;  // Reduced from 5 to 2 to stay under TPM limits
     const allEmbeddings: number[][] = new Array(inputs.length);
+    const resolvedModel = getEmbeddingModel(model);
 
     const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
     const processBatch = async (startIndex: number) => {
       const endIndex = Math.min(startIndex + BATCH_SIZE, inputs.length);
-      const batch = inputs.slice(startIndex, endIndex).map(v => {
-        if (v.length > MAX_INPUT_CHARS) {
-          console.warn(`[embeddings] Data too long (${v.length} chars), truncating to ${MAX_INPUT_CHARS}`);
-          return v.slice(0, MAX_INPUT_CHARS);
-        }
-        return v;
-      });
+      const batch = inputs
+        .slice(startIndex, endIndex)
+        .map((value) => prepareEmbeddingInput(value));
+      const batchIndex = Math.floor(startIndex / BATCH_SIZE) + 1;
 
-      console.log(`[embeddings] processing batch ${Math.floor(startIndex / BATCH_SIZE) + 1}/${Math.ceil(inputs.length / BATCH_SIZE)}...`);
+      console.log(
+        `[embeddings] processing batch ${batchIndex}/${Math.ceil(inputs.length / BATCH_SIZE)} with size=${batch.length}...`
+      );
 
-      const { embeddings } = await embedMany({
-        model: getEmbeddingModel(model),
+      const embeddings = await embedManyWithRetry({
+        model: resolvedModel,
         values: batch,
+        provider,
+        batchIndex,
       });
 
       // Insert back into the correct positions
       for (let j = 0; j < embeddings.length; j++) {
-        allEmbeddings[startIndex + j] = normalizeDimension(embeddings[j]);
+        allEmbeddings[startIndex + j] = normalizeDimension(
+          embeddings[j] as number[]
+        );
       }
     };
 
