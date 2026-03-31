@@ -74,21 +74,21 @@ const JobsTable = ({ jobs, topics, sources }: Props) => {
     {
       key: "name",
       label: "Name",
-      className: "min-w-[220px]",
-      render: (job) => job.name,
+      className: "max-w-[220px]",
+      render: (job) => <div className="truncate">{job.name}</div>,
     },
     {
       key: "type",
       label: "Type",
       hideBelow: "md",
-      className: "min-w-[170px]",
+      className: "max-w-[120px]",
       render: (job) => <Badge variant="outline">{job.type}</Badge>,
     },
     {
       key: "progress",
       label: "Progress",
       hideBelow: "md",
-      className: "min-w-[130px] text-center",
+      className: "text-center",
       render: (job) => (
         <div className="mx-auto w-24">
           <Progress value={Math.min(100, Math.max(0, job.latestRun?.progress ?? 0))} />
@@ -99,14 +99,13 @@ const JobsTable = ({ jobs, topics, sources }: Props) => {
       key: "frequency",
       label: "Frequency",
       hideBelow: "lg",
-      className: "min-w-[110px]",
       render: (job) => job.frequency,
     },
     {
       key: "topics",
       label: "Topics",
       hideBelow: "lg",
-      className: "min-w-[220px]",
+      className: "max-w-[220px]",
       render: (job) => {
         const rows = job.jobTopics ?? [];
         return rows.length > 0 ? (
@@ -126,7 +125,7 @@ const JobsTable = ({ jobs, topics, sources }: Props) => {
       key: "sources",
       label: "Sources",
       hideBelow: "lg",
-      className: "min-w-[220px]",
+      className: "max-w-[220px]",
       render: (job) => {
         const rows = job.jobSources ?? [];
         return rows.length > 0 ? (
@@ -145,7 +144,7 @@ const JobsTable = ({ jobs, topics, sources }: Props) => {
     {
       key: "enabled",
       label: "Enabled",
-      className: "min-w-[90px] text-center",
+      className: "text-center",
       render: (job) => (
         <div className="flex justify-center">
           <Switch

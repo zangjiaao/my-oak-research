@@ -57,27 +57,26 @@ const TopicsTable = ({ topics, sources }: Props) => {
     {
       key: "name",
       label: "Name",
-      className: "min-w-[220px]",
-      render: (topic) => topic.name,
+      className: "max-w-[220px]",
+      render: (topic) => <div className="truncate">{topic.name}</div>,
     },
     {
       key: "description",
       label: "Description",
       hideBelow: "md",
-      className: "max-w-xs min-w-[240px]",
+      className: "max-w-xs",
       render: (topic) => <div className="whitespace-normal">{topic.description || "-"}</div>,
     },
     {
       key: "frequency",
       label: "Frequency",
-      className: "min-w-[110px]",
       render: (topic) => topic.frequency,
     },
     {
       key: "terms",
       label: "Terms",
       hideBelow: "md",
-      className: "min-w-[160px]",
+      className: "max-w-[220px]",
       render: (topic) => {
         const terms = topic.terms ?? [];
         const core = terms.filter((term) => term.type === "CORE").length;
@@ -96,7 +95,7 @@ const TopicsTable = ({ topics, sources }: Props) => {
       key: "sources",
       label: "Sources",
       hideBelow: "lg",
-      className: "min-w-[220px]",
+      className: "max-w-[220px]",
       render: (topic) => (
         <div className="flex flex-wrap gap-1">
           {(topic.sources ?? []).length > 0 ? (
@@ -114,7 +113,7 @@ const TopicsTable = ({ topics, sources }: Props) => {
     {
       key: "enabled",
       label: "Enabled",
-      className: "min-w-[90px] text-center",
+      className: "text-center",
       render: (topic) => (
         <div className="flex justify-center">
           <Switch
