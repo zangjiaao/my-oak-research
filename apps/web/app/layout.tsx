@@ -59,7 +59,7 @@ export default async function RootLayout({
               <SidebarInset>
                 <Toaster richColors />
                 <Headbar />
-                <main className="flex flex-1 flex-col gap-4 p-4">
+                <main className="flex min-w-0 flex-1 flex-col gap-4 p-4">
                   {children}
                 </main>
               </SidebarInset>
