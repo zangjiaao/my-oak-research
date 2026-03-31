@@ -129,8 +129,16 @@ async function ensureLocalModelPath(modelId: string): Promise<string> {
 }
 
 async function createNodeLlamaLocalEngine(modelId: string): Promise<LocalEmbeddingEngine> {
-  const moduleName = "node-llama-cpp";
-  const llamaModule = (await import(moduleName)) as any;
+  let llamaModule: any;
+  try {
+    llamaModule = (await import("node-llama-cpp")) as any;
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : String(error);
+    throw new Error(
+      `Cannot load node-llama-cpp. Install it first with: npm install --workspace @oak/agents node-llama-cpp. Original error: ${message}`
+    );
+  }
   const getLlama =
     llamaModule?.getLlama ??
     llamaModule?.default?.getLlama;
