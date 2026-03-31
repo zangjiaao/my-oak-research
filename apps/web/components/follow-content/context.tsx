@@ -11,6 +11,10 @@ import React, {
 import { useQuery } from "@tanstack/react-query";
 import { useQueryClient } from "@tanstack/react-query";
 
+const DEFAULT_TOPIC_FILTER_MIN_SCORE = Number(
+  process.env.NEXT_PUBLIC_TOPIC_FILTER_MIN_SCORE ?? 0.4
+);
+
 export type ContentItem = {
   id: string;
   title: string;
@@ -143,6 +147,9 @@ const fetchContents = async (filters: FollowContentFilters) => {
     if (topicId) {
       params.append("topicId", topicId);
     }
+  }
+  if ((filters.topicIds?.length ?? 0) > 0) {
+    params.set("minTopicScore", String(DEFAULT_TOPIC_FILTER_MIN_SCORE));
   }
   if (filters.sort) {
     params.set("sort", filters.sort);

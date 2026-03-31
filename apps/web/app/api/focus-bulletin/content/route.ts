@@ -11,6 +11,10 @@ import type {
 } from "@/app/generated/prisma";
 import { buildRecordContentViews } from "@/lib/follow-content/record-content-view";
 const prismaAny = prisma as any;
+const DEFAULT_TOPIC_FILTER_MIN_SCORE = Math.max(
+  0,
+  Math.min(1, Number(process.env.TOPIC_FILTER_MIN_SCORE ?? 0.4))
+);
 
 const contentTypeSchema = z.enum(["Web", "Client", "Darknet"]);
 const matchSourceSchema = z.enum(["QUERY", "GATHER", "AI", "FUSED"]);
@@ -166,6 +170,12 @@ export async function GET(request: Request) {
     )
   );
   const effectiveTopicIds = topicIds.length ? topicIds : topicId ? [topicId] : [];
+  const resolvedMinTopicScore =
+    minTopicScore != null
+      ? minTopicScore
+      : effectiveTopicIds.length
+        ? DEFAULT_TOPIC_FILTER_MIN_SCORE
+        : undefined;
   const feedbackTopicId = effectiveTopicIds[0];
   const userId = request.headers.get("x-user-id")?.trim() || process.env.DEFAULT_USER_ID || "default-user-id";
 
@@ -215,13 +225,15 @@ export async function GET(request: Request) {
     };
   }
 
-  if (effectiveTopicIds.length || minTopicScore != null) {
+  if (effectiveTopicIds.length || resolvedMinTopicScore != null) {
     where.topicScores = {
       some: {
         ...(effectiveTopicIds.length
           ? { topicId: { in: effectiveTopicIds } }
           : {}),
-        ...(minTopicScore != null ? { finalScore: { gte: minTopicScore } } : {}),
+        ...(resolvedMinTopicScore != null
+          ? { finalScore: { gte: resolvedMinTopicScore } }
+          : {}),
       },
     };
   }
@@ -248,14 +260,16 @@ export async function GET(request: Request) {
           },
         };
   const includeTopicScoreRelation =
-    includeTopicScores || effectiveTopicIds.length > 0 || minTopicScore != null
+    includeTopicScores || effectiveTopicIds.length > 0 || resolvedMinTopicScore != null
       ? {
           topicScores: {
             where: {
               ...(effectiveTopicIds.length
                 ? { topicId: { in: effectiveTopicIds } }
                 : {}),
-              ...(minTopicScore != null ? { finalScore: { gte: minTopicScore } } : {}),
+              ...(resolvedMinTopicScore != null
+                ? { finalScore: { gte: resolvedMinTopicScore } }
+                : {}),
             },
             orderBy: { finalScore: "desc" as const },
           },
