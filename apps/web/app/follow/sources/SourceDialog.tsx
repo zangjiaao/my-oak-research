@@ -728,8 +728,12 @@ function buildPayloadFromUnified(input: {
     const objective = String(
       intentArgs.query ?? intentArgs.keyword ?? intentArgs.objective ?? ""
     ).trim();
-    if (!objective) {
-      return { error: "Retrieval source requires query/objective in intent args." };
+    const hasRecallBinding = recallBinding.enabled && recallBinding.argKeys.length > 0;
+    if (!objective && !hasRecallBinding) {
+      return {
+        error:
+          "Retrieval source requires either query/objective in intent args or at least one recall binding arg key.",
+      };
     }
 
     const mappedPlatform = SEARCH_PLATFORM_MAP[provider] ?? "CUSTOM";
@@ -1953,6 +1957,11 @@ const SourceDialog = ({
                 <p className="text-xs text-muted-foreground">
                   顺序：key | value | 召回词关联 | - | +。
                 </p>
+                {targetCategory === "RETRIEVAL" && !effectiveIsDarknet ? (
+                  <p className="text-xs text-muted-foreground">
+                    Retrieval 可不填静态 query/objective；若用于 Topic Job 动态检索，请至少绑定一个召回注入参数（如 `query`）。
+                  </p>
+                ) : null}
               </CardContent>
             </Card>
 
