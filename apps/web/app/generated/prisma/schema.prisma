@@ -356,6 +356,7 @@ model Topic {
   sources      TopicSource[]
   jobTopics    JobTopic[]
   scores       ContentTopicScore[]
+  feedbacks    ContentTopicFeedback[]
 }
 
 model TopicTerm {
@@ -497,7 +498,7 @@ enum ContentType {
 }
 
 model Content {
-  id             String                @id @default(cuid())
+  id             String                 @id @default(cuid())
   title          String
   summary        String
   markdown       String
@@ -510,9 +511,10 @@ model Content {
   keywords       ContentKeyword[]
   subjectMatches ContentSubjectMatch[]
   topicScores    ContentTopicScore[]
+  topicFeedbacks ContentTopicFeedback[]
   entities       ContentEntity?
-  createdAt      DateTime              @default(now())
-  updatedAt      DateTime              @updatedAt
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
   favorites      Favorite[]
 
   @@index([platform, time])
@@ -578,6 +580,29 @@ model ContentTopicScore {
 
   @@unique([contentId, topicId])
   @@index([topicId, finalScore])
+  @@index([contentId])
+}
+
+enum FeedbackVote {
+  UP
+  DOWN
+  NONE
+}
+
+model ContentTopicFeedback {
+  id        String       @id @default(cuid())
+  contentId String
+  topicId   String
+  userId    String
+  vote      FeedbackVote @default(NONE)
+  note      String?
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  content   Content      @relation(fields: [contentId], references: [id], onDelete: Cascade)
+  topic     Topic        @relation(fields: [topicId], references: [id], onDelete: Cascade)
+
+  @@unique([contentId, topicId, userId])
+  @@index([topicId, userId])
   @@index([contentId])
 }
 

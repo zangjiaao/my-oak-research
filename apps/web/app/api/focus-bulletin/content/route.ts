@@ -266,11 +266,7 @@ export async function GET(request: Request) {
             orderBy: { updatedAt: "desc" as const },
           },
         }
-      : {
-          topicFeedbacks: {
-            take: 0,
-          },
-        };
+      : {};
 
   const contents = await prismaAny.content.findMany({
     where,

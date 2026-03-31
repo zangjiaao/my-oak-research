@@ -144,6 +144,11 @@ export type ContentEntity = $Result.DefaultSelection<Prisma.$ContentEntityPayloa
  */
 export type ContentTopicScore = $Result.DefaultSelection<Prisma.$ContentTopicScorePayload>
 /**
+ * Model ContentTopicFeedback
+ * 
+ */
+export type ContentTopicFeedback = $Result.DefaultSelection<Prisma.$ContentTopicFeedbackPayload>
+/**
  * Model Favorite
  * 
  */
@@ -324,6 +329,15 @@ export const ContentType: {
 export type ContentType = (typeof ContentType)[keyof typeof ContentType]
 
 
+export const FeedbackVote: {
+  UP: 'UP',
+  DOWN: 'DOWN',
+  NONE: 'NONE'
+};
+
+export type FeedbackVote = (typeof FeedbackVote)[keyof typeof FeedbackVote]
+
+
 export const MaterialSource: {
   FAVORITE: 'FAVORITE',
   KNOWLEDGE: 'KNOWLEDGE'
@@ -393,6 +407,10 @@ export const TaskStatus: typeof $Enums.TaskStatus
 export type ContentType = $Enums.ContentType
 
 export const ContentType: typeof $Enums.ContentType
+
+export type FeedbackVote = $Enums.FeedbackVote
+
+export const FeedbackVote: typeof $Enums.FeedbackVote
 
 export type MaterialSource = $Enums.MaterialSource
 
@@ -778,6 +796,16 @@ export class PrismaClient<
     * ```
     */
   get contentTopicScore(): Prisma.ContentTopicScoreDelegate<ExtArgs, ClientOptions>;
+
+  /**
+   * `prisma.contentTopicFeedback`: Exposes CRUD operations for the **ContentTopicFeedback** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more ContentTopicFeedbacks
+    * const contentTopicFeedbacks = await prisma.contentTopicFeedback.findMany()
+    * ```
+    */
+  get contentTopicFeedback(): Prisma.ContentTopicFeedbackDelegate<ExtArgs, ClientOptions>;
 
   /**
    * `prisma.favorite`: Exposes CRUD operations for the **Favorite** model.
@@ -1328,6 +1356,7 @@ export namespace Prisma {
     ContentSubjectMatch: 'ContentSubjectMatch',
     ContentEntity: 'ContentEntity',
     ContentTopicScore: 'ContentTopicScore',
+    ContentTopicFeedback: 'ContentTopicFeedback',
     Favorite: 'Favorite',
     ReportTemplate: 'ReportTemplate',
     Report: 'Report',
@@ -1352,7 +1381,7 @@ export namespace Prisma {
       omit: GlobalOmitOptions
     }
     meta: {
-      modelProps: "category" | "keyword" | "proxy" | "credential" | "source" | "sourceIdentity" | "webSourceConfig" | "darknetSourceConfig" | "searchEngineSourceConfig" | "socialMediaSourceConfig" | "query" | "querySourcePolicy" | "topic" | "topicTerm" | "topicSource" | "job" | "jobTopic" | "jobSource" | "jobRun" | "queryRun" | "taskEvent" | "content" | "contentKeyword" | "contentSubjectMatch" | "contentEntity" | "contentTopicScore" | "favorite" | "reportTemplate" | "report" | "chatSession" | "chatMessage" | "reportMaterial" | "knowledge" | "knowledgeFile" | "knowledgeChunk"
+      modelProps: "category" | "keyword" | "proxy" | "credential" | "source" | "sourceIdentity" | "webSourceConfig" | "darknetSourceConfig" | "searchEngineSourceConfig" | "socialMediaSourceConfig" | "query" | "querySourcePolicy" | "topic" | "topicTerm" | "topicSource" | "job" | "jobTopic" | "jobSource" | "jobRun" | "queryRun" | "taskEvent" | "content" | "contentKeyword" | "contentSubjectMatch" | "contentEntity" | "contentTopicScore" | "contentTopicFeedback" | "favorite" | "reportTemplate" | "report" | "chatSession" | "chatMessage" | "reportMaterial" | "knowledge" | "knowledgeFile" | "knowledgeChunk"
       txIsolationLevel: Prisma.TransactionIsolationLevel
     }
     model: {
@@ -3280,6 +3309,80 @@ export namespace Prisma {
           }
         }
       }
+      ContentTopicFeedback: {
+        payload: Prisma.$ContentTopicFeedbackPayload<ExtArgs>
+        fields: Prisma.ContentTopicFeedbackFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.ContentTopicFeedbackFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ContentTopicFeedbackPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.ContentTopicFeedbackFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ContentTopicFeedbackPayload>
+          }
+          findFirst: {
+            args: Prisma.ContentTopicFeedbackFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ContentTopicFeedbackPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.ContentTopicFeedbackFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ContentTopicFeedbackPayload>
+          }
+          findMany: {
+            args: Prisma.ContentTopicFeedbackFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ContentTopicFeedbackPayload>[]
+          }
+          create: {
+            args: Prisma.ContentTopicFeedbackCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ContentTopicFeedbackPayload>
+          }
+          createMany: {
+            args: Prisma.ContentTopicFeedbackCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.ContentTopicFeedbackCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ContentTopicFeedbackPayload>[]
+          }
+          delete: {
+            args: Prisma.ContentTopicFeedbackDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ContentTopicFeedbackPayload>
+          }
+          update: {
+            args: Prisma.ContentTopicFeedbackUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ContentTopicFeedbackPayload>
+          }
+          deleteMany: {
+            args: Prisma.ContentTopicFeedbackDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.ContentTopicFeedbackUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateManyAndReturn: {
+            args: Prisma.ContentTopicFeedbackUpdateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ContentTopicFeedbackPayload>[]
+          }
+          upsert: {
+            args: Prisma.ContentTopicFeedbackUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ContentTopicFeedbackPayload>
+          }
+          aggregate: {
+            args: Prisma.ContentTopicFeedbackAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateContentTopicFeedback>
+          }
+          groupBy: {
+            args: Prisma.ContentTopicFeedbackGroupByArgs<ExtArgs>
+            result: $Utils.Optional<ContentTopicFeedbackGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.ContentTopicFeedbackCountArgs<ExtArgs>
+            result: $Utils.Optional<ContentTopicFeedbackCountAggregateOutputType> | number
+          }
+        }
+      }
       Favorite: {
         payload: Prisma.$FavoritePayload<ExtArgs>
         fields: Prisma.FavoriteFieldRefs
@@ -4064,6 +4167,7 @@ export namespace Prisma {
     contentSubjectMatch?: ContentSubjectMatchOmit
     contentEntity?: ContentEntityOmit
     contentTopicScore?: ContentTopicScoreOmit
+    contentTopicFeedback?: ContentTopicFeedbackOmit
     favorite?: FavoriteOmit
     reportTemplate?: ReportTemplateOmit
     report?: ReportOmit
@@ -4469,6 +4573,7 @@ export namespace Prisma {
     sources: number
     jobTopics: number
     scores: number
+    feedbacks: number
   }
 
   export type TopicCountOutputTypeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
@@ -4476,6 +4581,7 @@ export namespace Prisma {
     sources?: boolean | TopicCountOutputTypeCountSourcesArgs
     jobTopics?: boolean | TopicCountOutputTypeCountJobTopicsArgs
     scores?: boolean | TopicCountOutputTypeCountScoresArgs
+    feedbacks?: boolean | TopicCountOutputTypeCountFeedbacksArgs
   }
 
   // Custom InputTypes
@@ -4515,6 +4621,13 @@ export namespace Prisma {
    */
   export type TopicCountOutputTypeCountScoresArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     where?: ContentTopicScoreWhereInput
+  }
+
+  /**
+   * TopicCountOutputType without action
+   */
+  export type TopicCountOutputTypeCountFeedbacksArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: ContentTopicFeedbackWhereInput
   }
 
 
@@ -4606,6 +4719,7 @@ export namespace Prisma {
     keywords: number
     subjectMatches: number
     topicScores: number
+    topicFeedbacks: number
     favorites: number
   }
 
@@ -4613,6 +4727,7 @@ export namespace Prisma {
     keywords?: boolean | ContentCountOutputTypeCountKeywordsArgs
     subjectMatches?: boolean | ContentCountOutputTypeCountSubjectMatchesArgs
     topicScores?: boolean | ContentCountOutputTypeCountTopicScoresArgs
+    topicFeedbacks?: boolean | ContentCountOutputTypeCountTopicFeedbacksArgs
     favorites?: boolean | ContentCountOutputTypeCountFavoritesArgs
   }
 
@@ -4646,6 +4761,13 @@ export namespace Prisma {
    */
   export type ContentCountOutputTypeCountTopicScoresArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     where?: ContentTopicScoreWhereInput
+  }
+
+  /**
+   * ContentCountOutputType without action
+   */
+  export type ContentCountOutputTypeCountTopicFeedbacksArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: ContentTopicFeedbackWhereInput
   }
 
   /**
@@ -19196,6 +19318,7 @@ export namespace Prisma {
     sources?: boolean | Topic$sourcesArgs<ExtArgs>
     jobTopics?: boolean | Topic$jobTopicsArgs<ExtArgs>
     scores?: boolean | Topic$scoresArgs<ExtArgs>
+    feedbacks?: boolean | Topic$feedbacksArgs<ExtArgs>
     _count?: boolean | TopicCountOutputTypeDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["topic"]>
 
@@ -19241,6 +19364,7 @@ export namespace Prisma {
     sources?: boolean | Topic$sourcesArgs<ExtArgs>
     jobTopics?: boolean | Topic$jobTopicsArgs<ExtArgs>
     scores?: boolean | Topic$scoresArgs<ExtArgs>
+    feedbacks?: boolean | Topic$feedbacksArgs<ExtArgs>
     _count?: boolean | TopicCountOutputTypeDefaultArgs<ExtArgs>
   }
   export type TopicIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {}
@@ -19253,6 +19377,7 @@ export namespace Prisma {
       sources: Prisma.$TopicSourcePayload<ExtArgs>[]
       jobTopics: Prisma.$JobTopicPayload<ExtArgs>[]
       scores: Prisma.$ContentTopicScorePayload<ExtArgs>[]
+      feedbacks: Prisma.$ContentTopicFeedbackPayload<ExtArgs>[]
     }
     scalars: $Extensions.GetPayloadResult<{
       id: string
@@ -19662,6 +19787,7 @@ export namespace Prisma {
     sources<T extends Topic$sourcesArgs<ExtArgs> = {}>(args?: Subset<T, Topic$sourcesArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$TopicSourcePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     jobTopics<T extends Topic$jobTopicsArgs<ExtArgs> = {}>(args?: Subset<T, Topic$jobTopicsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$JobTopicPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     scores<T extends Topic$scoresArgs<ExtArgs> = {}>(args?: Subset<T, Topic$scoresArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ContentTopicScorePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    feedbacks<T extends Topic$feedbacksArgs<ExtArgs> = {}>(args?: Subset<T, Topic$feedbacksArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ContentTopicFeedbackPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
      * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -20181,6 +20307,30 @@ export namespace Prisma {
     take?: number
     skip?: number
     distinct?: ContentTopicScoreScalarFieldEnum | ContentTopicScoreScalarFieldEnum[]
+  }
+
+  /**
+   * Topic.feedbacks
+   */
+  export type Topic$feedbacksArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ContentTopicFeedback
+     */
+    select?: ContentTopicFeedbackSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the ContentTopicFeedback
+     */
+    omit?: ContentTopicFeedbackOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ContentTopicFeedbackInclude<ExtArgs> | null
+    where?: ContentTopicFeedbackWhereInput
+    orderBy?: ContentTopicFeedbackOrderByWithRelationInput | ContentTopicFeedbackOrderByWithRelationInput[]
+    cursor?: ContentTopicFeedbackWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: ContentTopicFeedbackScalarFieldEnum | ContentTopicFeedbackScalarFieldEnum[]
   }
 
   /**
@@ -29380,6 +29530,7 @@ export namespace Prisma {
     keywords?: boolean | Content$keywordsArgs<ExtArgs>
     subjectMatches?: boolean | Content$subjectMatchesArgs<ExtArgs>
     topicScores?: boolean | Content$topicScoresArgs<ExtArgs>
+    topicFeedbacks?: boolean | Content$topicFeedbacksArgs<ExtArgs>
     entities?: boolean | Content$entitiesArgs<ExtArgs>
     favorites?: boolean | Content$favoritesArgs<ExtArgs>
     _count?: boolean | ContentCountOutputTypeDefaultArgs<ExtArgs>
@@ -29435,6 +29586,7 @@ export namespace Prisma {
     keywords?: boolean | Content$keywordsArgs<ExtArgs>
     subjectMatches?: boolean | Content$subjectMatchesArgs<ExtArgs>
     topicScores?: boolean | Content$topicScoresArgs<ExtArgs>
+    topicFeedbacks?: boolean | Content$topicFeedbacksArgs<ExtArgs>
     entities?: boolean | Content$entitiesArgs<ExtArgs>
     favorites?: boolean | Content$favoritesArgs<ExtArgs>
     _count?: boolean | ContentCountOutputTypeDefaultArgs<ExtArgs>
@@ -29448,6 +29600,7 @@ export namespace Prisma {
       keywords: Prisma.$ContentKeywordPayload<ExtArgs>[]
       subjectMatches: Prisma.$ContentSubjectMatchPayload<ExtArgs>[]
       topicScores: Prisma.$ContentTopicScorePayload<ExtArgs>[]
+      topicFeedbacks: Prisma.$ContentTopicFeedbackPayload<ExtArgs>[]
       entities: Prisma.$ContentEntityPayload<ExtArgs> | null
       favorites: Prisma.$FavoritePayload<ExtArgs>[]
     }
@@ -29861,6 +30014,7 @@ export namespace Prisma {
     keywords<T extends Content$keywordsArgs<ExtArgs> = {}>(args?: Subset<T, Content$keywordsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ContentKeywordPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     subjectMatches<T extends Content$subjectMatchesArgs<ExtArgs> = {}>(args?: Subset<T, Content$subjectMatchesArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ContentSubjectMatchPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     topicScores<T extends Content$topicScoresArgs<ExtArgs> = {}>(args?: Subset<T, Content$topicScoresArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ContentTopicScorePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    topicFeedbacks<T extends Content$topicFeedbacksArgs<ExtArgs> = {}>(args?: Subset<T, Content$topicFeedbacksArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ContentTopicFeedbackPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     entities<T extends Content$entitiesArgs<ExtArgs> = {}>(args?: Subset<T, Content$entitiesArgs<ExtArgs>>): Prisma__ContentEntityClient<$Result.GetResult<Prisma.$ContentEntityPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
     favorites<T extends Content$favoritesArgs<ExtArgs> = {}>(args?: Subset<T, Content$favoritesArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$FavoritePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     /**
@@ -30361,6 +30515,30 @@ export namespace Prisma {
     take?: number
     skip?: number
     distinct?: ContentTopicScoreScalarFieldEnum | ContentTopicScoreScalarFieldEnum[]
+  }
+
+  /**
+   * Content.topicFeedbacks
+   */
+  export type Content$topicFeedbacksArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ContentTopicFeedback
+     */
+    select?: ContentTopicFeedbackSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the ContentTopicFeedback
+     */
+    omit?: ContentTopicFeedbackOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ContentTopicFeedbackInclude<ExtArgs> | null
+    where?: ContentTopicFeedbackWhereInput
+    orderBy?: ContentTopicFeedbackOrderByWithRelationInput | ContentTopicFeedbackOrderByWithRelationInput[]
+    cursor?: ContentTopicFeedbackWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: ContentTopicFeedbackScalarFieldEnum | ContentTopicFeedbackScalarFieldEnum[]
   }
 
   /**
@@ -34885,6 +35063,1111 @@ export namespace Prisma {
      * Choose, which related nodes to fetch as well
      */
     include?: ContentTopicScoreInclude<ExtArgs> | null
+  }
+
+
+  /**
+   * Model ContentTopicFeedback
+   */
+
+  export type AggregateContentTopicFeedback = {
+    _count: ContentTopicFeedbackCountAggregateOutputType | null
+    _min: ContentTopicFeedbackMinAggregateOutputType | null
+    _max: ContentTopicFeedbackMaxAggregateOutputType | null
+  }
+
+  export type ContentTopicFeedbackMinAggregateOutputType = {
+    id: string | null
+    contentId: string | null
+    topicId: string | null
+    userId: string | null
+    vote: $Enums.FeedbackVote | null
+    note: string | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type ContentTopicFeedbackMaxAggregateOutputType = {
+    id: string | null
+    contentId: string | null
+    topicId: string | null
+    userId: string | null
+    vote: $Enums.FeedbackVote | null
+    note: string | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type ContentTopicFeedbackCountAggregateOutputType = {
+    id: number
+    contentId: number
+    topicId: number
+    userId: number
+    vote: number
+    note: number
+    createdAt: number
+    updatedAt: number
+    _all: number
+  }
+
+
+  export type ContentTopicFeedbackMinAggregateInputType = {
+    id?: true
+    contentId?: true
+    topicId?: true
+    userId?: true
+    vote?: true
+    note?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type ContentTopicFeedbackMaxAggregateInputType = {
+    id?: true
+    contentId?: true
+    topicId?: true
+    userId?: true
+    vote?: true
+    note?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type ContentTopicFeedbackCountAggregateInputType = {
+    id?: true
+    contentId?: true
+    topicId?: true
+    userId?: true
+    vote?: true
+    note?: true
+    createdAt?: true
+    updatedAt?: true
+    _all?: true
+  }
+
+  export type ContentTopicFeedbackAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which ContentTopicFeedback to aggregate.
+     */
+    where?: ContentTopicFeedbackWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of ContentTopicFeedbacks to fetch.
+     */
+    orderBy?: ContentTopicFeedbackOrderByWithRelationInput | ContentTopicFeedbackOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: ContentTopicFeedbackWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` ContentTopicFeedbacks from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` ContentTopicFeedbacks.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned ContentTopicFeedbacks
+    **/
+    _count?: true | ContentTopicFeedbackCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: ContentTopicFeedbackMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: ContentTopicFeedbackMaxAggregateInputType
+  }
+
+  export type GetContentTopicFeedbackAggregateType<T extends ContentTopicFeedbackAggregateArgs> = {
+        [P in keyof T & keyof AggregateContentTopicFeedback]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateContentTopicFeedback[P]>
+      : GetScalarType<T[P], AggregateContentTopicFeedback[P]>
+  }
+
+
+
+
+  export type ContentTopicFeedbackGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: ContentTopicFeedbackWhereInput
+    orderBy?: ContentTopicFeedbackOrderByWithAggregationInput | ContentTopicFeedbackOrderByWithAggregationInput[]
+    by: ContentTopicFeedbackScalarFieldEnum[] | ContentTopicFeedbackScalarFieldEnum
+    having?: ContentTopicFeedbackScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: ContentTopicFeedbackCountAggregateInputType | true
+    _min?: ContentTopicFeedbackMinAggregateInputType
+    _max?: ContentTopicFeedbackMaxAggregateInputType
+  }
+
+  export type ContentTopicFeedbackGroupByOutputType = {
+    id: string
+    contentId: string
+    topicId: string
+    userId: string
+    vote: $Enums.FeedbackVote
+    note: string | null
+    createdAt: Date
+    updatedAt: Date
+    _count: ContentTopicFeedbackCountAggregateOutputType | null
+    _min: ContentTopicFeedbackMinAggregateOutputType | null
+    _max: ContentTopicFeedbackMaxAggregateOutputType | null
+  }
+
+  type GetContentTopicFeedbackGroupByPayload<T extends ContentTopicFeedbackGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<ContentTopicFeedbackGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof ContentTopicFeedbackGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], ContentTopicFeedbackGroupByOutputType[P]>
+            : GetScalarType<T[P], ContentTopicFeedbackGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type ContentTopicFeedbackSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    contentId?: boolean
+    topicId?: boolean
+    userId?: boolean
+    vote?: boolean
+    note?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    content?: boolean | ContentDefaultArgs<ExtArgs>
+    topic?: boolean | TopicDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["contentTopicFeedback"]>
+
+  export type ContentTopicFeedbackSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    contentId?: boolean
+    topicId?: boolean
+    userId?: boolean
+    vote?: boolean
+    note?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    content?: boolean | ContentDefaultArgs<ExtArgs>
+    topic?: boolean | TopicDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["contentTopicFeedback"]>
+
+  export type ContentTopicFeedbackSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    contentId?: boolean
+    topicId?: boolean
+    userId?: boolean
+    vote?: boolean
+    note?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    content?: boolean | ContentDefaultArgs<ExtArgs>
+    topic?: boolean | TopicDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["contentTopicFeedback"]>
+
+  export type ContentTopicFeedbackSelectScalar = {
+    id?: boolean
+    contentId?: boolean
+    topicId?: boolean
+    userId?: boolean
+    vote?: boolean
+    note?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }
+
+  export type ContentTopicFeedbackOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "contentId" | "topicId" | "userId" | "vote" | "note" | "createdAt" | "updatedAt", ExtArgs["result"]["contentTopicFeedback"]>
+  export type ContentTopicFeedbackInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    content?: boolean | ContentDefaultArgs<ExtArgs>
+    topic?: boolean | TopicDefaultArgs<ExtArgs>
+  }
+  export type ContentTopicFeedbackIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    content?: boolean | ContentDefaultArgs<ExtArgs>
+    topic?: boolean | TopicDefaultArgs<ExtArgs>
+  }
+  export type ContentTopicFeedbackIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    content?: boolean | ContentDefaultArgs<ExtArgs>
+    topic?: boolean | TopicDefaultArgs<ExtArgs>
+  }
+
+  export type $ContentTopicFeedbackPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "ContentTopicFeedback"
+    objects: {
+      content: Prisma.$ContentPayload<ExtArgs>
+      topic: Prisma.$TopicPayload<ExtArgs>
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      contentId: string
+      topicId: string
+      userId: string
+      vote: $Enums.FeedbackVote
+      note: string | null
+      createdAt: Date
+      updatedAt: Date
+    }, ExtArgs["result"]["contentTopicFeedback"]>
+    composites: {}
+  }
+
+  type ContentTopicFeedbackGetPayload<S extends boolean | null | undefined | ContentTopicFeedbackDefaultArgs> = $Result.GetResult<Prisma.$ContentTopicFeedbackPayload, S>
+
+  type ContentTopicFeedbackCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
+    Omit<ContentTopicFeedbackFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+      select?: ContentTopicFeedbackCountAggregateInputType | true
+    }
+
+  export interface ContentTopicFeedbackDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['ContentTopicFeedback'], meta: { name: 'ContentTopicFeedback' } }
+    /**
+     * Find zero or one ContentTopicFeedback that matches the filter.
+     * @param {ContentTopicFeedbackFindUniqueArgs} args - Arguments to find a ContentTopicFeedback
+     * @example
+     * // Get one ContentTopicFeedback
+     * const contentTopicFeedback = await prisma.contentTopicFeedback.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends ContentTopicFeedbackFindUniqueArgs>(args: SelectSubset<T, ContentTopicFeedbackFindUniqueArgs<ExtArgs>>): Prisma__ContentTopicFeedbackClient<$Result.GetResult<Prisma.$ContentTopicFeedbackPayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find one ContentTopicFeedback that matches the filter or throw an error with `error.code='P2025'`
+     * if no matches were found.
+     * @param {ContentTopicFeedbackFindUniqueOrThrowArgs} args - Arguments to find a ContentTopicFeedback
+     * @example
+     * // Get one ContentTopicFeedback
+     * const contentTopicFeedback = await prisma.contentTopicFeedback.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends ContentTopicFeedbackFindUniqueOrThrowArgs>(args: SelectSubset<T, ContentTopicFeedbackFindUniqueOrThrowArgs<ExtArgs>>): Prisma__ContentTopicFeedbackClient<$Result.GetResult<Prisma.$ContentTopicFeedbackPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first ContentTopicFeedback that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ContentTopicFeedbackFindFirstArgs} args - Arguments to find a ContentTopicFeedback
+     * @example
+     * // Get one ContentTopicFeedback
+     * const contentTopicFeedback = await prisma.contentTopicFeedback.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends ContentTopicFeedbackFindFirstArgs>(args?: SelectSubset<T, ContentTopicFeedbackFindFirstArgs<ExtArgs>>): Prisma__ContentTopicFeedbackClient<$Result.GetResult<Prisma.$ContentTopicFeedbackPayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first ContentTopicFeedback that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ContentTopicFeedbackFindFirstOrThrowArgs} args - Arguments to find a ContentTopicFeedback
+     * @example
+     * // Get one ContentTopicFeedback
+     * const contentTopicFeedback = await prisma.contentTopicFeedback.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends ContentTopicFeedbackFindFirstOrThrowArgs>(args?: SelectSubset<T, ContentTopicFeedbackFindFirstOrThrowArgs<ExtArgs>>): Prisma__ContentTopicFeedbackClient<$Result.GetResult<Prisma.$ContentTopicFeedbackPayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find zero or more ContentTopicFeedbacks that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ContentTopicFeedbackFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all ContentTopicFeedbacks
+     * const contentTopicFeedbacks = await prisma.contentTopicFeedback.findMany()
+     * 
+     * // Get first 10 ContentTopicFeedbacks
+     * const contentTopicFeedbacks = await prisma.contentTopicFeedback.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const contentTopicFeedbackWithIdOnly = await prisma.contentTopicFeedback.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends ContentTopicFeedbackFindManyArgs>(args?: SelectSubset<T, ContentTopicFeedbackFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ContentTopicFeedbackPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+
+    /**
+     * Create a ContentTopicFeedback.
+     * @param {ContentTopicFeedbackCreateArgs} args - Arguments to create a ContentTopicFeedback.
+     * @example
+     * // Create one ContentTopicFeedback
+     * const ContentTopicFeedback = await prisma.contentTopicFeedback.create({
+     *   data: {
+     *     // ... data to create a ContentTopicFeedback
+     *   }
+     * })
+     * 
+     */
+    create<T extends ContentTopicFeedbackCreateArgs>(args: SelectSubset<T, ContentTopicFeedbackCreateArgs<ExtArgs>>): Prisma__ContentTopicFeedbackClient<$Result.GetResult<Prisma.$ContentTopicFeedbackPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Create many ContentTopicFeedbacks.
+     * @param {ContentTopicFeedbackCreateManyArgs} args - Arguments to create many ContentTopicFeedbacks.
+     * @example
+     * // Create many ContentTopicFeedbacks
+     * const contentTopicFeedback = await prisma.contentTopicFeedback.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends ContentTopicFeedbackCreateManyArgs>(args?: SelectSubset<T, ContentTopicFeedbackCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many ContentTopicFeedbacks and returns the data saved in the database.
+     * @param {ContentTopicFeedbackCreateManyAndReturnArgs} args - Arguments to create many ContentTopicFeedbacks.
+     * @example
+     * // Create many ContentTopicFeedbacks
+     * const contentTopicFeedback = await prisma.contentTopicFeedback.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many ContentTopicFeedbacks and only return the `id`
+     * const contentTopicFeedbackWithIdOnly = await prisma.contentTopicFeedback.createManyAndReturn({
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends ContentTopicFeedbackCreateManyAndReturnArgs>(args?: SelectSubset<T, ContentTopicFeedbackCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ContentTopicFeedbackPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Delete a ContentTopicFeedback.
+     * @param {ContentTopicFeedbackDeleteArgs} args - Arguments to delete one ContentTopicFeedback.
+     * @example
+     * // Delete one ContentTopicFeedback
+     * const ContentTopicFeedback = await prisma.contentTopicFeedback.delete({
+     *   where: {
+     *     // ... filter to delete one ContentTopicFeedback
+     *   }
+     * })
+     * 
+     */
+    delete<T extends ContentTopicFeedbackDeleteArgs>(args: SelectSubset<T, ContentTopicFeedbackDeleteArgs<ExtArgs>>): Prisma__ContentTopicFeedbackClient<$Result.GetResult<Prisma.$ContentTopicFeedbackPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Update one ContentTopicFeedback.
+     * @param {ContentTopicFeedbackUpdateArgs} args - Arguments to update one ContentTopicFeedback.
+     * @example
+     * // Update one ContentTopicFeedback
+     * const contentTopicFeedback = await prisma.contentTopicFeedback.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends ContentTopicFeedbackUpdateArgs>(args: SelectSubset<T, ContentTopicFeedbackUpdateArgs<ExtArgs>>): Prisma__ContentTopicFeedbackClient<$Result.GetResult<Prisma.$ContentTopicFeedbackPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Delete zero or more ContentTopicFeedbacks.
+     * @param {ContentTopicFeedbackDeleteManyArgs} args - Arguments to filter ContentTopicFeedbacks to delete.
+     * @example
+     * // Delete a few ContentTopicFeedbacks
+     * const { count } = await prisma.contentTopicFeedback.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends ContentTopicFeedbackDeleteManyArgs>(args?: SelectSubset<T, ContentTopicFeedbackDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more ContentTopicFeedbacks.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ContentTopicFeedbackUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many ContentTopicFeedbacks
+     * const contentTopicFeedback = await prisma.contentTopicFeedback.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends ContentTopicFeedbackUpdateManyArgs>(args: SelectSubset<T, ContentTopicFeedbackUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more ContentTopicFeedbacks and returns the data updated in the database.
+     * @param {ContentTopicFeedbackUpdateManyAndReturnArgs} args - Arguments to update many ContentTopicFeedbacks.
+     * @example
+     * // Update many ContentTopicFeedbacks
+     * const contentTopicFeedback = await prisma.contentTopicFeedback.updateManyAndReturn({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Update zero or more ContentTopicFeedbacks and only return the `id`
+     * const contentTopicFeedbackWithIdOnly = await prisma.contentTopicFeedback.updateManyAndReturn({
+     *   select: { id: true },
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    updateManyAndReturn<T extends ContentTopicFeedbackUpdateManyAndReturnArgs>(args: SelectSubset<T, ContentTopicFeedbackUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ContentTopicFeedbackPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Create or update one ContentTopicFeedback.
+     * @param {ContentTopicFeedbackUpsertArgs} args - Arguments to update or create a ContentTopicFeedback.
+     * @example
+     * // Update or create a ContentTopicFeedback
+     * const contentTopicFeedback = await prisma.contentTopicFeedback.upsert({
+     *   create: {
+     *     // ... data to create a ContentTopicFeedback
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the ContentTopicFeedback we want to update
+     *   }
+     * })
+     */
+    upsert<T extends ContentTopicFeedbackUpsertArgs>(args: SelectSubset<T, ContentTopicFeedbackUpsertArgs<ExtArgs>>): Prisma__ContentTopicFeedbackClient<$Result.GetResult<Prisma.$ContentTopicFeedbackPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+
+    /**
+     * Count the number of ContentTopicFeedbacks.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ContentTopicFeedbackCountArgs} args - Arguments to filter ContentTopicFeedbacks to count.
+     * @example
+     * // Count the number of ContentTopicFeedbacks
+     * const count = await prisma.contentTopicFeedback.count({
+     *   where: {
+     *     // ... the filter for the ContentTopicFeedbacks we want to count
+     *   }
+     * })
+    **/
+    count<T extends ContentTopicFeedbackCountArgs>(
+      args?: Subset<T, ContentTopicFeedbackCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], ContentTopicFeedbackCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a ContentTopicFeedback.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ContentTopicFeedbackAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends ContentTopicFeedbackAggregateArgs>(args: Subset<T, ContentTopicFeedbackAggregateArgs>): Prisma.PrismaPromise<GetContentTopicFeedbackAggregateType<T>>
+
+    /**
+     * Group by ContentTopicFeedback.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ContentTopicFeedbackGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends ContentTopicFeedbackGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: ContentTopicFeedbackGroupByArgs['orderBy'] }
+        : { orderBy?: ContentTopicFeedbackGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, ContentTopicFeedbackGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetContentTopicFeedbackGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the ContentTopicFeedback model
+   */
+  readonly fields: ContentTopicFeedbackFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for ContentTopicFeedback.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__ContentTopicFeedbackClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    content<T extends ContentDefaultArgs<ExtArgs> = {}>(args?: Subset<T, ContentDefaultArgs<ExtArgs>>): Prisma__ContentClient<$Result.GetResult<Prisma.$ContentPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    topic<T extends TopicDefaultArgs<ExtArgs> = {}>(args?: Subset<T, TopicDefaultArgs<ExtArgs>>): Prisma__TopicClient<$Result.GetResult<Prisma.$TopicPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the ContentTopicFeedback model
+   */
+  interface ContentTopicFeedbackFieldRefs {
+    readonly id: FieldRef<"ContentTopicFeedback", 'String'>
+    readonly contentId: FieldRef<"ContentTopicFeedback", 'String'>
+    readonly topicId: FieldRef<"ContentTopicFeedback", 'String'>
+    readonly userId: FieldRef<"ContentTopicFeedback", 'String'>
+    readonly vote: FieldRef<"ContentTopicFeedback", 'FeedbackVote'>
+    readonly note: FieldRef<"ContentTopicFeedback", 'String'>
+    readonly createdAt: FieldRef<"ContentTopicFeedback", 'DateTime'>
+    readonly updatedAt: FieldRef<"ContentTopicFeedback", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * ContentTopicFeedback findUnique
+   */
+  export type ContentTopicFeedbackFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ContentTopicFeedback
+     */
+    select?: ContentTopicFeedbackSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the ContentTopicFeedback
+     */
+    omit?: ContentTopicFeedbackOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ContentTopicFeedbackInclude<ExtArgs> | null
+    /**
+     * Filter, which ContentTopicFeedback to fetch.
+     */
+    where: ContentTopicFeedbackWhereUniqueInput
+  }
+
+  /**
+   * ContentTopicFeedback findUniqueOrThrow
+   */
+  export type ContentTopicFeedbackFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ContentTopicFeedback
+     */
+    select?: ContentTopicFeedbackSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the ContentTopicFeedback
+     */
+    omit?: ContentTopicFeedbackOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ContentTopicFeedbackInclude<ExtArgs> | null
+    /**
+     * Filter, which ContentTopicFeedback to fetch.
+     */
+    where: ContentTopicFeedbackWhereUniqueInput
+  }
+
+  /**
+   * ContentTopicFeedback findFirst
+   */
+  export type ContentTopicFeedbackFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ContentTopicFeedback
+     */
+    select?: ContentTopicFeedbackSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the ContentTopicFeedback
+     */
+    omit?: ContentTopicFeedbackOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ContentTopicFeedbackInclude<ExtArgs> | null
+    /**
+     * Filter, which ContentTopicFeedback to fetch.
+     */
+    where?: ContentTopicFeedbackWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of ContentTopicFeedbacks to fetch.
+     */
+    orderBy?: ContentTopicFeedbackOrderByWithRelationInput | ContentTopicFeedbackOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for ContentTopicFeedbacks.
+     */
+    cursor?: ContentTopicFeedbackWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` ContentTopicFeedbacks from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` ContentTopicFeedbacks.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of ContentTopicFeedbacks.
+     */
+    distinct?: ContentTopicFeedbackScalarFieldEnum | ContentTopicFeedbackScalarFieldEnum[]
+  }
+
+  /**
+   * ContentTopicFeedback findFirstOrThrow
+   */
+  export type ContentTopicFeedbackFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ContentTopicFeedback
+     */
+    select?: ContentTopicFeedbackSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the ContentTopicFeedback
+     */
+    omit?: ContentTopicFeedbackOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ContentTopicFeedbackInclude<ExtArgs> | null
+    /**
+     * Filter, which ContentTopicFeedback to fetch.
+     */
+    where?: ContentTopicFeedbackWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of ContentTopicFeedbacks to fetch.
+     */
+    orderBy?: ContentTopicFeedbackOrderByWithRelationInput | ContentTopicFeedbackOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for ContentTopicFeedbacks.
+     */
+    cursor?: ContentTopicFeedbackWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` ContentTopicFeedbacks from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` ContentTopicFeedbacks.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of ContentTopicFeedbacks.
+     */
+    distinct?: ContentTopicFeedbackScalarFieldEnum | ContentTopicFeedbackScalarFieldEnum[]
+  }
+
+  /**
+   * ContentTopicFeedback findMany
+   */
+  export type ContentTopicFeedbackFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ContentTopicFeedback
+     */
+    select?: ContentTopicFeedbackSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the ContentTopicFeedback
+     */
+    omit?: ContentTopicFeedbackOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ContentTopicFeedbackInclude<ExtArgs> | null
+    /**
+     * Filter, which ContentTopicFeedbacks to fetch.
+     */
+    where?: ContentTopicFeedbackWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of ContentTopicFeedbacks to fetch.
+     */
+    orderBy?: ContentTopicFeedbackOrderByWithRelationInput | ContentTopicFeedbackOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing ContentTopicFeedbacks.
+     */
+    cursor?: ContentTopicFeedbackWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` ContentTopicFeedbacks from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` ContentTopicFeedbacks.
+     */
+    skip?: number
+    distinct?: ContentTopicFeedbackScalarFieldEnum | ContentTopicFeedbackScalarFieldEnum[]
+  }
+
+  /**
+   * ContentTopicFeedback create
+   */
+  export type ContentTopicFeedbackCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ContentTopicFeedback
+     */
+    select?: ContentTopicFeedbackSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the ContentTopicFeedback
+     */
+    omit?: ContentTopicFeedbackOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ContentTopicFeedbackInclude<ExtArgs> | null
+    /**
+     * The data needed to create a ContentTopicFeedback.
+     */
+    data: XOR<ContentTopicFeedbackCreateInput, ContentTopicFeedbackUncheckedCreateInput>
+  }
+
+  /**
+   * ContentTopicFeedback createMany
+   */
+  export type ContentTopicFeedbackCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many ContentTopicFeedbacks.
+     */
+    data: ContentTopicFeedbackCreateManyInput | ContentTopicFeedbackCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * ContentTopicFeedback createManyAndReturn
+   */
+  export type ContentTopicFeedbackCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ContentTopicFeedback
+     */
+    select?: ContentTopicFeedbackSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the ContentTopicFeedback
+     */
+    omit?: ContentTopicFeedbackOmit<ExtArgs> | null
+    /**
+     * The data used to create many ContentTopicFeedbacks.
+     */
+    data: ContentTopicFeedbackCreateManyInput | ContentTopicFeedbackCreateManyInput[]
+    skipDuplicates?: boolean
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ContentTopicFeedbackIncludeCreateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * ContentTopicFeedback update
+   */
+  export type ContentTopicFeedbackUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ContentTopicFeedback
+     */
+    select?: ContentTopicFeedbackSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the ContentTopicFeedback
+     */
+    omit?: ContentTopicFeedbackOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ContentTopicFeedbackInclude<ExtArgs> | null
+    /**
+     * The data needed to update a ContentTopicFeedback.
+     */
+    data: XOR<ContentTopicFeedbackUpdateInput, ContentTopicFeedbackUncheckedUpdateInput>
+    /**
+     * Choose, which ContentTopicFeedback to update.
+     */
+    where: ContentTopicFeedbackWhereUniqueInput
+  }
+
+  /**
+   * ContentTopicFeedback updateMany
+   */
+  export type ContentTopicFeedbackUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update ContentTopicFeedbacks.
+     */
+    data: XOR<ContentTopicFeedbackUpdateManyMutationInput, ContentTopicFeedbackUncheckedUpdateManyInput>
+    /**
+     * Filter which ContentTopicFeedbacks to update
+     */
+    where?: ContentTopicFeedbackWhereInput
+    /**
+     * Limit how many ContentTopicFeedbacks to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * ContentTopicFeedback updateManyAndReturn
+   */
+  export type ContentTopicFeedbackUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ContentTopicFeedback
+     */
+    select?: ContentTopicFeedbackSelectUpdateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the ContentTopicFeedback
+     */
+    omit?: ContentTopicFeedbackOmit<ExtArgs> | null
+    /**
+     * The data used to update ContentTopicFeedbacks.
+     */
+    data: XOR<ContentTopicFeedbackUpdateManyMutationInput, ContentTopicFeedbackUncheckedUpdateManyInput>
+    /**
+     * Filter which ContentTopicFeedbacks to update
+     */
+    where?: ContentTopicFeedbackWhereInput
+    /**
+     * Limit how many ContentTopicFeedbacks to update.
+     */
+    limit?: number
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ContentTopicFeedbackIncludeUpdateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * ContentTopicFeedback upsert
+   */
+  export type ContentTopicFeedbackUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ContentTopicFeedback
+     */
+    select?: ContentTopicFeedbackSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the ContentTopicFeedback
+     */
+    omit?: ContentTopicFeedbackOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ContentTopicFeedbackInclude<ExtArgs> | null
+    /**
+     * The filter to search for the ContentTopicFeedback to update in case it exists.
+     */
+    where: ContentTopicFeedbackWhereUniqueInput
+    /**
+     * In case the ContentTopicFeedback found by the `where` argument doesn't exist, create a new ContentTopicFeedback with this data.
+     */
+    create: XOR<ContentTopicFeedbackCreateInput, ContentTopicFeedbackUncheckedCreateInput>
+    /**
+     * In case the ContentTopicFeedback was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<ContentTopicFeedbackUpdateInput, ContentTopicFeedbackUncheckedUpdateInput>
+  }
+
+  /**
+   * ContentTopicFeedback delete
+   */
+  export type ContentTopicFeedbackDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ContentTopicFeedback
+     */
+    select?: ContentTopicFeedbackSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the ContentTopicFeedback
+     */
+    omit?: ContentTopicFeedbackOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ContentTopicFeedbackInclude<ExtArgs> | null
+    /**
+     * Filter which ContentTopicFeedback to delete.
+     */
+    where: ContentTopicFeedbackWhereUniqueInput
+  }
+
+  /**
+   * ContentTopicFeedback deleteMany
+   */
+  export type ContentTopicFeedbackDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which ContentTopicFeedbacks to delete
+     */
+    where?: ContentTopicFeedbackWhereInput
+    /**
+     * Limit how many ContentTopicFeedbacks to delete.
+     */
+    limit?: number
+  }
+
+  /**
+   * ContentTopicFeedback without action
+   */
+  export type ContentTopicFeedbackDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ContentTopicFeedback
+     */
+    select?: ContentTopicFeedbackSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the ContentTopicFeedback
+     */
+    omit?: ContentTopicFeedbackOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ContentTopicFeedbackInclude<ExtArgs> | null
   }
 
 
@@ -45372,6 +46655,20 @@ export namespace Prisma {
   export type ContentTopicScoreScalarFieldEnum = (typeof ContentTopicScoreScalarFieldEnum)[keyof typeof ContentTopicScoreScalarFieldEnum]
 
 
+  export const ContentTopicFeedbackScalarFieldEnum: {
+    id: 'id',
+    contentId: 'contentId',
+    topicId: 'topicId',
+    userId: 'userId',
+    vote: 'vote',
+    note: 'note',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt'
+  };
+
+  export type ContentTopicFeedbackScalarFieldEnum = (typeof ContentTopicFeedbackScalarFieldEnum)[keyof typeof ContentTopicFeedbackScalarFieldEnum]
+
+
   export const FavoriteScalarFieldEnum: {
     id: 'id',
     userId: 'userId',
@@ -45800,6 +47097,20 @@ export namespace Prisma {
    * Reference to a field of type 'ContentSubjectMatchSource[]'
    */
   export type ListEnumContentSubjectMatchSourceFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ContentSubjectMatchSource[]'>
+    
+
+
+  /**
+   * Reference to a field of type 'FeedbackVote'
+   */
+  export type EnumFeedbackVoteFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'FeedbackVote'>
+    
+
+
+  /**
+   * Reference to a field of type 'FeedbackVote[]'
+   */
+  export type ListEnumFeedbackVoteFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'FeedbackVote[]'>
     
 
 
@@ -46849,6 +48160,7 @@ export namespace Prisma {
     sources?: TopicSourceListRelationFilter
     jobTopics?: JobTopicListRelationFilter
     scores?: ContentTopicScoreListRelationFilter
+    feedbacks?: ContentTopicFeedbackListRelationFilter
   }
 
   export type TopicOrderByWithRelationInput = {
@@ -46865,6 +48177,7 @@ export namespace Prisma {
     sources?: TopicSourceOrderByRelationAggregateInput
     jobTopics?: JobTopicOrderByRelationAggregateInput
     scores?: ContentTopicScoreOrderByRelationAggregateInput
+    feedbacks?: ContentTopicFeedbackOrderByRelationAggregateInput
   }
 
   export type TopicWhereUniqueInput = Prisma.AtLeast<{
@@ -46884,6 +48197,7 @@ export namespace Prisma {
     sources?: TopicSourceListRelationFilter
     jobTopics?: JobTopicListRelationFilter
     scores?: ContentTopicScoreListRelationFilter
+    feedbacks?: ContentTopicFeedbackListRelationFilter
   }, "id" | "name">
 
   export type TopicOrderByWithAggregationInput = {
@@ -47518,6 +48832,7 @@ export namespace Prisma {
     keywords?: ContentKeywordListRelationFilter
     subjectMatches?: ContentSubjectMatchListRelationFilter
     topicScores?: ContentTopicScoreListRelationFilter
+    topicFeedbacks?: ContentTopicFeedbackListRelationFilter
     entities?: XOR<ContentEntityNullableScalarRelationFilter, ContentEntityWhereInput> | null
     favorites?: FavoriteListRelationFilter
   }
@@ -47538,6 +48853,7 @@ export namespace Prisma {
     keywords?: ContentKeywordOrderByRelationAggregateInput
     subjectMatches?: ContentSubjectMatchOrderByRelationAggregateInput
     topicScores?: ContentTopicScoreOrderByRelationAggregateInput
+    topicFeedbacks?: ContentTopicFeedbackOrderByRelationAggregateInput
     entities?: ContentEntityOrderByWithRelationInput
     favorites?: FavoriteOrderByRelationAggregateInput
   }
@@ -47561,6 +48877,7 @@ export namespace Prisma {
     keywords?: ContentKeywordListRelationFilter
     subjectMatches?: ContentSubjectMatchListRelationFilter
     topicScores?: ContentTopicScoreListRelationFilter
+    topicFeedbacks?: ContentTopicFeedbackListRelationFilter
     entities?: XOR<ContentEntityNullableScalarRelationFilter, ContentEntityWhereInput> | null
     favorites?: FavoriteListRelationFilter
   }, "id">
@@ -47890,6 +49207,80 @@ export namespace Prisma {
     explain?: JsonNullableWithAggregatesFilter<"ContentTopicScore">
     createdAt?: DateTimeWithAggregatesFilter<"ContentTopicScore"> | Date | string
     updatedAt?: DateTimeWithAggregatesFilter<"ContentTopicScore"> | Date | string
+  }
+
+  export type ContentTopicFeedbackWhereInput = {
+    AND?: ContentTopicFeedbackWhereInput | ContentTopicFeedbackWhereInput[]
+    OR?: ContentTopicFeedbackWhereInput[]
+    NOT?: ContentTopicFeedbackWhereInput | ContentTopicFeedbackWhereInput[]
+    id?: StringFilter<"ContentTopicFeedback"> | string
+    contentId?: StringFilter<"ContentTopicFeedback"> | string
+    topicId?: StringFilter<"ContentTopicFeedback"> | string
+    userId?: StringFilter<"ContentTopicFeedback"> | string
+    vote?: EnumFeedbackVoteFilter<"ContentTopicFeedback"> | $Enums.FeedbackVote
+    note?: StringNullableFilter<"ContentTopicFeedback"> | string | null
+    createdAt?: DateTimeFilter<"ContentTopicFeedback"> | Date | string
+    updatedAt?: DateTimeFilter<"ContentTopicFeedback"> | Date | string
+    content?: XOR<ContentScalarRelationFilter, ContentWhereInput>
+    topic?: XOR<TopicScalarRelationFilter, TopicWhereInput>
+  }
+
+  export type ContentTopicFeedbackOrderByWithRelationInput = {
+    id?: SortOrder
+    contentId?: SortOrder
+    topicId?: SortOrder
+    userId?: SortOrder
+    vote?: SortOrder
+    note?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    content?: ContentOrderByWithRelationInput
+    topic?: TopicOrderByWithRelationInput
+  }
+
+  export type ContentTopicFeedbackWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    contentId_topicId_userId?: ContentTopicFeedbackContentIdTopicIdUserIdCompoundUniqueInput
+    AND?: ContentTopicFeedbackWhereInput | ContentTopicFeedbackWhereInput[]
+    OR?: ContentTopicFeedbackWhereInput[]
+    NOT?: ContentTopicFeedbackWhereInput | ContentTopicFeedbackWhereInput[]
+    contentId?: StringFilter<"ContentTopicFeedback"> | string
+    topicId?: StringFilter<"ContentTopicFeedback"> | string
+    userId?: StringFilter<"ContentTopicFeedback"> | string
+    vote?: EnumFeedbackVoteFilter<"ContentTopicFeedback"> | $Enums.FeedbackVote
+    note?: StringNullableFilter<"ContentTopicFeedback"> | string | null
+    createdAt?: DateTimeFilter<"ContentTopicFeedback"> | Date | string
+    updatedAt?: DateTimeFilter<"ContentTopicFeedback"> | Date | string
+    content?: XOR<ContentScalarRelationFilter, ContentWhereInput>
+    topic?: XOR<TopicScalarRelationFilter, TopicWhereInput>
+  }, "id" | "contentId_topicId_userId">
+
+  export type ContentTopicFeedbackOrderByWithAggregationInput = {
+    id?: SortOrder
+    contentId?: SortOrder
+    topicId?: SortOrder
+    userId?: SortOrder
+    vote?: SortOrder
+    note?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    _count?: ContentTopicFeedbackCountOrderByAggregateInput
+    _max?: ContentTopicFeedbackMaxOrderByAggregateInput
+    _min?: ContentTopicFeedbackMinOrderByAggregateInput
+  }
+
+  export type ContentTopicFeedbackScalarWhereWithAggregatesInput = {
+    AND?: ContentTopicFeedbackScalarWhereWithAggregatesInput | ContentTopicFeedbackScalarWhereWithAggregatesInput[]
+    OR?: ContentTopicFeedbackScalarWhereWithAggregatesInput[]
+    NOT?: ContentTopicFeedbackScalarWhereWithAggregatesInput | ContentTopicFeedbackScalarWhereWithAggregatesInput[]
+    id?: StringWithAggregatesFilter<"ContentTopicFeedback"> | string
+    contentId?: StringWithAggregatesFilter<"ContentTopicFeedback"> | string
+    topicId?: StringWithAggregatesFilter<"ContentTopicFeedback"> | string
+    userId?: StringWithAggregatesFilter<"ContentTopicFeedback"> | string
+    vote?: EnumFeedbackVoteWithAggregatesFilter<"ContentTopicFeedback"> | $Enums.FeedbackVote
+    note?: StringNullableWithAggregatesFilter<"ContentTopicFeedback"> | string | null
+    createdAt?: DateTimeWithAggregatesFilter<"ContentTopicFeedback"> | Date | string
+    updatedAt?: DateTimeWithAggregatesFilter<"ContentTopicFeedback"> | Date | string
   }
 
   export type FavoriteWhereInput = {
@@ -49625,6 +51016,7 @@ export namespace Prisma {
     sources?: TopicSourceCreateNestedManyWithoutTopicInput
     jobTopics?: JobTopicCreateNestedManyWithoutTopicInput
     scores?: ContentTopicScoreCreateNestedManyWithoutTopicInput
+    feedbacks?: ContentTopicFeedbackCreateNestedManyWithoutTopicInput
   }
 
   export type TopicUncheckedCreateInput = {
@@ -49641,6 +51033,7 @@ export namespace Prisma {
     sources?: TopicSourceUncheckedCreateNestedManyWithoutTopicInput
     jobTopics?: JobTopicUncheckedCreateNestedManyWithoutTopicInput
     scores?: ContentTopicScoreUncheckedCreateNestedManyWithoutTopicInput
+    feedbacks?: ContentTopicFeedbackUncheckedCreateNestedManyWithoutTopicInput
   }
 
   export type TopicUpdateInput = {
@@ -49657,6 +51050,7 @@ export namespace Prisma {
     sources?: TopicSourceUpdateManyWithoutTopicNestedInput
     jobTopics?: JobTopicUpdateManyWithoutTopicNestedInput
     scores?: ContentTopicScoreUpdateManyWithoutTopicNestedInput
+    feedbacks?: ContentTopicFeedbackUpdateManyWithoutTopicNestedInput
   }
 
   export type TopicUncheckedUpdateInput = {
@@ -49673,6 +51067,7 @@ export namespace Prisma {
     sources?: TopicSourceUncheckedUpdateManyWithoutTopicNestedInput
     jobTopics?: JobTopicUncheckedUpdateManyWithoutTopicNestedInput
     scores?: ContentTopicScoreUncheckedUpdateManyWithoutTopicNestedInput
+    feedbacks?: ContentTopicFeedbackUncheckedUpdateManyWithoutTopicNestedInput
   }
 
   export type TopicCreateManyInput = {
@@ -50342,6 +51737,7 @@ export namespace Prisma {
     keywords?: ContentKeywordCreateNestedManyWithoutContentInput
     subjectMatches?: ContentSubjectMatchCreateNestedManyWithoutContentInput
     topicScores?: ContentTopicScoreCreateNestedManyWithoutContentInput
+    topicFeedbacks?: ContentTopicFeedbackCreateNestedManyWithoutContentInput
     entities?: ContentEntityCreateNestedOneWithoutContentInput
     favorites?: FavoriteCreateNestedManyWithoutContentInput
   }
@@ -50362,6 +51758,7 @@ export namespace Prisma {
     keywords?: ContentKeywordUncheckedCreateNestedManyWithoutContentInput
     subjectMatches?: ContentSubjectMatchUncheckedCreateNestedManyWithoutContentInput
     topicScores?: ContentTopicScoreUncheckedCreateNestedManyWithoutContentInput
+    topicFeedbacks?: ContentTopicFeedbackUncheckedCreateNestedManyWithoutContentInput
     entities?: ContentEntityUncheckedCreateNestedOneWithoutContentInput
     favorites?: FavoriteUncheckedCreateNestedManyWithoutContentInput
   }
@@ -50382,6 +51779,7 @@ export namespace Prisma {
     keywords?: ContentKeywordUpdateManyWithoutContentNestedInput
     subjectMatches?: ContentSubjectMatchUpdateManyWithoutContentNestedInput
     topicScores?: ContentTopicScoreUpdateManyWithoutContentNestedInput
+    topicFeedbacks?: ContentTopicFeedbackUpdateManyWithoutContentNestedInput
     entities?: ContentEntityUpdateOneWithoutContentNestedInput
     favorites?: FavoriteUpdateManyWithoutContentNestedInput
   }
@@ -50402,6 +51800,7 @@ export namespace Prisma {
     keywords?: ContentKeywordUncheckedUpdateManyWithoutContentNestedInput
     subjectMatches?: ContentSubjectMatchUncheckedUpdateManyWithoutContentNestedInput
     topicScores?: ContentTopicScoreUncheckedUpdateManyWithoutContentNestedInput
+    topicFeedbacks?: ContentTopicFeedbackUncheckedUpdateManyWithoutContentNestedInput
     entities?: ContentEntityUncheckedUpdateOneWithoutContentNestedInput
     favorites?: FavoriteUncheckedUpdateManyWithoutContentNestedInput
   }
@@ -50741,6 +52140,81 @@ export namespace Prisma {
     finalScore?: NullableFloatFieldUpdateOperationsInput | number | null
     reason?: NullableStringFieldUpdateOperationsInput | string | null
     explain?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type ContentTopicFeedbackCreateInput = {
+    id?: string
+    userId: string
+    vote?: $Enums.FeedbackVote
+    note?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    content: ContentCreateNestedOneWithoutTopicFeedbacksInput
+    topic: TopicCreateNestedOneWithoutFeedbacksInput
+  }
+
+  export type ContentTopicFeedbackUncheckedCreateInput = {
+    id?: string
+    contentId: string
+    topicId: string
+    userId: string
+    vote?: $Enums.FeedbackVote
+    note?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type ContentTopicFeedbackUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    vote?: EnumFeedbackVoteFieldUpdateOperationsInput | $Enums.FeedbackVote
+    note?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    content?: ContentUpdateOneRequiredWithoutTopicFeedbacksNestedInput
+    topic?: TopicUpdateOneRequiredWithoutFeedbacksNestedInput
+  }
+
+  export type ContentTopicFeedbackUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    contentId?: StringFieldUpdateOperationsInput | string
+    topicId?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    vote?: EnumFeedbackVoteFieldUpdateOperationsInput | $Enums.FeedbackVote
+    note?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type ContentTopicFeedbackCreateManyInput = {
+    id?: string
+    contentId: string
+    topicId: string
+    userId: string
+    vote?: $Enums.FeedbackVote
+    note?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type ContentTopicFeedbackUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    vote?: EnumFeedbackVoteFieldUpdateOperationsInput | $Enums.FeedbackVote
+    note?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type ContentTopicFeedbackUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    contentId?: StringFieldUpdateOperationsInput | string
+    topicId?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    vote?: EnumFeedbackVoteFieldUpdateOperationsInput | $Enums.FeedbackVote
+    note?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -52457,6 +53931,12 @@ export namespace Prisma {
     none?: ContentTopicScoreWhereInput
   }
 
+  export type ContentTopicFeedbackListRelationFilter = {
+    every?: ContentTopicFeedbackWhereInput
+    some?: ContentTopicFeedbackWhereInput
+    none?: ContentTopicFeedbackWhereInput
+  }
+
   export type TopicTermOrderByRelationAggregateInput = {
     _count?: SortOrder
   }
@@ -52466,6 +53946,10 @@ export namespace Prisma {
   }
 
   export type ContentTopicScoreOrderByRelationAggregateInput = {
+    _count?: SortOrder
+  }
+
+  export type ContentTopicFeedbackOrderByRelationAggregateInput = {
     _count?: SortOrder
   }
 
@@ -53220,6 +54704,62 @@ export namespace Prisma {
     keywordScore?: SortOrder
     exclusionPenalty?: SortOrder
     finalScore?: SortOrder
+  }
+
+  export type EnumFeedbackVoteFilter<$PrismaModel = never> = {
+    equals?: $Enums.FeedbackVote | EnumFeedbackVoteFieldRefInput<$PrismaModel>
+    in?: $Enums.FeedbackVote[] | ListEnumFeedbackVoteFieldRefInput<$PrismaModel>
+    notIn?: $Enums.FeedbackVote[] | ListEnumFeedbackVoteFieldRefInput<$PrismaModel>
+    not?: NestedEnumFeedbackVoteFilter<$PrismaModel> | $Enums.FeedbackVote
+  }
+
+  export type ContentTopicFeedbackContentIdTopicIdUserIdCompoundUniqueInput = {
+    contentId: string
+    topicId: string
+    userId: string
+  }
+
+  export type ContentTopicFeedbackCountOrderByAggregateInput = {
+    id?: SortOrder
+    contentId?: SortOrder
+    topicId?: SortOrder
+    userId?: SortOrder
+    vote?: SortOrder
+    note?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type ContentTopicFeedbackMaxOrderByAggregateInput = {
+    id?: SortOrder
+    contentId?: SortOrder
+    topicId?: SortOrder
+    userId?: SortOrder
+    vote?: SortOrder
+    note?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type ContentTopicFeedbackMinOrderByAggregateInput = {
+    id?: SortOrder
+    contentId?: SortOrder
+    topicId?: SortOrder
+    userId?: SortOrder
+    vote?: SortOrder
+    note?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type EnumFeedbackVoteWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: $Enums.FeedbackVote | EnumFeedbackVoteFieldRefInput<$PrismaModel>
+    in?: $Enums.FeedbackVote[] | ListEnumFeedbackVoteFieldRefInput<$PrismaModel>
+    notIn?: $Enums.FeedbackVote[] | ListEnumFeedbackVoteFieldRefInput<$PrismaModel>
+    not?: NestedEnumFeedbackVoteWithAggregatesFilter<$PrismaModel> | $Enums.FeedbackVote
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedEnumFeedbackVoteFilter<$PrismaModel>
+    _max?: NestedEnumFeedbackVoteFilter<$PrismaModel>
   }
 
   export type FavoriteUserIdContentIdCompoundUniqueInput = {
@@ -55000,6 +56540,13 @@ export namespace Prisma {
     connect?: ContentTopicScoreWhereUniqueInput | ContentTopicScoreWhereUniqueInput[]
   }
 
+  export type ContentTopicFeedbackCreateNestedManyWithoutTopicInput = {
+    create?: XOR<ContentTopicFeedbackCreateWithoutTopicInput, ContentTopicFeedbackUncheckedCreateWithoutTopicInput> | ContentTopicFeedbackCreateWithoutTopicInput[] | ContentTopicFeedbackUncheckedCreateWithoutTopicInput[]
+    connectOrCreate?: ContentTopicFeedbackCreateOrConnectWithoutTopicInput | ContentTopicFeedbackCreateOrConnectWithoutTopicInput[]
+    createMany?: ContentTopicFeedbackCreateManyTopicInputEnvelope
+    connect?: ContentTopicFeedbackWhereUniqueInput | ContentTopicFeedbackWhereUniqueInput[]
+  }
+
   export type TopicTermUncheckedCreateNestedManyWithoutTopicInput = {
     create?: XOR<TopicTermCreateWithoutTopicInput, TopicTermUncheckedCreateWithoutTopicInput> | TopicTermCreateWithoutTopicInput[] | TopicTermUncheckedCreateWithoutTopicInput[]
     connectOrCreate?: TopicTermCreateOrConnectWithoutTopicInput | TopicTermCreateOrConnectWithoutTopicInput[]
@@ -55026,6 +56573,13 @@ export namespace Prisma {
     connectOrCreate?: ContentTopicScoreCreateOrConnectWithoutTopicInput | ContentTopicScoreCreateOrConnectWithoutTopicInput[]
     createMany?: ContentTopicScoreCreateManyTopicInputEnvelope
     connect?: ContentTopicScoreWhereUniqueInput | ContentTopicScoreWhereUniqueInput[]
+  }
+
+  export type ContentTopicFeedbackUncheckedCreateNestedManyWithoutTopicInput = {
+    create?: XOR<ContentTopicFeedbackCreateWithoutTopicInput, ContentTopicFeedbackUncheckedCreateWithoutTopicInput> | ContentTopicFeedbackCreateWithoutTopicInput[] | ContentTopicFeedbackUncheckedCreateWithoutTopicInput[]
+    connectOrCreate?: ContentTopicFeedbackCreateOrConnectWithoutTopicInput | ContentTopicFeedbackCreateOrConnectWithoutTopicInput[]
+    createMany?: ContentTopicFeedbackCreateManyTopicInputEnvelope
+    connect?: ContentTopicFeedbackWhereUniqueInput | ContentTopicFeedbackWhereUniqueInput[]
   }
 
   export type TopicTermUpdateManyWithoutTopicNestedInput = {
@@ -55084,6 +56638,20 @@ export namespace Prisma {
     deleteMany?: ContentTopicScoreScalarWhereInput | ContentTopicScoreScalarWhereInput[]
   }
 
+  export type ContentTopicFeedbackUpdateManyWithoutTopicNestedInput = {
+    create?: XOR<ContentTopicFeedbackCreateWithoutTopicInput, ContentTopicFeedbackUncheckedCreateWithoutTopicInput> | ContentTopicFeedbackCreateWithoutTopicInput[] | ContentTopicFeedbackUncheckedCreateWithoutTopicInput[]
+    connectOrCreate?: ContentTopicFeedbackCreateOrConnectWithoutTopicInput | ContentTopicFeedbackCreateOrConnectWithoutTopicInput[]
+    upsert?: ContentTopicFeedbackUpsertWithWhereUniqueWithoutTopicInput | ContentTopicFeedbackUpsertWithWhereUniqueWithoutTopicInput[]
+    createMany?: ContentTopicFeedbackCreateManyTopicInputEnvelope
+    set?: ContentTopicFeedbackWhereUniqueInput | ContentTopicFeedbackWhereUniqueInput[]
+    disconnect?: ContentTopicFeedbackWhereUniqueInput | ContentTopicFeedbackWhereUniqueInput[]
+    delete?: ContentTopicFeedbackWhereUniqueInput | ContentTopicFeedbackWhereUniqueInput[]
+    connect?: ContentTopicFeedbackWhereUniqueInput | ContentTopicFeedbackWhereUniqueInput[]
+    update?: ContentTopicFeedbackUpdateWithWhereUniqueWithoutTopicInput | ContentTopicFeedbackUpdateWithWhereUniqueWithoutTopicInput[]
+    updateMany?: ContentTopicFeedbackUpdateManyWithWhereWithoutTopicInput | ContentTopicFeedbackUpdateManyWithWhereWithoutTopicInput[]
+    deleteMany?: ContentTopicFeedbackScalarWhereInput | ContentTopicFeedbackScalarWhereInput[]
+  }
+
   export type TopicTermUncheckedUpdateManyWithoutTopicNestedInput = {
     create?: XOR<TopicTermCreateWithoutTopicInput, TopicTermUncheckedCreateWithoutTopicInput> | TopicTermCreateWithoutTopicInput[] | TopicTermUncheckedCreateWithoutTopicInput[]
     connectOrCreate?: TopicTermCreateOrConnectWithoutTopicInput | TopicTermCreateOrConnectWithoutTopicInput[]
@@ -55138,6 +56706,20 @@ export namespace Prisma {
     update?: ContentTopicScoreUpdateWithWhereUniqueWithoutTopicInput | ContentTopicScoreUpdateWithWhereUniqueWithoutTopicInput[]
     updateMany?: ContentTopicScoreUpdateManyWithWhereWithoutTopicInput | ContentTopicScoreUpdateManyWithWhereWithoutTopicInput[]
     deleteMany?: ContentTopicScoreScalarWhereInput | ContentTopicScoreScalarWhereInput[]
+  }
+
+  export type ContentTopicFeedbackUncheckedUpdateManyWithoutTopicNestedInput = {
+    create?: XOR<ContentTopicFeedbackCreateWithoutTopicInput, ContentTopicFeedbackUncheckedCreateWithoutTopicInput> | ContentTopicFeedbackCreateWithoutTopicInput[] | ContentTopicFeedbackUncheckedCreateWithoutTopicInput[]
+    connectOrCreate?: ContentTopicFeedbackCreateOrConnectWithoutTopicInput | ContentTopicFeedbackCreateOrConnectWithoutTopicInput[]
+    upsert?: ContentTopicFeedbackUpsertWithWhereUniqueWithoutTopicInput | ContentTopicFeedbackUpsertWithWhereUniqueWithoutTopicInput[]
+    createMany?: ContentTopicFeedbackCreateManyTopicInputEnvelope
+    set?: ContentTopicFeedbackWhereUniqueInput | ContentTopicFeedbackWhereUniqueInput[]
+    disconnect?: ContentTopicFeedbackWhereUniqueInput | ContentTopicFeedbackWhereUniqueInput[]
+    delete?: ContentTopicFeedbackWhereUniqueInput | ContentTopicFeedbackWhereUniqueInput[]
+    connect?: ContentTopicFeedbackWhereUniqueInput | ContentTopicFeedbackWhereUniqueInput[]
+    update?: ContentTopicFeedbackUpdateWithWhereUniqueWithoutTopicInput | ContentTopicFeedbackUpdateWithWhereUniqueWithoutTopicInput[]
+    updateMany?: ContentTopicFeedbackUpdateManyWithWhereWithoutTopicInput | ContentTopicFeedbackUpdateManyWithWhereWithoutTopicInput[]
+    deleteMany?: ContentTopicFeedbackScalarWhereInput | ContentTopicFeedbackScalarWhereInput[]
   }
 
   export type TopicCreateNestedOneWithoutTermsInput = {
@@ -55497,6 +57079,13 @@ export namespace Prisma {
     connect?: ContentTopicScoreWhereUniqueInput | ContentTopicScoreWhereUniqueInput[]
   }
 
+  export type ContentTopicFeedbackCreateNestedManyWithoutContentInput = {
+    create?: XOR<ContentTopicFeedbackCreateWithoutContentInput, ContentTopicFeedbackUncheckedCreateWithoutContentInput> | ContentTopicFeedbackCreateWithoutContentInput[] | ContentTopicFeedbackUncheckedCreateWithoutContentInput[]
+    connectOrCreate?: ContentTopicFeedbackCreateOrConnectWithoutContentInput | ContentTopicFeedbackCreateOrConnectWithoutContentInput[]
+    createMany?: ContentTopicFeedbackCreateManyContentInputEnvelope
+    connect?: ContentTopicFeedbackWhereUniqueInput | ContentTopicFeedbackWhereUniqueInput[]
+  }
+
   export type ContentEntityCreateNestedOneWithoutContentInput = {
     create?: XOR<ContentEntityCreateWithoutContentInput, ContentEntityUncheckedCreateWithoutContentInput>
     connectOrCreate?: ContentEntityCreateOrConnectWithoutContentInput
@@ -55529,6 +57118,13 @@ export namespace Prisma {
     connectOrCreate?: ContentTopicScoreCreateOrConnectWithoutContentInput | ContentTopicScoreCreateOrConnectWithoutContentInput[]
     createMany?: ContentTopicScoreCreateManyContentInputEnvelope
     connect?: ContentTopicScoreWhereUniqueInput | ContentTopicScoreWhereUniqueInput[]
+  }
+
+  export type ContentTopicFeedbackUncheckedCreateNestedManyWithoutContentInput = {
+    create?: XOR<ContentTopicFeedbackCreateWithoutContentInput, ContentTopicFeedbackUncheckedCreateWithoutContentInput> | ContentTopicFeedbackCreateWithoutContentInput[] | ContentTopicFeedbackUncheckedCreateWithoutContentInput[]
+    connectOrCreate?: ContentTopicFeedbackCreateOrConnectWithoutContentInput | ContentTopicFeedbackCreateOrConnectWithoutContentInput[]
+    createMany?: ContentTopicFeedbackCreateManyContentInputEnvelope
+    connect?: ContentTopicFeedbackWhereUniqueInput | ContentTopicFeedbackWhereUniqueInput[]
   }
 
   export type ContentEntityUncheckedCreateNestedOneWithoutContentInput = {
@@ -55588,6 +57184,20 @@ export namespace Prisma {
     update?: ContentTopicScoreUpdateWithWhereUniqueWithoutContentInput | ContentTopicScoreUpdateWithWhereUniqueWithoutContentInput[]
     updateMany?: ContentTopicScoreUpdateManyWithWhereWithoutContentInput | ContentTopicScoreUpdateManyWithWhereWithoutContentInput[]
     deleteMany?: ContentTopicScoreScalarWhereInput | ContentTopicScoreScalarWhereInput[]
+  }
+
+  export type ContentTopicFeedbackUpdateManyWithoutContentNestedInput = {
+    create?: XOR<ContentTopicFeedbackCreateWithoutContentInput, ContentTopicFeedbackUncheckedCreateWithoutContentInput> | ContentTopicFeedbackCreateWithoutContentInput[] | ContentTopicFeedbackUncheckedCreateWithoutContentInput[]
+    connectOrCreate?: ContentTopicFeedbackCreateOrConnectWithoutContentInput | ContentTopicFeedbackCreateOrConnectWithoutContentInput[]
+    upsert?: ContentTopicFeedbackUpsertWithWhereUniqueWithoutContentInput | ContentTopicFeedbackUpsertWithWhereUniqueWithoutContentInput[]
+    createMany?: ContentTopicFeedbackCreateManyContentInputEnvelope
+    set?: ContentTopicFeedbackWhereUniqueInput | ContentTopicFeedbackWhereUniqueInput[]
+    disconnect?: ContentTopicFeedbackWhereUniqueInput | ContentTopicFeedbackWhereUniqueInput[]
+    delete?: ContentTopicFeedbackWhereUniqueInput | ContentTopicFeedbackWhereUniqueInput[]
+    connect?: ContentTopicFeedbackWhereUniqueInput | ContentTopicFeedbackWhereUniqueInput[]
+    update?: ContentTopicFeedbackUpdateWithWhereUniqueWithoutContentInput | ContentTopicFeedbackUpdateWithWhereUniqueWithoutContentInput[]
+    updateMany?: ContentTopicFeedbackUpdateManyWithWhereWithoutContentInput | ContentTopicFeedbackUpdateManyWithWhereWithoutContentInput[]
+    deleteMany?: ContentTopicFeedbackScalarWhereInput | ContentTopicFeedbackScalarWhereInput[]
   }
 
   export type ContentEntityUpdateOneWithoutContentNestedInput = {
@@ -55654,6 +57264,20 @@ export namespace Prisma {
     update?: ContentTopicScoreUpdateWithWhereUniqueWithoutContentInput | ContentTopicScoreUpdateWithWhereUniqueWithoutContentInput[]
     updateMany?: ContentTopicScoreUpdateManyWithWhereWithoutContentInput | ContentTopicScoreUpdateManyWithWhereWithoutContentInput[]
     deleteMany?: ContentTopicScoreScalarWhereInput | ContentTopicScoreScalarWhereInput[]
+  }
+
+  export type ContentTopicFeedbackUncheckedUpdateManyWithoutContentNestedInput = {
+    create?: XOR<ContentTopicFeedbackCreateWithoutContentInput, ContentTopicFeedbackUncheckedCreateWithoutContentInput> | ContentTopicFeedbackCreateWithoutContentInput[] | ContentTopicFeedbackUncheckedCreateWithoutContentInput[]
+    connectOrCreate?: ContentTopicFeedbackCreateOrConnectWithoutContentInput | ContentTopicFeedbackCreateOrConnectWithoutContentInput[]
+    upsert?: ContentTopicFeedbackUpsertWithWhereUniqueWithoutContentInput | ContentTopicFeedbackUpsertWithWhereUniqueWithoutContentInput[]
+    createMany?: ContentTopicFeedbackCreateManyContentInputEnvelope
+    set?: ContentTopicFeedbackWhereUniqueInput | ContentTopicFeedbackWhereUniqueInput[]
+    disconnect?: ContentTopicFeedbackWhereUniqueInput | ContentTopicFeedbackWhereUniqueInput[]
+    delete?: ContentTopicFeedbackWhereUniqueInput | ContentTopicFeedbackWhereUniqueInput[]
+    connect?: ContentTopicFeedbackWhereUniqueInput | ContentTopicFeedbackWhereUniqueInput[]
+    update?: ContentTopicFeedbackUpdateWithWhereUniqueWithoutContentInput | ContentTopicFeedbackUpdateWithWhereUniqueWithoutContentInput[]
+    updateMany?: ContentTopicFeedbackUpdateManyWithWhereWithoutContentInput | ContentTopicFeedbackUpdateManyWithWhereWithoutContentInput[]
+    deleteMany?: ContentTopicFeedbackScalarWhereInput | ContentTopicFeedbackScalarWhereInput[]
   }
 
   export type ContentEntityUncheckedUpdateOneWithoutContentNestedInput = {
@@ -55833,6 +57457,38 @@ export namespace Prisma {
     upsert?: TopicUpsertWithoutScoresInput
     connect?: TopicWhereUniqueInput
     update?: XOR<XOR<TopicUpdateToOneWithWhereWithoutScoresInput, TopicUpdateWithoutScoresInput>, TopicUncheckedUpdateWithoutScoresInput>
+  }
+
+  export type ContentCreateNestedOneWithoutTopicFeedbacksInput = {
+    create?: XOR<ContentCreateWithoutTopicFeedbacksInput, ContentUncheckedCreateWithoutTopicFeedbacksInput>
+    connectOrCreate?: ContentCreateOrConnectWithoutTopicFeedbacksInput
+    connect?: ContentWhereUniqueInput
+  }
+
+  export type TopicCreateNestedOneWithoutFeedbacksInput = {
+    create?: XOR<TopicCreateWithoutFeedbacksInput, TopicUncheckedCreateWithoutFeedbacksInput>
+    connectOrCreate?: TopicCreateOrConnectWithoutFeedbacksInput
+    connect?: TopicWhereUniqueInput
+  }
+
+  export type EnumFeedbackVoteFieldUpdateOperationsInput = {
+    set?: $Enums.FeedbackVote
+  }
+
+  export type ContentUpdateOneRequiredWithoutTopicFeedbacksNestedInput = {
+    create?: XOR<ContentCreateWithoutTopicFeedbacksInput, ContentUncheckedCreateWithoutTopicFeedbacksInput>
+    connectOrCreate?: ContentCreateOrConnectWithoutTopicFeedbacksInput
+    upsert?: ContentUpsertWithoutTopicFeedbacksInput
+    connect?: ContentWhereUniqueInput
+    update?: XOR<XOR<ContentUpdateToOneWithWhereWithoutTopicFeedbacksInput, ContentUpdateWithoutTopicFeedbacksInput>, ContentUncheckedUpdateWithoutTopicFeedbacksInput>
+  }
+
+  export type TopicUpdateOneRequiredWithoutFeedbacksNestedInput = {
+    create?: XOR<TopicCreateWithoutFeedbacksInput, TopicUncheckedCreateWithoutFeedbacksInput>
+    connectOrCreate?: TopicCreateOrConnectWithoutFeedbacksInput
+    upsert?: TopicUpsertWithoutFeedbacksInput
+    connect?: TopicWhereUniqueInput
+    update?: XOR<XOR<TopicUpdateToOneWithWhereWithoutFeedbacksInput, TopicUpdateWithoutFeedbacksInput>, TopicUncheckedUpdateWithoutFeedbacksInput>
   }
 
   export type ContentCreateNestedOneWithoutFavoritesInput = {
@@ -56743,6 +58399,23 @@ export namespace Prisma {
     _count?: NestedIntFilter<$PrismaModel>
     _min?: NestedEnumContentSubjectMatchSourceFilter<$PrismaModel>
     _max?: NestedEnumContentSubjectMatchSourceFilter<$PrismaModel>
+  }
+
+  export type NestedEnumFeedbackVoteFilter<$PrismaModel = never> = {
+    equals?: $Enums.FeedbackVote | EnumFeedbackVoteFieldRefInput<$PrismaModel>
+    in?: $Enums.FeedbackVote[] | ListEnumFeedbackVoteFieldRefInput<$PrismaModel>
+    notIn?: $Enums.FeedbackVote[] | ListEnumFeedbackVoteFieldRefInput<$PrismaModel>
+    not?: NestedEnumFeedbackVoteFilter<$PrismaModel> | $Enums.FeedbackVote
+  }
+
+  export type NestedEnumFeedbackVoteWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: $Enums.FeedbackVote | EnumFeedbackVoteFieldRefInput<$PrismaModel>
+    in?: $Enums.FeedbackVote[] | ListEnumFeedbackVoteFieldRefInput<$PrismaModel>
+    notIn?: $Enums.FeedbackVote[] | ListEnumFeedbackVoteFieldRefInput<$PrismaModel>
+    not?: NestedEnumFeedbackVoteWithAggregatesFilter<$PrismaModel> | $Enums.FeedbackVote
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedEnumFeedbackVoteFilter<$PrismaModel>
+    _max?: NestedEnumFeedbackVoteFilter<$PrismaModel>
   }
 
   export type NestedEnumReportStatusFilter<$PrismaModel = never> = {
@@ -59866,6 +61539,36 @@ export namespace Prisma {
     skipDuplicates?: boolean
   }
 
+  export type ContentTopicFeedbackCreateWithoutTopicInput = {
+    id?: string
+    userId: string
+    vote?: $Enums.FeedbackVote
+    note?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    content: ContentCreateNestedOneWithoutTopicFeedbacksInput
+  }
+
+  export type ContentTopicFeedbackUncheckedCreateWithoutTopicInput = {
+    id?: string
+    contentId: string
+    userId: string
+    vote?: $Enums.FeedbackVote
+    note?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type ContentTopicFeedbackCreateOrConnectWithoutTopicInput = {
+    where: ContentTopicFeedbackWhereUniqueInput
+    create: XOR<ContentTopicFeedbackCreateWithoutTopicInput, ContentTopicFeedbackUncheckedCreateWithoutTopicInput>
+  }
+
+  export type ContentTopicFeedbackCreateManyTopicInputEnvelope = {
+    data: ContentTopicFeedbackCreateManyTopicInput | ContentTopicFeedbackCreateManyTopicInput[]
+    skipDuplicates?: boolean
+  }
+
   export type TopicTermUpsertWithWhereUniqueWithoutTopicInput = {
     where: TopicTermWhereUniqueInput
     update: XOR<TopicTermUpdateWithoutTopicInput, TopicTermUncheckedUpdateWithoutTopicInput>
@@ -59972,6 +61675,36 @@ export namespace Prisma {
     updatedAt?: DateTimeFilter<"ContentTopicScore"> | Date | string
   }
 
+  export type ContentTopicFeedbackUpsertWithWhereUniqueWithoutTopicInput = {
+    where: ContentTopicFeedbackWhereUniqueInput
+    update: XOR<ContentTopicFeedbackUpdateWithoutTopicInput, ContentTopicFeedbackUncheckedUpdateWithoutTopicInput>
+    create: XOR<ContentTopicFeedbackCreateWithoutTopicInput, ContentTopicFeedbackUncheckedCreateWithoutTopicInput>
+  }
+
+  export type ContentTopicFeedbackUpdateWithWhereUniqueWithoutTopicInput = {
+    where: ContentTopicFeedbackWhereUniqueInput
+    data: XOR<ContentTopicFeedbackUpdateWithoutTopicInput, ContentTopicFeedbackUncheckedUpdateWithoutTopicInput>
+  }
+
+  export type ContentTopicFeedbackUpdateManyWithWhereWithoutTopicInput = {
+    where: ContentTopicFeedbackScalarWhereInput
+    data: XOR<ContentTopicFeedbackUpdateManyMutationInput, ContentTopicFeedbackUncheckedUpdateManyWithoutTopicInput>
+  }
+
+  export type ContentTopicFeedbackScalarWhereInput = {
+    AND?: ContentTopicFeedbackScalarWhereInput | ContentTopicFeedbackScalarWhereInput[]
+    OR?: ContentTopicFeedbackScalarWhereInput[]
+    NOT?: ContentTopicFeedbackScalarWhereInput | ContentTopicFeedbackScalarWhereInput[]
+    id?: StringFilter<"ContentTopicFeedback"> | string
+    contentId?: StringFilter<"ContentTopicFeedback"> | string
+    topicId?: StringFilter<"ContentTopicFeedback"> | string
+    userId?: StringFilter<"ContentTopicFeedback"> | string
+    vote?: EnumFeedbackVoteFilter<"ContentTopicFeedback"> | $Enums.FeedbackVote
+    note?: StringNullableFilter<"ContentTopicFeedback"> | string | null
+    createdAt?: DateTimeFilter<"ContentTopicFeedback"> | Date | string
+    updatedAt?: DateTimeFilter<"ContentTopicFeedback"> | Date | string
+  }
+
   export type TopicCreateWithoutTermsInput = {
     id?: string
     name: string
@@ -59985,6 +61718,7 @@ export namespace Prisma {
     sources?: TopicSourceCreateNestedManyWithoutTopicInput
     jobTopics?: JobTopicCreateNestedManyWithoutTopicInput
     scores?: ContentTopicScoreCreateNestedManyWithoutTopicInput
+    feedbacks?: ContentTopicFeedbackCreateNestedManyWithoutTopicInput
   }
 
   export type TopicUncheckedCreateWithoutTermsInput = {
@@ -60000,6 +61734,7 @@ export namespace Prisma {
     sources?: TopicSourceUncheckedCreateNestedManyWithoutTopicInput
     jobTopics?: JobTopicUncheckedCreateNestedManyWithoutTopicInput
     scores?: ContentTopicScoreUncheckedCreateNestedManyWithoutTopicInput
+    feedbacks?: ContentTopicFeedbackUncheckedCreateNestedManyWithoutTopicInput
   }
 
   export type TopicCreateOrConnectWithoutTermsInput = {
@@ -60031,6 +61766,7 @@ export namespace Prisma {
     sources?: TopicSourceUpdateManyWithoutTopicNestedInput
     jobTopics?: JobTopicUpdateManyWithoutTopicNestedInput
     scores?: ContentTopicScoreUpdateManyWithoutTopicNestedInput
+    feedbacks?: ContentTopicFeedbackUpdateManyWithoutTopicNestedInput
   }
 
   export type TopicUncheckedUpdateWithoutTermsInput = {
@@ -60046,6 +61782,7 @@ export namespace Prisma {
     sources?: TopicSourceUncheckedUpdateManyWithoutTopicNestedInput
     jobTopics?: JobTopicUncheckedUpdateManyWithoutTopicNestedInput
     scores?: ContentTopicScoreUncheckedUpdateManyWithoutTopicNestedInput
+    feedbacks?: ContentTopicFeedbackUncheckedUpdateManyWithoutTopicNestedInput
   }
 
   export type TopicCreateWithoutSourcesInput = {
@@ -60061,6 +61798,7 @@ export namespace Prisma {
     terms?: TopicTermCreateNestedManyWithoutTopicInput
     jobTopics?: JobTopicCreateNestedManyWithoutTopicInput
     scores?: ContentTopicScoreCreateNestedManyWithoutTopicInput
+    feedbacks?: ContentTopicFeedbackCreateNestedManyWithoutTopicInput
   }
 
   export type TopicUncheckedCreateWithoutSourcesInput = {
@@ -60076,6 +61814,7 @@ export namespace Prisma {
     terms?: TopicTermUncheckedCreateNestedManyWithoutTopicInput
     jobTopics?: JobTopicUncheckedCreateNestedManyWithoutTopicInput
     scores?: ContentTopicScoreUncheckedCreateNestedManyWithoutTopicInput
+    feedbacks?: ContentTopicFeedbackUncheckedCreateNestedManyWithoutTopicInput
   }
 
   export type TopicCreateOrConnectWithoutSourcesInput = {
@@ -60162,6 +61901,7 @@ export namespace Prisma {
     terms?: TopicTermUpdateManyWithoutTopicNestedInput
     jobTopics?: JobTopicUpdateManyWithoutTopicNestedInput
     scores?: ContentTopicScoreUpdateManyWithoutTopicNestedInput
+    feedbacks?: ContentTopicFeedbackUpdateManyWithoutTopicNestedInput
   }
 
   export type TopicUncheckedUpdateWithoutSourcesInput = {
@@ -60177,6 +61917,7 @@ export namespace Prisma {
     terms?: TopicTermUncheckedUpdateManyWithoutTopicNestedInput
     jobTopics?: JobTopicUncheckedUpdateManyWithoutTopicNestedInput
     scores?: ContentTopicScoreUncheckedUpdateManyWithoutTopicNestedInput
+    feedbacks?: ContentTopicFeedbackUncheckedUpdateManyWithoutTopicNestedInput
   }
 
   export type SourceUpsertWithoutTopicSourcesInput = {
@@ -60439,6 +62180,7 @@ export namespace Prisma {
     terms?: TopicTermCreateNestedManyWithoutTopicInput
     sources?: TopicSourceCreateNestedManyWithoutTopicInput
     scores?: ContentTopicScoreCreateNestedManyWithoutTopicInput
+    feedbacks?: ContentTopicFeedbackCreateNestedManyWithoutTopicInput
   }
 
   export type TopicUncheckedCreateWithoutJobTopicsInput = {
@@ -60454,6 +62196,7 @@ export namespace Prisma {
     terms?: TopicTermUncheckedCreateNestedManyWithoutTopicInput
     sources?: TopicSourceUncheckedCreateNestedManyWithoutTopicInput
     scores?: ContentTopicScoreUncheckedCreateNestedManyWithoutTopicInput
+    feedbacks?: ContentTopicFeedbackUncheckedCreateNestedManyWithoutTopicInput
   }
 
   export type TopicCreateOrConnectWithoutJobTopicsInput = {
@@ -60526,6 +62269,7 @@ export namespace Prisma {
     terms?: TopicTermUpdateManyWithoutTopicNestedInput
     sources?: TopicSourceUpdateManyWithoutTopicNestedInput
     scores?: ContentTopicScoreUpdateManyWithoutTopicNestedInput
+    feedbacks?: ContentTopicFeedbackUpdateManyWithoutTopicNestedInput
   }
 
   export type TopicUncheckedUpdateWithoutJobTopicsInput = {
@@ -60541,6 +62285,7 @@ export namespace Prisma {
     terms?: TopicTermUncheckedUpdateManyWithoutTopicNestedInput
     sources?: TopicSourceUncheckedUpdateManyWithoutTopicNestedInput
     scores?: ContentTopicScoreUncheckedUpdateManyWithoutTopicNestedInput
+    feedbacks?: ContentTopicFeedbackUncheckedUpdateManyWithoutTopicNestedInput
   }
 
   export type JobCreateWithoutJobSourcesInput = {
@@ -61107,6 +62852,36 @@ export namespace Prisma {
     skipDuplicates?: boolean
   }
 
+  export type ContentTopicFeedbackCreateWithoutContentInput = {
+    id?: string
+    userId: string
+    vote?: $Enums.FeedbackVote
+    note?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    topic: TopicCreateNestedOneWithoutFeedbacksInput
+  }
+
+  export type ContentTopicFeedbackUncheckedCreateWithoutContentInput = {
+    id?: string
+    topicId: string
+    userId: string
+    vote?: $Enums.FeedbackVote
+    note?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type ContentTopicFeedbackCreateOrConnectWithoutContentInput = {
+    where: ContentTopicFeedbackWhereUniqueInput
+    create: XOR<ContentTopicFeedbackCreateWithoutContentInput, ContentTopicFeedbackUncheckedCreateWithoutContentInput>
+  }
+
+  export type ContentTopicFeedbackCreateManyContentInputEnvelope = {
+    data: ContentTopicFeedbackCreateManyContentInput | ContentTopicFeedbackCreateManyContentInput[]
+    skipDuplicates?: boolean
+  }
+
   export type ContentEntityCreateWithoutContentInput = {
     id?: string
     persons?: ContentEntityCreatepersonsInput | string[]
@@ -61196,6 +62971,22 @@ export namespace Prisma {
     data: XOR<ContentTopicScoreUpdateManyMutationInput, ContentTopicScoreUncheckedUpdateManyWithoutContentInput>
   }
 
+  export type ContentTopicFeedbackUpsertWithWhereUniqueWithoutContentInput = {
+    where: ContentTopicFeedbackWhereUniqueInput
+    update: XOR<ContentTopicFeedbackUpdateWithoutContentInput, ContentTopicFeedbackUncheckedUpdateWithoutContentInput>
+    create: XOR<ContentTopicFeedbackCreateWithoutContentInput, ContentTopicFeedbackUncheckedCreateWithoutContentInput>
+  }
+
+  export type ContentTopicFeedbackUpdateWithWhereUniqueWithoutContentInput = {
+    where: ContentTopicFeedbackWhereUniqueInput
+    data: XOR<ContentTopicFeedbackUpdateWithoutContentInput, ContentTopicFeedbackUncheckedUpdateWithoutContentInput>
+  }
+
+  export type ContentTopicFeedbackUpdateManyWithWhereWithoutContentInput = {
+    where: ContentTopicFeedbackScalarWhereInput
+    data: XOR<ContentTopicFeedbackUpdateManyMutationInput, ContentTopicFeedbackUncheckedUpdateManyWithoutContentInput>
+  }
+
   export type ContentEntityUpsertWithoutContentInput = {
     update: XOR<ContentEntityUpdateWithoutContentInput, ContentEntityUncheckedUpdateWithoutContentInput>
     create: XOR<ContentEntityCreateWithoutContentInput, ContentEntityUncheckedCreateWithoutContentInput>
@@ -61262,6 +63053,7 @@ export namespace Prisma {
     updatedAt?: Date | string
     subjectMatches?: ContentSubjectMatchCreateNestedManyWithoutContentInput
     topicScores?: ContentTopicScoreCreateNestedManyWithoutContentInput
+    topicFeedbacks?: ContentTopicFeedbackCreateNestedManyWithoutContentInput
     entities?: ContentEntityCreateNestedOneWithoutContentInput
     favorites?: FavoriteCreateNestedManyWithoutContentInput
   }
@@ -61281,6 +63073,7 @@ export namespace Prisma {
     updatedAt?: Date | string
     subjectMatches?: ContentSubjectMatchUncheckedCreateNestedManyWithoutContentInput
     topicScores?: ContentTopicScoreUncheckedCreateNestedManyWithoutContentInput
+    topicFeedbacks?: ContentTopicFeedbackUncheckedCreateNestedManyWithoutContentInput
     entities?: ContentEntityUncheckedCreateNestedOneWithoutContentInput
     favorites?: FavoriteUncheckedCreateNestedManyWithoutContentInput
   }
@@ -61359,6 +63152,7 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     subjectMatches?: ContentSubjectMatchUpdateManyWithoutContentNestedInput
     topicScores?: ContentTopicScoreUpdateManyWithoutContentNestedInput
+    topicFeedbacks?: ContentTopicFeedbackUpdateManyWithoutContentNestedInput
     entities?: ContentEntityUpdateOneWithoutContentNestedInput
     favorites?: FavoriteUpdateManyWithoutContentNestedInput
   }
@@ -61378,6 +63172,7 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     subjectMatches?: ContentSubjectMatchUncheckedUpdateManyWithoutContentNestedInput
     topicScores?: ContentTopicScoreUncheckedUpdateManyWithoutContentNestedInput
+    topicFeedbacks?: ContentTopicFeedbackUncheckedUpdateManyWithoutContentNestedInput
     entities?: ContentEntityUncheckedUpdateOneWithoutContentNestedInput
     favorites?: FavoriteUncheckedUpdateManyWithoutContentNestedInput
   }
@@ -61446,6 +63241,7 @@ export namespace Prisma {
     updatedAt?: Date | string
     keywords?: ContentKeywordCreateNestedManyWithoutContentInput
     topicScores?: ContentTopicScoreCreateNestedManyWithoutContentInput
+    topicFeedbacks?: ContentTopicFeedbackCreateNestedManyWithoutContentInput
     entities?: ContentEntityCreateNestedOneWithoutContentInput
     favorites?: FavoriteCreateNestedManyWithoutContentInput
   }
@@ -61465,6 +63261,7 @@ export namespace Prisma {
     updatedAt?: Date | string
     keywords?: ContentKeywordUncheckedCreateNestedManyWithoutContentInput
     topicScores?: ContentTopicScoreUncheckedCreateNestedManyWithoutContentInput
+    topicFeedbacks?: ContentTopicFeedbackUncheckedCreateNestedManyWithoutContentInput
     entities?: ContentEntityUncheckedCreateNestedOneWithoutContentInput
     favorites?: FavoriteUncheckedCreateNestedManyWithoutContentInput
   }
@@ -61543,6 +63340,7 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     keywords?: ContentKeywordUpdateManyWithoutContentNestedInput
     topicScores?: ContentTopicScoreUpdateManyWithoutContentNestedInput
+    topicFeedbacks?: ContentTopicFeedbackUpdateManyWithoutContentNestedInput
     entities?: ContentEntityUpdateOneWithoutContentNestedInput
     favorites?: FavoriteUpdateManyWithoutContentNestedInput
   }
@@ -61562,6 +63360,7 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     keywords?: ContentKeywordUncheckedUpdateManyWithoutContentNestedInput
     topicScores?: ContentTopicScoreUncheckedUpdateManyWithoutContentNestedInput
+    topicFeedbacks?: ContentTopicFeedbackUncheckedUpdateManyWithoutContentNestedInput
     entities?: ContentEntityUncheckedUpdateOneWithoutContentNestedInput
     favorites?: FavoriteUncheckedUpdateManyWithoutContentNestedInput
   }
@@ -61631,6 +63430,7 @@ export namespace Prisma {
     keywords?: ContentKeywordCreateNestedManyWithoutContentInput
     subjectMatches?: ContentSubjectMatchCreateNestedManyWithoutContentInput
     topicScores?: ContentTopicScoreCreateNestedManyWithoutContentInput
+    topicFeedbacks?: ContentTopicFeedbackCreateNestedManyWithoutContentInput
     favorites?: FavoriteCreateNestedManyWithoutContentInput
   }
 
@@ -61650,6 +63450,7 @@ export namespace Prisma {
     keywords?: ContentKeywordUncheckedCreateNestedManyWithoutContentInput
     subjectMatches?: ContentSubjectMatchUncheckedCreateNestedManyWithoutContentInput
     topicScores?: ContentTopicScoreUncheckedCreateNestedManyWithoutContentInput
+    topicFeedbacks?: ContentTopicFeedbackUncheckedCreateNestedManyWithoutContentInput
     favorites?: FavoriteUncheckedCreateNestedManyWithoutContentInput
   }
 
@@ -61685,6 +63486,7 @@ export namespace Prisma {
     keywords?: ContentKeywordUpdateManyWithoutContentNestedInput
     subjectMatches?: ContentSubjectMatchUpdateManyWithoutContentNestedInput
     topicScores?: ContentTopicScoreUpdateManyWithoutContentNestedInput
+    topicFeedbacks?: ContentTopicFeedbackUpdateManyWithoutContentNestedInput
     favorites?: FavoriteUpdateManyWithoutContentNestedInput
   }
 
@@ -61704,6 +63506,7 @@ export namespace Prisma {
     keywords?: ContentKeywordUncheckedUpdateManyWithoutContentNestedInput
     subjectMatches?: ContentSubjectMatchUncheckedUpdateManyWithoutContentNestedInput
     topicScores?: ContentTopicScoreUncheckedUpdateManyWithoutContentNestedInput
+    topicFeedbacks?: ContentTopicFeedbackUncheckedUpdateManyWithoutContentNestedInput
     favorites?: FavoriteUncheckedUpdateManyWithoutContentNestedInput
   }
 
@@ -61722,6 +63525,7 @@ export namespace Prisma {
     updatedAt?: Date | string
     keywords?: ContentKeywordCreateNestedManyWithoutContentInput
     subjectMatches?: ContentSubjectMatchCreateNestedManyWithoutContentInput
+    topicFeedbacks?: ContentTopicFeedbackCreateNestedManyWithoutContentInput
     entities?: ContentEntityCreateNestedOneWithoutContentInput
     favorites?: FavoriteCreateNestedManyWithoutContentInput
   }
@@ -61741,6 +63545,7 @@ export namespace Prisma {
     updatedAt?: Date | string
     keywords?: ContentKeywordUncheckedCreateNestedManyWithoutContentInput
     subjectMatches?: ContentSubjectMatchUncheckedCreateNestedManyWithoutContentInput
+    topicFeedbacks?: ContentTopicFeedbackUncheckedCreateNestedManyWithoutContentInput
     entities?: ContentEntityUncheckedCreateNestedOneWithoutContentInput
     favorites?: FavoriteUncheckedCreateNestedManyWithoutContentInput
   }
@@ -61763,6 +63568,7 @@ export namespace Prisma {
     terms?: TopicTermCreateNestedManyWithoutTopicInput
     sources?: TopicSourceCreateNestedManyWithoutTopicInput
     jobTopics?: JobTopicCreateNestedManyWithoutTopicInput
+    feedbacks?: ContentTopicFeedbackCreateNestedManyWithoutTopicInput
   }
 
   export type TopicUncheckedCreateWithoutScoresInput = {
@@ -61778,6 +63584,7 @@ export namespace Prisma {
     terms?: TopicTermUncheckedCreateNestedManyWithoutTopicInput
     sources?: TopicSourceUncheckedCreateNestedManyWithoutTopicInput
     jobTopics?: JobTopicUncheckedCreateNestedManyWithoutTopicInput
+    feedbacks?: ContentTopicFeedbackUncheckedCreateNestedManyWithoutTopicInput
   }
 
   export type TopicCreateOrConnectWithoutScoresInput = {
@@ -61811,6 +63618,7 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     keywords?: ContentKeywordUpdateManyWithoutContentNestedInput
     subjectMatches?: ContentSubjectMatchUpdateManyWithoutContentNestedInput
+    topicFeedbacks?: ContentTopicFeedbackUpdateManyWithoutContentNestedInput
     entities?: ContentEntityUpdateOneWithoutContentNestedInput
     favorites?: FavoriteUpdateManyWithoutContentNestedInput
   }
@@ -61830,6 +63638,7 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     keywords?: ContentKeywordUncheckedUpdateManyWithoutContentNestedInput
     subjectMatches?: ContentSubjectMatchUncheckedUpdateManyWithoutContentNestedInput
+    topicFeedbacks?: ContentTopicFeedbackUncheckedUpdateManyWithoutContentNestedInput
     entities?: ContentEntityUncheckedUpdateOneWithoutContentNestedInput
     favorites?: FavoriteUncheckedUpdateManyWithoutContentNestedInput
   }
@@ -61858,6 +63667,7 @@ export namespace Prisma {
     terms?: TopicTermUpdateManyWithoutTopicNestedInput
     sources?: TopicSourceUpdateManyWithoutTopicNestedInput
     jobTopics?: JobTopicUpdateManyWithoutTopicNestedInput
+    feedbacks?: ContentTopicFeedbackUpdateManyWithoutTopicNestedInput
   }
 
   export type TopicUncheckedUpdateWithoutScoresInput = {
@@ -61873,6 +63683,183 @@ export namespace Prisma {
     terms?: TopicTermUncheckedUpdateManyWithoutTopicNestedInput
     sources?: TopicSourceUncheckedUpdateManyWithoutTopicNestedInput
     jobTopics?: JobTopicUncheckedUpdateManyWithoutTopicNestedInput
+    feedbacks?: ContentTopicFeedbackUncheckedUpdateManyWithoutTopicNestedInput
+  }
+
+  export type ContentCreateWithoutTopicFeedbacksInput = {
+    id?: string
+    title: string
+    summary: string
+    markdown: string
+    platform: string
+    type: $Enums.ContentType
+    time: Date | string
+    url?: string | null
+    image?: string | null
+    meta?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    keywords?: ContentKeywordCreateNestedManyWithoutContentInput
+    subjectMatches?: ContentSubjectMatchCreateNestedManyWithoutContentInput
+    topicScores?: ContentTopicScoreCreateNestedManyWithoutContentInput
+    entities?: ContentEntityCreateNestedOneWithoutContentInput
+    favorites?: FavoriteCreateNestedManyWithoutContentInput
+  }
+
+  export type ContentUncheckedCreateWithoutTopicFeedbacksInput = {
+    id?: string
+    title: string
+    summary: string
+    markdown: string
+    platform: string
+    type: $Enums.ContentType
+    time: Date | string
+    url?: string | null
+    image?: string | null
+    meta?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    keywords?: ContentKeywordUncheckedCreateNestedManyWithoutContentInput
+    subjectMatches?: ContentSubjectMatchUncheckedCreateNestedManyWithoutContentInput
+    topicScores?: ContentTopicScoreUncheckedCreateNestedManyWithoutContentInput
+    entities?: ContentEntityUncheckedCreateNestedOneWithoutContentInput
+    favorites?: FavoriteUncheckedCreateNestedManyWithoutContentInput
+  }
+
+  export type ContentCreateOrConnectWithoutTopicFeedbacksInput = {
+    where: ContentWhereUniqueInput
+    create: XOR<ContentCreateWithoutTopicFeedbacksInput, ContentUncheckedCreateWithoutTopicFeedbacksInput>
+  }
+
+  export type TopicCreateWithoutFeedbacksInput = {
+    id?: string
+    name: string
+    description?: string | null
+    enabled?: boolean
+    frequency?: $Enums.QueryFrequency
+    cronSchedule?: string | null
+    profile?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    terms?: TopicTermCreateNestedManyWithoutTopicInput
+    sources?: TopicSourceCreateNestedManyWithoutTopicInput
+    jobTopics?: JobTopicCreateNestedManyWithoutTopicInput
+    scores?: ContentTopicScoreCreateNestedManyWithoutTopicInput
+  }
+
+  export type TopicUncheckedCreateWithoutFeedbacksInput = {
+    id?: string
+    name: string
+    description?: string | null
+    enabled?: boolean
+    frequency?: $Enums.QueryFrequency
+    cronSchedule?: string | null
+    profile?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    terms?: TopicTermUncheckedCreateNestedManyWithoutTopicInput
+    sources?: TopicSourceUncheckedCreateNestedManyWithoutTopicInput
+    jobTopics?: JobTopicUncheckedCreateNestedManyWithoutTopicInput
+    scores?: ContentTopicScoreUncheckedCreateNestedManyWithoutTopicInput
+  }
+
+  export type TopicCreateOrConnectWithoutFeedbacksInput = {
+    where: TopicWhereUniqueInput
+    create: XOR<TopicCreateWithoutFeedbacksInput, TopicUncheckedCreateWithoutFeedbacksInput>
+  }
+
+  export type ContentUpsertWithoutTopicFeedbacksInput = {
+    update: XOR<ContentUpdateWithoutTopicFeedbacksInput, ContentUncheckedUpdateWithoutTopicFeedbacksInput>
+    create: XOR<ContentCreateWithoutTopicFeedbacksInput, ContentUncheckedCreateWithoutTopicFeedbacksInput>
+    where?: ContentWhereInput
+  }
+
+  export type ContentUpdateToOneWithWhereWithoutTopicFeedbacksInput = {
+    where?: ContentWhereInput
+    data: XOR<ContentUpdateWithoutTopicFeedbacksInput, ContentUncheckedUpdateWithoutTopicFeedbacksInput>
+  }
+
+  export type ContentUpdateWithoutTopicFeedbacksInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    title?: StringFieldUpdateOperationsInput | string
+    summary?: StringFieldUpdateOperationsInput | string
+    markdown?: StringFieldUpdateOperationsInput | string
+    platform?: StringFieldUpdateOperationsInput | string
+    type?: EnumContentTypeFieldUpdateOperationsInput | $Enums.ContentType
+    time?: DateTimeFieldUpdateOperationsInput | Date | string
+    url?: NullableStringFieldUpdateOperationsInput | string | null
+    image?: NullableStringFieldUpdateOperationsInput | string | null
+    meta?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    keywords?: ContentKeywordUpdateManyWithoutContentNestedInput
+    subjectMatches?: ContentSubjectMatchUpdateManyWithoutContentNestedInput
+    topicScores?: ContentTopicScoreUpdateManyWithoutContentNestedInput
+    entities?: ContentEntityUpdateOneWithoutContentNestedInput
+    favorites?: FavoriteUpdateManyWithoutContentNestedInput
+  }
+
+  export type ContentUncheckedUpdateWithoutTopicFeedbacksInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    title?: StringFieldUpdateOperationsInput | string
+    summary?: StringFieldUpdateOperationsInput | string
+    markdown?: StringFieldUpdateOperationsInput | string
+    platform?: StringFieldUpdateOperationsInput | string
+    type?: EnumContentTypeFieldUpdateOperationsInput | $Enums.ContentType
+    time?: DateTimeFieldUpdateOperationsInput | Date | string
+    url?: NullableStringFieldUpdateOperationsInput | string | null
+    image?: NullableStringFieldUpdateOperationsInput | string | null
+    meta?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    keywords?: ContentKeywordUncheckedUpdateManyWithoutContentNestedInput
+    subjectMatches?: ContentSubjectMatchUncheckedUpdateManyWithoutContentNestedInput
+    topicScores?: ContentTopicScoreUncheckedUpdateManyWithoutContentNestedInput
+    entities?: ContentEntityUncheckedUpdateOneWithoutContentNestedInput
+    favorites?: FavoriteUncheckedUpdateManyWithoutContentNestedInput
+  }
+
+  export type TopicUpsertWithoutFeedbacksInput = {
+    update: XOR<TopicUpdateWithoutFeedbacksInput, TopicUncheckedUpdateWithoutFeedbacksInput>
+    create: XOR<TopicCreateWithoutFeedbacksInput, TopicUncheckedCreateWithoutFeedbacksInput>
+    where?: TopicWhereInput
+  }
+
+  export type TopicUpdateToOneWithWhereWithoutFeedbacksInput = {
+    where?: TopicWhereInput
+    data: XOR<TopicUpdateWithoutFeedbacksInput, TopicUncheckedUpdateWithoutFeedbacksInput>
+  }
+
+  export type TopicUpdateWithoutFeedbacksInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    enabled?: BoolFieldUpdateOperationsInput | boolean
+    frequency?: EnumQueryFrequencyFieldUpdateOperationsInput | $Enums.QueryFrequency
+    cronSchedule?: NullableStringFieldUpdateOperationsInput | string | null
+    profile?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    terms?: TopicTermUpdateManyWithoutTopicNestedInput
+    sources?: TopicSourceUpdateManyWithoutTopicNestedInput
+    jobTopics?: JobTopicUpdateManyWithoutTopicNestedInput
+    scores?: ContentTopicScoreUpdateManyWithoutTopicNestedInput
+  }
+
+  export type TopicUncheckedUpdateWithoutFeedbacksInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    enabled?: BoolFieldUpdateOperationsInput | boolean
+    frequency?: EnumQueryFrequencyFieldUpdateOperationsInput | $Enums.QueryFrequency
+    cronSchedule?: NullableStringFieldUpdateOperationsInput | string | null
+    profile?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    terms?: TopicTermUncheckedUpdateManyWithoutTopicNestedInput
+    sources?: TopicSourceUncheckedUpdateManyWithoutTopicNestedInput
+    jobTopics?: JobTopicUncheckedUpdateManyWithoutTopicNestedInput
+    scores?: ContentTopicScoreUncheckedUpdateManyWithoutTopicNestedInput
   }
 
   export type ContentCreateWithoutFavoritesInput = {
@@ -61891,6 +63878,7 @@ export namespace Prisma {
     keywords?: ContentKeywordCreateNestedManyWithoutContentInput
     subjectMatches?: ContentSubjectMatchCreateNestedManyWithoutContentInput
     topicScores?: ContentTopicScoreCreateNestedManyWithoutContentInput
+    topicFeedbacks?: ContentTopicFeedbackCreateNestedManyWithoutContentInput
     entities?: ContentEntityCreateNestedOneWithoutContentInput
   }
 
@@ -61910,6 +63898,7 @@ export namespace Prisma {
     keywords?: ContentKeywordUncheckedCreateNestedManyWithoutContentInput
     subjectMatches?: ContentSubjectMatchUncheckedCreateNestedManyWithoutContentInput
     topicScores?: ContentTopicScoreUncheckedCreateNestedManyWithoutContentInput
+    topicFeedbacks?: ContentTopicFeedbackUncheckedCreateNestedManyWithoutContentInput
     entities?: ContentEntityUncheckedCreateNestedOneWithoutContentInput
   }
 
@@ -61945,6 +63934,7 @@ export namespace Prisma {
     keywords?: ContentKeywordUpdateManyWithoutContentNestedInput
     subjectMatches?: ContentSubjectMatchUpdateManyWithoutContentNestedInput
     topicScores?: ContentTopicScoreUpdateManyWithoutContentNestedInput
+    topicFeedbacks?: ContentTopicFeedbackUpdateManyWithoutContentNestedInput
     entities?: ContentEntityUpdateOneWithoutContentNestedInput
   }
 
@@ -61964,6 +63954,7 @@ export namespace Prisma {
     keywords?: ContentKeywordUncheckedUpdateManyWithoutContentNestedInput
     subjectMatches?: ContentSubjectMatchUncheckedUpdateManyWithoutContentNestedInput
     topicScores?: ContentTopicScoreUncheckedUpdateManyWithoutContentNestedInput
+    topicFeedbacks?: ContentTopicFeedbackUncheckedUpdateManyWithoutContentNestedInput
     entities?: ContentEntityUncheckedUpdateOneWithoutContentNestedInput
   }
 
@@ -63849,6 +65840,16 @@ export namespace Prisma {
     updatedAt?: Date | string
   }
 
+  export type ContentTopicFeedbackCreateManyTopicInput = {
+    id?: string
+    contentId: string
+    userId: string
+    vote?: $Enums.FeedbackVote
+    note?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
   export type TopicTermUpdateWithoutTopicInput = {
     id?: StringFieldUpdateOperationsInput | string
     type?: EnumTopicTermTypeFieldUpdateOperationsInput | $Enums.TopicTermType
@@ -63962,6 +65963,36 @@ export namespace Prisma {
     finalScore?: NullableFloatFieldUpdateOperationsInput | number | null
     reason?: NullableStringFieldUpdateOperationsInput | string | null
     explain?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type ContentTopicFeedbackUpdateWithoutTopicInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    vote?: EnumFeedbackVoteFieldUpdateOperationsInput | $Enums.FeedbackVote
+    note?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    content?: ContentUpdateOneRequiredWithoutTopicFeedbacksNestedInput
+  }
+
+  export type ContentTopicFeedbackUncheckedUpdateWithoutTopicInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    contentId?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    vote?: EnumFeedbackVoteFieldUpdateOperationsInput | $Enums.FeedbackVote
+    note?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type ContentTopicFeedbackUncheckedUpdateManyWithoutTopicInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    contentId?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    vote?: EnumFeedbackVoteFieldUpdateOperationsInput | $Enums.FeedbackVote
+    note?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -64142,6 +66173,16 @@ export namespace Prisma {
     updatedAt?: Date | string
   }
 
+  export type ContentTopicFeedbackCreateManyContentInput = {
+    id?: string
+    topicId: string
+    userId: string
+    vote?: $Enums.FeedbackVote
+    note?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
   export type FavoriteCreateManyContentInput = {
     id?: string
     userId: string
@@ -64240,6 +66281,36 @@ export namespace Prisma {
     finalScore?: NullableFloatFieldUpdateOperationsInput | number | null
     reason?: NullableStringFieldUpdateOperationsInput | string | null
     explain?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type ContentTopicFeedbackUpdateWithoutContentInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    vote?: EnumFeedbackVoteFieldUpdateOperationsInput | $Enums.FeedbackVote
+    note?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    topic?: TopicUpdateOneRequiredWithoutFeedbacksNestedInput
+  }
+
+  export type ContentTopicFeedbackUncheckedUpdateWithoutContentInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    topicId?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    vote?: EnumFeedbackVoteFieldUpdateOperationsInput | $Enums.FeedbackVote
+    note?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type ContentTopicFeedbackUncheckedUpdateManyWithoutContentInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    topicId?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    vote?: EnumFeedbackVoteFieldUpdateOperationsInput | $Enums.FeedbackVote
+    note?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }

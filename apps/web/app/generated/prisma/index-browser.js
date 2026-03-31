@@ -422,6 +422,17 @@ exports.Prisma.ContentTopicScoreScalarFieldEnum = {
   updatedAt: 'updatedAt'
 };
 
+exports.Prisma.ContentTopicFeedbackScalarFieldEnum = {
+  id: 'id',
+  contentId: 'contentId',
+  topicId: 'topicId',
+  userId: 'userId',
+  vote: 'vote',
+  note: 'note',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
 exports.Prisma.FavoriteScalarFieldEnum = {
   id: 'id',
   userId: 'userId',
@@ -635,6 +646,12 @@ exports.ContentSubjectMatchSource = exports.$Enums.ContentSubjectMatchSource = {
   FUSED: 'FUSED'
 };
 
+exports.FeedbackVote = exports.$Enums.FeedbackVote = {
+  UP: 'UP',
+  DOWN: 'DOWN',
+  NONE: 'NONE'
+};
+
 exports.ReportStatus = exports.$Enums.ReportStatus = {
   DRAFT: 'DRAFT',
   REVIEW: 'REVIEW',
@@ -673,6 +690,7 @@ exports.Prisma.ModelName = {
   ContentSubjectMatch: 'ContentSubjectMatch',
   ContentEntity: 'ContentEntity',
   ContentTopicScore: 'ContentTopicScore',
+  ContentTopicFeedback: 'ContentTopicFeedback',
   Favorite: 'Favorite',
   ReportTemplate: 'ReportTemplate',
   Report: 'Report',
