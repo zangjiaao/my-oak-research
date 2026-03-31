@@ -5,6 +5,7 @@
     "dev": "dotenvx run -- tsx watch index.ts",
     "build": "dotenvx run -- tsc -p tsconfig.json",
     "start": "dotenvx run -- tsx index.ts",
+    "reset-embeddings": "dotenvx run -- tsx scripts/reset-embeddings.ts",
     "lint": "echo 'worker lint not configured'",
     "test": "echo 'worker tests not configured'",
     "check-types": "tsc -p tsconfig.json --noEmit"
