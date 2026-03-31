@@ -4,8 +4,6 @@ import prisma from "@/lib/prisma";
 import type {
   Prisma,
   Content,
-  ContentSubjectMatch,
-  ContentSubjectMatchSource,
   ContentTopicScore,
   ContentEntity,
 } from "@/app/generated/prisma";
@@ -17,24 +15,16 @@ const DEFAULT_TOPIC_FILTER_MIN_SCORE = Math.max(
 );
 
 const contentTypeSchema = z.enum(["Web", "Client", "Darknet"]);
-const matchSourceSchema = z.enum(["QUERY", "GATHER", "AI", "FUSED"]);
-const sortSchema = z.enum(["time", "relevance", "matchScore", "topicScore"]);
+const sortSchema = z.enum(["time", "relevance", "topicScore"]);
 const ContentQuerySchema = z.object({
   platform: z.string().trim().min(1).optional(),
   type: contentTypeSchema.optional(),
   search: z.string().trim().min(1).optional(),
   from: z.string().datetime().optional(),
   to: z.string().datetime().optional(),
-  subjectId: z.string().min(1).optional(),
-  minMatchScore: z.coerce.number().min(0).max(1).optional(),
   topicId: z.string().min(1).optional(),
   minTopicScore: z.coerce.number().min(0).optional(),
-  matchSource: matchSourceSchema.optional(),
   sort: sortSchema.optional().default("time"),
-  includeSubjectMatches: z
-    .enum(["true", "false"])
-    .optional()
-    .transform((value) => value === "true"),
   includeTopicScores: z
     .enum(["true", "false"])
     .optional()
@@ -54,7 +44,6 @@ const ContentQuerySchema = z.object({
 const mapContent = (
   item: Content & {
     image?: string | null;
-    subjectMatches?: ContentSubjectMatch[];
     topicScores?: ContentTopicScore[];
     entities?: ContentEntity | null;
     topicFeedbacks?: Array<{
@@ -80,16 +69,6 @@ const mapContent = (
     relation: views.relation,
     rawRecordContent: views.rawRecordContent,
     media: views.media ?? [],
-    subjectMatches: (item.subjectMatches ?? []).map((match) => ({
-      subjectId: match.keywordId,
-      ruleScore: match.ruleScore,
-      aiScore: match.aiScore,
-      score: match.matchScore,
-      matchedIncludes: match.matchedIncludes,
-      matchedExcludes: match.matchedExcludes,
-      matchSource: match.matchSource,
-      reason: match.reason,
-    })),
     topicScores: (item.topicScores ?? []).map((score) => ({
       topicId: score.topicId,
       vectorScore: score.vectorScore,
@@ -148,13 +127,9 @@ export async function GET(request: Request) {
     search,
     from,
     to,
-    subjectId,
-    minMatchScore,
     topicId,
     minTopicScore,
-    matchSource,
     sort,
-    includeSubjectMatches,
     includeTopicScores,
     includeEntities,
     includeFeedback,
@@ -206,25 +181,6 @@ export async function GET(request: Request) {
     }
   }
 
-  let resolvedMinMatchScore = minMatchScore;
-  if (subjectId && resolvedMinMatchScore == null) {
-    resolvedMinMatchScore = await resolveDefaultMinMatchScore(subjectId);
-  }
-
-  if (subjectId || resolvedMinMatchScore != null || matchSource) {
-    where.subjectMatches = {
-      some: {
-        ...(subjectId ? { keywordId: subjectId } : {}),
-        ...(resolvedMinMatchScore != null
-          ? { matchScore: { gte: resolvedMinMatchScore } }
-          : {}),
-        ...(matchSource
-          ? { matchSource: matchSource as ContentSubjectMatchSource }
-          : {}),
-      },
-    };
-  }
-
   if (effectiveTopicIds.length || resolvedMinTopicScore != null) {
     where.topicScores = {
       some: {
@@ -238,27 +194,6 @@ export async function GET(request: Request) {
     };
   }
 
-  const includeSubjectMatchRelation =
-    includeSubjectMatches || subjectId || resolvedMinMatchScore != null || matchSource
-      ? {
-          subjectMatches: {
-            where: {
-              ...(subjectId ? { keywordId: subjectId } : {}),
-              ...(resolvedMinMatchScore != null
-                ? { matchScore: { gte: resolvedMinMatchScore } }
-                : {}),
-              ...(matchSource
-                ? { matchSource: matchSource as ContentSubjectMatchSource }
-                : {}),
-            },
-            orderBy: { matchScore: "desc" as const },
-          },
-        }
-      : {
-          subjectMatches: {
-            take: 0,
-          },
-        };
   const includeTopicScoreRelation =
     includeTopicScores || effectiveTopicIds.length > 0 || resolvedMinTopicScore != null
       ? {
@@ -303,7 +238,6 @@ export async function GET(request: Request) {
     cursor: cursor ? { id: cursor } : undefined,
     skip: cursor ? 1 : 0,
     include: {
-      ...includeSubjectMatchRelation,
       ...includeTopicScoreRelation,
       ...includeEntityRelation,
       ...includeFeedbackRelation,
@@ -314,13 +248,7 @@ export async function GET(request: Request) {
   const nextCursor = hasMore ? contents[limit].id : null;
   const pageItems = hasMore ? contents.slice(0, limit) : contents;
   const sortedItems =
-    (sort === "matchScore" && subjectId)
-      ? [...pageItems].sort((left, right) => {
-          const leftScore = left.subjectMatches?.[0]?.matchScore ?? -1;
-          const rightScore = right.subjectMatches?.[0]?.matchScore ?? -1;
-          return rightScore - leftScore;
-        })
-      : (sort === "topicScore" || sort === "relevance") && effectiveTopicIds.length > 0
+    (sort === "topicScore" || sort === "relevance") && effectiveTopicIds.length > 0
         ? [...pageItems].sort((left, right) => {
             const leftScore = Math.max(
               ...(left.topicScores ?? [])
@@ -353,31 +281,4 @@ export async function GET(request: Request) {
   };
 
   return NextResponse.json(response);
-}
-
-async function resolveDefaultMinMatchScore(subjectId: string): Promise<number> {
-  const windowStart = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
-  const samples = await prisma.contentSubjectMatch.findMany({
-    where: {
-      keywordId: subjectId,
-      createdAt: { gte: windowStart },
-      matchScore: { not: null },
-    },
-    select: { matchScore: true },
-    orderBy: { matchScore: "asc" },
-    take: 1000,
-  });
-
-  if (samples.length < 50) {
-    return 0.35;
-  }
-  const scores = samples
-    .map((sample) => sample.matchScore)
-    .filter((score): score is number => typeof score === "number");
-  if (scores.length === 0) return 0.35;
-  const percentileIndex = Math.min(
-    scores.length - 1,
-    Math.max(0, Math.floor(scores.length * 0.65))
-  );
-  return scores[percentileIndex] ?? 0.35;
 }

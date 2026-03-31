@@ -3,6 +3,7 @@ import { z } from "zod";
 import { createHash } from "crypto";
 
 import prisma from "@/lib/prisma";
+const prismaAny = prisma as any;
 import {
   Prisma,
   SourceCategory,
@@ -262,7 +263,7 @@ async function loadRunSearchSuccessSignatures(runId?: string): Promise<Set<strin
   if (!runId) return new Set<string>();
   const cached = runSearchSignatureCache.get(runId);
   if (cached) return cached;
-  const row = await prisma.queryRun.findUnique({
+  const row = await prismaAny.queryRun.findUnique({
     where: { id: runId },
     select: { meta: true },
   });
@@ -277,7 +278,7 @@ async function persistRunSearchSuccessSignatures(
   runId: string,
   signatures: Set<string>
 ): Promise<void> {
-  const row = await prisma.queryRun.findUnique({
+  const row = await prismaAny.queryRun.findUnique({
     where: { id: runId },
     select: { meta: true },
   });
@@ -289,7 +290,7 @@ async function persistRunSearchSuccessSignatures(
       ...Array.from(signatures),
     ])
   );
-  await prisma.queryRun.update({
+  await prismaAny.queryRun.update({
     where: { id: runId },
     data: {
       meta: {
@@ -303,13 +304,13 @@ async function persistRunSearchSuccessSignatures(
 export async function runFocusCollector(runId: string, queryId: string) {
   const send = async (event: unknown) => publishTaskEvent(runId, event);
 
-  await prisma.queryRun.update({
+  await prismaAny.queryRun.update({
     where: { id: runId },
     data: { status: "RUNNING", startedAt: new Date(), progress: 0 },
   });
   await send({ type: "start", message: "任务开始" });
 
-  const query = await prisma.query.findUnique({
+  const query = await prismaAny.query.findUnique({
     where: { id: queryId },
     include: {
       keywords: true,
@@ -342,7 +343,7 @@ export async function runFocusCollector(runId: string, queryId: string) {
 
   await send({ type: "fetch", message: "拉取数据中" });
   const normalizedSources: SourceWithRelations[] = [];
-  query.sources.forEach((source) => {
+  query.sources.forEach((source: any) => {
     if (source.category === "STREAM" && source.web) {
       normalizedSources.push(source as WebSource);
       return;
@@ -365,7 +366,7 @@ export async function runFocusCollector(runId: string, queryId: string) {
     queryId,
     query.keywords,
     new Map(
-      query.sourcePolicies.map((item) => [
+      query.sourcePolicies.map((item: any) => [
         item.sourceId,
         {
           contentFilterEnabled: item.contentFilterEnabled,
@@ -409,14 +410,14 @@ export async function runFocusCollector(runId: string, queryId: string) {
 
   if (!cleaned.length) {
     await send({ type: "done", message: "未抓取到内容", progress: 100 });
-    await prisma.queryRun.update({
+    await prismaAny.queryRun.update({
       where: { id: runId },
       data: { status: "SUCCEEDED", progress: 100, finishedAt: new Date() },
     });
     return;
   }
 
-  const expandedKeywords = query.keywords.map((kw) => {
+  const expandedKeywords = query.keywords.map((kw: any) => {
     const parts = [kw.name, ...kw.includes];
     if (kw.enableAiExpand && kw.synonyms.length > 0) {
       parts.push(...kw.synonyms);
@@ -437,7 +438,7 @@ export async function runFocusCollector(runId: string, queryId: string) {
         100,
         Math.floor(((i + 1) / cleaned.length) * 100)
       );
-      await prisma.queryRun.update({
+      await prismaAny.queryRun.update({
         where: { id: runId },
         data: { progress },
       });
@@ -536,7 +537,7 @@ export async function runFocusCollector(runId: string, queryId: string) {
       recordContent: sanitizedRecordContent,
       schemaVersion: stripNullBytesNullable(normalizedRecordContent.schemaVersion),
       recordIndex: normalizedRecordContent.relation.recordIndex,
-      keywords: expandedKeywords.map((keywordValue) =>
+      keywords: expandedKeywords.map((keywordValue: string) =>
         stripNullBytes(keywordValue)
       ),
       summaryRelevance: summary.relevance,
@@ -559,8 +560,8 @@ export async function runFocusCollector(runId: string, queryId: string) {
     });
 
     if (query.keywords.length) {
-      await prisma.contentKeyword.createMany({
-        data: query.keywords.map((keyword) => ({
+      await prismaAny.contentKeyword.createMany({
+        data: query.keywords.map((keyword: any) => ({
           contentId: content.id,
           keywordId: keyword.id,
         })),
@@ -618,14 +619,14 @@ export async function runFocusCollector(runId: string, queryId: string) {
     if (stats) {
       stats.inserted += 1;
     }
-    await prisma.queryRun.update({
+    await prismaAny.queryRun.update({
       where: { id: runId },
       data: { progress },
     });
     await send({ type: "progress", message: "入库完成", progress });
   }
 
-  await prisma.queryRun.update({
+  await prismaAny.queryRun.update({
     where: { id: runId },
     data: {
       status: "SUCCEEDED",
@@ -3303,7 +3304,7 @@ async function upsertContentSubjectMatches(input: {
           : ContentSubjectMatchSource.GATHER
         : ContentSubjectMatchSource.FUSED;
 
-    await prisma.contentSubjectMatch.upsert({
+    await prismaAny.contentSubjectMatch.upsert({
       where: {
         contentId_keywordId: {
           contentId,

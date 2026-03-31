@@ -190,10 +190,10 @@ const SearchEngineSettingCard = () => {
                 const result = await quickRunSource(source.id);
                 toast.success(
                   result.created
-                    ? `已创建并执行快速 Query（${source.name}）`
-                    : `已执行快速 Query（${source.name}）`
+                    ? `已创建并执行快速 Job（${source.name}）`
+                    : `已执行快速 Job（${source.name}）`
                 );
-                await queryClient.invalidateQueries({ queryKey: ["queries"] });
+                await queryClient.invalidateQueries({ queryKey: ["jobs"] });
               } catch (error) {
                 toast.error(
                   error instanceof Error ? error.message : "Failed to quick run source"

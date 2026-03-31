@@ -1,8 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
-import { Keyword, Category, Proxy } from "@/app/generated/prisma";
+import { Proxy } from "@/app/generated/prisma";
 import {
   JobWithAggregations,
-  QueryWithAggregations,
   SourceWithRelations,
   TopicWithAggregations,
 } from "@/lib/types";
@@ -13,7 +12,6 @@ const fetcher = async <T>(url: string): Promise<T[]> => {
     throw new Error(`Failed to fetch from ${url}`);
   }
   const data = await response.json();
-  // Adapt to different API response structures
   if (Array.isArray(data)) {
     return data;
   }
@@ -24,16 +22,6 @@ const fetcher = async <T>(url: string): Promise<T[]> => {
 };
 
 export const useFollow = () => {
-  const { data: keywords = [], ...keywordsQuery } = useQuery<Keyword[]>({
-    queryKey: ["keywords"],
-    queryFn: () => fetcher("/api/follow/keywords"),
-  });
-
-  const { data: categories = [], ...categoriesQuery } = useQuery<Category[]>({
-    queryKey: ["categories"],
-    queryFn: () => fetcher("/api/follow/categories"),
-  });
-
   const { data: sources = [], ...sourcesQuery } = useQuery<
     SourceWithRelations[]
   >({
@@ -47,22 +35,13 @@ export const useFollow = () => {
     queryFn: () => fetcher("/api/follow/proxy"),
   });
 
-  const { data: queries = [], ...queriesQuery } = useQuery<
-    QueryWithAggregations[]
+  const { data: topics = [], ...topicsQuery } = useQuery<
+    TopicWithAggregations[]
   >({
-    queryKey: ["queries"],
+    queryKey: ["topics"],
     queryFn: () =>
-      fetcher<QueryWithAggregations>(
-        "/api/follow/queries?includeKeywordsAndSources=true"
-      ),
+      fetcher<TopicWithAggregations>("/api/follow/topics?includeRelations=true"),
   });
-
-  const { data: topics = [], ...topicsQuery } = useQuery<TopicWithAggregations[]>(
-    {
-      queryKey: ["topics"],
-      queryFn: () => fetcher<TopicWithAggregations>("/api/follow/topics?includeRelations=true"),
-    }
-  );
 
   const { data: jobs = [], ...jobsQuery } = useQuery<JobWithAggregations[]>({
     queryKey: ["jobs"],
@@ -70,16 +49,10 @@ export const useFollow = () => {
   });
 
   return {
-    keywords,
-    keywordsQuery,
-    categories,
-    categoriesQuery,
     sources,
     sourcesQuery,
     proxies,
     proxiesQuery,
-    queries,
-    queriesQuery,
     topics,
     topicsQuery,
     jobs,

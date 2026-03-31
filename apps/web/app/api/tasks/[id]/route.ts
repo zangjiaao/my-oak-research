@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 export async function GET(
-  req: Request,
+  _req: Request,
   { params: paramsPromise }: { params: Promise<{ id: string }> }
 ) {
   const params = await paramsPromise;
@@ -11,9 +11,10 @@ export async function GET(
   if (!parse.success) {
     return NextResponse.json({ error: "Invalid task id" }, { status: 400 });
   }
-  const run = await prisma.queryRun.findUnique({
+
+  const run = await prisma.jobRun.findUnique({
     where: { id: parse.data.id },
-    include: { query: true },
+    include: { job: true },
   });
 
   if (!run) {

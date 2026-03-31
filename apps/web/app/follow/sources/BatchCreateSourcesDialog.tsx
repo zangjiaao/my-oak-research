@@ -1118,7 +1118,7 @@ const BatchCreateSourcesDialog = ({ proxies }: { proxies: Proxy[] }) => {
                         </Select>
                       </div>
                       <div className="text-xs text-muted-foreground sm:col-span-2">
-                        Active=false 的源会创建成功，但不会显示在 Query 里。
+                        Active=false 的源会创建成功，但不会显示在 Job 里。
                       </div>
                     </div>
                   </div>
