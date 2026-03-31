@@ -74,6 +74,41 @@ export type Query = $Result.DefaultSelection<Prisma.$QueryPayload>
  */
 export type QuerySourcePolicy = $Result.DefaultSelection<Prisma.$QuerySourcePolicyPayload>
 /**
+ * Model Topic
+ * 
+ */
+export type Topic = $Result.DefaultSelection<Prisma.$TopicPayload>
+/**
+ * Model TopicTerm
+ * 
+ */
+export type TopicTerm = $Result.DefaultSelection<Prisma.$TopicTermPayload>
+/**
+ * Model TopicSource
+ * 
+ */
+export type TopicSource = $Result.DefaultSelection<Prisma.$TopicSourcePayload>
+/**
+ * Model Job
+ * 
+ */
+export type Job = $Result.DefaultSelection<Prisma.$JobPayload>
+/**
+ * Model JobTopic
+ * 
+ */
+export type JobTopic = $Result.DefaultSelection<Prisma.$JobTopicPayload>
+/**
+ * Model JobSource
+ * 
+ */
+export type JobSource = $Result.DefaultSelection<Prisma.$JobSourcePayload>
+/**
+ * Model JobRun
+ * 
+ */
+export type JobRun = $Result.DefaultSelection<Prisma.$JobRunPayload>
+/**
  * Model QueryRun
  * 
  */
@@ -103,6 +138,11 @@ export type ContentSubjectMatch = $Result.DefaultSelection<Prisma.$ContentSubjec
  * 
  */
 export type ContentEntity = $Result.DefaultSelection<Prisma.$ContentEntityPayload>
+/**
+ * Model ContentTopicScore
+ * 
+ */
+export type ContentTopicScore = $Result.DefaultSelection<Prisma.$ContentTopicScorePayload>
 /**
  * Model Favorite
  * 
@@ -237,6 +277,24 @@ export const QueryFrequency: {
 export type QueryFrequency = (typeof QueryFrequency)[keyof typeof QueryFrequency]
 
 
+export const TopicTermType: {
+  CORE: 'CORE',
+  EXPANSION: 'EXPANSION',
+  EXCLUSION: 'EXCLUSION'
+};
+
+export type TopicTermType = (typeof TopicTermType)[keyof typeof TopicTermType]
+
+
+export const JobType: {
+  TOPIC_RETRIEVAL: 'TOPIC_RETRIEVAL',
+  SOURCE_INGEST: 'SOURCE_INGEST',
+  SOURCE_ONESHOT: 'SOURCE_ONESHOT'
+};
+
+export type JobType = (typeof JobType)[keyof typeof JobType]
+
+
 export const QueryContentFilterMode: {
   TERM_AND_WORD_BOUNDARY: 'TERM_AND_WORD_BOUNDARY',
   CONTAINS: 'CONTAINS',
@@ -315,6 +373,14 @@ export const ContentSubjectMatchSource: typeof $Enums.ContentSubjectMatchSource
 export type QueryFrequency = $Enums.QueryFrequency
 
 export const QueryFrequency: typeof $Enums.QueryFrequency
+
+export type TopicTermType = $Enums.TopicTermType
+
+export const TopicTermType: typeof $Enums.TopicTermType
+
+export type JobType = $Enums.JobType
+
+export const JobType: typeof $Enums.JobType
 
 export type QueryContentFilterMode = $Enums.QueryContentFilterMode
 
@@ -574,6 +640,76 @@ export class PrismaClient<
   get querySourcePolicy(): Prisma.QuerySourcePolicyDelegate<ExtArgs, ClientOptions>;
 
   /**
+   * `prisma.topic`: Exposes CRUD operations for the **Topic** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more Topics
+    * const topics = await prisma.topic.findMany()
+    * ```
+    */
+  get topic(): Prisma.TopicDelegate<ExtArgs, ClientOptions>;
+
+  /**
+   * `prisma.topicTerm`: Exposes CRUD operations for the **TopicTerm** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more TopicTerms
+    * const topicTerms = await prisma.topicTerm.findMany()
+    * ```
+    */
+  get topicTerm(): Prisma.TopicTermDelegate<ExtArgs, ClientOptions>;
+
+  /**
+   * `prisma.topicSource`: Exposes CRUD operations for the **TopicSource** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more TopicSources
+    * const topicSources = await prisma.topicSource.findMany()
+    * ```
+    */
+  get topicSource(): Prisma.TopicSourceDelegate<ExtArgs, ClientOptions>;
+
+  /**
+   * `prisma.job`: Exposes CRUD operations for the **Job** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more Jobs
+    * const jobs = await prisma.job.findMany()
+    * ```
+    */
+  get job(): Prisma.JobDelegate<ExtArgs, ClientOptions>;
+
+  /**
+   * `prisma.jobTopic`: Exposes CRUD operations for the **JobTopic** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more JobTopics
+    * const jobTopics = await prisma.jobTopic.findMany()
+    * ```
+    */
+  get jobTopic(): Prisma.JobTopicDelegate<ExtArgs, ClientOptions>;
+
+  /**
+   * `prisma.jobSource`: Exposes CRUD operations for the **JobSource** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more JobSources
+    * const jobSources = await prisma.jobSource.findMany()
+    * ```
+    */
+  get jobSource(): Prisma.JobSourceDelegate<ExtArgs, ClientOptions>;
+
+  /**
+   * `prisma.jobRun`: Exposes CRUD operations for the **JobRun** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more JobRuns
+    * const jobRuns = await prisma.jobRun.findMany()
+    * ```
+    */
+  get jobRun(): Prisma.JobRunDelegate<ExtArgs, ClientOptions>;
+
+  /**
    * `prisma.queryRun`: Exposes CRUD operations for the **QueryRun** model.
     * Example usage:
     * ```ts
@@ -632,6 +768,16 @@ export class PrismaClient<
     * ```
     */
   get contentEntity(): Prisma.ContentEntityDelegate<ExtArgs, ClientOptions>;
+
+  /**
+   * `prisma.contentTopicScore`: Exposes CRUD operations for the **ContentTopicScore** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more ContentTopicScores
+    * const contentTopicScores = await prisma.contentTopicScore.findMany()
+    * ```
+    */
+  get contentTopicScore(): Prisma.ContentTopicScoreDelegate<ExtArgs, ClientOptions>;
 
   /**
    * `prisma.favorite`: Exposes CRUD operations for the **Favorite** model.
@@ -1168,12 +1314,20 @@ export namespace Prisma {
     SocialMediaSourceConfig: 'SocialMediaSourceConfig',
     Query: 'Query',
     QuerySourcePolicy: 'QuerySourcePolicy',
+    Topic: 'Topic',
+    TopicTerm: 'TopicTerm',
+    TopicSource: 'TopicSource',
+    Job: 'Job',
+    JobTopic: 'JobTopic',
+    JobSource: 'JobSource',
+    JobRun: 'JobRun',
     QueryRun: 'QueryRun',
     TaskEvent: 'TaskEvent',
     Content: 'Content',
     ContentKeyword: 'ContentKeyword',
     ContentSubjectMatch: 'ContentSubjectMatch',
     ContentEntity: 'ContentEntity',
+    ContentTopicScore: 'ContentTopicScore',
     Favorite: 'Favorite',
     ReportTemplate: 'ReportTemplate',
     Report: 'Report',
@@ -1198,7 +1352,7 @@ export namespace Prisma {
       omit: GlobalOmitOptions
     }
     meta: {
-      modelProps: "category" | "keyword" | "proxy" | "credential" | "source" | "sourceIdentity" | "webSourceConfig" | "darknetSourceConfig" | "searchEngineSourceConfig" | "socialMediaSourceConfig" | "query" | "querySourcePolicy" | "queryRun" | "taskEvent" | "content" | "contentKeyword" | "contentSubjectMatch" | "contentEntity" | "favorite" | "reportTemplate" | "report" | "chatSession" | "chatMessage" | "reportMaterial" | "knowledge" | "knowledgeFile" | "knowledgeChunk"
+      modelProps: "category" | "keyword" | "proxy" | "credential" | "source" | "sourceIdentity" | "webSourceConfig" | "darknetSourceConfig" | "searchEngineSourceConfig" | "socialMediaSourceConfig" | "query" | "querySourcePolicy" | "topic" | "topicTerm" | "topicSource" | "job" | "jobTopic" | "jobSource" | "jobRun" | "queryRun" | "taskEvent" | "content" | "contentKeyword" | "contentSubjectMatch" | "contentEntity" | "contentTopicScore" | "favorite" | "reportTemplate" | "report" | "chatSession" | "chatMessage" | "reportMaterial" | "knowledge" | "knowledgeFile" | "knowledgeChunk"
       txIsolationLevel: Prisma.TransactionIsolationLevel
     }
     model: {
@@ -2090,6 +2244,524 @@ export namespace Prisma {
           }
         }
       }
+      Topic: {
+        payload: Prisma.$TopicPayload<ExtArgs>
+        fields: Prisma.TopicFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.TopicFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TopicPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.TopicFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TopicPayload>
+          }
+          findFirst: {
+            args: Prisma.TopicFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TopicPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.TopicFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TopicPayload>
+          }
+          findMany: {
+            args: Prisma.TopicFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TopicPayload>[]
+          }
+          create: {
+            args: Prisma.TopicCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TopicPayload>
+          }
+          createMany: {
+            args: Prisma.TopicCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.TopicCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TopicPayload>[]
+          }
+          delete: {
+            args: Prisma.TopicDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TopicPayload>
+          }
+          update: {
+            args: Prisma.TopicUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TopicPayload>
+          }
+          deleteMany: {
+            args: Prisma.TopicDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.TopicUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateManyAndReturn: {
+            args: Prisma.TopicUpdateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TopicPayload>[]
+          }
+          upsert: {
+            args: Prisma.TopicUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TopicPayload>
+          }
+          aggregate: {
+            args: Prisma.TopicAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateTopic>
+          }
+          groupBy: {
+            args: Prisma.TopicGroupByArgs<ExtArgs>
+            result: $Utils.Optional<TopicGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.TopicCountArgs<ExtArgs>
+            result: $Utils.Optional<TopicCountAggregateOutputType> | number
+          }
+        }
+      }
+      TopicTerm: {
+        payload: Prisma.$TopicTermPayload<ExtArgs>
+        fields: Prisma.TopicTermFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.TopicTermFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TopicTermPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.TopicTermFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TopicTermPayload>
+          }
+          findFirst: {
+            args: Prisma.TopicTermFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TopicTermPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.TopicTermFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TopicTermPayload>
+          }
+          findMany: {
+            args: Prisma.TopicTermFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TopicTermPayload>[]
+          }
+          create: {
+            args: Prisma.TopicTermCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TopicTermPayload>
+          }
+          createMany: {
+            args: Prisma.TopicTermCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.TopicTermCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TopicTermPayload>[]
+          }
+          delete: {
+            args: Prisma.TopicTermDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TopicTermPayload>
+          }
+          update: {
+            args: Prisma.TopicTermUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TopicTermPayload>
+          }
+          deleteMany: {
+            args: Prisma.TopicTermDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.TopicTermUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateManyAndReturn: {
+            args: Prisma.TopicTermUpdateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TopicTermPayload>[]
+          }
+          upsert: {
+            args: Prisma.TopicTermUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TopicTermPayload>
+          }
+          aggregate: {
+            args: Prisma.TopicTermAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateTopicTerm>
+          }
+          groupBy: {
+            args: Prisma.TopicTermGroupByArgs<ExtArgs>
+            result: $Utils.Optional<TopicTermGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.TopicTermCountArgs<ExtArgs>
+            result: $Utils.Optional<TopicTermCountAggregateOutputType> | number
+          }
+        }
+      }
+      TopicSource: {
+        payload: Prisma.$TopicSourcePayload<ExtArgs>
+        fields: Prisma.TopicSourceFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.TopicSourceFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TopicSourcePayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.TopicSourceFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TopicSourcePayload>
+          }
+          findFirst: {
+            args: Prisma.TopicSourceFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TopicSourcePayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.TopicSourceFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TopicSourcePayload>
+          }
+          findMany: {
+            args: Prisma.TopicSourceFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TopicSourcePayload>[]
+          }
+          create: {
+            args: Prisma.TopicSourceCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TopicSourcePayload>
+          }
+          createMany: {
+            args: Prisma.TopicSourceCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.TopicSourceCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TopicSourcePayload>[]
+          }
+          delete: {
+            args: Prisma.TopicSourceDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TopicSourcePayload>
+          }
+          update: {
+            args: Prisma.TopicSourceUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TopicSourcePayload>
+          }
+          deleteMany: {
+            args: Prisma.TopicSourceDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.TopicSourceUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateManyAndReturn: {
+            args: Prisma.TopicSourceUpdateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TopicSourcePayload>[]
+          }
+          upsert: {
+            args: Prisma.TopicSourceUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TopicSourcePayload>
+          }
+          aggregate: {
+            args: Prisma.TopicSourceAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateTopicSource>
+          }
+          groupBy: {
+            args: Prisma.TopicSourceGroupByArgs<ExtArgs>
+            result: $Utils.Optional<TopicSourceGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.TopicSourceCountArgs<ExtArgs>
+            result: $Utils.Optional<TopicSourceCountAggregateOutputType> | number
+          }
+        }
+      }
+      Job: {
+        payload: Prisma.$JobPayload<ExtArgs>
+        fields: Prisma.JobFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.JobFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$JobPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.JobFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$JobPayload>
+          }
+          findFirst: {
+            args: Prisma.JobFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$JobPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.JobFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$JobPayload>
+          }
+          findMany: {
+            args: Prisma.JobFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$JobPayload>[]
+          }
+          create: {
+            args: Prisma.JobCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$JobPayload>
+          }
+          createMany: {
+            args: Prisma.JobCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.JobCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$JobPayload>[]
+          }
+          delete: {
+            args: Prisma.JobDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$JobPayload>
+          }
+          update: {
+            args: Prisma.JobUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$JobPayload>
+          }
+          deleteMany: {
+            args: Prisma.JobDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.JobUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateManyAndReturn: {
+            args: Prisma.JobUpdateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$JobPayload>[]
+          }
+          upsert: {
+            args: Prisma.JobUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$JobPayload>
+          }
+          aggregate: {
+            args: Prisma.JobAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateJob>
+          }
+          groupBy: {
+            args: Prisma.JobGroupByArgs<ExtArgs>
+            result: $Utils.Optional<JobGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.JobCountArgs<ExtArgs>
+            result: $Utils.Optional<JobCountAggregateOutputType> | number
+          }
+        }
+      }
+      JobTopic: {
+        payload: Prisma.$JobTopicPayload<ExtArgs>
+        fields: Prisma.JobTopicFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.JobTopicFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$JobTopicPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.JobTopicFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$JobTopicPayload>
+          }
+          findFirst: {
+            args: Prisma.JobTopicFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$JobTopicPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.JobTopicFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$JobTopicPayload>
+          }
+          findMany: {
+            args: Prisma.JobTopicFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$JobTopicPayload>[]
+          }
+          create: {
+            args: Prisma.JobTopicCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$JobTopicPayload>
+          }
+          createMany: {
+            args: Prisma.JobTopicCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.JobTopicCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$JobTopicPayload>[]
+          }
+          delete: {
+            args: Prisma.JobTopicDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$JobTopicPayload>
+          }
+          update: {
+            args: Prisma.JobTopicUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$JobTopicPayload>
+          }
+          deleteMany: {
+            args: Prisma.JobTopicDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.JobTopicUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateManyAndReturn: {
+            args: Prisma.JobTopicUpdateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$JobTopicPayload>[]
+          }
+          upsert: {
+            args: Prisma.JobTopicUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$JobTopicPayload>
+          }
+          aggregate: {
+            args: Prisma.JobTopicAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateJobTopic>
+          }
+          groupBy: {
+            args: Prisma.JobTopicGroupByArgs<ExtArgs>
+            result: $Utils.Optional<JobTopicGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.JobTopicCountArgs<ExtArgs>
+            result: $Utils.Optional<JobTopicCountAggregateOutputType> | number
+          }
+        }
+      }
+      JobSource: {
+        payload: Prisma.$JobSourcePayload<ExtArgs>
+        fields: Prisma.JobSourceFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.JobSourceFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$JobSourcePayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.JobSourceFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$JobSourcePayload>
+          }
+          findFirst: {
+            args: Prisma.JobSourceFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$JobSourcePayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.JobSourceFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$JobSourcePayload>
+          }
+          findMany: {
+            args: Prisma.JobSourceFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$JobSourcePayload>[]
+          }
+          create: {
+            args: Prisma.JobSourceCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$JobSourcePayload>
+          }
+          createMany: {
+            args: Prisma.JobSourceCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.JobSourceCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$JobSourcePayload>[]
+          }
+          delete: {
+            args: Prisma.JobSourceDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$JobSourcePayload>
+          }
+          update: {
+            args: Prisma.JobSourceUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$JobSourcePayload>
+          }
+          deleteMany: {
+            args: Prisma.JobSourceDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.JobSourceUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateManyAndReturn: {
+            args: Prisma.JobSourceUpdateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$JobSourcePayload>[]
+          }
+          upsert: {
+            args: Prisma.JobSourceUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$JobSourcePayload>
+          }
+          aggregate: {
+            args: Prisma.JobSourceAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateJobSource>
+          }
+          groupBy: {
+            args: Prisma.JobSourceGroupByArgs<ExtArgs>
+            result: $Utils.Optional<JobSourceGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.JobSourceCountArgs<ExtArgs>
+            result: $Utils.Optional<JobSourceCountAggregateOutputType> | number
+          }
+        }
+      }
+      JobRun: {
+        payload: Prisma.$JobRunPayload<ExtArgs>
+        fields: Prisma.JobRunFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.JobRunFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$JobRunPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.JobRunFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$JobRunPayload>
+          }
+          findFirst: {
+            args: Prisma.JobRunFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$JobRunPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.JobRunFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$JobRunPayload>
+          }
+          findMany: {
+            args: Prisma.JobRunFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$JobRunPayload>[]
+          }
+          create: {
+            args: Prisma.JobRunCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$JobRunPayload>
+          }
+          createMany: {
+            args: Prisma.JobRunCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.JobRunCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$JobRunPayload>[]
+          }
+          delete: {
+            args: Prisma.JobRunDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$JobRunPayload>
+          }
+          update: {
+            args: Prisma.JobRunUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$JobRunPayload>
+          }
+          deleteMany: {
+            args: Prisma.JobRunDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.JobRunUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateManyAndReturn: {
+            args: Prisma.JobRunUpdateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$JobRunPayload>[]
+          }
+          upsert: {
+            args: Prisma.JobRunUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$JobRunPayload>
+          }
+          aggregate: {
+            args: Prisma.JobRunAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateJobRun>
+          }
+          groupBy: {
+            args: Prisma.JobRunGroupByArgs<ExtArgs>
+            result: $Utils.Optional<JobRunGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.JobRunCountArgs<ExtArgs>
+            result: $Utils.Optional<JobRunCountAggregateOutputType> | number
+          }
+        }
+      }
       QueryRun: {
         payload: Prisma.$QueryRunPayload<ExtArgs>
         fields: Prisma.QueryRunFieldRefs
@@ -2531,6 +3203,80 @@ export namespace Prisma {
           count: {
             args: Prisma.ContentEntityCountArgs<ExtArgs>
             result: $Utils.Optional<ContentEntityCountAggregateOutputType> | number
+          }
+        }
+      }
+      ContentTopicScore: {
+        payload: Prisma.$ContentTopicScorePayload<ExtArgs>
+        fields: Prisma.ContentTopicScoreFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.ContentTopicScoreFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ContentTopicScorePayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.ContentTopicScoreFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ContentTopicScorePayload>
+          }
+          findFirst: {
+            args: Prisma.ContentTopicScoreFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ContentTopicScorePayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.ContentTopicScoreFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ContentTopicScorePayload>
+          }
+          findMany: {
+            args: Prisma.ContentTopicScoreFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ContentTopicScorePayload>[]
+          }
+          create: {
+            args: Prisma.ContentTopicScoreCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ContentTopicScorePayload>
+          }
+          createMany: {
+            args: Prisma.ContentTopicScoreCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.ContentTopicScoreCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ContentTopicScorePayload>[]
+          }
+          delete: {
+            args: Prisma.ContentTopicScoreDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ContentTopicScorePayload>
+          }
+          update: {
+            args: Prisma.ContentTopicScoreUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ContentTopicScorePayload>
+          }
+          deleteMany: {
+            args: Prisma.ContentTopicScoreDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.ContentTopicScoreUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateManyAndReturn: {
+            args: Prisma.ContentTopicScoreUpdateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ContentTopicScorePayload>[]
+          }
+          upsert: {
+            args: Prisma.ContentTopicScoreUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ContentTopicScorePayload>
+          }
+          aggregate: {
+            args: Prisma.ContentTopicScoreAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateContentTopicScore>
+          }
+          groupBy: {
+            args: Prisma.ContentTopicScoreGroupByArgs<ExtArgs>
+            result: $Utils.Optional<ContentTopicScoreGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.ContentTopicScoreCountArgs<ExtArgs>
+            result: $Utils.Optional<ContentTopicScoreCountAggregateOutputType> | number
           }
         }
       }
@@ -3304,12 +4050,20 @@ export namespace Prisma {
     socialMediaSourceConfig?: SocialMediaSourceConfigOmit
     query?: QueryOmit
     querySourcePolicy?: QuerySourcePolicyOmit
+    topic?: TopicOmit
+    topicTerm?: TopicTermOmit
+    topicSource?: TopicSourceOmit
+    job?: JobOmit
+    jobTopic?: JobTopicOmit
+    jobSource?: JobSourceOmit
+    jobRun?: JobRunOmit
     queryRun?: QueryRunOmit
     taskEvent?: TaskEventOmit
     content?: ContentOmit
     contentKeyword?: ContentKeywordOmit
     contentSubjectMatch?: ContentSubjectMatchOmit
     contentEntity?: ContentEntityOmit
+    contentTopicScore?: ContentTopicScoreOmit
     favorite?: FavoriteOmit
     reportTemplate?: ReportTemplateOmit
     report?: ReportOmit
@@ -3589,12 +4343,16 @@ export namespace Prisma {
     queries: number
     derivedKeywords: number
     querySourcePolicies: number
+    topicSources: number
+    jobSources: number
   }
 
   export type SourceCountOutputTypeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     queries?: boolean | SourceCountOutputTypeCountQueriesArgs
     derivedKeywords?: boolean | SourceCountOutputTypeCountDerivedKeywordsArgs
     querySourcePolicies?: boolean | SourceCountOutputTypeCountQuerySourcePoliciesArgs
+    topicSources?: boolean | SourceCountOutputTypeCountTopicSourcesArgs
+    jobSources?: boolean | SourceCountOutputTypeCountJobSourcesArgs
   }
 
   // Custom InputTypes
@@ -3627,6 +4385,20 @@ export namespace Prisma {
    */
   export type SourceCountOutputTypeCountQuerySourcePoliciesArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     where?: QuerySourcePolicyWhereInput
+  }
+
+  /**
+   * SourceCountOutputType without action
+   */
+  export type SourceCountOutputTypeCountTopicSourcesArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: TopicSourceWhereInput
+  }
+
+  /**
+   * SourceCountOutputType without action
+   */
+  export type SourceCountOutputTypeCountJobSourcesArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: JobSourceWhereInput
   }
 
 
@@ -3689,6 +4461,113 @@ export namespace Prisma {
 
 
   /**
+   * Count Type TopicCountOutputType
+   */
+
+  export type TopicCountOutputType = {
+    terms: number
+    sources: number
+    jobTopics: number
+    scores: number
+  }
+
+  export type TopicCountOutputTypeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    terms?: boolean | TopicCountOutputTypeCountTermsArgs
+    sources?: boolean | TopicCountOutputTypeCountSourcesArgs
+    jobTopics?: boolean | TopicCountOutputTypeCountJobTopicsArgs
+    scores?: boolean | TopicCountOutputTypeCountScoresArgs
+  }
+
+  // Custom InputTypes
+  /**
+   * TopicCountOutputType without action
+   */
+  export type TopicCountOutputTypeDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TopicCountOutputType
+     */
+    select?: TopicCountOutputTypeSelect<ExtArgs> | null
+  }
+
+  /**
+   * TopicCountOutputType without action
+   */
+  export type TopicCountOutputTypeCountTermsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: TopicTermWhereInput
+  }
+
+  /**
+   * TopicCountOutputType without action
+   */
+  export type TopicCountOutputTypeCountSourcesArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: TopicSourceWhereInput
+  }
+
+  /**
+   * TopicCountOutputType without action
+   */
+  export type TopicCountOutputTypeCountJobTopicsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: JobTopicWhereInput
+  }
+
+  /**
+   * TopicCountOutputType without action
+   */
+  export type TopicCountOutputTypeCountScoresArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: ContentTopicScoreWhereInput
+  }
+
+
+  /**
+   * Count Type JobCountOutputType
+   */
+
+  export type JobCountOutputType = {
+    jobTopics: number
+    jobSources: number
+    runs: number
+  }
+
+  export type JobCountOutputTypeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    jobTopics?: boolean | JobCountOutputTypeCountJobTopicsArgs
+    jobSources?: boolean | JobCountOutputTypeCountJobSourcesArgs
+    runs?: boolean | JobCountOutputTypeCountRunsArgs
+  }
+
+  // Custom InputTypes
+  /**
+   * JobCountOutputType without action
+   */
+  export type JobCountOutputTypeDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the JobCountOutputType
+     */
+    select?: JobCountOutputTypeSelect<ExtArgs> | null
+  }
+
+  /**
+   * JobCountOutputType without action
+   */
+  export type JobCountOutputTypeCountJobTopicsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: JobTopicWhereInput
+  }
+
+  /**
+   * JobCountOutputType without action
+   */
+  export type JobCountOutputTypeCountJobSourcesArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: JobSourceWhereInput
+  }
+
+  /**
+   * JobCountOutputType without action
+   */
+  export type JobCountOutputTypeCountRunsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: JobRunWhereInput
+  }
+
+
+  /**
    * Count Type QueryRunCountOutputType
    */
 
@@ -3726,12 +4605,14 @@ export namespace Prisma {
   export type ContentCountOutputType = {
     keywords: number
     subjectMatches: number
+    topicScores: number
     favorites: number
   }
 
   export type ContentCountOutputTypeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     keywords?: boolean | ContentCountOutputTypeCountKeywordsArgs
     subjectMatches?: boolean | ContentCountOutputTypeCountSubjectMatchesArgs
+    topicScores?: boolean | ContentCountOutputTypeCountTopicScoresArgs
     favorites?: boolean | ContentCountOutputTypeCountFavoritesArgs
   }
 
@@ -3758,6 +4639,13 @@ export namespace Prisma {
    */
   export type ContentCountOutputTypeCountSubjectMatchesArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     where?: ContentSubjectMatchWhereInput
+  }
+
+  /**
+   * ContentCountOutputType without action
+   */
+  export type ContentCountOutputTypeCountTopicScoresArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: ContentTopicScoreWhereInput
   }
 
   /**
@@ -8884,6 +9772,8 @@ export namespace Prisma {
     queries?: boolean | Source$queriesArgs<ExtArgs>
     derivedKeywords?: boolean | Source$derivedKeywordsArgs<ExtArgs>
     querySourcePolicies?: boolean | Source$querySourcePoliciesArgs<ExtArgs>
+    topicSources?: boolean | Source$topicSourcesArgs<ExtArgs>
+    jobSources?: boolean | Source$jobSourcesArgs<ExtArgs>
     _count?: boolean | SourceCountOutputTypeDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["source"]>
 
@@ -8951,6 +9841,8 @@ export namespace Prisma {
     queries?: boolean | Source$queriesArgs<ExtArgs>
     derivedKeywords?: boolean | Source$derivedKeywordsArgs<ExtArgs>
     querySourcePolicies?: boolean | Source$querySourcePoliciesArgs<ExtArgs>
+    topicSources?: boolean | Source$topicSourcesArgs<ExtArgs>
+    jobSources?: boolean | Source$jobSourcesArgs<ExtArgs>
     _count?: boolean | SourceCountOutputTypeDefaultArgs<ExtArgs>
   }
   export type SourceIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
@@ -8975,6 +9867,8 @@ export namespace Prisma {
       queries: Prisma.$QueryPayload<ExtArgs>[]
       derivedKeywords: Prisma.$KeywordPayload<ExtArgs>[]
       querySourcePolicies: Prisma.$QuerySourcePolicyPayload<ExtArgs>[]
+      topicSources: Prisma.$TopicSourcePayload<ExtArgs>[]
+      jobSources: Prisma.$JobSourcePayload<ExtArgs>[]
     }
     scalars: $Extensions.GetPayloadResult<{
       id: string
@@ -9394,6 +10288,8 @@ export namespace Prisma {
     queries<T extends Source$queriesArgs<ExtArgs> = {}>(args?: Subset<T, Source$queriesArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$QueryPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     derivedKeywords<T extends Source$derivedKeywordsArgs<ExtArgs> = {}>(args?: Subset<T, Source$derivedKeywordsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$KeywordPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     querySourcePolicies<T extends Source$querySourcePoliciesArgs<ExtArgs> = {}>(args?: Subset<T, Source$querySourcePoliciesArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$QuerySourcePolicyPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    topicSources<T extends Source$topicSourcesArgs<ExtArgs> = {}>(args?: Subset<T, Source$topicSourcesArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$TopicSourcePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    jobSources<T extends Source$jobSourcesArgs<ExtArgs> = {}>(args?: Subset<T, Source$jobSourcesArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$JobSourcePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
      * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -10034,6 +10930,54 @@ export namespace Prisma {
     take?: number
     skip?: number
     distinct?: QuerySourcePolicyScalarFieldEnum | QuerySourcePolicyScalarFieldEnum[]
+  }
+
+  /**
+   * Source.topicSources
+   */
+  export type Source$topicSourcesArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TopicSource
+     */
+    select?: TopicSourceSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the TopicSource
+     */
+    omit?: TopicSourceOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TopicSourceInclude<ExtArgs> | null
+    where?: TopicSourceWhereInput
+    orderBy?: TopicSourceOrderByWithRelationInput | TopicSourceOrderByWithRelationInput[]
+    cursor?: TopicSourceWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: TopicSourceScalarFieldEnum | TopicSourceScalarFieldEnum[]
+  }
+
+  /**
+   * Source.jobSources
+   */
+  export type Source$jobSourcesArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the JobSource
+     */
+    select?: JobSourceSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the JobSource
+     */
+    omit?: JobSourceOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: JobSourceInclude<ExtArgs> | null
+    where?: JobSourceWhereInput
+    orderBy?: JobSourceOrderByWithRelationInput | JobSourceOrderByWithRelationInput[]
+    cursor?: JobSourceWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: JobSourceScalarFieldEnum | JobSourceScalarFieldEnum[]
   }
 
   /**
@@ -18057,6 +19001,7917 @@ export namespace Prisma {
 
 
   /**
+   * Model Topic
+   */
+
+  export type AggregateTopic = {
+    _count: TopicCountAggregateOutputType | null
+    _min: TopicMinAggregateOutputType | null
+    _max: TopicMaxAggregateOutputType | null
+  }
+
+  export type TopicMinAggregateOutputType = {
+    id: string | null
+    name: string | null
+    description: string | null
+    enabled: boolean | null
+    frequency: $Enums.QueryFrequency | null
+    cronSchedule: string | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type TopicMaxAggregateOutputType = {
+    id: string | null
+    name: string | null
+    description: string | null
+    enabled: boolean | null
+    frequency: $Enums.QueryFrequency | null
+    cronSchedule: string | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type TopicCountAggregateOutputType = {
+    id: number
+    name: number
+    description: number
+    enabled: number
+    frequency: number
+    cronSchedule: number
+    profile: number
+    createdAt: number
+    updatedAt: number
+    _all: number
+  }
+
+
+  export type TopicMinAggregateInputType = {
+    id?: true
+    name?: true
+    description?: true
+    enabled?: true
+    frequency?: true
+    cronSchedule?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type TopicMaxAggregateInputType = {
+    id?: true
+    name?: true
+    description?: true
+    enabled?: true
+    frequency?: true
+    cronSchedule?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type TopicCountAggregateInputType = {
+    id?: true
+    name?: true
+    description?: true
+    enabled?: true
+    frequency?: true
+    cronSchedule?: true
+    profile?: true
+    createdAt?: true
+    updatedAt?: true
+    _all?: true
+  }
+
+  export type TopicAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which Topic to aggregate.
+     */
+    where?: TopicWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of Topics to fetch.
+     */
+    orderBy?: TopicOrderByWithRelationInput | TopicOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: TopicWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` Topics from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` Topics.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned Topics
+    **/
+    _count?: true | TopicCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: TopicMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: TopicMaxAggregateInputType
+  }
+
+  export type GetTopicAggregateType<T extends TopicAggregateArgs> = {
+        [P in keyof T & keyof AggregateTopic]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateTopic[P]>
+      : GetScalarType<T[P], AggregateTopic[P]>
+  }
+
+
+
+
+  export type TopicGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: TopicWhereInput
+    orderBy?: TopicOrderByWithAggregationInput | TopicOrderByWithAggregationInput[]
+    by: TopicScalarFieldEnum[] | TopicScalarFieldEnum
+    having?: TopicScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: TopicCountAggregateInputType | true
+    _min?: TopicMinAggregateInputType
+    _max?: TopicMaxAggregateInputType
+  }
+
+  export type TopicGroupByOutputType = {
+    id: string
+    name: string
+    description: string | null
+    enabled: boolean
+    frequency: $Enums.QueryFrequency
+    cronSchedule: string | null
+    profile: JsonValue | null
+    createdAt: Date
+    updatedAt: Date
+    _count: TopicCountAggregateOutputType | null
+    _min: TopicMinAggregateOutputType | null
+    _max: TopicMaxAggregateOutputType | null
+  }
+
+  type GetTopicGroupByPayload<T extends TopicGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<TopicGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof TopicGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], TopicGroupByOutputType[P]>
+            : GetScalarType<T[P], TopicGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type TopicSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    name?: boolean
+    description?: boolean
+    enabled?: boolean
+    frequency?: boolean
+    cronSchedule?: boolean
+    profile?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    terms?: boolean | Topic$termsArgs<ExtArgs>
+    sources?: boolean | Topic$sourcesArgs<ExtArgs>
+    jobTopics?: boolean | Topic$jobTopicsArgs<ExtArgs>
+    scores?: boolean | Topic$scoresArgs<ExtArgs>
+    _count?: boolean | TopicCountOutputTypeDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["topic"]>
+
+  export type TopicSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    name?: boolean
+    description?: boolean
+    enabled?: boolean
+    frequency?: boolean
+    cronSchedule?: boolean
+    profile?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }, ExtArgs["result"]["topic"]>
+
+  export type TopicSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    name?: boolean
+    description?: boolean
+    enabled?: boolean
+    frequency?: boolean
+    cronSchedule?: boolean
+    profile?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }, ExtArgs["result"]["topic"]>
+
+  export type TopicSelectScalar = {
+    id?: boolean
+    name?: boolean
+    description?: boolean
+    enabled?: boolean
+    frequency?: boolean
+    cronSchedule?: boolean
+    profile?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }
+
+  export type TopicOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "name" | "description" | "enabled" | "frequency" | "cronSchedule" | "profile" | "createdAt" | "updatedAt", ExtArgs["result"]["topic"]>
+  export type TopicInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    terms?: boolean | Topic$termsArgs<ExtArgs>
+    sources?: boolean | Topic$sourcesArgs<ExtArgs>
+    jobTopics?: boolean | Topic$jobTopicsArgs<ExtArgs>
+    scores?: boolean | Topic$scoresArgs<ExtArgs>
+    _count?: boolean | TopicCountOutputTypeDefaultArgs<ExtArgs>
+  }
+  export type TopicIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {}
+  export type TopicIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {}
+
+  export type $TopicPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "Topic"
+    objects: {
+      terms: Prisma.$TopicTermPayload<ExtArgs>[]
+      sources: Prisma.$TopicSourcePayload<ExtArgs>[]
+      jobTopics: Prisma.$JobTopicPayload<ExtArgs>[]
+      scores: Prisma.$ContentTopicScorePayload<ExtArgs>[]
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      name: string
+      description: string | null
+      enabled: boolean
+      frequency: $Enums.QueryFrequency
+      cronSchedule: string | null
+      profile: Prisma.JsonValue | null
+      createdAt: Date
+      updatedAt: Date
+    }, ExtArgs["result"]["topic"]>
+    composites: {}
+  }
+
+  type TopicGetPayload<S extends boolean | null | undefined | TopicDefaultArgs> = $Result.GetResult<Prisma.$TopicPayload, S>
+
+  type TopicCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
+    Omit<TopicFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+      select?: TopicCountAggregateInputType | true
+    }
+
+  export interface TopicDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['Topic'], meta: { name: 'Topic' } }
+    /**
+     * Find zero or one Topic that matches the filter.
+     * @param {TopicFindUniqueArgs} args - Arguments to find a Topic
+     * @example
+     * // Get one Topic
+     * const topic = await prisma.topic.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends TopicFindUniqueArgs>(args: SelectSubset<T, TopicFindUniqueArgs<ExtArgs>>): Prisma__TopicClient<$Result.GetResult<Prisma.$TopicPayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find one Topic that matches the filter or throw an error with `error.code='P2025'`
+     * if no matches were found.
+     * @param {TopicFindUniqueOrThrowArgs} args - Arguments to find a Topic
+     * @example
+     * // Get one Topic
+     * const topic = await prisma.topic.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends TopicFindUniqueOrThrowArgs>(args: SelectSubset<T, TopicFindUniqueOrThrowArgs<ExtArgs>>): Prisma__TopicClient<$Result.GetResult<Prisma.$TopicPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first Topic that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {TopicFindFirstArgs} args - Arguments to find a Topic
+     * @example
+     * // Get one Topic
+     * const topic = await prisma.topic.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends TopicFindFirstArgs>(args?: SelectSubset<T, TopicFindFirstArgs<ExtArgs>>): Prisma__TopicClient<$Result.GetResult<Prisma.$TopicPayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first Topic that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {TopicFindFirstOrThrowArgs} args - Arguments to find a Topic
+     * @example
+     * // Get one Topic
+     * const topic = await prisma.topic.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends TopicFindFirstOrThrowArgs>(args?: SelectSubset<T, TopicFindFirstOrThrowArgs<ExtArgs>>): Prisma__TopicClient<$Result.GetResult<Prisma.$TopicPayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find zero or more Topics that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {TopicFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all Topics
+     * const topics = await prisma.topic.findMany()
+     * 
+     * // Get first 10 Topics
+     * const topics = await prisma.topic.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const topicWithIdOnly = await prisma.topic.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends TopicFindManyArgs>(args?: SelectSubset<T, TopicFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$TopicPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+
+    /**
+     * Create a Topic.
+     * @param {TopicCreateArgs} args - Arguments to create a Topic.
+     * @example
+     * // Create one Topic
+     * const Topic = await prisma.topic.create({
+     *   data: {
+     *     // ... data to create a Topic
+     *   }
+     * })
+     * 
+     */
+    create<T extends TopicCreateArgs>(args: SelectSubset<T, TopicCreateArgs<ExtArgs>>): Prisma__TopicClient<$Result.GetResult<Prisma.$TopicPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Create many Topics.
+     * @param {TopicCreateManyArgs} args - Arguments to create many Topics.
+     * @example
+     * // Create many Topics
+     * const topic = await prisma.topic.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends TopicCreateManyArgs>(args?: SelectSubset<T, TopicCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many Topics and returns the data saved in the database.
+     * @param {TopicCreateManyAndReturnArgs} args - Arguments to create many Topics.
+     * @example
+     * // Create many Topics
+     * const topic = await prisma.topic.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many Topics and only return the `id`
+     * const topicWithIdOnly = await prisma.topic.createManyAndReturn({
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends TopicCreateManyAndReturnArgs>(args?: SelectSubset<T, TopicCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$TopicPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Delete a Topic.
+     * @param {TopicDeleteArgs} args - Arguments to delete one Topic.
+     * @example
+     * // Delete one Topic
+     * const Topic = await prisma.topic.delete({
+     *   where: {
+     *     // ... filter to delete one Topic
+     *   }
+     * })
+     * 
+     */
+    delete<T extends TopicDeleteArgs>(args: SelectSubset<T, TopicDeleteArgs<ExtArgs>>): Prisma__TopicClient<$Result.GetResult<Prisma.$TopicPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Update one Topic.
+     * @param {TopicUpdateArgs} args - Arguments to update one Topic.
+     * @example
+     * // Update one Topic
+     * const topic = await prisma.topic.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends TopicUpdateArgs>(args: SelectSubset<T, TopicUpdateArgs<ExtArgs>>): Prisma__TopicClient<$Result.GetResult<Prisma.$TopicPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Delete zero or more Topics.
+     * @param {TopicDeleteManyArgs} args - Arguments to filter Topics to delete.
+     * @example
+     * // Delete a few Topics
+     * const { count } = await prisma.topic.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends TopicDeleteManyArgs>(args?: SelectSubset<T, TopicDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more Topics.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {TopicUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many Topics
+     * const topic = await prisma.topic.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends TopicUpdateManyArgs>(args: SelectSubset<T, TopicUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more Topics and returns the data updated in the database.
+     * @param {TopicUpdateManyAndReturnArgs} args - Arguments to update many Topics.
+     * @example
+     * // Update many Topics
+     * const topic = await prisma.topic.updateManyAndReturn({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Update zero or more Topics and only return the `id`
+     * const topicWithIdOnly = await prisma.topic.updateManyAndReturn({
+     *   select: { id: true },
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    updateManyAndReturn<T extends TopicUpdateManyAndReturnArgs>(args: SelectSubset<T, TopicUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$TopicPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Create or update one Topic.
+     * @param {TopicUpsertArgs} args - Arguments to update or create a Topic.
+     * @example
+     * // Update or create a Topic
+     * const topic = await prisma.topic.upsert({
+     *   create: {
+     *     // ... data to create a Topic
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the Topic we want to update
+     *   }
+     * })
+     */
+    upsert<T extends TopicUpsertArgs>(args: SelectSubset<T, TopicUpsertArgs<ExtArgs>>): Prisma__TopicClient<$Result.GetResult<Prisma.$TopicPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+
+    /**
+     * Count the number of Topics.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {TopicCountArgs} args - Arguments to filter Topics to count.
+     * @example
+     * // Count the number of Topics
+     * const count = await prisma.topic.count({
+     *   where: {
+     *     // ... the filter for the Topics we want to count
+     *   }
+     * })
+    **/
+    count<T extends TopicCountArgs>(
+      args?: Subset<T, TopicCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], TopicCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a Topic.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {TopicAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends TopicAggregateArgs>(args: Subset<T, TopicAggregateArgs>): Prisma.PrismaPromise<GetTopicAggregateType<T>>
+
+    /**
+     * Group by Topic.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {TopicGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends TopicGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: TopicGroupByArgs['orderBy'] }
+        : { orderBy?: TopicGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, TopicGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetTopicGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the Topic model
+   */
+  readonly fields: TopicFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for Topic.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__TopicClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    terms<T extends Topic$termsArgs<ExtArgs> = {}>(args?: Subset<T, Topic$termsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$TopicTermPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    sources<T extends Topic$sourcesArgs<ExtArgs> = {}>(args?: Subset<T, Topic$sourcesArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$TopicSourcePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    jobTopics<T extends Topic$jobTopicsArgs<ExtArgs> = {}>(args?: Subset<T, Topic$jobTopicsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$JobTopicPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    scores<T extends Topic$scoresArgs<ExtArgs> = {}>(args?: Subset<T, Topic$scoresArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ContentTopicScorePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the Topic model
+   */
+  interface TopicFieldRefs {
+    readonly id: FieldRef<"Topic", 'String'>
+    readonly name: FieldRef<"Topic", 'String'>
+    readonly description: FieldRef<"Topic", 'String'>
+    readonly enabled: FieldRef<"Topic", 'Boolean'>
+    readonly frequency: FieldRef<"Topic", 'QueryFrequency'>
+    readonly cronSchedule: FieldRef<"Topic", 'String'>
+    readonly profile: FieldRef<"Topic", 'Json'>
+    readonly createdAt: FieldRef<"Topic", 'DateTime'>
+    readonly updatedAt: FieldRef<"Topic", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * Topic findUnique
+   */
+  export type TopicFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Topic
+     */
+    select?: TopicSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Topic
+     */
+    omit?: TopicOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TopicInclude<ExtArgs> | null
+    /**
+     * Filter, which Topic to fetch.
+     */
+    where: TopicWhereUniqueInput
+  }
+
+  /**
+   * Topic findUniqueOrThrow
+   */
+  export type TopicFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Topic
+     */
+    select?: TopicSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Topic
+     */
+    omit?: TopicOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TopicInclude<ExtArgs> | null
+    /**
+     * Filter, which Topic to fetch.
+     */
+    where: TopicWhereUniqueInput
+  }
+
+  /**
+   * Topic findFirst
+   */
+  export type TopicFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Topic
+     */
+    select?: TopicSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Topic
+     */
+    omit?: TopicOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TopicInclude<ExtArgs> | null
+    /**
+     * Filter, which Topic to fetch.
+     */
+    where?: TopicWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of Topics to fetch.
+     */
+    orderBy?: TopicOrderByWithRelationInput | TopicOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for Topics.
+     */
+    cursor?: TopicWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` Topics from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` Topics.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of Topics.
+     */
+    distinct?: TopicScalarFieldEnum | TopicScalarFieldEnum[]
+  }
+
+  /**
+   * Topic findFirstOrThrow
+   */
+  export type TopicFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Topic
+     */
+    select?: TopicSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Topic
+     */
+    omit?: TopicOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TopicInclude<ExtArgs> | null
+    /**
+     * Filter, which Topic to fetch.
+     */
+    where?: TopicWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of Topics to fetch.
+     */
+    orderBy?: TopicOrderByWithRelationInput | TopicOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for Topics.
+     */
+    cursor?: TopicWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` Topics from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` Topics.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of Topics.
+     */
+    distinct?: TopicScalarFieldEnum | TopicScalarFieldEnum[]
+  }
+
+  /**
+   * Topic findMany
+   */
+  export type TopicFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Topic
+     */
+    select?: TopicSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Topic
+     */
+    omit?: TopicOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TopicInclude<ExtArgs> | null
+    /**
+     * Filter, which Topics to fetch.
+     */
+    where?: TopicWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of Topics to fetch.
+     */
+    orderBy?: TopicOrderByWithRelationInput | TopicOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing Topics.
+     */
+    cursor?: TopicWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` Topics from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` Topics.
+     */
+    skip?: number
+    distinct?: TopicScalarFieldEnum | TopicScalarFieldEnum[]
+  }
+
+  /**
+   * Topic create
+   */
+  export type TopicCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Topic
+     */
+    select?: TopicSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Topic
+     */
+    omit?: TopicOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TopicInclude<ExtArgs> | null
+    /**
+     * The data needed to create a Topic.
+     */
+    data: XOR<TopicCreateInput, TopicUncheckedCreateInput>
+  }
+
+  /**
+   * Topic createMany
+   */
+  export type TopicCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many Topics.
+     */
+    data: TopicCreateManyInput | TopicCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * Topic createManyAndReturn
+   */
+  export type TopicCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Topic
+     */
+    select?: TopicSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the Topic
+     */
+    omit?: TopicOmit<ExtArgs> | null
+    /**
+     * The data used to create many Topics.
+     */
+    data: TopicCreateManyInput | TopicCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * Topic update
+   */
+  export type TopicUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Topic
+     */
+    select?: TopicSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Topic
+     */
+    omit?: TopicOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TopicInclude<ExtArgs> | null
+    /**
+     * The data needed to update a Topic.
+     */
+    data: XOR<TopicUpdateInput, TopicUncheckedUpdateInput>
+    /**
+     * Choose, which Topic to update.
+     */
+    where: TopicWhereUniqueInput
+  }
+
+  /**
+   * Topic updateMany
+   */
+  export type TopicUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update Topics.
+     */
+    data: XOR<TopicUpdateManyMutationInput, TopicUncheckedUpdateManyInput>
+    /**
+     * Filter which Topics to update
+     */
+    where?: TopicWhereInput
+    /**
+     * Limit how many Topics to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * Topic updateManyAndReturn
+   */
+  export type TopicUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Topic
+     */
+    select?: TopicSelectUpdateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the Topic
+     */
+    omit?: TopicOmit<ExtArgs> | null
+    /**
+     * The data used to update Topics.
+     */
+    data: XOR<TopicUpdateManyMutationInput, TopicUncheckedUpdateManyInput>
+    /**
+     * Filter which Topics to update
+     */
+    where?: TopicWhereInput
+    /**
+     * Limit how many Topics to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * Topic upsert
+   */
+  export type TopicUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Topic
+     */
+    select?: TopicSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Topic
+     */
+    omit?: TopicOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TopicInclude<ExtArgs> | null
+    /**
+     * The filter to search for the Topic to update in case it exists.
+     */
+    where: TopicWhereUniqueInput
+    /**
+     * In case the Topic found by the `where` argument doesn't exist, create a new Topic with this data.
+     */
+    create: XOR<TopicCreateInput, TopicUncheckedCreateInput>
+    /**
+     * In case the Topic was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<TopicUpdateInput, TopicUncheckedUpdateInput>
+  }
+
+  /**
+   * Topic delete
+   */
+  export type TopicDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Topic
+     */
+    select?: TopicSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Topic
+     */
+    omit?: TopicOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TopicInclude<ExtArgs> | null
+    /**
+     * Filter which Topic to delete.
+     */
+    where: TopicWhereUniqueInput
+  }
+
+  /**
+   * Topic deleteMany
+   */
+  export type TopicDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which Topics to delete
+     */
+    where?: TopicWhereInput
+    /**
+     * Limit how many Topics to delete.
+     */
+    limit?: number
+  }
+
+  /**
+   * Topic.terms
+   */
+  export type Topic$termsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TopicTerm
+     */
+    select?: TopicTermSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the TopicTerm
+     */
+    omit?: TopicTermOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TopicTermInclude<ExtArgs> | null
+    where?: TopicTermWhereInput
+    orderBy?: TopicTermOrderByWithRelationInput | TopicTermOrderByWithRelationInput[]
+    cursor?: TopicTermWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: TopicTermScalarFieldEnum | TopicTermScalarFieldEnum[]
+  }
+
+  /**
+   * Topic.sources
+   */
+  export type Topic$sourcesArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TopicSource
+     */
+    select?: TopicSourceSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the TopicSource
+     */
+    omit?: TopicSourceOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TopicSourceInclude<ExtArgs> | null
+    where?: TopicSourceWhereInput
+    orderBy?: TopicSourceOrderByWithRelationInput | TopicSourceOrderByWithRelationInput[]
+    cursor?: TopicSourceWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: TopicSourceScalarFieldEnum | TopicSourceScalarFieldEnum[]
+  }
+
+  /**
+   * Topic.jobTopics
+   */
+  export type Topic$jobTopicsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the JobTopic
+     */
+    select?: JobTopicSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the JobTopic
+     */
+    omit?: JobTopicOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: JobTopicInclude<ExtArgs> | null
+    where?: JobTopicWhereInput
+    orderBy?: JobTopicOrderByWithRelationInput | JobTopicOrderByWithRelationInput[]
+    cursor?: JobTopicWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: JobTopicScalarFieldEnum | JobTopicScalarFieldEnum[]
+  }
+
+  /**
+   * Topic.scores
+   */
+  export type Topic$scoresArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ContentTopicScore
+     */
+    select?: ContentTopicScoreSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the ContentTopicScore
+     */
+    omit?: ContentTopicScoreOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ContentTopicScoreInclude<ExtArgs> | null
+    where?: ContentTopicScoreWhereInput
+    orderBy?: ContentTopicScoreOrderByWithRelationInput | ContentTopicScoreOrderByWithRelationInput[]
+    cursor?: ContentTopicScoreWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: ContentTopicScoreScalarFieldEnum | ContentTopicScoreScalarFieldEnum[]
+  }
+
+  /**
+   * Topic without action
+   */
+  export type TopicDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Topic
+     */
+    select?: TopicSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Topic
+     */
+    omit?: TopicOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TopicInclude<ExtArgs> | null
+  }
+
+
+  /**
+   * Model TopicTerm
+   */
+
+  export type AggregateTopicTerm = {
+    _count: TopicTermCountAggregateOutputType | null
+    _avg: TopicTermAvgAggregateOutputType | null
+    _sum: TopicTermSumAggregateOutputType | null
+    _min: TopicTermMinAggregateOutputType | null
+    _max: TopicTermMaxAggregateOutputType | null
+  }
+
+  export type TopicTermAvgAggregateOutputType = {
+    weight: number | null
+  }
+
+  export type TopicTermSumAggregateOutputType = {
+    weight: number | null
+  }
+
+  export type TopicTermMinAggregateOutputType = {
+    id: string | null
+    topicId: string | null
+    type: $Enums.TopicTermType | null
+    value: string | null
+    weight: number | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type TopicTermMaxAggregateOutputType = {
+    id: string | null
+    topicId: string | null
+    type: $Enums.TopicTermType | null
+    value: string | null
+    weight: number | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type TopicTermCountAggregateOutputType = {
+    id: number
+    topicId: number
+    type: number
+    value: number
+    weight: number
+    meta: number
+    createdAt: number
+    updatedAt: number
+    _all: number
+  }
+
+
+  export type TopicTermAvgAggregateInputType = {
+    weight?: true
+  }
+
+  export type TopicTermSumAggregateInputType = {
+    weight?: true
+  }
+
+  export type TopicTermMinAggregateInputType = {
+    id?: true
+    topicId?: true
+    type?: true
+    value?: true
+    weight?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type TopicTermMaxAggregateInputType = {
+    id?: true
+    topicId?: true
+    type?: true
+    value?: true
+    weight?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type TopicTermCountAggregateInputType = {
+    id?: true
+    topicId?: true
+    type?: true
+    value?: true
+    weight?: true
+    meta?: true
+    createdAt?: true
+    updatedAt?: true
+    _all?: true
+  }
+
+  export type TopicTermAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which TopicTerm to aggregate.
+     */
+    where?: TopicTermWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of TopicTerms to fetch.
+     */
+    orderBy?: TopicTermOrderByWithRelationInput | TopicTermOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: TopicTermWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` TopicTerms from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` TopicTerms.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned TopicTerms
+    **/
+    _count?: true | TopicTermCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to average
+    **/
+    _avg?: TopicTermAvgAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to sum
+    **/
+    _sum?: TopicTermSumAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: TopicTermMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: TopicTermMaxAggregateInputType
+  }
+
+  export type GetTopicTermAggregateType<T extends TopicTermAggregateArgs> = {
+        [P in keyof T & keyof AggregateTopicTerm]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateTopicTerm[P]>
+      : GetScalarType<T[P], AggregateTopicTerm[P]>
+  }
+
+
+
+
+  export type TopicTermGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: TopicTermWhereInput
+    orderBy?: TopicTermOrderByWithAggregationInput | TopicTermOrderByWithAggregationInput[]
+    by: TopicTermScalarFieldEnum[] | TopicTermScalarFieldEnum
+    having?: TopicTermScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: TopicTermCountAggregateInputType | true
+    _avg?: TopicTermAvgAggregateInputType
+    _sum?: TopicTermSumAggregateInputType
+    _min?: TopicTermMinAggregateInputType
+    _max?: TopicTermMaxAggregateInputType
+  }
+
+  export type TopicTermGroupByOutputType = {
+    id: string
+    topicId: string
+    type: $Enums.TopicTermType
+    value: string
+    weight: number
+    meta: JsonValue | null
+    createdAt: Date
+    updatedAt: Date
+    _count: TopicTermCountAggregateOutputType | null
+    _avg: TopicTermAvgAggregateOutputType | null
+    _sum: TopicTermSumAggregateOutputType | null
+    _min: TopicTermMinAggregateOutputType | null
+    _max: TopicTermMaxAggregateOutputType | null
+  }
+
+  type GetTopicTermGroupByPayload<T extends TopicTermGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<TopicTermGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof TopicTermGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], TopicTermGroupByOutputType[P]>
+            : GetScalarType<T[P], TopicTermGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type TopicTermSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    topicId?: boolean
+    type?: boolean
+    value?: boolean
+    weight?: boolean
+    meta?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    topic?: boolean | TopicDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["topicTerm"]>
+
+  export type TopicTermSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    topicId?: boolean
+    type?: boolean
+    value?: boolean
+    weight?: boolean
+    meta?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    topic?: boolean | TopicDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["topicTerm"]>
+
+  export type TopicTermSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    topicId?: boolean
+    type?: boolean
+    value?: boolean
+    weight?: boolean
+    meta?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    topic?: boolean | TopicDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["topicTerm"]>
+
+  export type TopicTermSelectScalar = {
+    id?: boolean
+    topicId?: boolean
+    type?: boolean
+    value?: boolean
+    weight?: boolean
+    meta?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }
+
+  export type TopicTermOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "topicId" | "type" | "value" | "weight" | "meta" | "createdAt" | "updatedAt", ExtArgs["result"]["topicTerm"]>
+  export type TopicTermInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    topic?: boolean | TopicDefaultArgs<ExtArgs>
+  }
+  export type TopicTermIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    topic?: boolean | TopicDefaultArgs<ExtArgs>
+  }
+  export type TopicTermIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    topic?: boolean | TopicDefaultArgs<ExtArgs>
+  }
+
+  export type $TopicTermPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "TopicTerm"
+    objects: {
+      topic: Prisma.$TopicPayload<ExtArgs>
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      topicId: string
+      type: $Enums.TopicTermType
+      value: string
+      weight: number
+      meta: Prisma.JsonValue | null
+      createdAt: Date
+      updatedAt: Date
+    }, ExtArgs["result"]["topicTerm"]>
+    composites: {}
+  }
+
+  type TopicTermGetPayload<S extends boolean | null | undefined | TopicTermDefaultArgs> = $Result.GetResult<Prisma.$TopicTermPayload, S>
+
+  type TopicTermCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
+    Omit<TopicTermFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+      select?: TopicTermCountAggregateInputType | true
+    }
+
+  export interface TopicTermDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['TopicTerm'], meta: { name: 'TopicTerm' } }
+    /**
+     * Find zero or one TopicTerm that matches the filter.
+     * @param {TopicTermFindUniqueArgs} args - Arguments to find a TopicTerm
+     * @example
+     * // Get one TopicTerm
+     * const topicTerm = await prisma.topicTerm.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends TopicTermFindUniqueArgs>(args: SelectSubset<T, TopicTermFindUniqueArgs<ExtArgs>>): Prisma__TopicTermClient<$Result.GetResult<Prisma.$TopicTermPayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find one TopicTerm that matches the filter or throw an error with `error.code='P2025'`
+     * if no matches were found.
+     * @param {TopicTermFindUniqueOrThrowArgs} args - Arguments to find a TopicTerm
+     * @example
+     * // Get one TopicTerm
+     * const topicTerm = await prisma.topicTerm.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends TopicTermFindUniqueOrThrowArgs>(args: SelectSubset<T, TopicTermFindUniqueOrThrowArgs<ExtArgs>>): Prisma__TopicTermClient<$Result.GetResult<Prisma.$TopicTermPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first TopicTerm that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {TopicTermFindFirstArgs} args - Arguments to find a TopicTerm
+     * @example
+     * // Get one TopicTerm
+     * const topicTerm = await prisma.topicTerm.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends TopicTermFindFirstArgs>(args?: SelectSubset<T, TopicTermFindFirstArgs<ExtArgs>>): Prisma__TopicTermClient<$Result.GetResult<Prisma.$TopicTermPayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first TopicTerm that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {TopicTermFindFirstOrThrowArgs} args - Arguments to find a TopicTerm
+     * @example
+     * // Get one TopicTerm
+     * const topicTerm = await prisma.topicTerm.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends TopicTermFindFirstOrThrowArgs>(args?: SelectSubset<T, TopicTermFindFirstOrThrowArgs<ExtArgs>>): Prisma__TopicTermClient<$Result.GetResult<Prisma.$TopicTermPayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find zero or more TopicTerms that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {TopicTermFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all TopicTerms
+     * const topicTerms = await prisma.topicTerm.findMany()
+     * 
+     * // Get first 10 TopicTerms
+     * const topicTerms = await prisma.topicTerm.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const topicTermWithIdOnly = await prisma.topicTerm.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends TopicTermFindManyArgs>(args?: SelectSubset<T, TopicTermFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$TopicTermPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+
+    /**
+     * Create a TopicTerm.
+     * @param {TopicTermCreateArgs} args - Arguments to create a TopicTerm.
+     * @example
+     * // Create one TopicTerm
+     * const TopicTerm = await prisma.topicTerm.create({
+     *   data: {
+     *     // ... data to create a TopicTerm
+     *   }
+     * })
+     * 
+     */
+    create<T extends TopicTermCreateArgs>(args: SelectSubset<T, TopicTermCreateArgs<ExtArgs>>): Prisma__TopicTermClient<$Result.GetResult<Prisma.$TopicTermPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Create many TopicTerms.
+     * @param {TopicTermCreateManyArgs} args - Arguments to create many TopicTerms.
+     * @example
+     * // Create many TopicTerms
+     * const topicTerm = await prisma.topicTerm.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends TopicTermCreateManyArgs>(args?: SelectSubset<T, TopicTermCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many TopicTerms and returns the data saved in the database.
+     * @param {TopicTermCreateManyAndReturnArgs} args - Arguments to create many TopicTerms.
+     * @example
+     * // Create many TopicTerms
+     * const topicTerm = await prisma.topicTerm.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many TopicTerms and only return the `id`
+     * const topicTermWithIdOnly = await prisma.topicTerm.createManyAndReturn({
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends TopicTermCreateManyAndReturnArgs>(args?: SelectSubset<T, TopicTermCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$TopicTermPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Delete a TopicTerm.
+     * @param {TopicTermDeleteArgs} args - Arguments to delete one TopicTerm.
+     * @example
+     * // Delete one TopicTerm
+     * const TopicTerm = await prisma.topicTerm.delete({
+     *   where: {
+     *     // ... filter to delete one TopicTerm
+     *   }
+     * })
+     * 
+     */
+    delete<T extends TopicTermDeleteArgs>(args: SelectSubset<T, TopicTermDeleteArgs<ExtArgs>>): Prisma__TopicTermClient<$Result.GetResult<Prisma.$TopicTermPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Update one TopicTerm.
+     * @param {TopicTermUpdateArgs} args - Arguments to update one TopicTerm.
+     * @example
+     * // Update one TopicTerm
+     * const topicTerm = await prisma.topicTerm.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends TopicTermUpdateArgs>(args: SelectSubset<T, TopicTermUpdateArgs<ExtArgs>>): Prisma__TopicTermClient<$Result.GetResult<Prisma.$TopicTermPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Delete zero or more TopicTerms.
+     * @param {TopicTermDeleteManyArgs} args - Arguments to filter TopicTerms to delete.
+     * @example
+     * // Delete a few TopicTerms
+     * const { count } = await prisma.topicTerm.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends TopicTermDeleteManyArgs>(args?: SelectSubset<T, TopicTermDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more TopicTerms.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {TopicTermUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many TopicTerms
+     * const topicTerm = await prisma.topicTerm.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends TopicTermUpdateManyArgs>(args: SelectSubset<T, TopicTermUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more TopicTerms and returns the data updated in the database.
+     * @param {TopicTermUpdateManyAndReturnArgs} args - Arguments to update many TopicTerms.
+     * @example
+     * // Update many TopicTerms
+     * const topicTerm = await prisma.topicTerm.updateManyAndReturn({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Update zero or more TopicTerms and only return the `id`
+     * const topicTermWithIdOnly = await prisma.topicTerm.updateManyAndReturn({
+     *   select: { id: true },
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    updateManyAndReturn<T extends TopicTermUpdateManyAndReturnArgs>(args: SelectSubset<T, TopicTermUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$TopicTermPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Create or update one TopicTerm.
+     * @param {TopicTermUpsertArgs} args - Arguments to update or create a TopicTerm.
+     * @example
+     * // Update or create a TopicTerm
+     * const topicTerm = await prisma.topicTerm.upsert({
+     *   create: {
+     *     // ... data to create a TopicTerm
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the TopicTerm we want to update
+     *   }
+     * })
+     */
+    upsert<T extends TopicTermUpsertArgs>(args: SelectSubset<T, TopicTermUpsertArgs<ExtArgs>>): Prisma__TopicTermClient<$Result.GetResult<Prisma.$TopicTermPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+
+    /**
+     * Count the number of TopicTerms.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {TopicTermCountArgs} args - Arguments to filter TopicTerms to count.
+     * @example
+     * // Count the number of TopicTerms
+     * const count = await prisma.topicTerm.count({
+     *   where: {
+     *     // ... the filter for the TopicTerms we want to count
+     *   }
+     * })
+    **/
+    count<T extends TopicTermCountArgs>(
+      args?: Subset<T, TopicTermCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], TopicTermCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a TopicTerm.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {TopicTermAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends TopicTermAggregateArgs>(args: Subset<T, TopicTermAggregateArgs>): Prisma.PrismaPromise<GetTopicTermAggregateType<T>>
+
+    /**
+     * Group by TopicTerm.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {TopicTermGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends TopicTermGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: TopicTermGroupByArgs['orderBy'] }
+        : { orderBy?: TopicTermGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, TopicTermGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetTopicTermGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the TopicTerm model
+   */
+  readonly fields: TopicTermFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for TopicTerm.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__TopicTermClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    topic<T extends TopicDefaultArgs<ExtArgs> = {}>(args?: Subset<T, TopicDefaultArgs<ExtArgs>>): Prisma__TopicClient<$Result.GetResult<Prisma.$TopicPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the TopicTerm model
+   */
+  interface TopicTermFieldRefs {
+    readonly id: FieldRef<"TopicTerm", 'String'>
+    readonly topicId: FieldRef<"TopicTerm", 'String'>
+    readonly type: FieldRef<"TopicTerm", 'TopicTermType'>
+    readonly value: FieldRef<"TopicTerm", 'String'>
+    readonly weight: FieldRef<"TopicTerm", 'Float'>
+    readonly meta: FieldRef<"TopicTerm", 'Json'>
+    readonly createdAt: FieldRef<"TopicTerm", 'DateTime'>
+    readonly updatedAt: FieldRef<"TopicTerm", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * TopicTerm findUnique
+   */
+  export type TopicTermFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TopicTerm
+     */
+    select?: TopicTermSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the TopicTerm
+     */
+    omit?: TopicTermOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TopicTermInclude<ExtArgs> | null
+    /**
+     * Filter, which TopicTerm to fetch.
+     */
+    where: TopicTermWhereUniqueInput
+  }
+
+  /**
+   * TopicTerm findUniqueOrThrow
+   */
+  export type TopicTermFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TopicTerm
+     */
+    select?: TopicTermSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the TopicTerm
+     */
+    omit?: TopicTermOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TopicTermInclude<ExtArgs> | null
+    /**
+     * Filter, which TopicTerm to fetch.
+     */
+    where: TopicTermWhereUniqueInput
+  }
+
+  /**
+   * TopicTerm findFirst
+   */
+  export type TopicTermFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TopicTerm
+     */
+    select?: TopicTermSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the TopicTerm
+     */
+    omit?: TopicTermOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TopicTermInclude<ExtArgs> | null
+    /**
+     * Filter, which TopicTerm to fetch.
+     */
+    where?: TopicTermWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of TopicTerms to fetch.
+     */
+    orderBy?: TopicTermOrderByWithRelationInput | TopicTermOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for TopicTerms.
+     */
+    cursor?: TopicTermWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` TopicTerms from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` TopicTerms.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of TopicTerms.
+     */
+    distinct?: TopicTermScalarFieldEnum | TopicTermScalarFieldEnum[]
+  }
+
+  /**
+   * TopicTerm findFirstOrThrow
+   */
+  export type TopicTermFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TopicTerm
+     */
+    select?: TopicTermSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the TopicTerm
+     */
+    omit?: TopicTermOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TopicTermInclude<ExtArgs> | null
+    /**
+     * Filter, which TopicTerm to fetch.
+     */
+    where?: TopicTermWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of TopicTerms to fetch.
+     */
+    orderBy?: TopicTermOrderByWithRelationInput | TopicTermOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for TopicTerms.
+     */
+    cursor?: TopicTermWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` TopicTerms from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` TopicTerms.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of TopicTerms.
+     */
+    distinct?: TopicTermScalarFieldEnum | TopicTermScalarFieldEnum[]
+  }
+
+  /**
+   * TopicTerm findMany
+   */
+  export type TopicTermFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TopicTerm
+     */
+    select?: TopicTermSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the TopicTerm
+     */
+    omit?: TopicTermOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TopicTermInclude<ExtArgs> | null
+    /**
+     * Filter, which TopicTerms to fetch.
+     */
+    where?: TopicTermWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of TopicTerms to fetch.
+     */
+    orderBy?: TopicTermOrderByWithRelationInput | TopicTermOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing TopicTerms.
+     */
+    cursor?: TopicTermWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` TopicTerms from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` TopicTerms.
+     */
+    skip?: number
+    distinct?: TopicTermScalarFieldEnum | TopicTermScalarFieldEnum[]
+  }
+
+  /**
+   * TopicTerm create
+   */
+  export type TopicTermCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TopicTerm
+     */
+    select?: TopicTermSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the TopicTerm
+     */
+    omit?: TopicTermOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TopicTermInclude<ExtArgs> | null
+    /**
+     * The data needed to create a TopicTerm.
+     */
+    data: XOR<TopicTermCreateInput, TopicTermUncheckedCreateInput>
+  }
+
+  /**
+   * TopicTerm createMany
+   */
+  export type TopicTermCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many TopicTerms.
+     */
+    data: TopicTermCreateManyInput | TopicTermCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * TopicTerm createManyAndReturn
+   */
+  export type TopicTermCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TopicTerm
+     */
+    select?: TopicTermSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the TopicTerm
+     */
+    omit?: TopicTermOmit<ExtArgs> | null
+    /**
+     * The data used to create many TopicTerms.
+     */
+    data: TopicTermCreateManyInput | TopicTermCreateManyInput[]
+    skipDuplicates?: boolean
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TopicTermIncludeCreateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * TopicTerm update
+   */
+  export type TopicTermUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TopicTerm
+     */
+    select?: TopicTermSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the TopicTerm
+     */
+    omit?: TopicTermOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TopicTermInclude<ExtArgs> | null
+    /**
+     * The data needed to update a TopicTerm.
+     */
+    data: XOR<TopicTermUpdateInput, TopicTermUncheckedUpdateInput>
+    /**
+     * Choose, which TopicTerm to update.
+     */
+    where: TopicTermWhereUniqueInput
+  }
+
+  /**
+   * TopicTerm updateMany
+   */
+  export type TopicTermUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update TopicTerms.
+     */
+    data: XOR<TopicTermUpdateManyMutationInput, TopicTermUncheckedUpdateManyInput>
+    /**
+     * Filter which TopicTerms to update
+     */
+    where?: TopicTermWhereInput
+    /**
+     * Limit how many TopicTerms to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * TopicTerm updateManyAndReturn
+   */
+  export type TopicTermUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TopicTerm
+     */
+    select?: TopicTermSelectUpdateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the TopicTerm
+     */
+    omit?: TopicTermOmit<ExtArgs> | null
+    /**
+     * The data used to update TopicTerms.
+     */
+    data: XOR<TopicTermUpdateManyMutationInput, TopicTermUncheckedUpdateManyInput>
+    /**
+     * Filter which TopicTerms to update
+     */
+    where?: TopicTermWhereInput
+    /**
+     * Limit how many TopicTerms to update.
+     */
+    limit?: number
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TopicTermIncludeUpdateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * TopicTerm upsert
+   */
+  export type TopicTermUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TopicTerm
+     */
+    select?: TopicTermSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the TopicTerm
+     */
+    omit?: TopicTermOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TopicTermInclude<ExtArgs> | null
+    /**
+     * The filter to search for the TopicTerm to update in case it exists.
+     */
+    where: TopicTermWhereUniqueInput
+    /**
+     * In case the TopicTerm found by the `where` argument doesn't exist, create a new TopicTerm with this data.
+     */
+    create: XOR<TopicTermCreateInput, TopicTermUncheckedCreateInput>
+    /**
+     * In case the TopicTerm was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<TopicTermUpdateInput, TopicTermUncheckedUpdateInput>
+  }
+
+  /**
+   * TopicTerm delete
+   */
+  export type TopicTermDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TopicTerm
+     */
+    select?: TopicTermSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the TopicTerm
+     */
+    omit?: TopicTermOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TopicTermInclude<ExtArgs> | null
+    /**
+     * Filter which TopicTerm to delete.
+     */
+    where: TopicTermWhereUniqueInput
+  }
+
+  /**
+   * TopicTerm deleteMany
+   */
+  export type TopicTermDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which TopicTerms to delete
+     */
+    where?: TopicTermWhereInput
+    /**
+     * Limit how many TopicTerms to delete.
+     */
+    limit?: number
+  }
+
+  /**
+   * TopicTerm without action
+   */
+  export type TopicTermDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TopicTerm
+     */
+    select?: TopicTermSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the TopicTerm
+     */
+    omit?: TopicTermOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TopicTermInclude<ExtArgs> | null
+  }
+
+
+  /**
+   * Model TopicSource
+   */
+
+  export type AggregateTopicSource = {
+    _count: TopicSourceCountAggregateOutputType | null
+    _min: TopicSourceMinAggregateOutputType | null
+    _max: TopicSourceMaxAggregateOutputType | null
+  }
+
+  export type TopicSourceMinAggregateOutputType = {
+    id: string | null
+    topicId: string | null
+    sourceId: string | null
+    enabled: boolean | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type TopicSourceMaxAggregateOutputType = {
+    id: string | null
+    topicId: string | null
+    sourceId: string | null
+    enabled: boolean | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type TopicSourceCountAggregateOutputType = {
+    id: number
+    topicId: number
+    sourceId: number
+    enabled: number
+    retrievalPolicy: number
+    createdAt: number
+    updatedAt: number
+    _all: number
+  }
+
+
+  export type TopicSourceMinAggregateInputType = {
+    id?: true
+    topicId?: true
+    sourceId?: true
+    enabled?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type TopicSourceMaxAggregateInputType = {
+    id?: true
+    topicId?: true
+    sourceId?: true
+    enabled?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type TopicSourceCountAggregateInputType = {
+    id?: true
+    topicId?: true
+    sourceId?: true
+    enabled?: true
+    retrievalPolicy?: true
+    createdAt?: true
+    updatedAt?: true
+    _all?: true
+  }
+
+  export type TopicSourceAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which TopicSource to aggregate.
+     */
+    where?: TopicSourceWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of TopicSources to fetch.
+     */
+    orderBy?: TopicSourceOrderByWithRelationInput | TopicSourceOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: TopicSourceWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` TopicSources from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` TopicSources.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned TopicSources
+    **/
+    _count?: true | TopicSourceCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: TopicSourceMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: TopicSourceMaxAggregateInputType
+  }
+
+  export type GetTopicSourceAggregateType<T extends TopicSourceAggregateArgs> = {
+        [P in keyof T & keyof AggregateTopicSource]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateTopicSource[P]>
+      : GetScalarType<T[P], AggregateTopicSource[P]>
+  }
+
+
+
+
+  export type TopicSourceGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: TopicSourceWhereInput
+    orderBy?: TopicSourceOrderByWithAggregationInput | TopicSourceOrderByWithAggregationInput[]
+    by: TopicSourceScalarFieldEnum[] | TopicSourceScalarFieldEnum
+    having?: TopicSourceScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: TopicSourceCountAggregateInputType | true
+    _min?: TopicSourceMinAggregateInputType
+    _max?: TopicSourceMaxAggregateInputType
+  }
+
+  export type TopicSourceGroupByOutputType = {
+    id: string
+    topicId: string
+    sourceId: string
+    enabled: boolean
+    retrievalPolicy: JsonValue | null
+    createdAt: Date
+    updatedAt: Date
+    _count: TopicSourceCountAggregateOutputType | null
+    _min: TopicSourceMinAggregateOutputType | null
+    _max: TopicSourceMaxAggregateOutputType | null
+  }
+
+  type GetTopicSourceGroupByPayload<T extends TopicSourceGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<TopicSourceGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof TopicSourceGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], TopicSourceGroupByOutputType[P]>
+            : GetScalarType<T[P], TopicSourceGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type TopicSourceSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    topicId?: boolean
+    sourceId?: boolean
+    enabled?: boolean
+    retrievalPolicy?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    topic?: boolean | TopicDefaultArgs<ExtArgs>
+    source?: boolean | SourceDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["topicSource"]>
+
+  export type TopicSourceSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    topicId?: boolean
+    sourceId?: boolean
+    enabled?: boolean
+    retrievalPolicy?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    topic?: boolean | TopicDefaultArgs<ExtArgs>
+    source?: boolean | SourceDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["topicSource"]>
+
+  export type TopicSourceSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    topicId?: boolean
+    sourceId?: boolean
+    enabled?: boolean
+    retrievalPolicy?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    topic?: boolean | TopicDefaultArgs<ExtArgs>
+    source?: boolean | SourceDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["topicSource"]>
+
+  export type TopicSourceSelectScalar = {
+    id?: boolean
+    topicId?: boolean
+    sourceId?: boolean
+    enabled?: boolean
+    retrievalPolicy?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }
+
+  export type TopicSourceOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "topicId" | "sourceId" | "enabled" | "retrievalPolicy" | "createdAt" | "updatedAt", ExtArgs["result"]["topicSource"]>
+  export type TopicSourceInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    topic?: boolean | TopicDefaultArgs<ExtArgs>
+    source?: boolean | SourceDefaultArgs<ExtArgs>
+  }
+  export type TopicSourceIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    topic?: boolean | TopicDefaultArgs<ExtArgs>
+    source?: boolean | SourceDefaultArgs<ExtArgs>
+  }
+  export type TopicSourceIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    topic?: boolean | TopicDefaultArgs<ExtArgs>
+    source?: boolean | SourceDefaultArgs<ExtArgs>
+  }
+
+  export type $TopicSourcePayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "TopicSource"
+    objects: {
+      topic: Prisma.$TopicPayload<ExtArgs>
+      source: Prisma.$SourcePayload<ExtArgs>
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      topicId: string
+      sourceId: string
+      enabled: boolean
+      retrievalPolicy: Prisma.JsonValue | null
+      createdAt: Date
+      updatedAt: Date
+    }, ExtArgs["result"]["topicSource"]>
+    composites: {}
+  }
+
+  type TopicSourceGetPayload<S extends boolean | null | undefined | TopicSourceDefaultArgs> = $Result.GetResult<Prisma.$TopicSourcePayload, S>
+
+  type TopicSourceCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
+    Omit<TopicSourceFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+      select?: TopicSourceCountAggregateInputType | true
+    }
+
+  export interface TopicSourceDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['TopicSource'], meta: { name: 'TopicSource' } }
+    /**
+     * Find zero or one TopicSource that matches the filter.
+     * @param {TopicSourceFindUniqueArgs} args - Arguments to find a TopicSource
+     * @example
+     * // Get one TopicSource
+     * const topicSource = await prisma.topicSource.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends TopicSourceFindUniqueArgs>(args: SelectSubset<T, TopicSourceFindUniqueArgs<ExtArgs>>): Prisma__TopicSourceClient<$Result.GetResult<Prisma.$TopicSourcePayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find one TopicSource that matches the filter or throw an error with `error.code='P2025'`
+     * if no matches were found.
+     * @param {TopicSourceFindUniqueOrThrowArgs} args - Arguments to find a TopicSource
+     * @example
+     * // Get one TopicSource
+     * const topicSource = await prisma.topicSource.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends TopicSourceFindUniqueOrThrowArgs>(args: SelectSubset<T, TopicSourceFindUniqueOrThrowArgs<ExtArgs>>): Prisma__TopicSourceClient<$Result.GetResult<Prisma.$TopicSourcePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first TopicSource that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {TopicSourceFindFirstArgs} args - Arguments to find a TopicSource
+     * @example
+     * // Get one TopicSource
+     * const topicSource = await prisma.topicSource.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends TopicSourceFindFirstArgs>(args?: SelectSubset<T, TopicSourceFindFirstArgs<ExtArgs>>): Prisma__TopicSourceClient<$Result.GetResult<Prisma.$TopicSourcePayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first TopicSource that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {TopicSourceFindFirstOrThrowArgs} args - Arguments to find a TopicSource
+     * @example
+     * // Get one TopicSource
+     * const topicSource = await prisma.topicSource.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends TopicSourceFindFirstOrThrowArgs>(args?: SelectSubset<T, TopicSourceFindFirstOrThrowArgs<ExtArgs>>): Prisma__TopicSourceClient<$Result.GetResult<Prisma.$TopicSourcePayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find zero or more TopicSources that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {TopicSourceFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all TopicSources
+     * const topicSources = await prisma.topicSource.findMany()
+     * 
+     * // Get first 10 TopicSources
+     * const topicSources = await prisma.topicSource.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const topicSourceWithIdOnly = await prisma.topicSource.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends TopicSourceFindManyArgs>(args?: SelectSubset<T, TopicSourceFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$TopicSourcePayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+
+    /**
+     * Create a TopicSource.
+     * @param {TopicSourceCreateArgs} args - Arguments to create a TopicSource.
+     * @example
+     * // Create one TopicSource
+     * const TopicSource = await prisma.topicSource.create({
+     *   data: {
+     *     // ... data to create a TopicSource
+     *   }
+     * })
+     * 
+     */
+    create<T extends TopicSourceCreateArgs>(args: SelectSubset<T, TopicSourceCreateArgs<ExtArgs>>): Prisma__TopicSourceClient<$Result.GetResult<Prisma.$TopicSourcePayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Create many TopicSources.
+     * @param {TopicSourceCreateManyArgs} args - Arguments to create many TopicSources.
+     * @example
+     * // Create many TopicSources
+     * const topicSource = await prisma.topicSource.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends TopicSourceCreateManyArgs>(args?: SelectSubset<T, TopicSourceCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many TopicSources and returns the data saved in the database.
+     * @param {TopicSourceCreateManyAndReturnArgs} args - Arguments to create many TopicSources.
+     * @example
+     * // Create many TopicSources
+     * const topicSource = await prisma.topicSource.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many TopicSources and only return the `id`
+     * const topicSourceWithIdOnly = await prisma.topicSource.createManyAndReturn({
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends TopicSourceCreateManyAndReturnArgs>(args?: SelectSubset<T, TopicSourceCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$TopicSourcePayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Delete a TopicSource.
+     * @param {TopicSourceDeleteArgs} args - Arguments to delete one TopicSource.
+     * @example
+     * // Delete one TopicSource
+     * const TopicSource = await prisma.topicSource.delete({
+     *   where: {
+     *     // ... filter to delete one TopicSource
+     *   }
+     * })
+     * 
+     */
+    delete<T extends TopicSourceDeleteArgs>(args: SelectSubset<T, TopicSourceDeleteArgs<ExtArgs>>): Prisma__TopicSourceClient<$Result.GetResult<Prisma.$TopicSourcePayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Update one TopicSource.
+     * @param {TopicSourceUpdateArgs} args - Arguments to update one TopicSource.
+     * @example
+     * // Update one TopicSource
+     * const topicSource = await prisma.topicSource.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends TopicSourceUpdateArgs>(args: SelectSubset<T, TopicSourceUpdateArgs<ExtArgs>>): Prisma__TopicSourceClient<$Result.GetResult<Prisma.$TopicSourcePayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Delete zero or more TopicSources.
+     * @param {TopicSourceDeleteManyArgs} args - Arguments to filter TopicSources to delete.
+     * @example
+     * // Delete a few TopicSources
+     * const { count } = await prisma.topicSource.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends TopicSourceDeleteManyArgs>(args?: SelectSubset<T, TopicSourceDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more TopicSources.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {TopicSourceUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many TopicSources
+     * const topicSource = await prisma.topicSource.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends TopicSourceUpdateManyArgs>(args: SelectSubset<T, TopicSourceUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more TopicSources and returns the data updated in the database.
+     * @param {TopicSourceUpdateManyAndReturnArgs} args - Arguments to update many TopicSources.
+     * @example
+     * // Update many TopicSources
+     * const topicSource = await prisma.topicSource.updateManyAndReturn({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Update zero or more TopicSources and only return the `id`
+     * const topicSourceWithIdOnly = await prisma.topicSource.updateManyAndReturn({
+     *   select: { id: true },
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    updateManyAndReturn<T extends TopicSourceUpdateManyAndReturnArgs>(args: SelectSubset<T, TopicSourceUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$TopicSourcePayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Create or update one TopicSource.
+     * @param {TopicSourceUpsertArgs} args - Arguments to update or create a TopicSource.
+     * @example
+     * // Update or create a TopicSource
+     * const topicSource = await prisma.topicSource.upsert({
+     *   create: {
+     *     // ... data to create a TopicSource
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the TopicSource we want to update
+     *   }
+     * })
+     */
+    upsert<T extends TopicSourceUpsertArgs>(args: SelectSubset<T, TopicSourceUpsertArgs<ExtArgs>>): Prisma__TopicSourceClient<$Result.GetResult<Prisma.$TopicSourcePayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+
+    /**
+     * Count the number of TopicSources.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {TopicSourceCountArgs} args - Arguments to filter TopicSources to count.
+     * @example
+     * // Count the number of TopicSources
+     * const count = await prisma.topicSource.count({
+     *   where: {
+     *     // ... the filter for the TopicSources we want to count
+     *   }
+     * })
+    **/
+    count<T extends TopicSourceCountArgs>(
+      args?: Subset<T, TopicSourceCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], TopicSourceCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a TopicSource.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {TopicSourceAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends TopicSourceAggregateArgs>(args: Subset<T, TopicSourceAggregateArgs>): Prisma.PrismaPromise<GetTopicSourceAggregateType<T>>
+
+    /**
+     * Group by TopicSource.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {TopicSourceGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends TopicSourceGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: TopicSourceGroupByArgs['orderBy'] }
+        : { orderBy?: TopicSourceGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, TopicSourceGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetTopicSourceGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the TopicSource model
+   */
+  readonly fields: TopicSourceFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for TopicSource.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__TopicSourceClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    topic<T extends TopicDefaultArgs<ExtArgs> = {}>(args?: Subset<T, TopicDefaultArgs<ExtArgs>>): Prisma__TopicClient<$Result.GetResult<Prisma.$TopicPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    source<T extends SourceDefaultArgs<ExtArgs> = {}>(args?: Subset<T, SourceDefaultArgs<ExtArgs>>): Prisma__SourceClient<$Result.GetResult<Prisma.$SourcePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the TopicSource model
+   */
+  interface TopicSourceFieldRefs {
+    readonly id: FieldRef<"TopicSource", 'String'>
+    readonly topicId: FieldRef<"TopicSource", 'String'>
+    readonly sourceId: FieldRef<"TopicSource", 'String'>
+    readonly enabled: FieldRef<"TopicSource", 'Boolean'>
+    readonly retrievalPolicy: FieldRef<"TopicSource", 'Json'>
+    readonly createdAt: FieldRef<"TopicSource", 'DateTime'>
+    readonly updatedAt: FieldRef<"TopicSource", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * TopicSource findUnique
+   */
+  export type TopicSourceFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TopicSource
+     */
+    select?: TopicSourceSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the TopicSource
+     */
+    omit?: TopicSourceOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TopicSourceInclude<ExtArgs> | null
+    /**
+     * Filter, which TopicSource to fetch.
+     */
+    where: TopicSourceWhereUniqueInput
+  }
+
+  /**
+   * TopicSource findUniqueOrThrow
+   */
+  export type TopicSourceFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TopicSource
+     */
+    select?: TopicSourceSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the TopicSource
+     */
+    omit?: TopicSourceOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TopicSourceInclude<ExtArgs> | null
+    /**
+     * Filter, which TopicSource to fetch.
+     */
+    where: TopicSourceWhereUniqueInput
+  }
+
+  /**
+   * TopicSource findFirst
+   */
+  export type TopicSourceFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TopicSource
+     */
+    select?: TopicSourceSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the TopicSource
+     */
+    omit?: TopicSourceOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TopicSourceInclude<ExtArgs> | null
+    /**
+     * Filter, which TopicSource to fetch.
+     */
+    where?: TopicSourceWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of TopicSources to fetch.
+     */
+    orderBy?: TopicSourceOrderByWithRelationInput | TopicSourceOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for TopicSources.
+     */
+    cursor?: TopicSourceWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` TopicSources from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` TopicSources.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of TopicSources.
+     */
+    distinct?: TopicSourceScalarFieldEnum | TopicSourceScalarFieldEnum[]
+  }
+
+  /**
+   * TopicSource findFirstOrThrow
+   */
+  export type TopicSourceFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TopicSource
+     */
+    select?: TopicSourceSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the TopicSource
+     */
+    omit?: TopicSourceOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TopicSourceInclude<ExtArgs> | null
+    /**
+     * Filter, which TopicSource to fetch.
+     */
+    where?: TopicSourceWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of TopicSources to fetch.
+     */
+    orderBy?: TopicSourceOrderByWithRelationInput | TopicSourceOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for TopicSources.
+     */
+    cursor?: TopicSourceWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` TopicSources from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` TopicSources.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of TopicSources.
+     */
+    distinct?: TopicSourceScalarFieldEnum | TopicSourceScalarFieldEnum[]
+  }
+
+  /**
+   * TopicSource findMany
+   */
+  export type TopicSourceFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TopicSource
+     */
+    select?: TopicSourceSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the TopicSource
+     */
+    omit?: TopicSourceOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TopicSourceInclude<ExtArgs> | null
+    /**
+     * Filter, which TopicSources to fetch.
+     */
+    where?: TopicSourceWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of TopicSources to fetch.
+     */
+    orderBy?: TopicSourceOrderByWithRelationInput | TopicSourceOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing TopicSources.
+     */
+    cursor?: TopicSourceWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` TopicSources from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` TopicSources.
+     */
+    skip?: number
+    distinct?: TopicSourceScalarFieldEnum | TopicSourceScalarFieldEnum[]
+  }
+
+  /**
+   * TopicSource create
+   */
+  export type TopicSourceCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TopicSource
+     */
+    select?: TopicSourceSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the TopicSource
+     */
+    omit?: TopicSourceOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TopicSourceInclude<ExtArgs> | null
+    /**
+     * The data needed to create a TopicSource.
+     */
+    data: XOR<TopicSourceCreateInput, TopicSourceUncheckedCreateInput>
+  }
+
+  /**
+   * TopicSource createMany
+   */
+  export type TopicSourceCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many TopicSources.
+     */
+    data: TopicSourceCreateManyInput | TopicSourceCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * TopicSource createManyAndReturn
+   */
+  export type TopicSourceCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TopicSource
+     */
+    select?: TopicSourceSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the TopicSource
+     */
+    omit?: TopicSourceOmit<ExtArgs> | null
+    /**
+     * The data used to create many TopicSources.
+     */
+    data: TopicSourceCreateManyInput | TopicSourceCreateManyInput[]
+    skipDuplicates?: boolean
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TopicSourceIncludeCreateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * TopicSource update
+   */
+  export type TopicSourceUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TopicSource
+     */
+    select?: TopicSourceSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the TopicSource
+     */
+    omit?: TopicSourceOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TopicSourceInclude<ExtArgs> | null
+    /**
+     * The data needed to update a TopicSource.
+     */
+    data: XOR<TopicSourceUpdateInput, TopicSourceUncheckedUpdateInput>
+    /**
+     * Choose, which TopicSource to update.
+     */
+    where: TopicSourceWhereUniqueInput
+  }
+
+  /**
+   * TopicSource updateMany
+   */
+  export type TopicSourceUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update TopicSources.
+     */
+    data: XOR<TopicSourceUpdateManyMutationInput, TopicSourceUncheckedUpdateManyInput>
+    /**
+     * Filter which TopicSources to update
+     */
+    where?: TopicSourceWhereInput
+    /**
+     * Limit how many TopicSources to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * TopicSource updateManyAndReturn
+   */
+  export type TopicSourceUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TopicSource
+     */
+    select?: TopicSourceSelectUpdateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the TopicSource
+     */
+    omit?: TopicSourceOmit<ExtArgs> | null
+    /**
+     * The data used to update TopicSources.
+     */
+    data: XOR<TopicSourceUpdateManyMutationInput, TopicSourceUncheckedUpdateManyInput>
+    /**
+     * Filter which TopicSources to update
+     */
+    where?: TopicSourceWhereInput
+    /**
+     * Limit how many TopicSources to update.
+     */
+    limit?: number
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TopicSourceIncludeUpdateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * TopicSource upsert
+   */
+  export type TopicSourceUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TopicSource
+     */
+    select?: TopicSourceSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the TopicSource
+     */
+    omit?: TopicSourceOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TopicSourceInclude<ExtArgs> | null
+    /**
+     * The filter to search for the TopicSource to update in case it exists.
+     */
+    where: TopicSourceWhereUniqueInput
+    /**
+     * In case the TopicSource found by the `where` argument doesn't exist, create a new TopicSource with this data.
+     */
+    create: XOR<TopicSourceCreateInput, TopicSourceUncheckedCreateInput>
+    /**
+     * In case the TopicSource was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<TopicSourceUpdateInput, TopicSourceUncheckedUpdateInput>
+  }
+
+  /**
+   * TopicSource delete
+   */
+  export type TopicSourceDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TopicSource
+     */
+    select?: TopicSourceSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the TopicSource
+     */
+    omit?: TopicSourceOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TopicSourceInclude<ExtArgs> | null
+    /**
+     * Filter which TopicSource to delete.
+     */
+    where: TopicSourceWhereUniqueInput
+  }
+
+  /**
+   * TopicSource deleteMany
+   */
+  export type TopicSourceDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which TopicSources to delete
+     */
+    where?: TopicSourceWhereInput
+    /**
+     * Limit how many TopicSources to delete.
+     */
+    limit?: number
+  }
+
+  /**
+   * TopicSource without action
+   */
+  export type TopicSourceDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TopicSource
+     */
+    select?: TopicSourceSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the TopicSource
+     */
+    omit?: TopicSourceOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TopicSourceInclude<ExtArgs> | null
+  }
+
+
+  /**
+   * Model Job
+   */
+
+  export type AggregateJob = {
+    _count: JobCountAggregateOutputType | null
+    _min: JobMinAggregateOutputType | null
+    _max: JobMaxAggregateOutputType | null
+  }
+
+  export type JobMinAggregateOutputType = {
+    id: string | null
+    name: string | null
+    type: $Enums.JobType | null
+    enabled: boolean | null
+    frequency: $Enums.QueryFrequency | null
+    cronSchedule: string | null
+    triggerMode: string | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type JobMaxAggregateOutputType = {
+    id: string | null
+    name: string | null
+    type: $Enums.JobType | null
+    enabled: boolean | null
+    frequency: $Enums.QueryFrequency | null
+    cronSchedule: string | null
+    triggerMode: string | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type JobCountAggregateOutputType = {
+    id: number
+    name: number
+    type: number
+    enabled: number
+    frequency: number
+    cronSchedule: number
+    triggerMode: number
+    config: number
+    createdAt: number
+    updatedAt: number
+    _all: number
+  }
+
+
+  export type JobMinAggregateInputType = {
+    id?: true
+    name?: true
+    type?: true
+    enabled?: true
+    frequency?: true
+    cronSchedule?: true
+    triggerMode?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type JobMaxAggregateInputType = {
+    id?: true
+    name?: true
+    type?: true
+    enabled?: true
+    frequency?: true
+    cronSchedule?: true
+    triggerMode?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type JobCountAggregateInputType = {
+    id?: true
+    name?: true
+    type?: true
+    enabled?: true
+    frequency?: true
+    cronSchedule?: true
+    triggerMode?: true
+    config?: true
+    createdAt?: true
+    updatedAt?: true
+    _all?: true
+  }
+
+  export type JobAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which Job to aggregate.
+     */
+    where?: JobWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of Jobs to fetch.
+     */
+    orderBy?: JobOrderByWithRelationInput | JobOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: JobWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` Jobs from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` Jobs.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned Jobs
+    **/
+    _count?: true | JobCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: JobMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: JobMaxAggregateInputType
+  }
+
+  export type GetJobAggregateType<T extends JobAggregateArgs> = {
+        [P in keyof T & keyof AggregateJob]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateJob[P]>
+      : GetScalarType<T[P], AggregateJob[P]>
+  }
+
+
+
+
+  export type JobGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: JobWhereInput
+    orderBy?: JobOrderByWithAggregationInput | JobOrderByWithAggregationInput[]
+    by: JobScalarFieldEnum[] | JobScalarFieldEnum
+    having?: JobScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: JobCountAggregateInputType | true
+    _min?: JobMinAggregateInputType
+    _max?: JobMaxAggregateInputType
+  }
+
+  export type JobGroupByOutputType = {
+    id: string
+    name: string
+    type: $Enums.JobType
+    enabled: boolean
+    frequency: $Enums.QueryFrequency
+    cronSchedule: string | null
+    triggerMode: string | null
+    config: JsonValue | null
+    createdAt: Date
+    updatedAt: Date
+    _count: JobCountAggregateOutputType | null
+    _min: JobMinAggregateOutputType | null
+    _max: JobMaxAggregateOutputType | null
+  }
+
+  type GetJobGroupByPayload<T extends JobGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<JobGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof JobGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], JobGroupByOutputType[P]>
+            : GetScalarType<T[P], JobGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type JobSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    name?: boolean
+    type?: boolean
+    enabled?: boolean
+    frequency?: boolean
+    cronSchedule?: boolean
+    triggerMode?: boolean
+    config?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    jobTopics?: boolean | Job$jobTopicsArgs<ExtArgs>
+    jobSources?: boolean | Job$jobSourcesArgs<ExtArgs>
+    runs?: boolean | Job$runsArgs<ExtArgs>
+    _count?: boolean | JobCountOutputTypeDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["job"]>
+
+  export type JobSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    name?: boolean
+    type?: boolean
+    enabled?: boolean
+    frequency?: boolean
+    cronSchedule?: boolean
+    triggerMode?: boolean
+    config?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }, ExtArgs["result"]["job"]>
+
+  export type JobSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    name?: boolean
+    type?: boolean
+    enabled?: boolean
+    frequency?: boolean
+    cronSchedule?: boolean
+    triggerMode?: boolean
+    config?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }, ExtArgs["result"]["job"]>
+
+  export type JobSelectScalar = {
+    id?: boolean
+    name?: boolean
+    type?: boolean
+    enabled?: boolean
+    frequency?: boolean
+    cronSchedule?: boolean
+    triggerMode?: boolean
+    config?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }
+
+  export type JobOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "name" | "type" | "enabled" | "frequency" | "cronSchedule" | "triggerMode" | "config" | "createdAt" | "updatedAt", ExtArgs["result"]["job"]>
+  export type JobInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    jobTopics?: boolean | Job$jobTopicsArgs<ExtArgs>
+    jobSources?: boolean | Job$jobSourcesArgs<ExtArgs>
+    runs?: boolean | Job$runsArgs<ExtArgs>
+    _count?: boolean | JobCountOutputTypeDefaultArgs<ExtArgs>
+  }
+  export type JobIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {}
+  export type JobIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {}
+
+  export type $JobPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "Job"
+    objects: {
+      jobTopics: Prisma.$JobTopicPayload<ExtArgs>[]
+      jobSources: Prisma.$JobSourcePayload<ExtArgs>[]
+      runs: Prisma.$JobRunPayload<ExtArgs>[]
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      name: string
+      type: $Enums.JobType
+      enabled: boolean
+      frequency: $Enums.QueryFrequency
+      cronSchedule: string | null
+      triggerMode: string | null
+      config: Prisma.JsonValue | null
+      createdAt: Date
+      updatedAt: Date
+    }, ExtArgs["result"]["job"]>
+    composites: {}
+  }
+
+  type JobGetPayload<S extends boolean | null | undefined | JobDefaultArgs> = $Result.GetResult<Prisma.$JobPayload, S>
+
+  type JobCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
+    Omit<JobFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+      select?: JobCountAggregateInputType | true
+    }
+
+  export interface JobDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['Job'], meta: { name: 'Job' } }
+    /**
+     * Find zero or one Job that matches the filter.
+     * @param {JobFindUniqueArgs} args - Arguments to find a Job
+     * @example
+     * // Get one Job
+     * const job = await prisma.job.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends JobFindUniqueArgs>(args: SelectSubset<T, JobFindUniqueArgs<ExtArgs>>): Prisma__JobClient<$Result.GetResult<Prisma.$JobPayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find one Job that matches the filter or throw an error with `error.code='P2025'`
+     * if no matches were found.
+     * @param {JobFindUniqueOrThrowArgs} args - Arguments to find a Job
+     * @example
+     * // Get one Job
+     * const job = await prisma.job.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends JobFindUniqueOrThrowArgs>(args: SelectSubset<T, JobFindUniqueOrThrowArgs<ExtArgs>>): Prisma__JobClient<$Result.GetResult<Prisma.$JobPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first Job that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {JobFindFirstArgs} args - Arguments to find a Job
+     * @example
+     * // Get one Job
+     * const job = await prisma.job.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends JobFindFirstArgs>(args?: SelectSubset<T, JobFindFirstArgs<ExtArgs>>): Prisma__JobClient<$Result.GetResult<Prisma.$JobPayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first Job that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {JobFindFirstOrThrowArgs} args - Arguments to find a Job
+     * @example
+     * // Get one Job
+     * const job = await prisma.job.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends JobFindFirstOrThrowArgs>(args?: SelectSubset<T, JobFindFirstOrThrowArgs<ExtArgs>>): Prisma__JobClient<$Result.GetResult<Prisma.$JobPayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find zero or more Jobs that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {JobFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all Jobs
+     * const jobs = await prisma.job.findMany()
+     * 
+     * // Get first 10 Jobs
+     * const jobs = await prisma.job.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const jobWithIdOnly = await prisma.job.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends JobFindManyArgs>(args?: SelectSubset<T, JobFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$JobPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+
+    /**
+     * Create a Job.
+     * @param {JobCreateArgs} args - Arguments to create a Job.
+     * @example
+     * // Create one Job
+     * const Job = await prisma.job.create({
+     *   data: {
+     *     // ... data to create a Job
+     *   }
+     * })
+     * 
+     */
+    create<T extends JobCreateArgs>(args: SelectSubset<T, JobCreateArgs<ExtArgs>>): Prisma__JobClient<$Result.GetResult<Prisma.$JobPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Create many Jobs.
+     * @param {JobCreateManyArgs} args - Arguments to create many Jobs.
+     * @example
+     * // Create many Jobs
+     * const job = await prisma.job.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends JobCreateManyArgs>(args?: SelectSubset<T, JobCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many Jobs and returns the data saved in the database.
+     * @param {JobCreateManyAndReturnArgs} args - Arguments to create many Jobs.
+     * @example
+     * // Create many Jobs
+     * const job = await prisma.job.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many Jobs and only return the `id`
+     * const jobWithIdOnly = await prisma.job.createManyAndReturn({
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends JobCreateManyAndReturnArgs>(args?: SelectSubset<T, JobCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$JobPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Delete a Job.
+     * @param {JobDeleteArgs} args - Arguments to delete one Job.
+     * @example
+     * // Delete one Job
+     * const Job = await prisma.job.delete({
+     *   where: {
+     *     // ... filter to delete one Job
+     *   }
+     * })
+     * 
+     */
+    delete<T extends JobDeleteArgs>(args: SelectSubset<T, JobDeleteArgs<ExtArgs>>): Prisma__JobClient<$Result.GetResult<Prisma.$JobPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Update one Job.
+     * @param {JobUpdateArgs} args - Arguments to update one Job.
+     * @example
+     * // Update one Job
+     * const job = await prisma.job.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends JobUpdateArgs>(args: SelectSubset<T, JobUpdateArgs<ExtArgs>>): Prisma__JobClient<$Result.GetResult<Prisma.$JobPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Delete zero or more Jobs.
+     * @param {JobDeleteManyArgs} args - Arguments to filter Jobs to delete.
+     * @example
+     * // Delete a few Jobs
+     * const { count } = await prisma.job.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends JobDeleteManyArgs>(args?: SelectSubset<T, JobDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more Jobs.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {JobUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many Jobs
+     * const job = await prisma.job.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends JobUpdateManyArgs>(args: SelectSubset<T, JobUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more Jobs and returns the data updated in the database.
+     * @param {JobUpdateManyAndReturnArgs} args - Arguments to update many Jobs.
+     * @example
+     * // Update many Jobs
+     * const job = await prisma.job.updateManyAndReturn({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Update zero or more Jobs and only return the `id`
+     * const jobWithIdOnly = await prisma.job.updateManyAndReturn({
+     *   select: { id: true },
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    updateManyAndReturn<T extends JobUpdateManyAndReturnArgs>(args: SelectSubset<T, JobUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$JobPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Create or update one Job.
+     * @param {JobUpsertArgs} args - Arguments to update or create a Job.
+     * @example
+     * // Update or create a Job
+     * const job = await prisma.job.upsert({
+     *   create: {
+     *     // ... data to create a Job
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the Job we want to update
+     *   }
+     * })
+     */
+    upsert<T extends JobUpsertArgs>(args: SelectSubset<T, JobUpsertArgs<ExtArgs>>): Prisma__JobClient<$Result.GetResult<Prisma.$JobPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+
+    /**
+     * Count the number of Jobs.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {JobCountArgs} args - Arguments to filter Jobs to count.
+     * @example
+     * // Count the number of Jobs
+     * const count = await prisma.job.count({
+     *   where: {
+     *     // ... the filter for the Jobs we want to count
+     *   }
+     * })
+    **/
+    count<T extends JobCountArgs>(
+      args?: Subset<T, JobCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], JobCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a Job.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {JobAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends JobAggregateArgs>(args: Subset<T, JobAggregateArgs>): Prisma.PrismaPromise<GetJobAggregateType<T>>
+
+    /**
+     * Group by Job.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {JobGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends JobGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: JobGroupByArgs['orderBy'] }
+        : { orderBy?: JobGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, JobGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetJobGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the Job model
+   */
+  readonly fields: JobFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for Job.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__JobClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    jobTopics<T extends Job$jobTopicsArgs<ExtArgs> = {}>(args?: Subset<T, Job$jobTopicsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$JobTopicPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    jobSources<T extends Job$jobSourcesArgs<ExtArgs> = {}>(args?: Subset<T, Job$jobSourcesArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$JobSourcePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    runs<T extends Job$runsArgs<ExtArgs> = {}>(args?: Subset<T, Job$runsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$JobRunPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the Job model
+   */
+  interface JobFieldRefs {
+    readonly id: FieldRef<"Job", 'String'>
+    readonly name: FieldRef<"Job", 'String'>
+    readonly type: FieldRef<"Job", 'JobType'>
+    readonly enabled: FieldRef<"Job", 'Boolean'>
+    readonly frequency: FieldRef<"Job", 'QueryFrequency'>
+    readonly cronSchedule: FieldRef<"Job", 'String'>
+    readonly triggerMode: FieldRef<"Job", 'String'>
+    readonly config: FieldRef<"Job", 'Json'>
+    readonly createdAt: FieldRef<"Job", 'DateTime'>
+    readonly updatedAt: FieldRef<"Job", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * Job findUnique
+   */
+  export type JobFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Job
+     */
+    select?: JobSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Job
+     */
+    omit?: JobOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: JobInclude<ExtArgs> | null
+    /**
+     * Filter, which Job to fetch.
+     */
+    where: JobWhereUniqueInput
+  }
+
+  /**
+   * Job findUniqueOrThrow
+   */
+  export type JobFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Job
+     */
+    select?: JobSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Job
+     */
+    omit?: JobOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: JobInclude<ExtArgs> | null
+    /**
+     * Filter, which Job to fetch.
+     */
+    where: JobWhereUniqueInput
+  }
+
+  /**
+   * Job findFirst
+   */
+  export type JobFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Job
+     */
+    select?: JobSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Job
+     */
+    omit?: JobOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: JobInclude<ExtArgs> | null
+    /**
+     * Filter, which Job to fetch.
+     */
+    where?: JobWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of Jobs to fetch.
+     */
+    orderBy?: JobOrderByWithRelationInput | JobOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for Jobs.
+     */
+    cursor?: JobWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` Jobs from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` Jobs.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of Jobs.
+     */
+    distinct?: JobScalarFieldEnum | JobScalarFieldEnum[]
+  }
+
+  /**
+   * Job findFirstOrThrow
+   */
+  export type JobFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Job
+     */
+    select?: JobSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Job
+     */
+    omit?: JobOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: JobInclude<ExtArgs> | null
+    /**
+     * Filter, which Job to fetch.
+     */
+    where?: JobWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of Jobs to fetch.
+     */
+    orderBy?: JobOrderByWithRelationInput | JobOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for Jobs.
+     */
+    cursor?: JobWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` Jobs from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` Jobs.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of Jobs.
+     */
+    distinct?: JobScalarFieldEnum | JobScalarFieldEnum[]
+  }
+
+  /**
+   * Job findMany
+   */
+  export type JobFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Job
+     */
+    select?: JobSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Job
+     */
+    omit?: JobOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: JobInclude<ExtArgs> | null
+    /**
+     * Filter, which Jobs to fetch.
+     */
+    where?: JobWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of Jobs to fetch.
+     */
+    orderBy?: JobOrderByWithRelationInput | JobOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing Jobs.
+     */
+    cursor?: JobWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` Jobs from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` Jobs.
+     */
+    skip?: number
+    distinct?: JobScalarFieldEnum | JobScalarFieldEnum[]
+  }
+
+  /**
+   * Job create
+   */
+  export type JobCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Job
+     */
+    select?: JobSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Job
+     */
+    omit?: JobOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: JobInclude<ExtArgs> | null
+    /**
+     * The data needed to create a Job.
+     */
+    data: XOR<JobCreateInput, JobUncheckedCreateInput>
+  }
+
+  /**
+   * Job createMany
+   */
+  export type JobCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many Jobs.
+     */
+    data: JobCreateManyInput | JobCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * Job createManyAndReturn
+   */
+  export type JobCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Job
+     */
+    select?: JobSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the Job
+     */
+    omit?: JobOmit<ExtArgs> | null
+    /**
+     * The data used to create many Jobs.
+     */
+    data: JobCreateManyInput | JobCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * Job update
+   */
+  export type JobUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Job
+     */
+    select?: JobSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Job
+     */
+    omit?: JobOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: JobInclude<ExtArgs> | null
+    /**
+     * The data needed to update a Job.
+     */
+    data: XOR<JobUpdateInput, JobUncheckedUpdateInput>
+    /**
+     * Choose, which Job to update.
+     */
+    where: JobWhereUniqueInput
+  }
+
+  /**
+   * Job updateMany
+   */
+  export type JobUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update Jobs.
+     */
+    data: XOR<JobUpdateManyMutationInput, JobUncheckedUpdateManyInput>
+    /**
+     * Filter which Jobs to update
+     */
+    where?: JobWhereInput
+    /**
+     * Limit how many Jobs to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * Job updateManyAndReturn
+   */
+  export type JobUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Job
+     */
+    select?: JobSelectUpdateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the Job
+     */
+    omit?: JobOmit<ExtArgs> | null
+    /**
+     * The data used to update Jobs.
+     */
+    data: XOR<JobUpdateManyMutationInput, JobUncheckedUpdateManyInput>
+    /**
+     * Filter which Jobs to update
+     */
+    where?: JobWhereInput
+    /**
+     * Limit how many Jobs to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * Job upsert
+   */
+  export type JobUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Job
+     */
+    select?: JobSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Job
+     */
+    omit?: JobOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: JobInclude<ExtArgs> | null
+    /**
+     * The filter to search for the Job to update in case it exists.
+     */
+    where: JobWhereUniqueInput
+    /**
+     * In case the Job found by the `where` argument doesn't exist, create a new Job with this data.
+     */
+    create: XOR<JobCreateInput, JobUncheckedCreateInput>
+    /**
+     * In case the Job was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<JobUpdateInput, JobUncheckedUpdateInput>
+  }
+
+  /**
+   * Job delete
+   */
+  export type JobDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Job
+     */
+    select?: JobSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Job
+     */
+    omit?: JobOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: JobInclude<ExtArgs> | null
+    /**
+     * Filter which Job to delete.
+     */
+    where: JobWhereUniqueInput
+  }
+
+  /**
+   * Job deleteMany
+   */
+  export type JobDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which Jobs to delete
+     */
+    where?: JobWhereInput
+    /**
+     * Limit how many Jobs to delete.
+     */
+    limit?: number
+  }
+
+  /**
+   * Job.jobTopics
+   */
+  export type Job$jobTopicsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the JobTopic
+     */
+    select?: JobTopicSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the JobTopic
+     */
+    omit?: JobTopicOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: JobTopicInclude<ExtArgs> | null
+    where?: JobTopicWhereInput
+    orderBy?: JobTopicOrderByWithRelationInput | JobTopicOrderByWithRelationInput[]
+    cursor?: JobTopicWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: JobTopicScalarFieldEnum | JobTopicScalarFieldEnum[]
+  }
+
+  /**
+   * Job.jobSources
+   */
+  export type Job$jobSourcesArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the JobSource
+     */
+    select?: JobSourceSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the JobSource
+     */
+    omit?: JobSourceOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: JobSourceInclude<ExtArgs> | null
+    where?: JobSourceWhereInput
+    orderBy?: JobSourceOrderByWithRelationInput | JobSourceOrderByWithRelationInput[]
+    cursor?: JobSourceWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: JobSourceScalarFieldEnum | JobSourceScalarFieldEnum[]
+  }
+
+  /**
+   * Job.runs
+   */
+  export type Job$runsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the JobRun
+     */
+    select?: JobRunSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the JobRun
+     */
+    omit?: JobRunOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: JobRunInclude<ExtArgs> | null
+    where?: JobRunWhereInput
+    orderBy?: JobRunOrderByWithRelationInput | JobRunOrderByWithRelationInput[]
+    cursor?: JobRunWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: JobRunScalarFieldEnum | JobRunScalarFieldEnum[]
+  }
+
+  /**
+   * Job without action
+   */
+  export type JobDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Job
+     */
+    select?: JobSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Job
+     */
+    omit?: JobOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: JobInclude<ExtArgs> | null
+  }
+
+
+  /**
+   * Model JobTopic
+   */
+
+  export type AggregateJobTopic = {
+    _count: JobTopicCountAggregateOutputType | null
+    _min: JobTopicMinAggregateOutputType | null
+    _max: JobTopicMaxAggregateOutputType | null
+  }
+
+  export type JobTopicMinAggregateOutputType = {
+    id: string | null
+    jobId: string | null
+    topicId: string | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type JobTopicMaxAggregateOutputType = {
+    id: string | null
+    jobId: string | null
+    topicId: string | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type JobTopicCountAggregateOutputType = {
+    id: number
+    jobId: number
+    topicId: number
+    createdAt: number
+    updatedAt: number
+    _all: number
+  }
+
+
+  export type JobTopicMinAggregateInputType = {
+    id?: true
+    jobId?: true
+    topicId?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type JobTopicMaxAggregateInputType = {
+    id?: true
+    jobId?: true
+    topicId?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type JobTopicCountAggregateInputType = {
+    id?: true
+    jobId?: true
+    topicId?: true
+    createdAt?: true
+    updatedAt?: true
+    _all?: true
+  }
+
+  export type JobTopicAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which JobTopic to aggregate.
+     */
+    where?: JobTopicWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of JobTopics to fetch.
+     */
+    orderBy?: JobTopicOrderByWithRelationInput | JobTopicOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: JobTopicWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` JobTopics from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` JobTopics.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned JobTopics
+    **/
+    _count?: true | JobTopicCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: JobTopicMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: JobTopicMaxAggregateInputType
+  }
+
+  export type GetJobTopicAggregateType<T extends JobTopicAggregateArgs> = {
+        [P in keyof T & keyof AggregateJobTopic]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateJobTopic[P]>
+      : GetScalarType<T[P], AggregateJobTopic[P]>
+  }
+
+
+
+
+  export type JobTopicGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: JobTopicWhereInput
+    orderBy?: JobTopicOrderByWithAggregationInput | JobTopicOrderByWithAggregationInput[]
+    by: JobTopicScalarFieldEnum[] | JobTopicScalarFieldEnum
+    having?: JobTopicScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: JobTopicCountAggregateInputType | true
+    _min?: JobTopicMinAggregateInputType
+    _max?: JobTopicMaxAggregateInputType
+  }
+
+  export type JobTopicGroupByOutputType = {
+    id: string
+    jobId: string
+    topicId: string
+    createdAt: Date
+    updatedAt: Date
+    _count: JobTopicCountAggregateOutputType | null
+    _min: JobTopicMinAggregateOutputType | null
+    _max: JobTopicMaxAggregateOutputType | null
+  }
+
+  type GetJobTopicGroupByPayload<T extends JobTopicGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<JobTopicGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof JobTopicGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], JobTopicGroupByOutputType[P]>
+            : GetScalarType<T[P], JobTopicGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type JobTopicSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    jobId?: boolean
+    topicId?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    job?: boolean | JobDefaultArgs<ExtArgs>
+    topic?: boolean | TopicDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["jobTopic"]>
+
+  export type JobTopicSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    jobId?: boolean
+    topicId?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    job?: boolean | JobDefaultArgs<ExtArgs>
+    topic?: boolean | TopicDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["jobTopic"]>
+
+  export type JobTopicSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    jobId?: boolean
+    topicId?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    job?: boolean | JobDefaultArgs<ExtArgs>
+    topic?: boolean | TopicDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["jobTopic"]>
+
+  export type JobTopicSelectScalar = {
+    id?: boolean
+    jobId?: boolean
+    topicId?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }
+
+  export type JobTopicOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "jobId" | "topicId" | "createdAt" | "updatedAt", ExtArgs["result"]["jobTopic"]>
+  export type JobTopicInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    job?: boolean | JobDefaultArgs<ExtArgs>
+    topic?: boolean | TopicDefaultArgs<ExtArgs>
+  }
+  export type JobTopicIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    job?: boolean | JobDefaultArgs<ExtArgs>
+    topic?: boolean | TopicDefaultArgs<ExtArgs>
+  }
+  export type JobTopicIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    job?: boolean | JobDefaultArgs<ExtArgs>
+    topic?: boolean | TopicDefaultArgs<ExtArgs>
+  }
+
+  export type $JobTopicPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "JobTopic"
+    objects: {
+      job: Prisma.$JobPayload<ExtArgs>
+      topic: Prisma.$TopicPayload<ExtArgs>
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      jobId: string
+      topicId: string
+      createdAt: Date
+      updatedAt: Date
+    }, ExtArgs["result"]["jobTopic"]>
+    composites: {}
+  }
+
+  type JobTopicGetPayload<S extends boolean | null | undefined | JobTopicDefaultArgs> = $Result.GetResult<Prisma.$JobTopicPayload, S>
+
+  type JobTopicCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
+    Omit<JobTopicFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+      select?: JobTopicCountAggregateInputType | true
+    }
+
+  export interface JobTopicDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['JobTopic'], meta: { name: 'JobTopic' } }
+    /**
+     * Find zero or one JobTopic that matches the filter.
+     * @param {JobTopicFindUniqueArgs} args - Arguments to find a JobTopic
+     * @example
+     * // Get one JobTopic
+     * const jobTopic = await prisma.jobTopic.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends JobTopicFindUniqueArgs>(args: SelectSubset<T, JobTopicFindUniqueArgs<ExtArgs>>): Prisma__JobTopicClient<$Result.GetResult<Prisma.$JobTopicPayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find one JobTopic that matches the filter or throw an error with `error.code='P2025'`
+     * if no matches were found.
+     * @param {JobTopicFindUniqueOrThrowArgs} args - Arguments to find a JobTopic
+     * @example
+     * // Get one JobTopic
+     * const jobTopic = await prisma.jobTopic.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends JobTopicFindUniqueOrThrowArgs>(args: SelectSubset<T, JobTopicFindUniqueOrThrowArgs<ExtArgs>>): Prisma__JobTopicClient<$Result.GetResult<Prisma.$JobTopicPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first JobTopic that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {JobTopicFindFirstArgs} args - Arguments to find a JobTopic
+     * @example
+     * // Get one JobTopic
+     * const jobTopic = await prisma.jobTopic.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends JobTopicFindFirstArgs>(args?: SelectSubset<T, JobTopicFindFirstArgs<ExtArgs>>): Prisma__JobTopicClient<$Result.GetResult<Prisma.$JobTopicPayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first JobTopic that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {JobTopicFindFirstOrThrowArgs} args - Arguments to find a JobTopic
+     * @example
+     * // Get one JobTopic
+     * const jobTopic = await prisma.jobTopic.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends JobTopicFindFirstOrThrowArgs>(args?: SelectSubset<T, JobTopicFindFirstOrThrowArgs<ExtArgs>>): Prisma__JobTopicClient<$Result.GetResult<Prisma.$JobTopicPayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find zero or more JobTopics that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {JobTopicFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all JobTopics
+     * const jobTopics = await prisma.jobTopic.findMany()
+     * 
+     * // Get first 10 JobTopics
+     * const jobTopics = await prisma.jobTopic.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const jobTopicWithIdOnly = await prisma.jobTopic.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends JobTopicFindManyArgs>(args?: SelectSubset<T, JobTopicFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$JobTopicPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+
+    /**
+     * Create a JobTopic.
+     * @param {JobTopicCreateArgs} args - Arguments to create a JobTopic.
+     * @example
+     * // Create one JobTopic
+     * const JobTopic = await prisma.jobTopic.create({
+     *   data: {
+     *     // ... data to create a JobTopic
+     *   }
+     * })
+     * 
+     */
+    create<T extends JobTopicCreateArgs>(args: SelectSubset<T, JobTopicCreateArgs<ExtArgs>>): Prisma__JobTopicClient<$Result.GetResult<Prisma.$JobTopicPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Create many JobTopics.
+     * @param {JobTopicCreateManyArgs} args - Arguments to create many JobTopics.
+     * @example
+     * // Create many JobTopics
+     * const jobTopic = await prisma.jobTopic.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends JobTopicCreateManyArgs>(args?: SelectSubset<T, JobTopicCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many JobTopics and returns the data saved in the database.
+     * @param {JobTopicCreateManyAndReturnArgs} args - Arguments to create many JobTopics.
+     * @example
+     * // Create many JobTopics
+     * const jobTopic = await prisma.jobTopic.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many JobTopics and only return the `id`
+     * const jobTopicWithIdOnly = await prisma.jobTopic.createManyAndReturn({
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends JobTopicCreateManyAndReturnArgs>(args?: SelectSubset<T, JobTopicCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$JobTopicPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Delete a JobTopic.
+     * @param {JobTopicDeleteArgs} args - Arguments to delete one JobTopic.
+     * @example
+     * // Delete one JobTopic
+     * const JobTopic = await prisma.jobTopic.delete({
+     *   where: {
+     *     // ... filter to delete one JobTopic
+     *   }
+     * })
+     * 
+     */
+    delete<T extends JobTopicDeleteArgs>(args: SelectSubset<T, JobTopicDeleteArgs<ExtArgs>>): Prisma__JobTopicClient<$Result.GetResult<Prisma.$JobTopicPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Update one JobTopic.
+     * @param {JobTopicUpdateArgs} args - Arguments to update one JobTopic.
+     * @example
+     * // Update one JobTopic
+     * const jobTopic = await prisma.jobTopic.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends JobTopicUpdateArgs>(args: SelectSubset<T, JobTopicUpdateArgs<ExtArgs>>): Prisma__JobTopicClient<$Result.GetResult<Prisma.$JobTopicPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Delete zero or more JobTopics.
+     * @param {JobTopicDeleteManyArgs} args - Arguments to filter JobTopics to delete.
+     * @example
+     * // Delete a few JobTopics
+     * const { count } = await prisma.jobTopic.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends JobTopicDeleteManyArgs>(args?: SelectSubset<T, JobTopicDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more JobTopics.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {JobTopicUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many JobTopics
+     * const jobTopic = await prisma.jobTopic.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends JobTopicUpdateManyArgs>(args: SelectSubset<T, JobTopicUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more JobTopics and returns the data updated in the database.
+     * @param {JobTopicUpdateManyAndReturnArgs} args - Arguments to update many JobTopics.
+     * @example
+     * // Update many JobTopics
+     * const jobTopic = await prisma.jobTopic.updateManyAndReturn({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Update zero or more JobTopics and only return the `id`
+     * const jobTopicWithIdOnly = await prisma.jobTopic.updateManyAndReturn({
+     *   select: { id: true },
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    updateManyAndReturn<T extends JobTopicUpdateManyAndReturnArgs>(args: SelectSubset<T, JobTopicUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$JobTopicPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Create or update one JobTopic.
+     * @param {JobTopicUpsertArgs} args - Arguments to update or create a JobTopic.
+     * @example
+     * // Update or create a JobTopic
+     * const jobTopic = await prisma.jobTopic.upsert({
+     *   create: {
+     *     // ... data to create a JobTopic
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the JobTopic we want to update
+     *   }
+     * })
+     */
+    upsert<T extends JobTopicUpsertArgs>(args: SelectSubset<T, JobTopicUpsertArgs<ExtArgs>>): Prisma__JobTopicClient<$Result.GetResult<Prisma.$JobTopicPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+
+    /**
+     * Count the number of JobTopics.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {JobTopicCountArgs} args - Arguments to filter JobTopics to count.
+     * @example
+     * // Count the number of JobTopics
+     * const count = await prisma.jobTopic.count({
+     *   where: {
+     *     // ... the filter for the JobTopics we want to count
+     *   }
+     * })
+    **/
+    count<T extends JobTopicCountArgs>(
+      args?: Subset<T, JobTopicCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], JobTopicCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a JobTopic.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {JobTopicAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends JobTopicAggregateArgs>(args: Subset<T, JobTopicAggregateArgs>): Prisma.PrismaPromise<GetJobTopicAggregateType<T>>
+
+    /**
+     * Group by JobTopic.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {JobTopicGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends JobTopicGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: JobTopicGroupByArgs['orderBy'] }
+        : { orderBy?: JobTopicGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, JobTopicGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetJobTopicGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the JobTopic model
+   */
+  readonly fields: JobTopicFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for JobTopic.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__JobTopicClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    job<T extends JobDefaultArgs<ExtArgs> = {}>(args?: Subset<T, JobDefaultArgs<ExtArgs>>): Prisma__JobClient<$Result.GetResult<Prisma.$JobPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    topic<T extends TopicDefaultArgs<ExtArgs> = {}>(args?: Subset<T, TopicDefaultArgs<ExtArgs>>): Prisma__TopicClient<$Result.GetResult<Prisma.$TopicPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the JobTopic model
+   */
+  interface JobTopicFieldRefs {
+    readonly id: FieldRef<"JobTopic", 'String'>
+    readonly jobId: FieldRef<"JobTopic", 'String'>
+    readonly topicId: FieldRef<"JobTopic", 'String'>
+    readonly createdAt: FieldRef<"JobTopic", 'DateTime'>
+    readonly updatedAt: FieldRef<"JobTopic", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * JobTopic findUnique
+   */
+  export type JobTopicFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the JobTopic
+     */
+    select?: JobTopicSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the JobTopic
+     */
+    omit?: JobTopicOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: JobTopicInclude<ExtArgs> | null
+    /**
+     * Filter, which JobTopic to fetch.
+     */
+    where: JobTopicWhereUniqueInput
+  }
+
+  /**
+   * JobTopic findUniqueOrThrow
+   */
+  export type JobTopicFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the JobTopic
+     */
+    select?: JobTopicSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the JobTopic
+     */
+    omit?: JobTopicOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: JobTopicInclude<ExtArgs> | null
+    /**
+     * Filter, which JobTopic to fetch.
+     */
+    where: JobTopicWhereUniqueInput
+  }
+
+  /**
+   * JobTopic findFirst
+   */
+  export type JobTopicFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the JobTopic
+     */
+    select?: JobTopicSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the JobTopic
+     */
+    omit?: JobTopicOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: JobTopicInclude<ExtArgs> | null
+    /**
+     * Filter, which JobTopic to fetch.
+     */
+    where?: JobTopicWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of JobTopics to fetch.
+     */
+    orderBy?: JobTopicOrderByWithRelationInput | JobTopicOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for JobTopics.
+     */
+    cursor?: JobTopicWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` JobTopics from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` JobTopics.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of JobTopics.
+     */
+    distinct?: JobTopicScalarFieldEnum | JobTopicScalarFieldEnum[]
+  }
+
+  /**
+   * JobTopic findFirstOrThrow
+   */
+  export type JobTopicFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the JobTopic
+     */
+    select?: JobTopicSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the JobTopic
+     */
+    omit?: JobTopicOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: JobTopicInclude<ExtArgs> | null
+    /**
+     * Filter, which JobTopic to fetch.
+     */
+    where?: JobTopicWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of JobTopics to fetch.
+     */
+    orderBy?: JobTopicOrderByWithRelationInput | JobTopicOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for JobTopics.
+     */
+    cursor?: JobTopicWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` JobTopics from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` JobTopics.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of JobTopics.
+     */
+    distinct?: JobTopicScalarFieldEnum | JobTopicScalarFieldEnum[]
+  }
+
+  /**
+   * JobTopic findMany
+   */
+  export type JobTopicFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the JobTopic
+     */
+    select?: JobTopicSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the JobTopic
+     */
+    omit?: JobTopicOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: JobTopicInclude<ExtArgs> | null
+    /**
+     * Filter, which JobTopics to fetch.
+     */
+    where?: JobTopicWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of JobTopics to fetch.
+     */
+    orderBy?: JobTopicOrderByWithRelationInput | JobTopicOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing JobTopics.
+     */
+    cursor?: JobTopicWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` JobTopics from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` JobTopics.
+     */
+    skip?: number
+    distinct?: JobTopicScalarFieldEnum | JobTopicScalarFieldEnum[]
+  }
+
+  /**
+   * JobTopic create
+   */
+  export type JobTopicCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the JobTopic
+     */
+    select?: JobTopicSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the JobTopic
+     */
+    omit?: JobTopicOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: JobTopicInclude<ExtArgs> | null
+    /**
+     * The data needed to create a JobTopic.
+     */
+    data: XOR<JobTopicCreateInput, JobTopicUncheckedCreateInput>
+  }
+
+  /**
+   * JobTopic createMany
+   */
+  export type JobTopicCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many JobTopics.
+     */
+    data: JobTopicCreateManyInput | JobTopicCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * JobTopic createManyAndReturn
+   */
+  export type JobTopicCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the JobTopic
+     */
+    select?: JobTopicSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the JobTopic
+     */
+    omit?: JobTopicOmit<ExtArgs> | null
+    /**
+     * The data used to create many JobTopics.
+     */
+    data: JobTopicCreateManyInput | JobTopicCreateManyInput[]
+    skipDuplicates?: boolean
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: JobTopicIncludeCreateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * JobTopic update
+   */
+  export type JobTopicUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the JobTopic
+     */
+    select?: JobTopicSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the JobTopic
+     */
+    omit?: JobTopicOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: JobTopicInclude<ExtArgs> | null
+    /**
+     * The data needed to update a JobTopic.
+     */
+    data: XOR<JobTopicUpdateInput, JobTopicUncheckedUpdateInput>
+    /**
+     * Choose, which JobTopic to update.
+     */
+    where: JobTopicWhereUniqueInput
+  }
+
+  /**
+   * JobTopic updateMany
+   */
+  export type JobTopicUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update JobTopics.
+     */
+    data: XOR<JobTopicUpdateManyMutationInput, JobTopicUncheckedUpdateManyInput>
+    /**
+     * Filter which JobTopics to update
+     */
+    where?: JobTopicWhereInput
+    /**
+     * Limit how many JobTopics to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * JobTopic updateManyAndReturn
+   */
+  export type JobTopicUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the JobTopic
+     */
+    select?: JobTopicSelectUpdateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the JobTopic
+     */
+    omit?: JobTopicOmit<ExtArgs> | null
+    /**
+     * The data used to update JobTopics.
+     */
+    data: XOR<JobTopicUpdateManyMutationInput, JobTopicUncheckedUpdateManyInput>
+    /**
+     * Filter which JobTopics to update
+     */
+    where?: JobTopicWhereInput
+    /**
+     * Limit how many JobTopics to update.
+     */
+    limit?: number
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: JobTopicIncludeUpdateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * JobTopic upsert
+   */
+  export type JobTopicUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the JobTopic
+     */
+    select?: JobTopicSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the JobTopic
+     */
+    omit?: JobTopicOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: JobTopicInclude<ExtArgs> | null
+    /**
+     * The filter to search for the JobTopic to update in case it exists.
+     */
+    where: JobTopicWhereUniqueInput
+    /**
+     * In case the JobTopic found by the `where` argument doesn't exist, create a new JobTopic with this data.
+     */
+    create: XOR<JobTopicCreateInput, JobTopicUncheckedCreateInput>
+    /**
+     * In case the JobTopic was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<JobTopicUpdateInput, JobTopicUncheckedUpdateInput>
+  }
+
+  /**
+   * JobTopic delete
+   */
+  export type JobTopicDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the JobTopic
+     */
+    select?: JobTopicSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the JobTopic
+     */
+    omit?: JobTopicOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: JobTopicInclude<ExtArgs> | null
+    /**
+     * Filter which JobTopic to delete.
+     */
+    where: JobTopicWhereUniqueInput
+  }
+
+  /**
+   * JobTopic deleteMany
+   */
+  export type JobTopicDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which JobTopics to delete
+     */
+    where?: JobTopicWhereInput
+    /**
+     * Limit how many JobTopics to delete.
+     */
+    limit?: number
+  }
+
+  /**
+   * JobTopic without action
+   */
+  export type JobTopicDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the JobTopic
+     */
+    select?: JobTopicSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the JobTopic
+     */
+    omit?: JobTopicOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: JobTopicInclude<ExtArgs> | null
+  }
+
+
+  /**
+   * Model JobSource
+   */
+
+  export type AggregateJobSource = {
+    _count: JobSourceCountAggregateOutputType | null
+    _min: JobSourceMinAggregateOutputType | null
+    _max: JobSourceMaxAggregateOutputType | null
+  }
+
+  export type JobSourceMinAggregateOutputType = {
+    id: string | null
+    jobId: string | null
+    sourceId: string | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type JobSourceMaxAggregateOutputType = {
+    id: string | null
+    jobId: string | null
+    sourceId: string | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type JobSourceCountAggregateOutputType = {
+    id: number
+    jobId: number
+    sourceId: number
+    recallBindingOverride: number
+    createdAt: number
+    updatedAt: number
+    _all: number
+  }
+
+
+  export type JobSourceMinAggregateInputType = {
+    id?: true
+    jobId?: true
+    sourceId?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type JobSourceMaxAggregateInputType = {
+    id?: true
+    jobId?: true
+    sourceId?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type JobSourceCountAggregateInputType = {
+    id?: true
+    jobId?: true
+    sourceId?: true
+    recallBindingOverride?: true
+    createdAt?: true
+    updatedAt?: true
+    _all?: true
+  }
+
+  export type JobSourceAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which JobSource to aggregate.
+     */
+    where?: JobSourceWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of JobSources to fetch.
+     */
+    orderBy?: JobSourceOrderByWithRelationInput | JobSourceOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: JobSourceWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` JobSources from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` JobSources.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned JobSources
+    **/
+    _count?: true | JobSourceCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: JobSourceMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: JobSourceMaxAggregateInputType
+  }
+
+  export type GetJobSourceAggregateType<T extends JobSourceAggregateArgs> = {
+        [P in keyof T & keyof AggregateJobSource]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateJobSource[P]>
+      : GetScalarType<T[P], AggregateJobSource[P]>
+  }
+
+
+
+
+  export type JobSourceGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: JobSourceWhereInput
+    orderBy?: JobSourceOrderByWithAggregationInput | JobSourceOrderByWithAggregationInput[]
+    by: JobSourceScalarFieldEnum[] | JobSourceScalarFieldEnum
+    having?: JobSourceScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: JobSourceCountAggregateInputType | true
+    _min?: JobSourceMinAggregateInputType
+    _max?: JobSourceMaxAggregateInputType
+  }
+
+  export type JobSourceGroupByOutputType = {
+    id: string
+    jobId: string
+    sourceId: string
+    recallBindingOverride: JsonValue | null
+    createdAt: Date
+    updatedAt: Date
+    _count: JobSourceCountAggregateOutputType | null
+    _min: JobSourceMinAggregateOutputType | null
+    _max: JobSourceMaxAggregateOutputType | null
+  }
+
+  type GetJobSourceGroupByPayload<T extends JobSourceGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<JobSourceGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof JobSourceGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], JobSourceGroupByOutputType[P]>
+            : GetScalarType<T[P], JobSourceGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type JobSourceSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    jobId?: boolean
+    sourceId?: boolean
+    recallBindingOverride?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    job?: boolean | JobDefaultArgs<ExtArgs>
+    source?: boolean | SourceDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["jobSource"]>
+
+  export type JobSourceSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    jobId?: boolean
+    sourceId?: boolean
+    recallBindingOverride?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    job?: boolean | JobDefaultArgs<ExtArgs>
+    source?: boolean | SourceDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["jobSource"]>
+
+  export type JobSourceSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    jobId?: boolean
+    sourceId?: boolean
+    recallBindingOverride?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    job?: boolean | JobDefaultArgs<ExtArgs>
+    source?: boolean | SourceDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["jobSource"]>
+
+  export type JobSourceSelectScalar = {
+    id?: boolean
+    jobId?: boolean
+    sourceId?: boolean
+    recallBindingOverride?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }
+
+  export type JobSourceOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "jobId" | "sourceId" | "recallBindingOverride" | "createdAt" | "updatedAt", ExtArgs["result"]["jobSource"]>
+  export type JobSourceInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    job?: boolean | JobDefaultArgs<ExtArgs>
+    source?: boolean | SourceDefaultArgs<ExtArgs>
+  }
+  export type JobSourceIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    job?: boolean | JobDefaultArgs<ExtArgs>
+    source?: boolean | SourceDefaultArgs<ExtArgs>
+  }
+  export type JobSourceIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    job?: boolean | JobDefaultArgs<ExtArgs>
+    source?: boolean | SourceDefaultArgs<ExtArgs>
+  }
+
+  export type $JobSourcePayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "JobSource"
+    objects: {
+      job: Prisma.$JobPayload<ExtArgs>
+      source: Prisma.$SourcePayload<ExtArgs>
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      jobId: string
+      sourceId: string
+      recallBindingOverride: Prisma.JsonValue | null
+      createdAt: Date
+      updatedAt: Date
+    }, ExtArgs["result"]["jobSource"]>
+    composites: {}
+  }
+
+  type JobSourceGetPayload<S extends boolean | null | undefined | JobSourceDefaultArgs> = $Result.GetResult<Prisma.$JobSourcePayload, S>
+
+  type JobSourceCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
+    Omit<JobSourceFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+      select?: JobSourceCountAggregateInputType | true
+    }
+
+  export interface JobSourceDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['JobSource'], meta: { name: 'JobSource' } }
+    /**
+     * Find zero or one JobSource that matches the filter.
+     * @param {JobSourceFindUniqueArgs} args - Arguments to find a JobSource
+     * @example
+     * // Get one JobSource
+     * const jobSource = await prisma.jobSource.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends JobSourceFindUniqueArgs>(args: SelectSubset<T, JobSourceFindUniqueArgs<ExtArgs>>): Prisma__JobSourceClient<$Result.GetResult<Prisma.$JobSourcePayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find one JobSource that matches the filter or throw an error with `error.code='P2025'`
+     * if no matches were found.
+     * @param {JobSourceFindUniqueOrThrowArgs} args - Arguments to find a JobSource
+     * @example
+     * // Get one JobSource
+     * const jobSource = await prisma.jobSource.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends JobSourceFindUniqueOrThrowArgs>(args: SelectSubset<T, JobSourceFindUniqueOrThrowArgs<ExtArgs>>): Prisma__JobSourceClient<$Result.GetResult<Prisma.$JobSourcePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first JobSource that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {JobSourceFindFirstArgs} args - Arguments to find a JobSource
+     * @example
+     * // Get one JobSource
+     * const jobSource = await prisma.jobSource.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends JobSourceFindFirstArgs>(args?: SelectSubset<T, JobSourceFindFirstArgs<ExtArgs>>): Prisma__JobSourceClient<$Result.GetResult<Prisma.$JobSourcePayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first JobSource that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {JobSourceFindFirstOrThrowArgs} args - Arguments to find a JobSource
+     * @example
+     * // Get one JobSource
+     * const jobSource = await prisma.jobSource.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends JobSourceFindFirstOrThrowArgs>(args?: SelectSubset<T, JobSourceFindFirstOrThrowArgs<ExtArgs>>): Prisma__JobSourceClient<$Result.GetResult<Prisma.$JobSourcePayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find zero or more JobSources that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {JobSourceFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all JobSources
+     * const jobSources = await prisma.jobSource.findMany()
+     * 
+     * // Get first 10 JobSources
+     * const jobSources = await prisma.jobSource.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const jobSourceWithIdOnly = await prisma.jobSource.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends JobSourceFindManyArgs>(args?: SelectSubset<T, JobSourceFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$JobSourcePayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+
+    /**
+     * Create a JobSource.
+     * @param {JobSourceCreateArgs} args - Arguments to create a JobSource.
+     * @example
+     * // Create one JobSource
+     * const JobSource = await prisma.jobSource.create({
+     *   data: {
+     *     // ... data to create a JobSource
+     *   }
+     * })
+     * 
+     */
+    create<T extends JobSourceCreateArgs>(args: SelectSubset<T, JobSourceCreateArgs<ExtArgs>>): Prisma__JobSourceClient<$Result.GetResult<Prisma.$JobSourcePayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Create many JobSources.
+     * @param {JobSourceCreateManyArgs} args - Arguments to create many JobSources.
+     * @example
+     * // Create many JobSources
+     * const jobSource = await prisma.jobSource.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends JobSourceCreateManyArgs>(args?: SelectSubset<T, JobSourceCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many JobSources and returns the data saved in the database.
+     * @param {JobSourceCreateManyAndReturnArgs} args - Arguments to create many JobSources.
+     * @example
+     * // Create many JobSources
+     * const jobSource = await prisma.jobSource.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many JobSources and only return the `id`
+     * const jobSourceWithIdOnly = await prisma.jobSource.createManyAndReturn({
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends JobSourceCreateManyAndReturnArgs>(args?: SelectSubset<T, JobSourceCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$JobSourcePayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Delete a JobSource.
+     * @param {JobSourceDeleteArgs} args - Arguments to delete one JobSource.
+     * @example
+     * // Delete one JobSource
+     * const JobSource = await prisma.jobSource.delete({
+     *   where: {
+     *     // ... filter to delete one JobSource
+     *   }
+     * })
+     * 
+     */
+    delete<T extends JobSourceDeleteArgs>(args: SelectSubset<T, JobSourceDeleteArgs<ExtArgs>>): Prisma__JobSourceClient<$Result.GetResult<Prisma.$JobSourcePayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Update one JobSource.
+     * @param {JobSourceUpdateArgs} args - Arguments to update one JobSource.
+     * @example
+     * // Update one JobSource
+     * const jobSource = await prisma.jobSource.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends JobSourceUpdateArgs>(args: SelectSubset<T, JobSourceUpdateArgs<ExtArgs>>): Prisma__JobSourceClient<$Result.GetResult<Prisma.$JobSourcePayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Delete zero or more JobSources.
+     * @param {JobSourceDeleteManyArgs} args - Arguments to filter JobSources to delete.
+     * @example
+     * // Delete a few JobSources
+     * const { count } = await prisma.jobSource.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends JobSourceDeleteManyArgs>(args?: SelectSubset<T, JobSourceDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more JobSources.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {JobSourceUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many JobSources
+     * const jobSource = await prisma.jobSource.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends JobSourceUpdateManyArgs>(args: SelectSubset<T, JobSourceUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more JobSources and returns the data updated in the database.
+     * @param {JobSourceUpdateManyAndReturnArgs} args - Arguments to update many JobSources.
+     * @example
+     * // Update many JobSources
+     * const jobSource = await prisma.jobSource.updateManyAndReturn({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Update zero or more JobSources and only return the `id`
+     * const jobSourceWithIdOnly = await prisma.jobSource.updateManyAndReturn({
+     *   select: { id: true },
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    updateManyAndReturn<T extends JobSourceUpdateManyAndReturnArgs>(args: SelectSubset<T, JobSourceUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$JobSourcePayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Create or update one JobSource.
+     * @param {JobSourceUpsertArgs} args - Arguments to update or create a JobSource.
+     * @example
+     * // Update or create a JobSource
+     * const jobSource = await prisma.jobSource.upsert({
+     *   create: {
+     *     // ... data to create a JobSource
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the JobSource we want to update
+     *   }
+     * })
+     */
+    upsert<T extends JobSourceUpsertArgs>(args: SelectSubset<T, JobSourceUpsertArgs<ExtArgs>>): Prisma__JobSourceClient<$Result.GetResult<Prisma.$JobSourcePayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+
+    /**
+     * Count the number of JobSources.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {JobSourceCountArgs} args - Arguments to filter JobSources to count.
+     * @example
+     * // Count the number of JobSources
+     * const count = await prisma.jobSource.count({
+     *   where: {
+     *     // ... the filter for the JobSources we want to count
+     *   }
+     * })
+    **/
+    count<T extends JobSourceCountArgs>(
+      args?: Subset<T, JobSourceCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], JobSourceCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a JobSource.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {JobSourceAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends JobSourceAggregateArgs>(args: Subset<T, JobSourceAggregateArgs>): Prisma.PrismaPromise<GetJobSourceAggregateType<T>>
+
+    /**
+     * Group by JobSource.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {JobSourceGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends JobSourceGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: JobSourceGroupByArgs['orderBy'] }
+        : { orderBy?: JobSourceGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, JobSourceGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetJobSourceGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the JobSource model
+   */
+  readonly fields: JobSourceFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for JobSource.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__JobSourceClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    job<T extends JobDefaultArgs<ExtArgs> = {}>(args?: Subset<T, JobDefaultArgs<ExtArgs>>): Prisma__JobClient<$Result.GetResult<Prisma.$JobPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    source<T extends SourceDefaultArgs<ExtArgs> = {}>(args?: Subset<T, SourceDefaultArgs<ExtArgs>>): Prisma__SourceClient<$Result.GetResult<Prisma.$SourcePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the JobSource model
+   */
+  interface JobSourceFieldRefs {
+    readonly id: FieldRef<"JobSource", 'String'>
+    readonly jobId: FieldRef<"JobSource", 'String'>
+    readonly sourceId: FieldRef<"JobSource", 'String'>
+    readonly recallBindingOverride: FieldRef<"JobSource", 'Json'>
+    readonly createdAt: FieldRef<"JobSource", 'DateTime'>
+    readonly updatedAt: FieldRef<"JobSource", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * JobSource findUnique
+   */
+  export type JobSourceFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the JobSource
+     */
+    select?: JobSourceSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the JobSource
+     */
+    omit?: JobSourceOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: JobSourceInclude<ExtArgs> | null
+    /**
+     * Filter, which JobSource to fetch.
+     */
+    where: JobSourceWhereUniqueInput
+  }
+
+  /**
+   * JobSource findUniqueOrThrow
+   */
+  export type JobSourceFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the JobSource
+     */
+    select?: JobSourceSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the JobSource
+     */
+    omit?: JobSourceOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: JobSourceInclude<ExtArgs> | null
+    /**
+     * Filter, which JobSource to fetch.
+     */
+    where: JobSourceWhereUniqueInput
+  }
+
+  /**
+   * JobSource findFirst
+   */
+  export type JobSourceFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the JobSource
+     */
+    select?: JobSourceSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the JobSource
+     */
+    omit?: JobSourceOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: JobSourceInclude<ExtArgs> | null
+    /**
+     * Filter, which JobSource to fetch.
+     */
+    where?: JobSourceWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of JobSources to fetch.
+     */
+    orderBy?: JobSourceOrderByWithRelationInput | JobSourceOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for JobSources.
+     */
+    cursor?: JobSourceWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` JobSources from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` JobSources.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of JobSources.
+     */
+    distinct?: JobSourceScalarFieldEnum | JobSourceScalarFieldEnum[]
+  }
+
+  /**
+   * JobSource findFirstOrThrow
+   */
+  export type JobSourceFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the JobSource
+     */
+    select?: JobSourceSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the JobSource
+     */
+    omit?: JobSourceOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: JobSourceInclude<ExtArgs> | null
+    /**
+     * Filter, which JobSource to fetch.
+     */
+    where?: JobSourceWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of JobSources to fetch.
+     */
+    orderBy?: JobSourceOrderByWithRelationInput | JobSourceOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for JobSources.
+     */
+    cursor?: JobSourceWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` JobSources from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` JobSources.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of JobSources.
+     */
+    distinct?: JobSourceScalarFieldEnum | JobSourceScalarFieldEnum[]
+  }
+
+  /**
+   * JobSource findMany
+   */
+  export type JobSourceFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the JobSource
+     */
+    select?: JobSourceSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the JobSource
+     */
+    omit?: JobSourceOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: JobSourceInclude<ExtArgs> | null
+    /**
+     * Filter, which JobSources to fetch.
+     */
+    where?: JobSourceWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of JobSources to fetch.
+     */
+    orderBy?: JobSourceOrderByWithRelationInput | JobSourceOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing JobSources.
+     */
+    cursor?: JobSourceWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` JobSources from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` JobSources.
+     */
+    skip?: number
+    distinct?: JobSourceScalarFieldEnum | JobSourceScalarFieldEnum[]
+  }
+
+  /**
+   * JobSource create
+   */
+  export type JobSourceCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the JobSource
+     */
+    select?: JobSourceSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the JobSource
+     */
+    omit?: JobSourceOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: JobSourceInclude<ExtArgs> | null
+    /**
+     * The data needed to create a JobSource.
+     */
+    data: XOR<JobSourceCreateInput, JobSourceUncheckedCreateInput>
+  }
+
+  /**
+   * JobSource createMany
+   */
+  export type JobSourceCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many JobSources.
+     */
+    data: JobSourceCreateManyInput | JobSourceCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * JobSource createManyAndReturn
+   */
+  export type JobSourceCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the JobSource
+     */
+    select?: JobSourceSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the JobSource
+     */
+    omit?: JobSourceOmit<ExtArgs> | null
+    /**
+     * The data used to create many JobSources.
+     */
+    data: JobSourceCreateManyInput | JobSourceCreateManyInput[]
+    skipDuplicates?: boolean
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: JobSourceIncludeCreateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * JobSource update
+   */
+  export type JobSourceUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the JobSource
+     */
+    select?: JobSourceSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the JobSource
+     */
+    omit?: JobSourceOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: JobSourceInclude<ExtArgs> | null
+    /**
+     * The data needed to update a JobSource.
+     */
+    data: XOR<JobSourceUpdateInput, JobSourceUncheckedUpdateInput>
+    /**
+     * Choose, which JobSource to update.
+     */
+    where: JobSourceWhereUniqueInput
+  }
+
+  /**
+   * JobSource updateMany
+   */
+  export type JobSourceUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update JobSources.
+     */
+    data: XOR<JobSourceUpdateManyMutationInput, JobSourceUncheckedUpdateManyInput>
+    /**
+     * Filter which JobSources to update
+     */
+    where?: JobSourceWhereInput
+    /**
+     * Limit how many JobSources to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * JobSource updateManyAndReturn
+   */
+  export type JobSourceUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the JobSource
+     */
+    select?: JobSourceSelectUpdateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the JobSource
+     */
+    omit?: JobSourceOmit<ExtArgs> | null
+    /**
+     * The data used to update JobSources.
+     */
+    data: XOR<JobSourceUpdateManyMutationInput, JobSourceUncheckedUpdateManyInput>
+    /**
+     * Filter which JobSources to update
+     */
+    where?: JobSourceWhereInput
+    /**
+     * Limit how many JobSources to update.
+     */
+    limit?: number
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: JobSourceIncludeUpdateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * JobSource upsert
+   */
+  export type JobSourceUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the JobSource
+     */
+    select?: JobSourceSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the JobSource
+     */
+    omit?: JobSourceOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: JobSourceInclude<ExtArgs> | null
+    /**
+     * The filter to search for the JobSource to update in case it exists.
+     */
+    where: JobSourceWhereUniqueInput
+    /**
+     * In case the JobSource found by the `where` argument doesn't exist, create a new JobSource with this data.
+     */
+    create: XOR<JobSourceCreateInput, JobSourceUncheckedCreateInput>
+    /**
+     * In case the JobSource was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<JobSourceUpdateInput, JobSourceUncheckedUpdateInput>
+  }
+
+  /**
+   * JobSource delete
+   */
+  export type JobSourceDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the JobSource
+     */
+    select?: JobSourceSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the JobSource
+     */
+    omit?: JobSourceOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: JobSourceInclude<ExtArgs> | null
+    /**
+     * Filter which JobSource to delete.
+     */
+    where: JobSourceWhereUniqueInput
+  }
+
+  /**
+   * JobSource deleteMany
+   */
+  export type JobSourceDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which JobSources to delete
+     */
+    where?: JobSourceWhereInput
+    /**
+     * Limit how many JobSources to delete.
+     */
+    limit?: number
+  }
+
+  /**
+   * JobSource without action
+   */
+  export type JobSourceDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the JobSource
+     */
+    select?: JobSourceSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the JobSource
+     */
+    omit?: JobSourceOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: JobSourceInclude<ExtArgs> | null
+  }
+
+
+  /**
+   * Model JobRun
+   */
+
+  export type AggregateJobRun = {
+    _count: JobRunCountAggregateOutputType | null
+    _avg: JobRunAvgAggregateOutputType | null
+    _sum: JobRunSumAggregateOutputType | null
+    _min: JobRunMinAggregateOutputType | null
+    _max: JobRunMaxAggregateOutputType | null
+  }
+
+  export type JobRunAvgAggregateOutputType = {
+    progress: number | null
+  }
+
+  export type JobRunSumAggregateOutputType = {
+    progress: number | null
+  }
+
+  export type JobRunMinAggregateOutputType = {
+    id: string | null
+    jobId: string | null
+    status: $Enums.TaskStatus | null
+    progress: number | null
+    trigger: string | null
+    startedAt: Date | null
+    finishedAt: Date | null
+    error: string | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type JobRunMaxAggregateOutputType = {
+    id: string | null
+    jobId: string | null
+    status: $Enums.TaskStatus | null
+    progress: number | null
+    trigger: string | null
+    startedAt: Date | null
+    finishedAt: Date | null
+    error: string | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type JobRunCountAggregateOutputType = {
+    id: number
+    jobId: number
+    status: number
+    progress: number
+    trigger: number
+    startedAt: number
+    finishedAt: number
+    error: number
+    meta: number
+    createdAt: number
+    updatedAt: number
+    _all: number
+  }
+
+
+  export type JobRunAvgAggregateInputType = {
+    progress?: true
+  }
+
+  export type JobRunSumAggregateInputType = {
+    progress?: true
+  }
+
+  export type JobRunMinAggregateInputType = {
+    id?: true
+    jobId?: true
+    status?: true
+    progress?: true
+    trigger?: true
+    startedAt?: true
+    finishedAt?: true
+    error?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type JobRunMaxAggregateInputType = {
+    id?: true
+    jobId?: true
+    status?: true
+    progress?: true
+    trigger?: true
+    startedAt?: true
+    finishedAt?: true
+    error?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type JobRunCountAggregateInputType = {
+    id?: true
+    jobId?: true
+    status?: true
+    progress?: true
+    trigger?: true
+    startedAt?: true
+    finishedAt?: true
+    error?: true
+    meta?: true
+    createdAt?: true
+    updatedAt?: true
+    _all?: true
+  }
+
+  export type JobRunAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which JobRun to aggregate.
+     */
+    where?: JobRunWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of JobRuns to fetch.
+     */
+    orderBy?: JobRunOrderByWithRelationInput | JobRunOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: JobRunWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` JobRuns from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` JobRuns.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned JobRuns
+    **/
+    _count?: true | JobRunCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to average
+    **/
+    _avg?: JobRunAvgAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to sum
+    **/
+    _sum?: JobRunSumAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: JobRunMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: JobRunMaxAggregateInputType
+  }
+
+  export type GetJobRunAggregateType<T extends JobRunAggregateArgs> = {
+        [P in keyof T & keyof AggregateJobRun]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateJobRun[P]>
+      : GetScalarType<T[P], AggregateJobRun[P]>
+  }
+
+
+
+
+  export type JobRunGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: JobRunWhereInput
+    orderBy?: JobRunOrderByWithAggregationInput | JobRunOrderByWithAggregationInput[]
+    by: JobRunScalarFieldEnum[] | JobRunScalarFieldEnum
+    having?: JobRunScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: JobRunCountAggregateInputType | true
+    _avg?: JobRunAvgAggregateInputType
+    _sum?: JobRunSumAggregateInputType
+    _min?: JobRunMinAggregateInputType
+    _max?: JobRunMaxAggregateInputType
+  }
+
+  export type JobRunGroupByOutputType = {
+    id: string
+    jobId: string
+    status: $Enums.TaskStatus
+    progress: number
+    trigger: string | null
+    startedAt: Date | null
+    finishedAt: Date | null
+    error: string | null
+    meta: JsonValue | null
+    createdAt: Date
+    updatedAt: Date
+    _count: JobRunCountAggregateOutputType | null
+    _avg: JobRunAvgAggregateOutputType | null
+    _sum: JobRunSumAggregateOutputType | null
+    _min: JobRunMinAggregateOutputType | null
+    _max: JobRunMaxAggregateOutputType | null
+  }
+
+  type GetJobRunGroupByPayload<T extends JobRunGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<JobRunGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof JobRunGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], JobRunGroupByOutputType[P]>
+            : GetScalarType<T[P], JobRunGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type JobRunSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    jobId?: boolean
+    status?: boolean
+    progress?: boolean
+    trigger?: boolean
+    startedAt?: boolean
+    finishedAt?: boolean
+    error?: boolean
+    meta?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    job?: boolean | JobDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["jobRun"]>
+
+  export type JobRunSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    jobId?: boolean
+    status?: boolean
+    progress?: boolean
+    trigger?: boolean
+    startedAt?: boolean
+    finishedAt?: boolean
+    error?: boolean
+    meta?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    job?: boolean | JobDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["jobRun"]>
+
+  export type JobRunSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    jobId?: boolean
+    status?: boolean
+    progress?: boolean
+    trigger?: boolean
+    startedAt?: boolean
+    finishedAt?: boolean
+    error?: boolean
+    meta?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    job?: boolean | JobDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["jobRun"]>
+
+  export type JobRunSelectScalar = {
+    id?: boolean
+    jobId?: boolean
+    status?: boolean
+    progress?: boolean
+    trigger?: boolean
+    startedAt?: boolean
+    finishedAt?: boolean
+    error?: boolean
+    meta?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }
+
+  export type JobRunOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "jobId" | "status" | "progress" | "trigger" | "startedAt" | "finishedAt" | "error" | "meta" | "createdAt" | "updatedAt", ExtArgs["result"]["jobRun"]>
+  export type JobRunInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    job?: boolean | JobDefaultArgs<ExtArgs>
+  }
+  export type JobRunIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    job?: boolean | JobDefaultArgs<ExtArgs>
+  }
+  export type JobRunIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    job?: boolean | JobDefaultArgs<ExtArgs>
+  }
+
+  export type $JobRunPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "JobRun"
+    objects: {
+      job: Prisma.$JobPayload<ExtArgs>
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      jobId: string
+      status: $Enums.TaskStatus
+      progress: number
+      trigger: string | null
+      startedAt: Date | null
+      finishedAt: Date | null
+      error: string | null
+      meta: Prisma.JsonValue | null
+      createdAt: Date
+      updatedAt: Date
+    }, ExtArgs["result"]["jobRun"]>
+    composites: {}
+  }
+
+  type JobRunGetPayload<S extends boolean | null | undefined | JobRunDefaultArgs> = $Result.GetResult<Prisma.$JobRunPayload, S>
+
+  type JobRunCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
+    Omit<JobRunFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+      select?: JobRunCountAggregateInputType | true
+    }
+
+  export interface JobRunDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['JobRun'], meta: { name: 'JobRun' } }
+    /**
+     * Find zero or one JobRun that matches the filter.
+     * @param {JobRunFindUniqueArgs} args - Arguments to find a JobRun
+     * @example
+     * // Get one JobRun
+     * const jobRun = await prisma.jobRun.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends JobRunFindUniqueArgs>(args: SelectSubset<T, JobRunFindUniqueArgs<ExtArgs>>): Prisma__JobRunClient<$Result.GetResult<Prisma.$JobRunPayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find one JobRun that matches the filter or throw an error with `error.code='P2025'`
+     * if no matches were found.
+     * @param {JobRunFindUniqueOrThrowArgs} args - Arguments to find a JobRun
+     * @example
+     * // Get one JobRun
+     * const jobRun = await prisma.jobRun.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends JobRunFindUniqueOrThrowArgs>(args: SelectSubset<T, JobRunFindUniqueOrThrowArgs<ExtArgs>>): Prisma__JobRunClient<$Result.GetResult<Prisma.$JobRunPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first JobRun that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {JobRunFindFirstArgs} args - Arguments to find a JobRun
+     * @example
+     * // Get one JobRun
+     * const jobRun = await prisma.jobRun.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends JobRunFindFirstArgs>(args?: SelectSubset<T, JobRunFindFirstArgs<ExtArgs>>): Prisma__JobRunClient<$Result.GetResult<Prisma.$JobRunPayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first JobRun that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {JobRunFindFirstOrThrowArgs} args - Arguments to find a JobRun
+     * @example
+     * // Get one JobRun
+     * const jobRun = await prisma.jobRun.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends JobRunFindFirstOrThrowArgs>(args?: SelectSubset<T, JobRunFindFirstOrThrowArgs<ExtArgs>>): Prisma__JobRunClient<$Result.GetResult<Prisma.$JobRunPayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find zero or more JobRuns that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {JobRunFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all JobRuns
+     * const jobRuns = await prisma.jobRun.findMany()
+     * 
+     * // Get first 10 JobRuns
+     * const jobRuns = await prisma.jobRun.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const jobRunWithIdOnly = await prisma.jobRun.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends JobRunFindManyArgs>(args?: SelectSubset<T, JobRunFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$JobRunPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+
+    /**
+     * Create a JobRun.
+     * @param {JobRunCreateArgs} args - Arguments to create a JobRun.
+     * @example
+     * // Create one JobRun
+     * const JobRun = await prisma.jobRun.create({
+     *   data: {
+     *     // ... data to create a JobRun
+     *   }
+     * })
+     * 
+     */
+    create<T extends JobRunCreateArgs>(args: SelectSubset<T, JobRunCreateArgs<ExtArgs>>): Prisma__JobRunClient<$Result.GetResult<Prisma.$JobRunPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Create many JobRuns.
+     * @param {JobRunCreateManyArgs} args - Arguments to create many JobRuns.
+     * @example
+     * // Create many JobRuns
+     * const jobRun = await prisma.jobRun.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends JobRunCreateManyArgs>(args?: SelectSubset<T, JobRunCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many JobRuns and returns the data saved in the database.
+     * @param {JobRunCreateManyAndReturnArgs} args - Arguments to create many JobRuns.
+     * @example
+     * // Create many JobRuns
+     * const jobRun = await prisma.jobRun.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many JobRuns and only return the `id`
+     * const jobRunWithIdOnly = await prisma.jobRun.createManyAndReturn({
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends JobRunCreateManyAndReturnArgs>(args?: SelectSubset<T, JobRunCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$JobRunPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Delete a JobRun.
+     * @param {JobRunDeleteArgs} args - Arguments to delete one JobRun.
+     * @example
+     * // Delete one JobRun
+     * const JobRun = await prisma.jobRun.delete({
+     *   where: {
+     *     // ... filter to delete one JobRun
+     *   }
+     * })
+     * 
+     */
+    delete<T extends JobRunDeleteArgs>(args: SelectSubset<T, JobRunDeleteArgs<ExtArgs>>): Prisma__JobRunClient<$Result.GetResult<Prisma.$JobRunPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Update one JobRun.
+     * @param {JobRunUpdateArgs} args - Arguments to update one JobRun.
+     * @example
+     * // Update one JobRun
+     * const jobRun = await prisma.jobRun.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends JobRunUpdateArgs>(args: SelectSubset<T, JobRunUpdateArgs<ExtArgs>>): Prisma__JobRunClient<$Result.GetResult<Prisma.$JobRunPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Delete zero or more JobRuns.
+     * @param {JobRunDeleteManyArgs} args - Arguments to filter JobRuns to delete.
+     * @example
+     * // Delete a few JobRuns
+     * const { count } = await prisma.jobRun.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends JobRunDeleteManyArgs>(args?: SelectSubset<T, JobRunDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more JobRuns.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {JobRunUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many JobRuns
+     * const jobRun = await prisma.jobRun.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends JobRunUpdateManyArgs>(args: SelectSubset<T, JobRunUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more JobRuns and returns the data updated in the database.
+     * @param {JobRunUpdateManyAndReturnArgs} args - Arguments to update many JobRuns.
+     * @example
+     * // Update many JobRuns
+     * const jobRun = await prisma.jobRun.updateManyAndReturn({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Update zero or more JobRuns and only return the `id`
+     * const jobRunWithIdOnly = await prisma.jobRun.updateManyAndReturn({
+     *   select: { id: true },
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    updateManyAndReturn<T extends JobRunUpdateManyAndReturnArgs>(args: SelectSubset<T, JobRunUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$JobRunPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Create or update one JobRun.
+     * @param {JobRunUpsertArgs} args - Arguments to update or create a JobRun.
+     * @example
+     * // Update or create a JobRun
+     * const jobRun = await prisma.jobRun.upsert({
+     *   create: {
+     *     // ... data to create a JobRun
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the JobRun we want to update
+     *   }
+     * })
+     */
+    upsert<T extends JobRunUpsertArgs>(args: SelectSubset<T, JobRunUpsertArgs<ExtArgs>>): Prisma__JobRunClient<$Result.GetResult<Prisma.$JobRunPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+
+    /**
+     * Count the number of JobRuns.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {JobRunCountArgs} args - Arguments to filter JobRuns to count.
+     * @example
+     * // Count the number of JobRuns
+     * const count = await prisma.jobRun.count({
+     *   where: {
+     *     // ... the filter for the JobRuns we want to count
+     *   }
+     * })
+    **/
+    count<T extends JobRunCountArgs>(
+      args?: Subset<T, JobRunCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], JobRunCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a JobRun.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {JobRunAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends JobRunAggregateArgs>(args: Subset<T, JobRunAggregateArgs>): Prisma.PrismaPromise<GetJobRunAggregateType<T>>
+
+    /**
+     * Group by JobRun.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {JobRunGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends JobRunGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: JobRunGroupByArgs['orderBy'] }
+        : { orderBy?: JobRunGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, JobRunGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetJobRunGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the JobRun model
+   */
+  readonly fields: JobRunFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for JobRun.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__JobRunClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    job<T extends JobDefaultArgs<ExtArgs> = {}>(args?: Subset<T, JobDefaultArgs<ExtArgs>>): Prisma__JobClient<$Result.GetResult<Prisma.$JobPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the JobRun model
+   */
+  interface JobRunFieldRefs {
+    readonly id: FieldRef<"JobRun", 'String'>
+    readonly jobId: FieldRef<"JobRun", 'String'>
+    readonly status: FieldRef<"JobRun", 'TaskStatus'>
+    readonly progress: FieldRef<"JobRun", 'Int'>
+    readonly trigger: FieldRef<"JobRun", 'String'>
+    readonly startedAt: FieldRef<"JobRun", 'DateTime'>
+    readonly finishedAt: FieldRef<"JobRun", 'DateTime'>
+    readonly error: FieldRef<"JobRun", 'String'>
+    readonly meta: FieldRef<"JobRun", 'Json'>
+    readonly createdAt: FieldRef<"JobRun", 'DateTime'>
+    readonly updatedAt: FieldRef<"JobRun", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * JobRun findUnique
+   */
+  export type JobRunFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the JobRun
+     */
+    select?: JobRunSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the JobRun
+     */
+    omit?: JobRunOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: JobRunInclude<ExtArgs> | null
+    /**
+     * Filter, which JobRun to fetch.
+     */
+    where: JobRunWhereUniqueInput
+  }
+
+  /**
+   * JobRun findUniqueOrThrow
+   */
+  export type JobRunFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the JobRun
+     */
+    select?: JobRunSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the JobRun
+     */
+    omit?: JobRunOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: JobRunInclude<ExtArgs> | null
+    /**
+     * Filter, which JobRun to fetch.
+     */
+    where: JobRunWhereUniqueInput
+  }
+
+  /**
+   * JobRun findFirst
+   */
+  export type JobRunFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the JobRun
+     */
+    select?: JobRunSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the JobRun
+     */
+    omit?: JobRunOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: JobRunInclude<ExtArgs> | null
+    /**
+     * Filter, which JobRun to fetch.
+     */
+    where?: JobRunWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of JobRuns to fetch.
+     */
+    orderBy?: JobRunOrderByWithRelationInput | JobRunOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for JobRuns.
+     */
+    cursor?: JobRunWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` JobRuns from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` JobRuns.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of JobRuns.
+     */
+    distinct?: JobRunScalarFieldEnum | JobRunScalarFieldEnum[]
+  }
+
+  /**
+   * JobRun findFirstOrThrow
+   */
+  export type JobRunFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the JobRun
+     */
+    select?: JobRunSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the JobRun
+     */
+    omit?: JobRunOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: JobRunInclude<ExtArgs> | null
+    /**
+     * Filter, which JobRun to fetch.
+     */
+    where?: JobRunWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of JobRuns to fetch.
+     */
+    orderBy?: JobRunOrderByWithRelationInput | JobRunOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for JobRuns.
+     */
+    cursor?: JobRunWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` JobRuns from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` JobRuns.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of JobRuns.
+     */
+    distinct?: JobRunScalarFieldEnum | JobRunScalarFieldEnum[]
+  }
+
+  /**
+   * JobRun findMany
+   */
+  export type JobRunFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the JobRun
+     */
+    select?: JobRunSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the JobRun
+     */
+    omit?: JobRunOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: JobRunInclude<ExtArgs> | null
+    /**
+     * Filter, which JobRuns to fetch.
+     */
+    where?: JobRunWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of JobRuns to fetch.
+     */
+    orderBy?: JobRunOrderByWithRelationInput | JobRunOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing JobRuns.
+     */
+    cursor?: JobRunWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` JobRuns from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` JobRuns.
+     */
+    skip?: number
+    distinct?: JobRunScalarFieldEnum | JobRunScalarFieldEnum[]
+  }
+
+  /**
+   * JobRun create
+   */
+  export type JobRunCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the JobRun
+     */
+    select?: JobRunSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the JobRun
+     */
+    omit?: JobRunOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: JobRunInclude<ExtArgs> | null
+    /**
+     * The data needed to create a JobRun.
+     */
+    data: XOR<JobRunCreateInput, JobRunUncheckedCreateInput>
+  }
+
+  /**
+   * JobRun createMany
+   */
+  export type JobRunCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many JobRuns.
+     */
+    data: JobRunCreateManyInput | JobRunCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * JobRun createManyAndReturn
+   */
+  export type JobRunCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the JobRun
+     */
+    select?: JobRunSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the JobRun
+     */
+    omit?: JobRunOmit<ExtArgs> | null
+    /**
+     * The data used to create many JobRuns.
+     */
+    data: JobRunCreateManyInput | JobRunCreateManyInput[]
+    skipDuplicates?: boolean
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: JobRunIncludeCreateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * JobRun update
+   */
+  export type JobRunUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the JobRun
+     */
+    select?: JobRunSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the JobRun
+     */
+    omit?: JobRunOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: JobRunInclude<ExtArgs> | null
+    /**
+     * The data needed to update a JobRun.
+     */
+    data: XOR<JobRunUpdateInput, JobRunUncheckedUpdateInput>
+    /**
+     * Choose, which JobRun to update.
+     */
+    where: JobRunWhereUniqueInput
+  }
+
+  /**
+   * JobRun updateMany
+   */
+  export type JobRunUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update JobRuns.
+     */
+    data: XOR<JobRunUpdateManyMutationInput, JobRunUncheckedUpdateManyInput>
+    /**
+     * Filter which JobRuns to update
+     */
+    where?: JobRunWhereInput
+    /**
+     * Limit how many JobRuns to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * JobRun updateManyAndReturn
+   */
+  export type JobRunUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the JobRun
+     */
+    select?: JobRunSelectUpdateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the JobRun
+     */
+    omit?: JobRunOmit<ExtArgs> | null
+    /**
+     * The data used to update JobRuns.
+     */
+    data: XOR<JobRunUpdateManyMutationInput, JobRunUncheckedUpdateManyInput>
+    /**
+     * Filter which JobRuns to update
+     */
+    where?: JobRunWhereInput
+    /**
+     * Limit how many JobRuns to update.
+     */
+    limit?: number
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: JobRunIncludeUpdateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * JobRun upsert
+   */
+  export type JobRunUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the JobRun
+     */
+    select?: JobRunSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the JobRun
+     */
+    omit?: JobRunOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: JobRunInclude<ExtArgs> | null
+    /**
+     * The filter to search for the JobRun to update in case it exists.
+     */
+    where: JobRunWhereUniqueInput
+    /**
+     * In case the JobRun found by the `where` argument doesn't exist, create a new JobRun with this data.
+     */
+    create: XOR<JobRunCreateInput, JobRunUncheckedCreateInput>
+    /**
+     * In case the JobRun was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<JobRunUpdateInput, JobRunUncheckedUpdateInput>
+  }
+
+  /**
+   * JobRun delete
+   */
+  export type JobRunDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the JobRun
+     */
+    select?: JobRunSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the JobRun
+     */
+    omit?: JobRunOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: JobRunInclude<ExtArgs> | null
+    /**
+     * Filter which JobRun to delete.
+     */
+    where: JobRunWhereUniqueInput
+  }
+
+  /**
+   * JobRun deleteMany
+   */
+  export type JobRunDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which JobRuns to delete
+     */
+    where?: JobRunWhereInput
+    /**
+     * Limit how many JobRuns to delete.
+     */
+    limit?: number
+  }
+
+  /**
+   * JobRun without action
+   */
+  export type JobRunDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the JobRun
+     */
+    select?: JobRunSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the JobRun
+     */
+    omit?: JobRunOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: JobRunInclude<ExtArgs> | null
+  }
+
+
+  /**
    * Model QueryRun
    */
 
@@ -20524,6 +29379,7 @@ export namespace Prisma {
     updatedAt?: boolean
     keywords?: boolean | Content$keywordsArgs<ExtArgs>
     subjectMatches?: boolean | Content$subjectMatchesArgs<ExtArgs>
+    topicScores?: boolean | Content$topicScoresArgs<ExtArgs>
     entities?: boolean | Content$entitiesArgs<ExtArgs>
     favorites?: boolean | Content$favoritesArgs<ExtArgs>
     _count?: boolean | ContentCountOutputTypeDefaultArgs<ExtArgs>
@@ -20578,6 +29434,7 @@ export namespace Prisma {
   export type ContentInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     keywords?: boolean | Content$keywordsArgs<ExtArgs>
     subjectMatches?: boolean | Content$subjectMatchesArgs<ExtArgs>
+    topicScores?: boolean | Content$topicScoresArgs<ExtArgs>
     entities?: boolean | Content$entitiesArgs<ExtArgs>
     favorites?: boolean | Content$favoritesArgs<ExtArgs>
     _count?: boolean | ContentCountOutputTypeDefaultArgs<ExtArgs>
@@ -20590,6 +29447,7 @@ export namespace Prisma {
     objects: {
       keywords: Prisma.$ContentKeywordPayload<ExtArgs>[]
       subjectMatches: Prisma.$ContentSubjectMatchPayload<ExtArgs>[]
+      topicScores: Prisma.$ContentTopicScorePayload<ExtArgs>[]
       entities: Prisma.$ContentEntityPayload<ExtArgs> | null
       favorites: Prisma.$FavoritePayload<ExtArgs>[]
     }
@@ -21002,6 +29860,7 @@ export namespace Prisma {
     readonly [Symbol.toStringTag]: "PrismaPromise"
     keywords<T extends Content$keywordsArgs<ExtArgs> = {}>(args?: Subset<T, Content$keywordsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ContentKeywordPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     subjectMatches<T extends Content$subjectMatchesArgs<ExtArgs> = {}>(args?: Subset<T, Content$subjectMatchesArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ContentSubjectMatchPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    topicScores<T extends Content$topicScoresArgs<ExtArgs> = {}>(args?: Subset<T, Content$topicScoresArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ContentTopicScorePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     entities<T extends Content$entitiesArgs<ExtArgs> = {}>(args?: Subset<T, Content$entitiesArgs<ExtArgs>>): Prisma__ContentEntityClient<$Result.GetResult<Prisma.$ContentEntityPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
     favorites<T extends Content$favoritesArgs<ExtArgs> = {}>(args?: Subset<T, Content$favoritesArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$FavoritePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     /**
@@ -21478,6 +30337,30 @@ export namespace Prisma {
     take?: number
     skip?: number
     distinct?: ContentSubjectMatchScalarFieldEnum | ContentSubjectMatchScalarFieldEnum[]
+  }
+
+  /**
+   * Content.topicScores
+   */
+  export type Content$topicScoresArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ContentTopicScore
+     */
+    select?: ContentTopicScoreSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the ContentTopicScore
+     */
+    omit?: ContentTopicScoreOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ContentTopicScoreInclude<ExtArgs> | null
+    where?: ContentTopicScoreWhereInput
+    orderBy?: ContentTopicScoreOrderByWithRelationInput | ContentTopicScoreOrderByWithRelationInput[]
+    cursor?: ContentTopicScoreWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: ContentTopicScoreScalarFieldEnum | ContentTopicScoreScalarFieldEnum[]
   }
 
   /**
@@ -24816,6 +33699,1192 @@ export namespace Prisma {
      * Choose, which related nodes to fetch as well
      */
     include?: ContentEntityInclude<ExtArgs> | null
+  }
+
+
+  /**
+   * Model ContentTopicScore
+   */
+
+  export type AggregateContentTopicScore = {
+    _count: ContentTopicScoreCountAggregateOutputType | null
+    _avg: ContentTopicScoreAvgAggregateOutputType | null
+    _sum: ContentTopicScoreSumAggregateOutputType | null
+    _min: ContentTopicScoreMinAggregateOutputType | null
+    _max: ContentTopicScoreMaxAggregateOutputType | null
+  }
+
+  export type ContentTopicScoreAvgAggregateOutputType = {
+    vectorScore: number | null
+    keywordScore: number | null
+    exclusionPenalty: number | null
+    finalScore: number | null
+  }
+
+  export type ContentTopicScoreSumAggregateOutputType = {
+    vectorScore: number | null
+    keywordScore: number | null
+    exclusionPenalty: number | null
+    finalScore: number | null
+  }
+
+  export type ContentTopicScoreMinAggregateOutputType = {
+    id: string | null
+    contentId: string | null
+    topicId: string | null
+    vectorScore: number | null
+    keywordScore: number | null
+    exclusionPenalty: number | null
+    finalScore: number | null
+    reason: string | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type ContentTopicScoreMaxAggregateOutputType = {
+    id: string | null
+    contentId: string | null
+    topicId: string | null
+    vectorScore: number | null
+    keywordScore: number | null
+    exclusionPenalty: number | null
+    finalScore: number | null
+    reason: string | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type ContentTopicScoreCountAggregateOutputType = {
+    id: number
+    contentId: number
+    topicId: number
+    vectorScore: number
+    keywordScore: number
+    exclusionPenalty: number
+    finalScore: number
+    reason: number
+    explain: number
+    createdAt: number
+    updatedAt: number
+    _all: number
+  }
+
+
+  export type ContentTopicScoreAvgAggregateInputType = {
+    vectorScore?: true
+    keywordScore?: true
+    exclusionPenalty?: true
+    finalScore?: true
+  }
+
+  export type ContentTopicScoreSumAggregateInputType = {
+    vectorScore?: true
+    keywordScore?: true
+    exclusionPenalty?: true
+    finalScore?: true
+  }
+
+  export type ContentTopicScoreMinAggregateInputType = {
+    id?: true
+    contentId?: true
+    topicId?: true
+    vectorScore?: true
+    keywordScore?: true
+    exclusionPenalty?: true
+    finalScore?: true
+    reason?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type ContentTopicScoreMaxAggregateInputType = {
+    id?: true
+    contentId?: true
+    topicId?: true
+    vectorScore?: true
+    keywordScore?: true
+    exclusionPenalty?: true
+    finalScore?: true
+    reason?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type ContentTopicScoreCountAggregateInputType = {
+    id?: true
+    contentId?: true
+    topicId?: true
+    vectorScore?: true
+    keywordScore?: true
+    exclusionPenalty?: true
+    finalScore?: true
+    reason?: true
+    explain?: true
+    createdAt?: true
+    updatedAt?: true
+    _all?: true
+  }
+
+  export type ContentTopicScoreAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which ContentTopicScore to aggregate.
+     */
+    where?: ContentTopicScoreWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of ContentTopicScores to fetch.
+     */
+    orderBy?: ContentTopicScoreOrderByWithRelationInput | ContentTopicScoreOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: ContentTopicScoreWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` ContentTopicScores from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` ContentTopicScores.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned ContentTopicScores
+    **/
+    _count?: true | ContentTopicScoreCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to average
+    **/
+    _avg?: ContentTopicScoreAvgAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to sum
+    **/
+    _sum?: ContentTopicScoreSumAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: ContentTopicScoreMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: ContentTopicScoreMaxAggregateInputType
+  }
+
+  export type GetContentTopicScoreAggregateType<T extends ContentTopicScoreAggregateArgs> = {
+        [P in keyof T & keyof AggregateContentTopicScore]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateContentTopicScore[P]>
+      : GetScalarType<T[P], AggregateContentTopicScore[P]>
+  }
+
+
+
+
+  export type ContentTopicScoreGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: ContentTopicScoreWhereInput
+    orderBy?: ContentTopicScoreOrderByWithAggregationInput | ContentTopicScoreOrderByWithAggregationInput[]
+    by: ContentTopicScoreScalarFieldEnum[] | ContentTopicScoreScalarFieldEnum
+    having?: ContentTopicScoreScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: ContentTopicScoreCountAggregateInputType | true
+    _avg?: ContentTopicScoreAvgAggregateInputType
+    _sum?: ContentTopicScoreSumAggregateInputType
+    _min?: ContentTopicScoreMinAggregateInputType
+    _max?: ContentTopicScoreMaxAggregateInputType
+  }
+
+  export type ContentTopicScoreGroupByOutputType = {
+    id: string
+    contentId: string
+    topicId: string
+    vectorScore: number | null
+    keywordScore: number | null
+    exclusionPenalty: number | null
+    finalScore: number | null
+    reason: string | null
+    explain: JsonValue | null
+    createdAt: Date
+    updatedAt: Date
+    _count: ContentTopicScoreCountAggregateOutputType | null
+    _avg: ContentTopicScoreAvgAggregateOutputType | null
+    _sum: ContentTopicScoreSumAggregateOutputType | null
+    _min: ContentTopicScoreMinAggregateOutputType | null
+    _max: ContentTopicScoreMaxAggregateOutputType | null
+  }
+
+  type GetContentTopicScoreGroupByPayload<T extends ContentTopicScoreGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<ContentTopicScoreGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof ContentTopicScoreGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], ContentTopicScoreGroupByOutputType[P]>
+            : GetScalarType<T[P], ContentTopicScoreGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type ContentTopicScoreSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    contentId?: boolean
+    topicId?: boolean
+    vectorScore?: boolean
+    keywordScore?: boolean
+    exclusionPenalty?: boolean
+    finalScore?: boolean
+    reason?: boolean
+    explain?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    content?: boolean | ContentDefaultArgs<ExtArgs>
+    topic?: boolean | TopicDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["contentTopicScore"]>
+
+  export type ContentTopicScoreSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    contentId?: boolean
+    topicId?: boolean
+    vectorScore?: boolean
+    keywordScore?: boolean
+    exclusionPenalty?: boolean
+    finalScore?: boolean
+    reason?: boolean
+    explain?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    content?: boolean | ContentDefaultArgs<ExtArgs>
+    topic?: boolean | TopicDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["contentTopicScore"]>
+
+  export type ContentTopicScoreSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    contentId?: boolean
+    topicId?: boolean
+    vectorScore?: boolean
+    keywordScore?: boolean
+    exclusionPenalty?: boolean
+    finalScore?: boolean
+    reason?: boolean
+    explain?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    content?: boolean | ContentDefaultArgs<ExtArgs>
+    topic?: boolean | TopicDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["contentTopicScore"]>
+
+  export type ContentTopicScoreSelectScalar = {
+    id?: boolean
+    contentId?: boolean
+    topicId?: boolean
+    vectorScore?: boolean
+    keywordScore?: boolean
+    exclusionPenalty?: boolean
+    finalScore?: boolean
+    reason?: boolean
+    explain?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }
+
+  export type ContentTopicScoreOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "contentId" | "topicId" | "vectorScore" | "keywordScore" | "exclusionPenalty" | "finalScore" | "reason" | "explain" | "createdAt" | "updatedAt", ExtArgs["result"]["contentTopicScore"]>
+  export type ContentTopicScoreInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    content?: boolean | ContentDefaultArgs<ExtArgs>
+    topic?: boolean | TopicDefaultArgs<ExtArgs>
+  }
+  export type ContentTopicScoreIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    content?: boolean | ContentDefaultArgs<ExtArgs>
+    topic?: boolean | TopicDefaultArgs<ExtArgs>
+  }
+  export type ContentTopicScoreIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    content?: boolean | ContentDefaultArgs<ExtArgs>
+    topic?: boolean | TopicDefaultArgs<ExtArgs>
+  }
+
+  export type $ContentTopicScorePayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "ContentTopicScore"
+    objects: {
+      content: Prisma.$ContentPayload<ExtArgs>
+      topic: Prisma.$TopicPayload<ExtArgs>
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      contentId: string
+      topicId: string
+      vectorScore: number | null
+      keywordScore: number | null
+      exclusionPenalty: number | null
+      finalScore: number | null
+      reason: string | null
+      explain: Prisma.JsonValue | null
+      createdAt: Date
+      updatedAt: Date
+    }, ExtArgs["result"]["contentTopicScore"]>
+    composites: {}
+  }
+
+  type ContentTopicScoreGetPayload<S extends boolean | null | undefined | ContentTopicScoreDefaultArgs> = $Result.GetResult<Prisma.$ContentTopicScorePayload, S>
+
+  type ContentTopicScoreCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
+    Omit<ContentTopicScoreFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+      select?: ContentTopicScoreCountAggregateInputType | true
+    }
+
+  export interface ContentTopicScoreDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['ContentTopicScore'], meta: { name: 'ContentTopicScore' } }
+    /**
+     * Find zero or one ContentTopicScore that matches the filter.
+     * @param {ContentTopicScoreFindUniqueArgs} args - Arguments to find a ContentTopicScore
+     * @example
+     * // Get one ContentTopicScore
+     * const contentTopicScore = await prisma.contentTopicScore.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends ContentTopicScoreFindUniqueArgs>(args: SelectSubset<T, ContentTopicScoreFindUniqueArgs<ExtArgs>>): Prisma__ContentTopicScoreClient<$Result.GetResult<Prisma.$ContentTopicScorePayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find one ContentTopicScore that matches the filter or throw an error with `error.code='P2025'`
+     * if no matches were found.
+     * @param {ContentTopicScoreFindUniqueOrThrowArgs} args - Arguments to find a ContentTopicScore
+     * @example
+     * // Get one ContentTopicScore
+     * const contentTopicScore = await prisma.contentTopicScore.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends ContentTopicScoreFindUniqueOrThrowArgs>(args: SelectSubset<T, ContentTopicScoreFindUniqueOrThrowArgs<ExtArgs>>): Prisma__ContentTopicScoreClient<$Result.GetResult<Prisma.$ContentTopicScorePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first ContentTopicScore that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ContentTopicScoreFindFirstArgs} args - Arguments to find a ContentTopicScore
+     * @example
+     * // Get one ContentTopicScore
+     * const contentTopicScore = await prisma.contentTopicScore.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends ContentTopicScoreFindFirstArgs>(args?: SelectSubset<T, ContentTopicScoreFindFirstArgs<ExtArgs>>): Prisma__ContentTopicScoreClient<$Result.GetResult<Prisma.$ContentTopicScorePayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first ContentTopicScore that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ContentTopicScoreFindFirstOrThrowArgs} args - Arguments to find a ContentTopicScore
+     * @example
+     * // Get one ContentTopicScore
+     * const contentTopicScore = await prisma.contentTopicScore.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends ContentTopicScoreFindFirstOrThrowArgs>(args?: SelectSubset<T, ContentTopicScoreFindFirstOrThrowArgs<ExtArgs>>): Prisma__ContentTopicScoreClient<$Result.GetResult<Prisma.$ContentTopicScorePayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find zero or more ContentTopicScores that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ContentTopicScoreFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all ContentTopicScores
+     * const contentTopicScores = await prisma.contentTopicScore.findMany()
+     * 
+     * // Get first 10 ContentTopicScores
+     * const contentTopicScores = await prisma.contentTopicScore.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const contentTopicScoreWithIdOnly = await prisma.contentTopicScore.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends ContentTopicScoreFindManyArgs>(args?: SelectSubset<T, ContentTopicScoreFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ContentTopicScorePayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+
+    /**
+     * Create a ContentTopicScore.
+     * @param {ContentTopicScoreCreateArgs} args - Arguments to create a ContentTopicScore.
+     * @example
+     * // Create one ContentTopicScore
+     * const ContentTopicScore = await prisma.contentTopicScore.create({
+     *   data: {
+     *     // ... data to create a ContentTopicScore
+     *   }
+     * })
+     * 
+     */
+    create<T extends ContentTopicScoreCreateArgs>(args: SelectSubset<T, ContentTopicScoreCreateArgs<ExtArgs>>): Prisma__ContentTopicScoreClient<$Result.GetResult<Prisma.$ContentTopicScorePayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Create many ContentTopicScores.
+     * @param {ContentTopicScoreCreateManyArgs} args - Arguments to create many ContentTopicScores.
+     * @example
+     * // Create many ContentTopicScores
+     * const contentTopicScore = await prisma.contentTopicScore.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends ContentTopicScoreCreateManyArgs>(args?: SelectSubset<T, ContentTopicScoreCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many ContentTopicScores and returns the data saved in the database.
+     * @param {ContentTopicScoreCreateManyAndReturnArgs} args - Arguments to create many ContentTopicScores.
+     * @example
+     * // Create many ContentTopicScores
+     * const contentTopicScore = await prisma.contentTopicScore.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many ContentTopicScores and only return the `id`
+     * const contentTopicScoreWithIdOnly = await prisma.contentTopicScore.createManyAndReturn({
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends ContentTopicScoreCreateManyAndReturnArgs>(args?: SelectSubset<T, ContentTopicScoreCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ContentTopicScorePayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Delete a ContentTopicScore.
+     * @param {ContentTopicScoreDeleteArgs} args - Arguments to delete one ContentTopicScore.
+     * @example
+     * // Delete one ContentTopicScore
+     * const ContentTopicScore = await prisma.contentTopicScore.delete({
+     *   where: {
+     *     // ... filter to delete one ContentTopicScore
+     *   }
+     * })
+     * 
+     */
+    delete<T extends ContentTopicScoreDeleteArgs>(args: SelectSubset<T, ContentTopicScoreDeleteArgs<ExtArgs>>): Prisma__ContentTopicScoreClient<$Result.GetResult<Prisma.$ContentTopicScorePayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Update one ContentTopicScore.
+     * @param {ContentTopicScoreUpdateArgs} args - Arguments to update one ContentTopicScore.
+     * @example
+     * // Update one ContentTopicScore
+     * const contentTopicScore = await prisma.contentTopicScore.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends ContentTopicScoreUpdateArgs>(args: SelectSubset<T, ContentTopicScoreUpdateArgs<ExtArgs>>): Prisma__ContentTopicScoreClient<$Result.GetResult<Prisma.$ContentTopicScorePayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Delete zero or more ContentTopicScores.
+     * @param {ContentTopicScoreDeleteManyArgs} args - Arguments to filter ContentTopicScores to delete.
+     * @example
+     * // Delete a few ContentTopicScores
+     * const { count } = await prisma.contentTopicScore.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends ContentTopicScoreDeleteManyArgs>(args?: SelectSubset<T, ContentTopicScoreDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more ContentTopicScores.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ContentTopicScoreUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many ContentTopicScores
+     * const contentTopicScore = await prisma.contentTopicScore.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends ContentTopicScoreUpdateManyArgs>(args: SelectSubset<T, ContentTopicScoreUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more ContentTopicScores and returns the data updated in the database.
+     * @param {ContentTopicScoreUpdateManyAndReturnArgs} args - Arguments to update many ContentTopicScores.
+     * @example
+     * // Update many ContentTopicScores
+     * const contentTopicScore = await prisma.contentTopicScore.updateManyAndReturn({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Update zero or more ContentTopicScores and only return the `id`
+     * const contentTopicScoreWithIdOnly = await prisma.contentTopicScore.updateManyAndReturn({
+     *   select: { id: true },
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    updateManyAndReturn<T extends ContentTopicScoreUpdateManyAndReturnArgs>(args: SelectSubset<T, ContentTopicScoreUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ContentTopicScorePayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Create or update one ContentTopicScore.
+     * @param {ContentTopicScoreUpsertArgs} args - Arguments to update or create a ContentTopicScore.
+     * @example
+     * // Update or create a ContentTopicScore
+     * const contentTopicScore = await prisma.contentTopicScore.upsert({
+     *   create: {
+     *     // ... data to create a ContentTopicScore
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the ContentTopicScore we want to update
+     *   }
+     * })
+     */
+    upsert<T extends ContentTopicScoreUpsertArgs>(args: SelectSubset<T, ContentTopicScoreUpsertArgs<ExtArgs>>): Prisma__ContentTopicScoreClient<$Result.GetResult<Prisma.$ContentTopicScorePayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+
+    /**
+     * Count the number of ContentTopicScores.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ContentTopicScoreCountArgs} args - Arguments to filter ContentTopicScores to count.
+     * @example
+     * // Count the number of ContentTopicScores
+     * const count = await prisma.contentTopicScore.count({
+     *   where: {
+     *     // ... the filter for the ContentTopicScores we want to count
+     *   }
+     * })
+    **/
+    count<T extends ContentTopicScoreCountArgs>(
+      args?: Subset<T, ContentTopicScoreCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], ContentTopicScoreCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a ContentTopicScore.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ContentTopicScoreAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends ContentTopicScoreAggregateArgs>(args: Subset<T, ContentTopicScoreAggregateArgs>): Prisma.PrismaPromise<GetContentTopicScoreAggregateType<T>>
+
+    /**
+     * Group by ContentTopicScore.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ContentTopicScoreGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends ContentTopicScoreGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: ContentTopicScoreGroupByArgs['orderBy'] }
+        : { orderBy?: ContentTopicScoreGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, ContentTopicScoreGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetContentTopicScoreGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the ContentTopicScore model
+   */
+  readonly fields: ContentTopicScoreFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for ContentTopicScore.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__ContentTopicScoreClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    content<T extends ContentDefaultArgs<ExtArgs> = {}>(args?: Subset<T, ContentDefaultArgs<ExtArgs>>): Prisma__ContentClient<$Result.GetResult<Prisma.$ContentPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    topic<T extends TopicDefaultArgs<ExtArgs> = {}>(args?: Subset<T, TopicDefaultArgs<ExtArgs>>): Prisma__TopicClient<$Result.GetResult<Prisma.$TopicPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the ContentTopicScore model
+   */
+  interface ContentTopicScoreFieldRefs {
+    readonly id: FieldRef<"ContentTopicScore", 'String'>
+    readonly contentId: FieldRef<"ContentTopicScore", 'String'>
+    readonly topicId: FieldRef<"ContentTopicScore", 'String'>
+    readonly vectorScore: FieldRef<"ContentTopicScore", 'Float'>
+    readonly keywordScore: FieldRef<"ContentTopicScore", 'Float'>
+    readonly exclusionPenalty: FieldRef<"ContentTopicScore", 'Float'>
+    readonly finalScore: FieldRef<"ContentTopicScore", 'Float'>
+    readonly reason: FieldRef<"ContentTopicScore", 'String'>
+    readonly explain: FieldRef<"ContentTopicScore", 'Json'>
+    readonly createdAt: FieldRef<"ContentTopicScore", 'DateTime'>
+    readonly updatedAt: FieldRef<"ContentTopicScore", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * ContentTopicScore findUnique
+   */
+  export type ContentTopicScoreFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ContentTopicScore
+     */
+    select?: ContentTopicScoreSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the ContentTopicScore
+     */
+    omit?: ContentTopicScoreOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ContentTopicScoreInclude<ExtArgs> | null
+    /**
+     * Filter, which ContentTopicScore to fetch.
+     */
+    where: ContentTopicScoreWhereUniqueInput
+  }
+
+  /**
+   * ContentTopicScore findUniqueOrThrow
+   */
+  export type ContentTopicScoreFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ContentTopicScore
+     */
+    select?: ContentTopicScoreSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the ContentTopicScore
+     */
+    omit?: ContentTopicScoreOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ContentTopicScoreInclude<ExtArgs> | null
+    /**
+     * Filter, which ContentTopicScore to fetch.
+     */
+    where: ContentTopicScoreWhereUniqueInput
+  }
+
+  /**
+   * ContentTopicScore findFirst
+   */
+  export type ContentTopicScoreFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ContentTopicScore
+     */
+    select?: ContentTopicScoreSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the ContentTopicScore
+     */
+    omit?: ContentTopicScoreOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ContentTopicScoreInclude<ExtArgs> | null
+    /**
+     * Filter, which ContentTopicScore to fetch.
+     */
+    where?: ContentTopicScoreWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of ContentTopicScores to fetch.
+     */
+    orderBy?: ContentTopicScoreOrderByWithRelationInput | ContentTopicScoreOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for ContentTopicScores.
+     */
+    cursor?: ContentTopicScoreWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` ContentTopicScores from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` ContentTopicScores.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of ContentTopicScores.
+     */
+    distinct?: ContentTopicScoreScalarFieldEnum | ContentTopicScoreScalarFieldEnum[]
+  }
+
+  /**
+   * ContentTopicScore findFirstOrThrow
+   */
+  export type ContentTopicScoreFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ContentTopicScore
+     */
+    select?: ContentTopicScoreSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the ContentTopicScore
+     */
+    omit?: ContentTopicScoreOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ContentTopicScoreInclude<ExtArgs> | null
+    /**
+     * Filter, which ContentTopicScore to fetch.
+     */
+    where?: ContentTopicScoreWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of ContentTopicScores to fetch.
+     */
+    orderBy?: ContentTopicScoreOrderByWithRelationInput | ContentTopicScoreOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for ContentTopicScores.
+     */
+    cursor?: ContentTopicScoreWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` ContentTopicScores from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` ContentTopicScores.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of ContentTopicScores.
+     */
+    distinct?: ContentTopicScoreScalarFieldEnum | ContentTopicScoreScalarFieldEnum[]
+  }
+
+  /**
+   * ContentTopicScore findMany
+   */
+  export type ContentTopicScoreFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ContentTopicScore
+     */
+    select?: ContentTopicScoreSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the ContentTopicScore
+     */
+    omit?: ContentTopicScoreOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ContentTopicScoreInclude<ExtArgs> | null
+    /**
+     * Filter, which ContentTopicScores to fetch.
+     */
+    where?: ContentTopicScoreWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of ContentTopicScores to fetch.
+     */
+    orderBy?: ContentTopicScoreOrderByWithRelationInput | ContentTopicScoreOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing ContentTopicScores.
+     */
+    cursor?: ContentTopicScoreWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` ContentTopicScores from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` ContentTopicScores.
+     */
+    skip?: number
+    distinct?: ContentTopicScoreScalarFieldEnum | ContentTopicScoreScalarFieldEnum[]
+  }
+
+  /**
+   * ContentTopicScore create
+   */
+  export type ContentTopicScoreCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ContentTopicScore
+     */
+    select?: ContentTopicScoreSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the ContentTopicScore
+     */
+    omit?: ContentTopicScoreOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ContentTopicScoreInclude<ExtArgs> | null
+    /**
+     * The data needed to create a ContentTopicScore.
+     */
+    data: XOR<ContentTopicScoreCreateInput, ContentTopicScoreUncheckedCreateInput>
+  }
+
+  /**
+   * ContentTopicScore createMany
+   */
+  export type ContentTopicScoreCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many ContentTopicScores.
+     */
+    data: ContentTopicScoreCreateManyInput | ContentTopicScoreCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * ContentTopicScore createManyAndReturn
+   */
+  export type ContentTopicScoreCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ContentTopicScore
+     */
+    select?: ContentTopicScoreSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the ContentTopicScore
+     */
+    omit?: ContentTopicScoreOmit<ExtArgs> | null
+    /**
+     * The data used to create many ContentTopicScores.
+     */
+    data: ContentTopicScoreCreateManyInput | ContentTopicScoreCreateManyInput[]
+    skipDuplicates?: boolean
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ContentTopicScoreIncludeCreateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * ContentTopicScore update
+   */
+  export type ContentTopicScoreUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ContentTopicScore
+     */
+    select?: ContentTopicScoreSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the ContentTopicScore
+     */
+    omit?: ContentTopicScoreOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ContentTopicScoreInclude<ExtArgs> | null
+    /**
+     * The data needed to update a ContentTopicScore.
+     */
+    data: XOR<ContentTopicScoreUpdateInput, ContentTopicScoreUncheckedUpdateInput>
+    /**
+     * Choose, which ContentTopicScore to update.
+     */
+    where: ContentTopicScoreWhereUniqueInput
+  }
+
+  /**
+   * ContentTopicScore updateMany
+   */
+  export type ContentTopicScoreUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update ContentTopicScores.
+     */
+    data: XOR<ContentTopicScoreUpdateManyMutationInput, ContentTopicScoreUncheckedUpdateManyInput>
+    /**
+     * Filter which ContentTopicScores to update
+     */
+    where?: ContentTopicScoreWhereInput
+    /**
+     * Limit how many ContentTopicScores to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * ContentTopicScore updateManyAndReturn
+   */
+  export type ContentTopicScoreUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ContentTopicScore
+     */
+    select?: ContentTopicScoreSelectUpdateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the ContentTopicScore
+     */
+    omit?: ContentTopicScoreOmit<ExtArgs> | null
+    /**
+     * The data used to update ContentTopicScores.
+     */
+    data: XOR<ContentTopicScoreUpdateManyMutationInput, ContentTopicScoreUncheckedUpdateManyInput>
+    /**
+     * Filter which ContentTopicScores to update
+     */
+    where?: ContentTopicScoreWhereInput
+    /**
+     * Limit how many ContentTopicScores to update.
+     */
+    limit?: number
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ContentTopicScoreIncludeUpdateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * ContentTopicScore upsert
+   */
+  export type ContentTopicScoreUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ContentTopicScore
+     */
+    select?: ContentTopicScoreSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the ContentTopicScore
+     */
+    omit?: ContentTopicScoreOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ContentTopicScoreInclude<ExtArgs> | null
+    /**
+     * The filter to search for the ContentTopicScore to update in case it exists.
+     */
+    where: ContentTopicScoreWhereUniqueInput
+    /**
+     * In case the ContentTopicScore found by the `where` argument doesn't exist, create a new ContentTopicScore with this data.
+     */
+    create: XOR<ContentTopicScoreCreateInput, ContentTopicScoreUncheckedCreateInput>
+    /**
+     * In case the ContentTopicScore was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<ContentTopicScoreUpdateInput, ContentTopicScoreUncheckedUpdateInput>
+  }
+
+  /**
+   * ContentTopicScore delete
+   */
+  export type ContentTopicScoreDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ContentTopicScore
+     */
+    select?: ContentTopicScoreSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the ContentTopicScore
+     */
+    omit?: ContentTopicScoreOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ContentTopicScoreInclude<ExtArgs> | null
+    /**
+     * Filter which ContentTopicScore to delete.
+     */
+    where: ContentTopicScoreWhereUniqueInput
+  }
+
+  /**
+   * ContentTopicScore deleteMany
+   */
+  export type ContentTopicScoreDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which ContentTopicScores to delete
+     */
+    where?: ContentTopicScoreWhereInput
+    /**
+     * Limit how many ContentTopicScores to delete.
+     */
+    limit?: number
+  }
+
+  /**
+   * ContentTopicScore without action
+   */
+  export type ContentTopicScoreDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ContentTopicScore
+     */
+    select?: ContentTopicScoreSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the ContentTopicScore
+     */
+    omit?: ContentTopicScoreOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ContentTopicScoreInclude<ExtArgs> | null
   }
 
 
@@ -35104,6 +45173,104 @@ export namespace Prisma {
   export type QuerySourcePolicyScalarFieldEnum = (typeof QuerySourcePolicyScalarFieldEnum)[keyof typeof QuerySourcePolicyScalarFieldEnum]
 
 
+  export const TopicScalarFieldEnum: {
+    id: 'id',
+    name: 'name',
+    description: 'description',
+    enabled: 'enabled',
+    frequency: 'frequency',
+    cronSchedule: 'cronSchedule',
+    profile: 'profile',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt'
+  };
+
+  export type TopicScalarFieldEnum = (typeof TopicScalarFieldEnum)[keyof typeof TopicScalarFieldEnum]
+
+
+  export const TopicTermScalarFieldEnum: {
+    id: 'id',
+    topicId: 'topicId',
+    type: 'type',
+    value: 'value',
+    weight: 'weight',
+    meta: 'meta',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt'
+  };
+
+  export type TopicTermScalarFieldEnum = (typeof TopicTermScalarFieldEnum)[keyof typeof TopicTermScalarFieldEnum]
+
+
+  export const TopicSourceScalarFieldEnum: {
+    id: 'id',
+    topicId: 'topicId',
+    sourceId: 'sourceId',
+    enabled: 'enabled',
+    retrievalPolicy: 'retrievalPolicy',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt'
+  };
+
+  export type TopicSourceScalarFieldEnum = (typeof TopicSourceScalarFieldEnum)[keyof typeof TopicSourceScalarFieldEnum]
+
+
+  export const JobScalarFieldEnum: {
+    id: 'id',
+    name: 'name',
+    type: 'type',
+    enabled: 'enabled',
+    frequency: 'frequency',
+    cronSchedule: 'cronSchedule',
+    triggerMode: 'triggerMode',
+    config: 'config',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt'
+  };
+
+  export type JobScalarFieldEnum = (typeof JobScalarFieldEnum)[keyof typeof JobScalarFieldEnum]
+
+
+  export const JobTopicScalarFieldEnum: {
+    id: 'id',
+    jobId: 'jobId',
+    topicId: 'topicId',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt'
+  };
+
+  export type JobTopicScalarFieldEnum = (typeof JobTopicScalarFieldEnum)[keyof typeof JobTopicScalarFieldEnum]
+
+
+  export const JobSourceScalarFieldEnum: {
+    id: 'id',
+    jobId: 'jobId',
+    sourceId: 'sourceId',
+    recallBindingOverride: 'recallBindingOverride',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt'
+  };
+
+  export type JobSourceScalarFieldEnum = (typeof JobSourceScalarFieldEnum)[keyof typeof JobSourceScalarFieldEnum]
+
+
+  export const JobRunScalarFieldEnum: {
+    id: 'id',
+    jobId: 'jobId',
+    status: 'status',
+    progress: 'progress',
+    trigger: 'trigger',
+    startedAt: 'startedAt',
+    finishedAt: 'finishedAt',
+    error: 'error',
+    meta: 'meta',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt'
+  };
+
+  export type JobRunScalarFieldEnum = (typeof JobRunScalarFieldEnum)[keyof typeof JobRunScalarFieldEnum]
+
+
   export const QueryRunScalarFieldEnum: {
     id: 'id',
     queryId: 'queryId',
@@ -35186,6 +45353,23 @@ export namespace Prisma {
   };
 
   export type ContentEntityScalarFieldEnum = (typeof ContentEntityScalarFieldEnum)[keyof typeof ContentEntityScalarFieldEnum]
+
+
+  export const ContentTopicScoreScalarFieldEnum: {
+    id: 'id',
+    contentId: 'contentId',
+    topicId: 'topicId',
+    vectorScore: 'vectorScore',
+    keywordScore: 'keywordScore',
+    exclusionPenalty: 'exclusionPenalty',
+    finalScore: 'finalScore',
+    reason: 'reason',
+    explain: 'explain',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt'
+  };
+
+  export type ContentTopicScoreScalarFieldEnum = (typeof ContentTopicScoreScalarFieldEnum)[keyof typeof ContentTopicScoreScalarFieldEnum]
 
 
   export const FavoriteScalarFieldEnum: {
@@ -35536,6 +45720,48 @@ export namespace Prisma {
 
 
   /**
+   * Reference to a field of type 'TopicTermType'
+   */
+  export type EnumTopicTermTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'TopicTermType'>
+    
+
+
+  /**
+   * Reference to a field of type 'TopicTermType[]'
+   */
+  export type ListEnumTopicTermTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'TopicTermType[]'>
+    
+
+
+  /**
+   * Reference to a field of type 'Float'
+   */
+  export type FloatFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Float'>
+    
+
+
+  /**
+   * Reference to a field of type 'Float[]'
+   */
+  export type ListFloatFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Float[]'>
+    
+
+
+  /**
+   * Reference to a field of type 'JobType'
+   */
+  export type EnumJobTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'JobType'>
+    
+
+
+  /**
+   * Reference to a field of type 'JobType[]'
+   */
+  export type ListEnumJobTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'JobType[]'>
+    
+
+
+  /**
    * Reference to a field of type 'TaskStatus'
    */
   export type EnumTaskStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'TaskStatus'>
@@ -35560,20 +45786,6 @@ export namespace Prisma {
    * Reference to a field of type 'ContentType[]'
    */
   export type ListEnumContentTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ContentType[]'>
-    
-
-
-  /**
-   * Reference to a field of type 'Float'
-   */
-  export type FloatFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Float'>
-    
-
-
-  /**
-   * Reference to a field of type 'Float[]'
-   */
-  export type ListFloatFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Float[]'>
     
 
 
@@ -35956,6 +46168,8 @@ export namespace Prisma {
     queries?: QueryListRelationFilter
     derivedKeywords?: KeywordListRelationFilter
     querySourcePolicies?: QuerySourcePolicyListRelationFilter
+    topicSources?: TopicSourceListRelationFilter
+    jobSources?: JobSourceListRelationFilter
   }
 
   export type SourceOrderByWithRelationInput = {
@@ -35982,6 +46196,8 @@ export namespace Prisma {
     queries?: QueryOrderByRelationAggregateInput
     derivedKeywords?: KeywordOrderByRelationAggregateInput
     querySourcePolicies?: QuerySourcePolicyOrderByRelationAggregateInput
+    topicSources?: TopicSourceOrderByRelationAggregateInput
+    jobSources?: JobSourceOrderByRelationAggregateInput
   }
 
   export type SourceWhereUniqueInput = Prisma.AtLeast<{
@@ -36011,6 +46227,8 @@ export namespace Prisma {
     queries?: QueryListRelationFilter
     derivedKeywords?: KeywordListRelationFilter
     querySourcePolicies?: QuerySourcePolicyListRelationFilter
+    topicSources?: TopicSourceListRelationFilter
+    jobSources?: JobSourceListRelationFilter
   }, "id" | "name">
 
   export type SourceOrderByWithAggregationInput = {
@@ -36614,6 +46832,528 @@ export namespace Prisma {
     updatedAt?: DateTimeWithAggregatesFilter<"QuerySourcePolicy"> | Date | string
   }
 
+  export type TopicWhereInput = {
+    AND?: TopicWhereInput | TopicWhereInput[]
+    OR?: TopicWhereInput[]
+    NOT?: TopicWhereInput | TopicWhereInput[]
+    id?: StringFilter<"Topic"> | string
+    name?: StringFilter<"Topic"> | string
+    description?: StringNullableFilter<"Topic"> | string | null
+    enabled?: BoolFilter<"Topic"> | boolean
+    frequency?: EnumQueryFrequencyFilter<"Topic"> | $Enums.QueryFrequency
+    cronSchedule?: StringNullableFilter<"Topic"> | string | null
+    profile?: JsonNullableFilter<"Topic">
+    createdAt?: DateTimeFilter<"Topic"> | Date | string
+    updatedAt?: DateTimeFilter<"Topic"> | Date | string
+    terms?: TopicTermListRelationFilter
+    sources?: TopicSourceListRelationFilter
+    jobTopics?: JobTopicListRelationFilter
+    scores?: ContentTopicScoreListRelationFilter
+  }
+
+  export type TopicOrderByWithRelationInput = {
+    id?: SortOrder
+    name?: SortOrder
+    description?: SortOrderInput | SortOrder
+    enabled?: SortOrder
+    frequency?: SortOrder
+    cronSchedule?: SortOrderInput | SortOrder
+    profile?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    terms?: TopicTermOrderByRelationAggregateInput
+    sources?: TopicSourceOrderByRelationAggregateInput
+    jobTopics?: JobTopicOrderByRelationAggregateInput
+    scores?: ContentTopicScoreOrderByRelationAggregateInput
+  }
+
+  export type TopicWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    name?: string
+    AND?: TopicWhereInput | TopicWhereInput[]
+    OR?: TopicWhereInput[]
+    NOT?: TopicWhereInput | TopicWhereInput[]
+    description?: StringNullableFilter<"Topic"> | string | null
+    enabled?: BoolFilter<"Topic"> | boolean
+    frequency?: EnumQueryFrequencyFilter<"Topic"> | $Enums.QueryFrequency
+    cronSchedule?: StringNullableFilter<"Topic"> | string | null
+    profile?: JsonNullableFilter<"Topic">
+    createdAt?: DateTimeFilter<"Topic"> | Date | string
+    updatedAt?: DateTimeFilter<"Topic"> | Date | string
+    terms?: TopicTermListRelationFilter
+    sources?: TopicSourceListRelationFilter
+    jobTopics?: JobTopicListRelationFilter
+    scores?: ContentTopicScoreListRelationFilter
+  }, "id" | "name">
+
+  export type TopicOrderByWithAggregationInput = {
+    id?: SortOrder
+    name?: SortOrder
+    description?: SortOrderInput | SortOrder
+    enabled?: SortOrder
+    frequency?: SortOrder
+    cronSchedule?: SortOrderInput | SortOrder
+    profile?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    _count?: TopicCountOrderByAggregateInput
+    _max?: TopicMaxOrderByAggregateInput
+    _min?: TopicMinOrderByAggregateInput
+  }
+
+  export type TopicScalarWhereWithAggregatesInput = {
+    AND?: TopicScalarWhereWithAggregatesInput | TopicScalarWhereWithAggregatesInput[]
+    OR?: TopicScalarWhereWithAggregatesInput[]
+    NOT?: TopicScalarWhereWithAggregatesInput | TopicScalarWhereWithAggregatesInput[]
+    id?: StringWithAggregatesFilter<"Topic"> | string
+    name?: StringWithAggregatesFilter<"Topic"> | string
+    description?: StringNullableWithAggregatesFilter<"Topic"> | string | null
+    enabled?: BoolWithAggregatesFilter<"Topic"> | boolean
+    frequency?: EnumQueryFrequencyWithAggregatesFilter<"Topic"> | $Enums.QueryFrequency
+    cronSchedule?: StringNullableWithAggregatesFilter<"Topic"> | string | null
+    profile?: JsonNullableWithAggregatesFilter<"Topic">
+    createdAt?: DateTimeWithAggregatesFilter<"Topic"> | Date | string
+    updatedAt?: DateTimeWithAggregatesFilter<"Topic"> | Date | string
+  }
+
+  export type TopicTermWhereInput = {
+    AND?: TopicTermWhereInput | TopicTermWhereInput[]
+    OR?: TopicTermWhereInput[]
+    NOT?: TopicTermWhereInput | TopicTermWhereInput[]
+    id?: StringFilter<"TopicTerm"> | string
+    topicId?: StringFilter<"TopicTerm"> | string
+    type?: EnumTopicTermTypeFilter<"TopicTerm"> | $Enums.TopicTermType
+    value?: StringFilter<"TopicTerm"> | string
+    weight?: FloatFilter<"TopicTerm"> | number
+    meta?: JsonNullableFilter<"TopicTerm">
+    createdAt?: DateTimeFilter<"TopicTerm"> | Date | string
+    updatedAt?: DateTimeFilter<"TopicTerm"> | Date | string
+    topic?: XOR<TopicScalarRelationFilter, TopicWhereInput>
+  }
+
+  export type TopicTermOrderByWithRelationInput = {
+    id?: SortOrder
+    topicId?: SortOrder
+    type?: SortOrder
+    value?: SortOrder
+    weight?: SortOrder
+    meta?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    topic?: TopicOrderByWithRelationInput
+  }
+
+  export type TopicTermWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    topicId_type_value?: TopicTermTopicIdTypeValueCompoundUniqueInput
+    AND?: TopicTermWhereInput | TopicTermWhereInput[]
+    OR?: TopicTermWhereInput[]
+    NOT?: TopicTermWhereInput | TopicTermWhereInput[]
+    topicId?: StringFilter<"TopicTerm"> | string
+    type?: EnumTopicTermTypeFilter<"TopicTerm"> | $Enums.TopicTermType
+    value?: StringFilter<"TopicTerm"> | string
+    weight?: FloatFilter<"TopicTerm"> | number
+    meta?: JsonNullableFilter<"TopicTerm">
+    createdAt?: DateTimeFilter<"TopicTerm"> | Date | string
+    updatedAt?: DateTimeFilter<"TopicTerm"> | Date | string
+    topic?: XOR<TopicScalarRelationFilter, TopicWhereInput>
+  }, "id" | "topicId_type_value">
+
+  export type TopicTermOrderByWithAggregationInput = {
+    id?: SortOrder
+    topicId?: SortOrder
+    type?: SortOrder
+    value?: SortOrder
+    weight?: SortOrder
+    meta?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    _count?: TopicTermCountOrderByAggregateInput
+    _avg?: TopicTermAvgOrderByAggregateInput
+    _max?: TopicTermMaxOrderByAggregateInput
+    _min?: TopicTermMinOrderByAggregateInput
+    _sum?: TopicTermSumOrderByAggregateInput
+  }
+
+  export type TopicTermScalarWhereWithAggregatesInput = {
+    AND?: TopicTermScalarWhereWithAggregatesInput | TopicTermScalarWhereWithAggregatesInput[]
+    OR?: TopicTermScalarWhereWithAggregatesInput[]
+    NOT?: TopicTermScalarWhereWithAggregatesInput | TopicTermScalarWhereWithAggregatesInput[]
+    id?: StringWithAggregatesFilter<"TopicTerm"> | string
+    topicId?: StringWithAggregatesFilter<"TopicTerm"> | string
+    type?: EnumTopicTermTypeWithAggregatesFilter<"TopicTerm"> | $Enums.TopicTermType
+    value?: StringWithAggregatesFilter<"TopicTerm"> | string
+    weight?: FloatWithAggregatesFilter<"TopicTerm"> | number
+    meta?: JsonNullableWithAggregatesFilter<"TopicTerm">
+    createdAt?: DateTimeWithAggregatesFilter<"TopicTerm"> | Date | string
+    updatedAt?: DateTimeWithAggregatesFilter<"TopicTerm"> | Date | string
+  }
+
+  export type TopicSourceWhereInput = {
+    AND?: TopicSourceWhereInput | TopicSourceWhereInput[]
+    OR?: TopicSourceWhereInput[]
+    NOT?: TopicSourceWhereInput | TopicSourceWhereInput[]
+    id?: StringFilter<"TopicSource"> | string
+    topicId?: StringFilter<"TopicSource"> | string
+    sourceId?: StringFilter<"TopicSource"> | string
+    enabled?: BoolFilter<"TopicSource"> | boolean
+    retrievalPolicy?: JsonNullableFilter<"TopicSource">
+    createdAt?: DateTimeFilter<"TopicSource"> | Date | string
+    updatedAt?: DateTimeFilter<"TopicSource"> | Date | string
+    topic?: XOR<TopicScalarRelationFilter, TopicWhereInput>
+    source?: XOR<SourceScalarRelationFilter, SourceWhereInput>
+  }
+
+  export type TopicSourceOrderByWithRelationInput = {
+    id?: SortOrder
+    topicId?: SortOrder
+    sourceId?: SortOrder
+    enabled?: SortOrder
+    retrievalPolicy?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    topic?: TopicOrderByWithRelationInput
+    source?: SourceOrderByWithRelationInput
+  }
+
+  export type TopicSourceWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    topicId_sourceId?: TopicSourceTopicIdSourceIdCompoundUniqueInput
+    AND?: TopicSourceWhereInput | TopicSourceWhereInput[]
+    OR?: TopicSourceWhereInput[]
+    NOT?: TopicSourceWhereInput | TopicSourceWhereInput[]
+    topicId?: StringFilter<"TopicSource"> | string
+    sourceId?: StringFilter<"TopicSource"> | string
+    enabled?: BoolFilter<"TopicSource"> | boolean
+    retrievalPolicy?: JsonNullableFilter<"TopicSource">
+    createdAt?: DateTimeFilter<"TopicSource"> | Date | string
+    updatedAt?: DateTimeFilter<"TopicSource"> | Date | string
+    topic?: XOR<TopicScalarRelationFilter, TopicWhereInput>
+    source?: XOR<SourceScalarRelationFilter, SourceWhereInput>
+  }, "id" | "topicId_sourceId">
+
+  export type TopicSourceOrderByWithAggregationInput = {
+    id?: SortOrder
+    topicId?: SortOrder
+    sourceId?: SortOrder
+    enabled?: SortOrder
+    retrievalPolicy?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    _count?: TopicSourceCountOrderByAggregateInput
+    _max?: TopicSourceMaxOrderByAggregateInput
+    _min?: TopicSourceMinOrderByAggregateInput
+  }
+
+  export type TopicSourceScalarWhereWithAggregatesInput = {
+    AND?: TopicSourceScalarWhereWithAggregatesInput | TopicSourceScalarWhereWithAggregatesInput[]
+    OR?: TopicSourceScalarWhereWithAggregatesInput[]
+    NOT?: TopicSourceScalarWhereWithAggregatesInput | TopicSourceScalarWhereWithAggregatesInput[]
+    id?: StringWithAggregatesFilter<"TopicSource"> | string
+    topicId?: StringWithAggregatesFilter<"TopicSource"> | string
+    sourceId?: StringWithAggregatesFilter<"TopicSource"> | string
+    enabled?: BoolWithAggregatesFilter<"TopicSource"> | boolean
+    retrievalPolicy?: JsonNullableWithAggregatesFilter<"TopicSource">
+    createdAt?: DateTimeWithAggregatesFilter<"TopicSource"> | Date | string
+    updatedAt?: DateTimeWithAggregatesFilter<"TopicSource"> | Date | string
+  }
+
+  export type JobWhereInput = {
+    AND?: JobWhereInput | JobWhereInput[]
+    OR?: JobWhereInput[]
+    NOT?: JobWhereInput | JobWhereInput[]
+    id?: StringFilter<"Job"> | string
+    name?: StringFilter<"Job"> | string
+    type?: EnumJobTypeFilter<"Job"> | $Enums.JobType
+    enabled?: BoolFilter<"Job"> | boolean
+    frequency?: EnumQueryFrequencyFilter<"Job"> | $Enums.QueryFrequency
+    cronSchedule?: StringNullableFilter<"Job"> | string | null
+    triggerMode?: StringNullableFilter<"Job"> | string | null
+    config?: JsonNullableFilter<"Job">
+    createdAt?: DateTimeFilter<"Job"> | Date | string
+    updatedAt?: DateTimeFilter<"Job"> | Date | string
+    jobTopics?: JobTopicListRelationFilter
+    jobSources?: JobSourceListRelationFilter
+    runs?: JobRunListRelationFilter
+  }
+
+  export type JobOrderByWithRelationInput = {
+    id?: SortOrder
+    name?: SortOrder
+    type?: SortOrder
+    enabled?: SortOrder
+    frequency?: SortOrder
+    cronSchedule?: SortOrderInput | SortOrder
+    triggerMode?: SortOrderInput | SortOrder
+    config?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    jobTopics?: JobTopicOrderByRelationAggregateInput
+    jobSources?: JobSourceOrderByRelationAggregateInput
+    runs?: JobRunOrderByRelationAggregateInput
+  }
+
+  export type JobWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    name?: string
+    AND?: JobWhereInput | JobWhereInput[]
+    OR?: JobWhereInput[]
+    NOT?: JobWhereInput | JobWhereInput[]
+    type?: EnumJobTypeFilter<"Job"> | $Enums.JobType
+    enabled?: BoolFilter<"Job"> | boolean
+    frequency?: EnumQueryFrequencyFilter<"Job"> | $Enums.QueryFrequency
+    cronSchedule?: StringNullableFilter<"Job"> | string | null
+    triggerMode?: StringNullableFilter<"Job"> | string | null
+    config?: JsonNullableFilter<"Job">
+    createdAt?: DateTimeFilter<"Job"> | Date | string
+    updatedAt?: DateTimeFilter<"Job"> | Date | string
+    jobTopics?: JobTopicListRelationFilter
+    jobSources?: JobSourceListRelationFilter
+    runs?: JobRunListRelationFilter
+  }, "id" | "name">
+
+  export type JobOrderByWithAggregationInput = {
+    id?: SortOrder
+    name?: SortOrder
+    type?: SortOrder
+    enabled?: SortOrder
+    frequency?: SortOrder
+    cronSchedule?: SortOrderInput | SortOrder
+    triggerMode?: SortOrderInput | SortOrder
+    config?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    _count?: JobCountOrderByAggregateInput
+    _max?: JobMaxOrderByAggregateInput
+    _min?: JobMinOrderByAggregateInput
+  }
+
+  export type JobScalarWhereWithAggregatesInput = {
+    AND?: JobScalarWhereWithAggregatesInput | JobScalarWhereWithAggregatesInput[]
+    OR?: JobScalarWhereWithAggregatesInput[]
+    NOT?: JobScalarWhereWithAggregatesInput | JobScalarWhereWithAggregatesInput[]
+    id?: StringWithAggregatesFilter<"Job"> | string
+    name?: StringWithAggregatesFilter<"Job"> | string
+    type?: EnumJobTypeWithAggregatesFilter<"Job"> | $Enums.JobType
+    enabled?: BoolWithAggregatesFilter<"Job"> | boolean
+    frequency?: EnumQueryFrequencyWithAggregatesFilter<"Job"> | $Enums.QueryFrequency
+    cronSchedule?: StringNullableWithAggregatesFilter<"Job"> | string | null
+    triggerMode?: StringNullableWithAggregatesFilter<"Job"> | string | null
+    config?: JsonNullableWithAggregatesFilter<"Job">
+    createdAt?: DateTimeWithAggregatesFilter<"Job"> | Date | string
+    updatedAt?: DateTimeWithAggregatesFilter<"Job"> | Date | string
+  }
+
+  export type JobTopicWhereInput = {
+    AND?: JobTopicWhereInput | JobTopicWhereInput[]
+    OR?: JobTopicWhereInput[]
+    NOT?: JobTopicWhereInput | JobTopicWhereInput[]
+    id?: StringFilter<"JobTopic"> | string
+    jobId?: StringFilter<"JobTopic"> | string
+    topicId?: StringFilter<"JobTopic"> | string
+    createdAt?: DateTimeFilter<"JobTopic"> | Date | string
+    updatedAt?: DateTimeFilter<"JobTopic"> | Date | string
+    job?: XOR<JobScalarRelationFilter, JobWhereInput>
+    topic?: XOR<TopicScalarRelationFilter, TopicWhereInput>
+  }
+
+  export type JobTopicOrderByWithRelationInput = {
+    id?: SortOrder
+    jobId?: SortOrder
+    topicId?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    job?: JobOrderByWithRelationInput
+    topic?: TopicOrderByWithRelationInput
+  }
+
+  export type JobTopicWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    jobId_topicId?: JobTopicJobIdTopicIdCompoundUniqueInput
+    AND?: JobTopicWhereInput | JobTopicWhereInput[]
+    OR?: JobTopicWhereInput[]
+    NOT?: JobTopicWhereInput | JobTopicWhereInput[]
+    jobId?: StringFilter<"JobTopic"> | string
+    topicId?: StringFilter<"JobTopic"> | string
+    createdAt?: DateTimeFilter<"JobTopic"> | Date | string
+    updatedAt?: DateTimeFilter<"JobTopic"> | Date | string
+    job?: XOR<JobScalarRelationFilter, JobWhereInput>
+    topic?: XOR<TopicScalarRelationFilter, TopicWhereInput>
+  }, "id" | "jobId_topicId">
+
+  export type JobTopicOrderByWithAggregationInput = {
+    id?: SortOrder
+    jobId?: SortOrder
+    topicId?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    _count?: JobTopicCountOrderByAggregateInput
+    _max?: JobTopicMaxOrderByAggregateInput
+    _min?: JobTopicMinOrderByAggregateInput
+  }
+
+  export type JobTopicScalarWhereWithAggregatesInput = {
+    AND?: JobTopicScalarWhereWithAggregatesInput | JobTopicScalarWhereWithAggregatesInput[]
+    OR?: JobTopicScalarWhereWithAggregatesInput[]
+    NOT?: JobTopicScalarWhereWithAggregatesInput | JobTopicScalarWhereWithAggregatesInput[]
+    id?: StringWithAggregatesFilter<"JobTopic"> | string
+    jobId?: StringWithAggregatesFilter<"JobTopic"> | string
+    topicId?: StringWithAggregatesFilter<"JobTopic"> | string
+    createdAt?: DateTimeWithAggregatesFilter<"JobTopic"> | Date | string
+    updatedAt?: DateTimeWithAggregatesFilter<"JobTopic"> | Date | string
+  }
+
+  export type JobSourceWhereInput = {
+    AND?: JobSourceWhereInput | JobSourceWhereInput[]
+    OR?: JobSourceWhereInput[]
+    NOT?: JobSourceWhereInput | JobSourceWhereInput[]
+    id?: StringFilter<"JobSource"> | string
+    jobId?: StringFilter<"JobSource"> | string
+    sourceId?: StringFilter<"JobSource"> | string
+    recallBindingOverride?: JsonNullableFilter<"JobSource">
+    createdAt?: DateTimeFilter<"JobSource"> | Date | string
+    updatedAt?: DateTimeFilter<"JobSource"> | Date | string
+    job?: XOR<JobScalarRelationFilter, JobWhereInput>
+    source?: XOR<SourceScalarRelationFilter, SourceWhereInput>
+  }
+
+  export type JobSourceOrderByWithRelationInput = {
+    id?: SortOrder
+    jobId?: SortOrder
+    sourceId?: SortOrder
+    recallBindingOverride?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    job?: JobOrderByWithRelationInput
+    source?: SourceOrderByWithRelationInput
+  }
+
+  export type JobSourceWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    jobId_sourceId?: JobSourceJobIdSourceIdCompoundUniqueInput
+    AND?: JobSourceWhereInput | JobSourceWhereInput[]
+    OR?: JobSourceWhereInput[]
+    NOT?: JobSourceWhereInput | JobSourceWhereInput[]
+    jobId?: StringFilter<"JobSource"> | string
+    sourceId?: StringFilter<"JobSource"> | string
+    recallBindingOverride?: JsonNullableFilter<"JobSource">
+    createdAt?: DateTimeFilter<"JobSource"> | Date | string
+    updatedAt?: DateTimeFilter<"JobSource"> | Date | string
+    job?: XOR<JobScalarRelationFilter, JobWhereInput>
+    source?: XOR<SourceScalarRelationFilter, SourceWhereInput>
+  }, "id" | "jobId_sourceId">
+
+  export type JobSourceOrderByWithAggregationInput = {
+    id?: SortOrder
+    jobId?: SortOrder
+    sourceId?: SortOrder
+    recallBindingOverride?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    _count?: JobSourceCountOrderByAggregateInput
+    _max?: JobSourceMaxOrderByAggregateInput
+    _min?: JobSourceMinOrderByAggregateInput
+  }
+
+  export type JobSourceScalarWhereWithAggregatesInput = {
+    AND?: JobSourceScalarWhereWithAggregatesInput | JobSourceScalarWhereWithAggregatesInput[]
+    OR?: JobSourceScalarWhereWithAggregatesInput[]
+    NOT?: JobSourceScalarWhereWithAggregatesInput | JobSourceScalarWhereWithAggregatesInput[]
+    id?: StringWithAggregatesFilter<"JobSource"> | string
+    jobId?: StringWithAggregatesFilter<"JobSource"> | string
+    sourceId?: StringWithAggregatesFilter<"JobSource"> | string
+    recallBindingOverride?: JsonNullableWithAggregatesFilter<"JobSource">
+    createdAt?: DateTimeWithAggregatesFilter<"JobSource"> | Date | string
+    updatedAt?: DateTimeWithAggregatesFilter<"JobSource"> | Date | string
+  }
+
+  export type JobRunWhereInput = {
+    AND?: JobRunWhereInput | JobRunWhereInput[]
+    OR?: JobRunWhereInput[]
+    NOT?: JobRunWhereInput | JobRunWhereInput[]
+    id?: StringFilter<"JobRun"> | string
+    jobId?: StringFilter<"JobRun"> | string
+    status?: EnumTaskStatusFilter<"JobRun"> | $Enums.TaskStatus
+    progress?: IntFilter<"JobRun"> | number
+    trigger?: StringNullableFilter<"JobRun"> | string | null
+    startedAt?: DateTimeNullableFilter<"JobRun"> | Date | string | null
+    finishedAt?: DateTimeNullableFilter<"JobRun"> | Date | string | null
+    error?: StringNullableFilter<"JobRun"> | string | null
+    meta?: JsonNullableFilter<"JobRun">
+    createdAt?: DateTimeFilter<"JobRun"> | Date | string
+    updatedAt?: DateTimeFilter<"JobRun"> | Date | string
+    job?: XOR<JobScalarRelationFilter, JobWhereInput>
+  }
+
+  export type JobRunOrderByWithRelationInput = {
+    id?: SortOrder
+    jobId?: SortOrder
+    status?: SortOrder
+    progress?: SortOrder
+    trigger?: SortOrderInput | SortOrder
+    startedAt?: SortOrderInput | SortOrder
+    finishedAt?: SortOrderInput | SortOrder
+    error?: SortOrderInput | SortOrder
+    meta?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    job?: JobOrderByWithRelationInput
+  }
+
+  export type JobRunWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    AND?: JobRunWhereInput | JobRunWhereInput[]
+    OR?: JobRunWhereInput[]
+    NOT?: JobRunWhereInput | JobRunWhereInput[]
+    jobId?: StringFilter<"JobRun"> | string
+    status?: EnumTaskStatusFilter<"JobRun"> | $Enums.TaskStatus
+    progress?: IntFilter<"JobRun"> | number
+    trigger?: StringNullableFilter<"JobRun"> | string | null
+    startedAt?: DateTimeNullableFilter<"JobRun"> | Date | string | null
+    finishedAt?: DateTimeNullableFilter<"JobRun"> | Date | string | null
+    error?: StringNullableFilter<"JobRun"> | string | null
+    meta?: JsonNullableFilter<"JobRun">
+    createdAt?: DateTimeFilter<"JobRun"> | Date | string
+    updatedAt?: DateTimeFilter<"JobRun"> | Date | string
+    job?: XOR<JobScalarRelationFilter, JobWhereInput>
+  }, "id">
+
+  export type JobRunOrderByWithAggregationInput = {
+    id?: SortOrder
+    jobId?: SortOrder
+    status?: SortOrder
+    progress?: SortOrder
+    trigger?: SortOrderInput | SortOrder
+    startedAt?: SortOrderInput | SortOrder
+    finishedAt?: SortOrderInput | SortOrder
+    error?: SortOrderInput | SortOrder
+    meta?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    _count?: JobRunCountOrderByAggregateInput
+    _avg?: JobRunAvgOrderByAggregateInput
+    _max?: JobRunMaxOrderByAggregateInput
+    _min?: JobRunMinOrderByAggregateInput
+    _sum?: JobRunSumOrderByAggregateInput
+  }
+
+  export type JobRunScalarWhereWithAggregatesInput = {
+    AND?: JobRunScalarWhereWithAggregatesInput | JobRunScalarWhereWithAggregatesInput[]
+    OR?: JobRunScalarWhereWithAggregatesInput[]
+    NOT?: JobRunScalarWhereWithAggregatesInput | JobRunScalarWhereWithAggregatesInput[]
+    id?: StringWithAggregatesFilter<"JobRun"> | string
+    jobId?: StringWithAggregatesFilter<"JobRun"> | string
+    status?: EnumTaskStatusWithAggregatesFilter<"JobRun"> | $Enums.TaskStatus
+    progress?: IntWithAggregatesFilter<"JobRun"> | number
+    trigger?: StringNullableWithAggregatesFilter<"JobRun"> | string | null
+    startedAt?: DateTimeNullableWithAggregatesFilter<"JobRun"> | Date | string | null
+    finishedAt?: DateTimeNullableWithAggregatesFilter<"JobRun"> | Date | string | null
+    error?: StringNullableWithAggregatesFilter<"JobRun"> | string | null
+    meta?: JsonNullableWithAggregatesFilter<"JobRun">
+    createdAt?: DateTimeWithAggregatesFilter<"JobRun"> | Date | string
+    updatedAt?: DateTimeWithAggregatesFilter<"JobRun"> | Date | string
+  }
+
   export type QueryRunWhereInput = {
     AND?: QueryRunWhereInput | QueryRunWhereInput[]
     OR?: QueryRunWhereInput[]
@@ -36777,6 +47517,7 @@ export namespace Prisma {
     updatedAt?: DateTimeFilter<"Content"> | Date | string
     keywords?: ContentKeywordListRelationFilter
     subjectMatches?: ContentSubjectMatchListRelationFilter
+    topicScores?: ContentTopicScoreListRelationFilter
     entities?: XOR<ContentEntityNullableScalarRelationFilter, ContentEntityWhereInput> | null
     favorites?: FavoriteListRelationFilter
   }
@@ -36796,6 +47537,7 @@ export namespace Prisma {
     updatedAt?: SortOrder
     keywords?: ContentKeywordOrderByRelationAggregateInput
     subjectMatches?: ContentSubjectMatchOrderByRelationAggregateInput
+    topicScores?: ContentTopicScoreOrderByRelationAggregateInput
     entities?: ContentEntityOrderByWithRelationInput
     favorites?: FavoriteOrderByRelationAggregateInput
   }
@@ -36818,6 +47560,7 @@ export namespace Prisma {
     updatedAt?: DateTimeFilter<"Content"> | Date | string
     keywords?: ContentKeywordListRelationFilter
     subjectMatches?: ContentSubjectMatchListRelationFilter
+    topicScores?: ContentTopicScoreListRelationFilter
     entities?: XOR<ContentEntityNullableScalarRelationFilter, ContentEntityWhereInput> | null
     favorites?: FavoriteListRelationFilter
   }, "id">
@@ -37056,6 +47799,97 @@ export namespace Prisma {
     persons?: StringNullableListFilter<"ContentEntity">
     orgs?: StringNullableListFilter<"ContentEntity">
     locations?: StringNullableListFilter<"ContentEntity">
+  }
+
+  export type ContentTopicScoreWhereInput = {
+    AND?: ContentTopicScoreWhereInput | ContentTopicScoreWhereInput[]
+    OR?: ContentTopicScoreWhereInput[]
+    NOT?: ContentTopicScoreWhereInput | ContentTopicScoreWhereInput[]
+    id?: StringFilter<"ContentTopicScore"> | string
+    contentId?: StringFilter<"ContentTopicScore"> | string
+    topicId?: StringFilter<"ContentTopicScore"> | string
+    vectorScore?: FloatNullableFilter<"ContentTopicScore"> | number | null
+    keywordScore?: FloatNullableFilter<"ContentTopicScore"> | number | null
+    exclusionPenalty?: FloatNullableFilter<"ContentTopicScore"> | number | null
+    finalScore?: FloatNullableFilter<"ContentTopicScore"> | number | null
+    reason?: StringNullableFilter<"ContentTopicScore"> | string | null
+    explain?: JsonNullableFilter<"ContentTopicScore">
+    createdAt?: DateTimeFilter<"ContentTopicScore"> | Date | string
+    updatedAt?: DateTimeFilter<"ContentTopicScore"> | Date | string
+    content?: XOR<ContentScalarRelationFilter, ContentWhereInput>
+    topic?: XOR<TopicScalarRelationFilter, TopicWhereInput>
+  }
+
+  export type ContentTopicScoreOrderByWithRelationInput = {
+    id?: SortOrder
+    contentId?: SortOrder
+    topicId?: SortOrder
+    vectorScore?: SortOrderInput | SortOrder
+    keywordScore?: SortOrderInput | SortOrder
+    exclusionPenalty?: SortOrderInput | SortOrder
+    finalScore?: SortOrderInput | SortOrder
+    reason?: SortOrderInput | SortOrder
+    explain?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    content?: ContentOrderByWithRelationInput
+    topic?: TopicOrderByWithRelationInput
+  }
+
+  export type ContentTopicScoreWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    contentId_topicId?: ContentTopicScoreContentIdTopicIdCompoundUniqueInput
+    AND?: ContentTopicScoreWhereInput | ContentTopicScoreWhereInput[]
+    OR?: ContentTopicScoreWhereInput[]
+    NOT?: ContentTopicScoreWhereInput | ContentTopicScoreWhereInput[]
+    contentId?: StringFilter<"ContentTopicScore"> | string
+    topicId?: StringFilter<"ContentTopicScore"> | string
+    vectorScore?: FloatNullableFilter<"ContentTopicScore"> | number | null
+    keywordScore?: FloatNullableFilter<"ContentTopicScore"> | number | null
+    exclusionPenalty?: FloatNullableFilter<"ContentTopicScore"> | number | null
+    finalScore?: FloatNullableFilter<"ContentTopicScore"> | number | null
+    reason?: StringNullableFilter<"ContentTopicScore"> | string | null
+    explain?: JsonNullableFilter<"ContentTopicScore">
+    createdAt?: DateTimeFilter<"ContentTopicScore"> | Date | string
+    updatedAt?: DateTimeFilter<"ContentTopicScore"> | Date | string
+    content?: XOR<ContentScalarRelationFilter, ContentWhereInput>
+    topic?: XOR<TopicScalarRelationFilter, TopicWhereInput>
+  }, "id" | "contentId_topicId">
+
+  export type ContentTopicScoreOrderByWithAggregationInput = {
+    id?: SortOrder
+    contentId?: SortOrder
+    topicId?: SortOrder
+    vectorScore?: SortOrderInput | SortOrder
+    keywordScore?: SortOrderInput | SortOrder
+    exclusionPenalty?: SortOrderInput | SortOrder
+    finalScore?: SortOrderInput | SortOrder
+    reason?: SortOrderInput | SortOrder
+    explain?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    _count?: ContentTopicScoreCountOrderByAggregateInput
+    _avg?: ContentTopicScoreAvgOrderByAggregateInput
+    _max?: ContentTopicScoreMaxOrderByAggregateInput
+    _min?: ContentTopicScoreMinOrderByAggregateInput
+    _sum?: ContentTopicScoreSumOrderByAggregateInput
+  }
+
+  export type ContentTopicScoreScalarWhereWithAggregatesInput = {
+    AND?: ContentTopicScoreScalarWhereWithAggregatesInput | ContentTopicScoreScalarWhereWithAggregatesInput[]
+    OR?: ContentTopicScoreScalarWhereWithAggregatesInput[]
+    NOT?: ContentTopicScoreScalarWhereWithAggregatesInput | ContentTopicScoreScalarWhereWithAggregatesInput[]
+    id?: StringWithAggregatesFilter<"ContentTopicScore"> | string
+    contentId?: StringWithAggregatesFilter<"ContentTopicScore"> | string
+    topicId?: StringWithAggregatesFilter<"ContentTopicScore"> | string
+    vectorScore?: FloatNullableWithAggregatesFilter<"ContentTopicScore"> | number | null
+    keywordScore?: FloatNullableWithAggregatesFilter<"ContentTopicScore"> | number | null
+    exclusionPenalty?: FloatNullableWithAggregatesFilter<"ContentTopicScore"> | number | null
+    finalScore?: FloatNullableWithAggregatesFilter<"ContentTopicScore"> | number | null
+    reason?: StringNullableWithAggregatesFilter<"ContentTopicScore"> | string | null
+    explain?: JsonNullableWithAggregatesFilter<"ContentTopicScore">
+    createdAt?: DateTimeWithAggregatesFilter<"ContentTopicScore"> | Date | string
+    updatedAt?: DateTimeWithAggregatesFilter<"ContentTopicScore"> | Date | string
   }
 
   export type FavoriteWhereInput = {
@@ -38050,6 +48884,8 @@ export namespace Prisma {
     queries?: QueryCreateNestedManyWithoutSourcesInput
     derivedKeywords?: KeywordCreateNestedManyWithoutDeriveSourceInput
     querySourcePolicies?: QuerySourcePolicyCreateNestedManyWithoutSourceInput
+    topicSources?: TopicSourceCreateNestedManyWithoutSourceInput
+    jobSources?: JobSourceCreateNestedManyWithoutSourceInput
   }
 
   export type SourceUncheckedCreateInput = {
@@ -38074,6 +48910,8 @@ export namespace Prisma {
     queries?: QueryUncheckedCreateNestedManyWithoutSourcesInput
     derivedKeywords?: KeywordUncheckedCreateNestedManyWithoutDeriveSourceInput
     querySourcePolicies?: QuerySourcePolicyUncheckedCreateNestedManyWithoutSourceInput
+    topicSources?: TopicSourceUncheckedCreateNestedManyWithoutSourceInput
+    jobSources?: JobSourceUncheckedCreateNestedManyWithoutSourceInput
   }
 
   export type SourceUpdateInput = {
@@ -38098,6 +48936,8 @@ export namespace Prisma {
     queries?: QueryUpdateManyWithoutSourcesNestedInput
     derivedKeywords?: KeywordUpdateManyWithoutDeriveSourceNestedInput
     querySourcePolicies?: QuerySourcePolicyUpdateManyWithoutSourceNestedInput
+    topicSources?: TopicSourceUpdateManyWithoutSourceNestedInput
+    jobSources?: JobSourceUpdateManyWithoutSourceNestedInput
   }
 
   export type SourceUncheckedUpdateInput = {
@@ -38122,6 +48962,8 @@ export namespace Prisma {
     queries?: QueryUncheckedUpdateManyWithoutSourcesNestedInput
     derivedKeywords?: KeywordUncheckedUpdateManyWithoutDeriveSourceNestedInput
     querySourcePolicies?: QuerySourcePolicyUncheckedUpdateManyWithoutSourceNestedInput
+    topicSources?: TopicSourceUncheckedUpdateManyWithoutSourceNestedInput
+    jobSources?: JobSourceUncheckedUpdateManyWithoutSourceNestedInput
   }
 
   export type SourceCreateManyInput = {
@@ -38769,6 +49611,565 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
+  export type TopicCreateInput = {
+    id?: string
+    name: string
+    description?: string | null
+    enabled?: boolean
+    frequency?: $Enums.QueryFrequency
+    cronSchedule?: string | null
+    profile?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    terms?: TopicTermCreateNestedManyWithoutTopicInput
+    sources?: TopicSourceCreateNestedManyWithoutTopicInput
+    jobTopics?: JobTopicCreateNestedManyWithoutTopicInput
+    scores?: ContentTopicScoreCreateNestedManyWithoutTopicInput
+  }
+
+  export type TopicUncheckedCreateInput = {
+    id?: string
+    name: string
+    description?: string | null
+    enabled?: boolean
+    frequency?: $Enums.QueryFrequency
+    cronSchedule?: string | null
+    profile?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    terms?: TopicTermUncheckedCreateNestedManyWithoutTopicInput
+    sources?: TopicSourceUncheckedCreateNestedManyWithoutTopicInput
+    jobTopics?: JobTopicUncheckedCreateNestedManyWithoutTopicInput
+    scores?: ContentTopicScoreUncheckedCreateNestedManyWithoutTopicInput
+  }
+
+  export type TopicUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    enabled?: BoolFieldUpdateOperationsInput | boolean
+    frequency?: EnumQueryFrequencyFieldUpdateOperationsInput | $Enums.QueryFrequency
+    cronSchedule?: NullableStringFieldUpdateOperationsInput | string | null
+    profile?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    terms?: TopicTermUpdateManyWithoutTopicNestedInput
+    sources?: TopicSourceUpdateManyWithoutTopicNestedInput
+    jobTopics?: JobTopicUpdateManyWithoutTopicNestedInput
+    scores?: ContentTopicScoreUpdateManyWithoutTopicNestedInput
+  }
+
+  export type TopicUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    enabled?: BoolFieldUpdateOperationsInput | boolean
+    frequency?: EnumQueryFrequencyFieldUpdateOperationsInput | $Enums.QueryFrequency
+    cronSchedule?: NullableStringFieldUpdateOperationsInput | string | null
+    profile?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    terms?: TopicTermUncheckedUpdateManyWithoutTopicNestedInput
+    sources?: TopicSourceUncheckedUpdateManyWithoutTopicNestedInput
+    jobTopics?: JobTopicUncheckedUpdateManyWithoutTopicNestedInput
+    scores?: ContentTopicScoreUncheckedUpdateManyWithoutTopicNestedInput
+  }
+
+  export type TopicCreateManyInput = {
+    id?: string
+    name: string
+    description?: string | null
+    enabled?: boolean
+    frequency?: $Enums.QueryFrequency
+    cronSchedule?: string | null
+    profile?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type TopicUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    enabled?: BoolFieldUpdateOperationsInput | boolean
+    frequency?: EnumQueryFrequencyFieldUpdateOperationsInput | $Enums.QueryFrequency
+    cronSchedule?: NullableStringFieldUpdateOperationsInput | string | null
+    profile?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type TopicUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    enabled?: BoolFieldUpdateOperationsInput | boolean
+    frequency?: EnumQueryFrequencyFieldUpdateOperationsInput | $Enums.QueryFrequency
+    cronSchedule?: NullableStringFieldUpdateOperationsInput | string | null
+    profile?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type TopicTermCreateInput = {
+    id?: string
+    type: $Enums.TopicTermType
+    value: string
+    weight?: number
+    meta?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    topic: TopicCreateNestedOneWithoutTermsInput
+  }
+
+  export type TopicTermUncheckedCreateInput = {
+    id?: string
+    topicId: string
+    type: $Enums.TopicTermType
+    value: string
+    weight?: number
+    meta?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type TopicTermUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    type?: EnumTopicTermTypeFieldUpdateOperationsInput | $Enums.TopicTermType
+    value?: StringFieldUpdateOperationsInput | string
+    weight?: FloatFieldUpdateOperationsInput | number
+    meta?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    topic?: TopicUpdateOneRequiredWithoutTermsNestedInput
+  }
+
+  export type TopicTermUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    topicId?: StringFieldUpdateOperationsInput | string
+    type?: EnumTopicTermTypeFieldUpdateOperationsInput | $Enums.TopicTermType
+    value?: StringFieldUpdateOperationsInput | string
+    weight?: FloatFieldUpdateOperationsInput | number
+    meta?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type TopicTermCreateManyInput = {
+    id?: string
+    topicId: string
+    type: $Enums.TopicTermType
+    value: string
+    weight?: number
+    meta?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type TopicTermUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    type?: EnumTopicTermTypeFieldUpdateOperationsInput | $Enums.TopicTermType
+    value?: StringFieldUpdateOperationsInput | string
+    weight?: FloatFieldUpdateOperationsInput | number
+    meta?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type TopicTermUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    topicId?: StringFieldUpdateOperationsInput | string
+    type?: EnumTopicTermTypeFieldUpdateOperationsInput | $Enums.TopicTermType
+    value?: StringFieldUpdateOperationsInput | string
+    weight?: FloatFieldUpdateOperationsInput | number
+    meta?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type TopicSourceCreateInput = {
+    id?: string
+    enabled?: boolean
+    retrievalPolicy?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    topic: TopicCreateNestedOneWithoutSourcesInput
+    source: SourceCreateNestedOneWithoutTopicSourcesInput
+  }
+
+  export type TopicSourceUncheckedCreateInput = {
+    id?: string
+    topicId: string
+    sourceId: string
+    enabled?: boolean
+    retrievalPolicy?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type TopicSourceUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    enabled?: BoolFieldUpdateOperationsInput | boolean
+    retrievalPolicy?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    topic?: TopicUpdateOneRequiredWithoutSourcesNestedInput
+    source?: SourceUpdateOneRequiredWithoutTopicSourcesNestedInput
+  }
+
+  export type TopicSourceUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    topicId?: StringFieldUpdateOperationsInput | string
+    sourceId?: StringFieldUpdateOperationsInput | string
+    enabled?: BoolFieldUpdateOperationsInput | boolean
+    retrievalPolicy?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type TopicSourceCreateManyInput = {
+    id?: string
+    topicId: string
+    sourceId: string
+    enabled?: boolean
+    retrievalPolicy?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type TopicSourceUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    enabled?: BoolFieldUpdateOperationsInput | boolean
+    retrievalPolicy?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type TopicSourceUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    topicId?: StringFieldUpdateOperationsInput | string
+    sourceId?: StringFieldUpdateOperationsInput | string
+    enabled?: BoolFieldUpdateOperationsInput | boolean
+    retrievalPolicy?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type JobCreateInput = {
+    id?: string
+    name: string
+    type: $Enums.JobType
+    enabled?: boolean
+    frequency?: $Enums.QueryFrequency
+    cronSchedule?: string | null
+    triggerMode?: string | null
+    config?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    jobTopics?: JobTopicCreateNestedManyWithoutJobInput
+    jobSources?: JobSourceCreateNestedManyWithoutJobInput
+    runs?: JobRunCreateNestedManyWithoutJobInput
+  }
+
+  export type JobUncheckedCreateInput = {
+    id?: string
+    name: string
+    type: $Enums.JobType
+    enabled?: boolean
+    frequency?: $Enums.QueryFrequency
+    cronSchedule?: string | null
+    triggerMode?: string | null
+    config?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    jobTopics?: JobTopicUncheckedCreateNestedManyWithoutJobInput
+    jobSources?: JobSourceUncheckedCreateNestedManyWithoutJobInput
+    runs?: JobRunUncheckedCreateNestedManyWithoutJobInput
+  }
+
+  export type JobUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    type?: EnumJobTypeFieldUpdateOperationsInput | $Enums.JobType
+    enabled?: BoolFieldUpdateOperationsInput | boolean
+    frequency?: EnumQueryFrequencyFieldUpdateOperationsInput | $Enums.QueryFrequency
+    cronSchedule?: NullableStringFieldUpdateOperationsInput | string | null
+    triggerMode?: NullableStringFieldUpdateOperationsInput | string | null
+    config?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    jobTopics?: JobTopicUpdateManyWithoutJobNestedInput
+    jobSources?: JobSourceUpdateManyWithoutJobNestedInput
+    runs?: JobRunUpdateManyWithoutJobNestedInput
+  }
+
+  export type JobUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    type?: EnumJobTypeFieldUpdateOperationsInput | $Enums.JobType
+    enabled?: BoolFieldUpdateOperationsInput | boolean
+    frequency?: EnumQueryFrequencyFieldUpdateOperationsInput | $Enums.QueryFrequency
+    cronSchedule?: NullableStringFieldUpdateOperationsInput | string | null
+    triggerMode?: NullableStringFieldUpdateOperationsInput | string | null
+    config?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    jobTopics?: JobTopicUncheckedUpdateManyWithoutJobNestedInput
+    jobSources?: JobSourceUncheckedUpdateManyWithoutJobNestedInput
+    runs?: JobRunUncheckedUpdateManyWithoutJobNestedInput
+  }
+
+  export type JobCreateManyInput = {
+    id?: string
+    name: string
+    type: $Enums.JobType
+    enabled?: boolean
+    frequency?: $Enums.QueryFrequency
+    cronSchedule?: string | null
+    triggerMode?: string | null
+    config?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type JobUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    type?: EnumJobTypeFieldUpdateOperationsInput | $Enums.JobType
+    enabled?: BoolFieldUpdateOperationsInput | boolean
+    frequency?: EnumQueryFrequencyFieldUpdateOperationsInput | $Enums.QueryFrequency
+    cronSchedule?: NullableStringFieldUpdateOperationsInput | string | null
+    triggerMode?: NullableStringFieldUpdateOperationsInput | string | null
+    config?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type JobUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    type?: EnumJobTypeFieldUpdateOperationsInput | $Enums.JobType
+    enabled?: BoolFieldUpdateOperationsInput | boolean
+    frequency?: EnumQueryFrequencyFieldUpdateOperationsInput | $Enums.QueryFrequency
+    cronSchedule?: NullableStringFieldUpdateOperationsInput | string | null
+    triggerMode?: NullableStringFieldUpdateOperationsInput | string | null
+    config?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type JobTopicCreateInput = {
+    id?: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    job: JobCreateNestedOneWithoutJobTopicsInput
+    topic: TopicCreateNestedOneWithoutJobTopicsInput
+  }
+
+  export type JobTopicUncheckedCreateInput = {
+    id?: string
+    jobId: string
+    topicId: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type JobTopicUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    job?: JobUpdateOneRequiredWithoutJobTopicsNestedInput
+    topic?: TopicUpdateOneRequiredWithoutJobTopicsNestedInput
+  }
+
+  export type JobTopicUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    jobId?: StringFieldUpdateOperationsInput | string
+    topicId?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type JobTopicCreateManyInput = {
+    id?: string
+    jobId: string
+    topicId: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type JobTopicUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type JobTopicUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    jobId?: StringFieldUpdateOperationsInput | string
+    topicId?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type JobSourceCreateInput = {
+    id?: string
+    recallBindingOverride?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    job: JobCreateNestedOneWithoutJobSourcesInput
+    source: SourceCreateNestedOneWithoutJobSourcesInput
+  }
+
+  export type JobSourceUncheckedCreateInput = {
+    id?: string
+    jobId: string
+    sourceId: string
+    recallBindingOverride?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type JobSourceUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    recallBindingOverride?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    job?: JobUpdateOneRequiredWithoutJobSourcesNestedInput
+    source?: SourceUpdateOneRequiredWithoutJobSourcesNestedInput
+  }
+
+  export type JobSourceUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    jobId?: StringFieldUpdateOperationsInput | string
+    sourceId?: StringFieldUpdateOperationsInput | string
+    recallBindingOverride?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type JobSourceCreateManyInput = {
+    id?: string
+    jobId: string
+    sourceId: string
+    recallBindingOverride?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type JobSourceUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    recallBindingOverride?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type JobSourceUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    jobId?: StringFieldUpdateOperationsInput | string
+    sourceId?: StringFieldUpdateOperationsInput | string
+    recallBindingOverride?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type JobRunCreateInput = {
+    id?: string
+    status?: $Enums.TaskStatus
+    progress?: number
+    trigger?: string | null
+    startedAt?: Date | string | null
+    finishedAt?: Date | string | null
+    error?: string | null
+    meta?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    job: JobCreateNestedOneWithoutRunsInput
+  }
+
+  export type JobRunUncheckedCreateInput = {
+    id?: string
+    jobId: string
+    status?: $Enums.TaskStatus
+    progress?: number
+    trigger?: string | null
+    startedAt?: Date | string | null
+    finishedAt?: Date | string | null
+    error?: string | null
+    meta?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type JobRunUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    status?: EnumTaskStatusFieldUpdateOperationsInput | $Enums.TaskStatus
+    progress?: IntFieldUpdateOperationsInput | number
+    trigger?: NullableStringFieldUpdateOperationsInput | string | null
+    startedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    finishedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    error?: NullableStringFieldUpdateOperationsInput | string | null
+    meta?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    job?: JobUpdateOneRequiredWithoutRunsNestedInput
+  }
+
+  export type JobRunUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    jobId?: StringFieldUpdateOperationsInput | string
+    status?: EnumTaskStatusFieldUpdateOperationsInput | $Enums.TaskStatus
+    progress?: IntFieldUpdateOperationsInput | number
+    trigger?: NullableStringFieldUpdateOperationsInput | string | null
+    startedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    finishedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    error?: NullableStringFieldUpdateOperationsInput | string | null
+    meta?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type JobRunCreateManyInput = {
+    id?: string
+    jobId: string
+    status?: $Enums.TaskStatus
+    progress?: number
+    trigger?: string | null
+    startedAt?: Date | string | null
+    finishedAt?: Date | string | null
+    error?: string | null
+    meta?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type JobRunUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    status?: EnumTaskStatusFieldUpdateOperationsInput | $Enums.TaskStatus
+    progress?: IntFieldUpdateOperationsInput | number
+    trigger?: NullableStringFieldUpdateOperationsInput | string | null
+    startedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    finishedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    error?: NullableStringFieldUpdateOperationsInput | string | null
+    meta?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type JobRunUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    jobId?: StringFieldUpdateOperationsInput | string
+    status?: EnumTaskStatusFieldUpdateOperationsInput | $Enums.TaskStatus
+    progress?: IntFieldUpdateOperationsInput | number
+    trigger?: NullableStringFieldUpdateOperationsInput | string | null
+    startedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    finishedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    error?: NullableStringFieldUpdateOperationsInput | string | null
+    meta?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
   export type QueryRunCreateInput = {
     id?: string
     status?: $Enums.TaskStatus
@@ -38940,6 +50341,7 @@ export namespace Prisma {
     updatedAt?: Date | string
     keywords?: ContentKeywordCreateNestedManyWithoutContentInput
     subjectMatches?: ContentSubjectMatchCreateNestedManyWithoutContentInput
+    topicScores?: ContentTopicScoreCreateNestedManyWithoutContentInput
     entities?: ContentEntityCreateNestedOneWithoutContentInput
     favorites?: FavoriteCreateNestedManyWithoutContentInput
   }
@@ -38959,6 +50361,7 @@ export namespace Prisma {
     updatedAt?: Date | string
     keywords?: ContentKeywordUncheckedCreateNestedManyWithoutContentInput
     subjectMatches?: ContentSubjectMatchUncheckedCreateNestedManyWithoutContentInput
+    topicScores?: ContentTopicScoreUncheckedCreateNestedManyWithoutContentInput
     entities?: ContentEntityUncheckedCreateNestedOneWithoutContentInput
     favorites?: FavoriteUncheckedCreateNestedManyWithoutContentInput
   }
@@ -38978,6 +50381,7 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     keywords?: ContentKeywordUpdateManyWithoutContentNestedInput
     subjectMatches?: ContentSubjectMatchUpdateManyWithoutContentNestedInput
+    topicScores?: ContentTopicScoreUpdateManyWithoutContentNestedInput
     entities?: ContentEntityUpdateOneWithoutContentNestedInput
     favorites?: FavoriteUpdateManyWithoutContentNestedInput
   }
@@ -38997,6 +50401,7 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     keywords?: ContentKeywordUncheckedUpdateManyWithoutContentNestedInput
     subjectMatches?: ContentSubjectMatchUncheckedUpdateManyWithoutContentNestedInput
+    topicScores?: ContentTopicScoreUncheckedUpdateManyWithoutContentNestedInput
     entities?: ContentEntityUncheckedUpdateOneWithoutContentNestedInput
     favorites?: FavoriteUncheckedUpdateManyWithoutContentNestedInput
   }
@@ -39242,6 +50647,102 @@ export namespace Prisma {
     persons?: ContentEntityUpdatepersonsInput | string[]
     orgs?: ContentEntityUpdateorgsInput | string[]
     locations?: ContentEntityUpdatelocationsInput | string[]
+  }
+
+  export type ContentTopicScoreCreateInput = {
+    id?: string
+    vectorScore?: number | null
+    keywordScore?: number | null
+    exclusionPenalty?: number | null
+    finalScore?: number | null
+    reason?: string | null
+    explain?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    content: ContentCreateNestedOneWithoutTopicScoresInput
+    topic: TopicCreateNestedOneWithoutScoresInput
+  }
+
+  export type ContentTopicScoreUncheckedCreateInput = {
+    id?: string
+    contentId: string
+    topicId: string
+    vectorScore?: number | null
+    keywordScore?: number | null
+    exclusionPenalty?: number | null
+    finalScore?: number | null
+    reason?: string | null
+    explain?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type ContentTopicScoreUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    vectorScore?: NullableFloatFieldUpdateOperationsInput | number | null
+    keywordScore?: NullableFloatFieldUpdateOperationsInput | number | null
+    exclusionPenalty?: NullableFloatFieldUpdateOperationsInput | number | null
+    finalScore?: NullableFloatFieldUpdateOperationsInput | number | null
+    reason?: NullableStringFieldUpdateOperationsInput | string | null
+    explain?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    content?: ContentUpdateOneRequiredWithoutTopicScoresNestedInput
+    topic?: TopicUpdateOneRequiredWithoutScoresNestedInput
+  }
+
+  export type ContentTopicScoreUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    contentId?: StringFieldUpdateOperationsInput | string
+    topicId?: StringFieldUpdateOperationsInput | string
+    vectorScore?: NullableFloatFieldUpdateOperationsInput | number | null
+    keywordScore?: NullableFloatFieldUpdateOperationsInput | number | null
+    exclusionPenalty?: NullableFloatFieldUpdateOperationsInput | number | null
+    finalScore?: NullableFloatFieldUpdateOperationsInput | number | null
+    reason?: NullableStringFieldUpdateOperationsInput | string | null
+    explain?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type ContentTopicScoreCreateManyInput = {
+    id?: string
+    contentId: string
+    topicId: string
+    vectorScore?: number | null
+    keywordScore?: number | null
+    exclusionPenalty?: number | null
+    finalScore?: number | null
+    reason?: string | null
+    explain?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type ContentTopicScoreUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    vectorScore?: NullableFloatFieldUpdateOperationsInput | number | null
+    keywordScore?: NullableFloatFieldUpdateOperationsInput | number | null
+    exclusionPenalty?: NullableFloatFieldUpdateOperationsInput | number | null
+    finalScore?: NullableFloatFieldUpdateOperationsInput | number | null
+    reason?: NullableStringFieldUpdateOperationsInput | string | null
+    explain?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type ContentTopicScoreUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    contentId?: StringFieldUpdateOperationsInput | string
+    topicId?: StringFieldUpdateOperationsInput | string
+    vectorScore?: NullableFloatFieldUpdateOperationsInput | number | null
+    keywordScore?: NullableFloatFieldUpdateOperationsInput | number | null
+    exclusionPenalty?: NullableFloatFieldUpdateOperationsInput | number | null
+    finalScore?: NullableFloatFieldUpdateOperationsInput | number | null
+    reason?: NullableStringFieldUpdateOperationsInput | string | null
+    explain?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
   export type FavoriteCreateInput = {
@@ -40383,7 +51884,27 @@ export namespace Prisma {
     none?: QuerySourcePolicyWhereInput
   }
 
+  export type TopicSourceListRelationFilter = {
+    every?: TopicSourceWhereInput
+    some?: TopicSourceWhereInput
+    none?: TopicSourceWhereInput
+  }
+
+  export type JobSourceListRelationFilter = {
+    every?: JobSourceWhereInput
+    some?: JobSourceWhereInput
+    none?: JobSourceWhereInput
+  }
+
   export type QuerySourcePolicyOrderByRelationAggregateInput = {
+    _count?: SortOrder
+  }
+
+  export type TopicSourceOrderByRelationAggregateInput = {
+    _count?: SortOrder
+  }
+
+  export type JobSourceOrderByRelationAggregateInput = {
     _count?: SortOrder
   }
 
@@ -40918,6 +52439,325 @@ export namespace Prisma {
     _max?: NestedEnumQueryContentFilterModeFilter<$PrismaModel>
   }
 
+  export type TopicTermListRelationFilter = {
+    every?: TopicTermWhereInput
+    some?: TopicTermWhereInput
+    none?: TopicTermWhereInput
+  }
+
+  export type JobTopicListRelationFilter = {
+    every?: JobTopicWhereInput
+    some?: JobTopicWhereInput
+    none?: JobTopicWhereInput
+  }
+
+  export type ContentTopicScoreListRelationFilter = {
+    every?: ContentTopicScoreWhereInput
+    some?: ContentTopicScoreWhereInput
+    none?: ContentTopicScoreWhereInput
+  }
+
+  export type TopicTermOrderByRelationAggregateInput = {
+    _count?: SortOrder
+  }
+
+  export type JobTopicOrderByRelationAggregateInput = {
+    _count?: SortOrder
+  }
+
+  export type ContentTopicScoreOrderByRelationAggregateInput = {
+    _count?: SortOrder
+  }
+
+  export type TopicCountOrderByAggregateInput = {
+    id?: SortOrder
+    name?: SortOrder
+    description?: SortOrder
+    enabled?: SortOrder
+    frequency?: SortOrder
+    cronSchedule?: SortOrder
+    profile?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type TopicMaxOrderByAggregateInput = {
+    id?: SortOrder
+    name?: SortOrder
+    description?: SortOrder
+    enabled?: SortOrder
+    frequency?: SortOrder
+    cronSchedule?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type TopicMinOrderByAggregateInput = {
+    id?: SortOrder
+    name?: SortOrder
+    description?: SortOrder
+    enabled?: SortOrder
+    frequency?: SortOrder
+    cronSchedule?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type EnumTopicTermTypeFilter<$PrismaModel = never> = {
+    equals?: $Enums.TopicTermType | EnumTopicTermTypeFieldRefInput<$PrismaModel>
+    in?: $Enums.TopicTermType[] | ListEnumTopicTermTypeFieldRefInput<$PrismaModel>
+    notIn?: $Enums.TopicTermType[] | ListEnumTopicTermTypeFieldRefInput<$PrismaModel>
+    not?: NestedEnumTopicTermTypeFilter<$PrismaModel> | $Enums.TopicTermType
+  }
+
+  export type FloatFilter<$PrismaModel = never> = {
+    equals?: number | FloatFieldRefInput<$PrismaModel>
+    in?: number[] | ListFloatFieldRefInput<$PrismaModel>
+    notIn?: number[] | ListFloatFieldRefInput<$PrismaModel>
+    lt?: number | FloatFieldRefInput<$PrismaModel>
+    lte?: number | FloatFieldRefInput<$PrismaModel>
+    gt?: number | FloatFieldRefInput<$PrismaModel>
+    gte?: number | FloatFieldRefInput<$PrismaModel>
+    not?: NestedFloatFilter<$PrismaModel> | number
+  }
+
+  export type TopicScalarRelationFilter = {
+    is?: TopicWhereInput
+    isNot?: TopicWhereInput
+  }
+
+  export type TopicTermTopicIdTypeValueCompoundUniqueInput = {
+    topicId: string
+    type: $Enums.TopicTermType
+    value: string
+  }
+
+  export type TopicTermCountOrderByAggregateInput = {
+    id?: SortOrder
+    topicId?: SortOrder
+    type?: SortOrder
+    value?: SortOrder
+    weight?: SortOrder
+    meta?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type TopicTermAvgOrderByAggregateInput = {
+    weight?: SortOrder
+  }
+
+  export type TopicTermMaxOrderByAggregateInput = {
+    id?: SortOrder
+    topicId?: SortOrder
+    type?: SortOrder
+    value?: SortOrder
+    weight?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type TopicTermMinOrderByAggregateInput = {
+    id?: SortOrder
+    topicId?: SortOrder
+    type?: SortOrder
+    value?: SortOrder
+    weight?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type TopicTermSumOrderByAggregateInput = {
+    weight?: SortOrder
+  }
+
+  export type EnumTopicTermTypeWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: $Enums.TopicTermType | EnumTopicTermTypeFieldRefInput<$PrismaModel>
+    in?: $Enums.TopicTermType[] | ListEnumTopicTermTypeFieldRefInput<$PrismaModel>
+    notIn?: $Enums.TopicTermType[] | ListEnumTopicTermTypeFieldRefInput<$PrismaModel>
+    not?: NestedEnumTopicTermTypeWithAggregatesFilter<$PrismaModel> | $Enums.TopicTermType
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedEnumTopicTermTypeFilter<$PrismaModel>
+    _max?: NestedEnumTopicTermTypeFilter<$PrismaModel>
+  }
+
+  export type FloatWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: number | FloatFieldRefInput<$PrismaModel>
+    in?: number[] | ListFloatFieldRefInput<$PrismaModel>
+    notIn?: number[] | ListFloatFieldRefInput<$PrismaModel>
+    lt?: number | FloatFieldRefInput<$PrismaModel>
+    lte?: number | FloatFieldRefInput<$PrismaModel>
+    gt?: number | FloatFieldRefInput<$PrismaModel>
+    gte?: number | FloatFieldRefInput<$PrismaModel>
+    not?: NestedFloatWithAggregatesFilter<$PrismaModel> | number
+    _count?: NestedIntFilter<$PrismaModel>
+    _avg?: NestedFloatFilter<$PrismaModel>
+    _sum?: NestedFloatFilter<$PrismaModel>
+    _min?: NestedFloatFilter<$PrismaModel>
+    _max?: NestedFloatFilter<$PrismaModel>
+  }
+
+  export type TopicSourceTopicIdSourceIdCompoundUniqueInput = {
+    topicId: string
+    sourceId: string
+  }
+
+  export type TopicSourceCountOrderByAggregateInput = {
+    id?: SortOrder
+    topicId?: SortOrder
+    sourceId?: SortOrder
+    enabled?: SortOrder
+    retrievalPolicy?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type TopicSourceMaxOrderByAggregateInput = {
+    id?: SortOrder
+    topicId?: SortOrder
+    sourceId?: SortOrder
+    enabled?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type TopicSourceMinOrderByAggregateInput = {
+    id?: SortOrder
+    topicId?: SortOrder
+    sourceId?: SortOrder
+    enabled?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type EnumJobTypeFilter<$PrismaModel = never> = {
+    equals?: $Enums.JobType | EnumJobTypeFieldRefInput<$PrismaModel>
+    in?: $Enums.JobType[] | ListEnumJobTypeFieldRefInput<$PrismaModel>
+    notIn?: $Enums.JobType[] | ListEnumJobTypeFieldRefInput<$PrismaModel>
+    not?: NestedEnumJobTypeFilter<$PrismaModel> | $Enums.JobType
+  }
+
+  export type JobRunListRelationFilter = {
+    every?: JobRunWhereInput
+    some?: JobRunWhereInput
+    none?: JobRunWhereInput
+  }
+
+  export type JobRunOrderByRelationAggregateInput = {
+    _count?: SortOrder
+  }
+
+  export type JobCountOrderByAggregateInput = {
+    id?: SortOrder
+    name?: SortOrder
+    type?: SortOrder
+    enabled?: SortOrder
+    frequency?: SortOrder
+    cronSchedule?: SortOrder
+    triggerMode?: SortOrder
+    config?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type JobMaxOrderByAggregateInput = {
+    id?: SortOrder
+    name?: SortOrder
+    type?: SortOrder
+    enabled?: SortOrder
+    frequency?: SortOrder
+    cronSchedule?: SortOrder
+    triggerMode?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type JobMinOrderByAggregateInput = {
+    id?: SortOrder
+    name?: SortOrder
+    type?: SortOrder
+    enabled?: SortOrder
+    frequency?: SortOrder
+    cronSchedule?: SortOrder
+    triggerMode?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type EnumJobTypeWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: $Enums.JobType | EnumJobTypeFieldRefInput<$PrismaModel>
+    in?: $Enums.JobType[] | ListEnumJobTypeFieldRefInput<$PrismaModel>
+    notIn?: $Enums.JobType[] | ListEnumJobTypeFieldRefInput<$PrismaModel>
+    not?: NestedEnumJobTypeWithAggregatesFilter<$PrismaModel> | $Enums.JobType
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedEnumJobTypeFilter<$PrismaModel>
+    _max?: NestedEnumJobTypeFilter<$PrismaModel>
+  }
+
+  export type JobScalarRelationFilter = {
+    is?: JobWhereInput
+    isNot?: JobWhereInput
+  }
+
+  export type JobTopicJobIdTopicIdCompoundUniqueInput = {
+    jobId: string
+    topicId: string
+  }
+
+  export type JobTopicCountOrderByAggregateInput = {
+    id?: SortOrder
+    jobId?: SortOrder
+    topicId?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type JobTopicMaxOrderByAggregateInput = {
+    id?: SortOrder
+    jobId?: SortOrder
+    topicId?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type JobTopicMinOrderByAggregateInput = {
+    id?: SortOrder
+    jobId?: SortOrder
+    topicId?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type JobSourceJobIdSourceIdCompoundUniqueInput = {
+    jobId: string
+    sourceId: string
+  }
+
+  export type JobSourceCountOrderByAggregateInput = {
+    id?: SortOrder
+    jobId?: SortOrder
+    sourceId?: SortOrder
+    recallBindingOverride?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type JobSourceMaxOrderByAggregateInput = {
+    id?: SortOrder
+    jobId?: SortOrder
+    sourceId?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type JobSourceMinOrderByAggregateInput = {
+    id?: SortOrder
+    jobId?: SortOrder
+    sourceId?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
   export type EnumTaskStatusFilter<$PrismaModel = never> = {
     equals?: $Enums.TaskStatus | EnumTaskStatusFieldRefInput<$PrismaModel>
     in?: $Enums.TaskStatus[] | ListEnumTaskStatusFieldRefInput<$PrismaModel>
@@ -40934,6 +52774,80 @@ export namespace Prisma {
     gt?: number | IntFieldRefInput<$PrismaModel>
     gte?: number | IntFieldRefInput<$PrismaModel>
     not?: NestedIntFilter<$PrismaModel> | number
+  }
+
+  export type JobRunCountOrderByAggregateInput = {
+    id?: SortOrder
+    jobId?: SortOrder
+    status?: SortOrder
+    progress?: SortOrder
+    trigger?: SortOrder
+    startedAt?: SortOrder
+    finishedAt?: SortOrder
+    error?: SortOrder
+    meta?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type JobRunAvgOrderByAggregateInput = {
+    progress?: SortOrder
+  }
+
+  export type JobRunMaxOrderByAggregateInput = {
+    id?: SortOrder
+    jobId?: SortOrder
+    status?: SortOrder
+    progress?: SortOrder
+    trigger?: SortOrder
+    startedAt?: SortOrder
+    finishedAt?: SortOrder
+    error?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type JobRunMinOrderByAggregateInput = {
+    id?: SortOrder
+    jobId?: SortOrder
+    status?: SortOrder
+    progress?: SortOrder
+    trigger?: SortOrder
+    startedAt?: SortOrder
+    finishedAt?: SortOrder
+    error?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type JobRunSumOrderByAggregateInput = {
+    progress?: SortOrder
+  }
+
+  export type EnumTaskStatusWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: $Enums.TaskStatus | EnumTaskStatusFieldRefInput<$PrismaModel>
+    in?: $Enums.TaskStatus[] | ListEnumTaskStatusFieldRefInput<$PrismaModel>
+    notIn?: $Enums.TaskStatus[] | ListEnumTaskStatusFieldRefInput<$PrismaModel>
+    not?: NestedEnumTaskStatusWithAggregatesFilter<$PrismaModel> | $Enums.TaskStatus
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedEnumTaskStatusFilter<$PrismaModel>
+    _max?: NestedEnumTaskStatusFilter<$PrismaModel>
+  }
+
+  export type IntWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: number | IntFieldRefInput<$PrismaModel>
+    in?: number[] | ListIntFieldRefInput<$PrismaModel>
+    notIn?: number[] | ListIntFieldRefInput<$PrismaModel>
+    lt?: number | IntFieldRefInput<$PrismaModel>
+    lte?: number | IntFieldRefInput<$PrismaModel>
+    gt?: number | IntFieldRefInput<$PrismaModel>
+    gte?: number | IntFieldRefInput<$PrismaModel>
+    not?: NestedIntWithAggregatesFilter<$PrismaModel> | number
+    _count?: NestedIntFilter<$PrismaModel>
+    _avg?: NestedFloatFilter<$PrismaModel>
+    _sum?: NestedIntFilter<$PrismaModel>
+    _min?: NestedIntFilter<$PrismaModel>
+    _max?: NestedIntFilter<$PrismaModel>
   }
 
   export type TaskEventListRelationFilter = {
@@ -40989,32 +52903,6 @@ export namespace Prisma {
 
   export type QueryRunSumOrderByAggregateInput = {
     progress?: SortOrder
-  }
-
-  export type EnumTaskStatusWithAggregatesFilter<$PrismaModel = never> = {
-    equals?: $Enums.TaskStatus | EnumTaskStatusFieldRefInput<$PrismaModel>
-    in?: $Enums.TaskStatus[] | ListEnumTaskStatusFieldRefInput<$PrismaModel>
-    notIn?: $Enums.TaskStatus[] | ListEnumTaskStatusFieldRefInput<$PrismaModel>
-    not?: NestedEnumTaskStatusWithAggregatesFilter<$PrismaModel> | $Enums.TaskStatus
-    _count?: NestedIntFilter<$PrismaModel>
-    _min?: NestedEnumTaskStatusFilter<$PrismaModel>
-    _max?: NestedEnumTaskStatusFilter<$PrismaModel>
-  }
-
-  export type IntWithAggregatesFilter<$PrismaModel = never> = {
-    equals?: number | IntFieldRefInput<$PrismaModel>
-    in?: number[] | ListIntFieldRefInput<$PrismaModel>
-    notIn?: number[] | ListIntFieldRefInput<$PrismaModel>
-    lt?: number | IntFieldRefInput<$PrismaModel>
-    lte?: number | IntFieldRefInput<$PrismaModel>
-    gt?: number | IntFieldRefInput<$PrismaModel>
-    gte?: number | IntFieldRefInput<$PrismaModel>
-    not?: NestedIntWithAggregatesFilter<$PrismaModel> | number
-    _count?: NestedIntFilter<$PrismaModel>
-    _avg?: NestedFloatFilter<$PrismaModel>
-    _sum?: NestedIntFilter<$PrismaModel>
-    _min?: NestedIntFilter<$PrismaModel>
-    _max?: NestedIntFilter<$PrismaModel>
   }
 
   export type QueryRunScalarRelationFilter = {
@@ -41273,6 +53161,65 @@ export namespace Prisma {
   export type ContentEntityMinOrderByAggregateInput = {
     id?: SortOrder
     contentId?: SortOrder
+  }
+
+  export type ContentTopicScoreContentIdTopicIdCompoundUniqueInput = {
+    contentId: string
+    topicId: string
+  }
+
+  export type ContentTopicScoreCountOrderByAggregateInput = {
+    id?: SortOrder
+    contentId?: SortOrder
+    topicId?: SortOrder
+    vectorScore?: SortOrder
+    keywordScore?: SortOrder
+    exclusionPenalty?: SortOrder
+    finalScore?: SortOrder
+    reason?: SortOrder
+    explain?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type ContentTopicScoreAvgOrderByAggregateInput = {
+    vectorScore?: SortOrder
+    keywordScore?: SortOrder
+    exclusionPenalty?: SortOrder
+    finalScore?: SortOrder
+  }
+
+  export type ContentTopicScoreMaxOrderByAggregateInput = {
+    id?: SortOrder
+    contentId?: SortOrder
+    topicId?: SortOrder
+    vectorScore?: SortOrder
+    keywordScore?: SortOrder
+    exclusionPenalty?: SortOrder
+    finalScore?: SortOrder
+    reason?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type ContentTopicScoreMinOrderByAggregateInput = {
+    id?: SortOrder
+    contentId?: SortOrder
+    topicId?: SortOrder
+    vectorScore?: SortOrder
+    keywordScore?: SortOrder
+    exclusionPenalty?: SortOrder
+    finalScore?: SortOrder
+    reason?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type ContentTopicScoreSumOrderByAggregateInput = {
+    vectorScore?: SortOrder
+    keywordScore?: SortOrder
+    exclusionPenalty?: SortOrder
+    finalScore?: SortOrder
   }
 
   export type FavoriteUserIdContentIdCompoundUniqueInput = {
@@ -42295,6 +54242,20 @@ export namespace Prisma {
     connect?: QuerySourcePolicyWhereUniqueInput | QuerySourcePolicyWhereUniqueInput[]
   }
 
+  export type TopicSourceCreateNestedManyWithoutSourceInput = {
+    create?: XOR<TopicSourceCreateWithoutSourceInput, TopicSourceUncheckedCreateWithoutSourceInput> | TopicSourceCreateWithoutSourceInput[] | TopicSourceUncheckedCreateWithoutSourceInput[]
+    connectOrCreate?: TopicSourceCreateOrConnectWithoutSourceInput | TopicSourceCreateOrConnectWithoutSourceInput[]
+    createMany?: TopicSourceCreateManySourceInputEnvelope
+    connect?: TopicSourceWhereUniqueInput | TopicSourceWhereUniqueInput[]
+  }
+
+  export type JobSourceCreateNestedManyWithoutSourceInput = {
+    create?: XOR<JobSourceCreateWithoutSourceInput, JobSourceUncheckedCreateWithoutSourceInput> | JobSourceCreateWithoutSourceInput[] | JobSourceUncheckedCreateWithoutSourceInput[]
+    connectOrCreate?: JobSourceCreateOrConnectWithoutSourceInput | JobSourceCreateOrConnectWithoutSourceInput[]
+    createMany?: JobSourceCreateManySourceInputEnvelope
+    connect?: JobSourceWhereUniqueInput | JobSourceWhereUniqueInput[]
+  }
+
   export type WebSourceConfigUncheckedCreateNestedOneWithoutSourceInput = {
     create?: XOR<WebSourceConfigCreateWithoutSourceInput, WebSourceConfigUncheckedCreateWithoutSourceInput>
     connectOrCreate?: WebSourceConfigCreateOrConnectWithoutSourceInput
@@ -42343,6 +54304,20 @@ export namespace Prisma {
     connectOrCreate?: QuerySourcePolicyCreateOrConnectWithoutSourceInput | QuerySourcePolicyCreateOrConnectWithoutSourceInput[]
     createMany?: QuerySourcePolicyCreateManySourceInputEnvelope
     connect?: QuerySourcePolicyWhereUniqueInput | QuerySourcePolicyWhereUniqueInput[]
+  }
+
+  export type TopicSourceUncheckedCreateNestedManyWithoutSourceInput = {
+    create?: XOR<TopicSourceCreateWithoutSourceInput, TopicSourceUncheckedCreateWithoutSourceInput> | TopicSourceCreateWithoutSourceInput[] | TopicSourceUncheckedCreateWithoutSourceInput[]
+    connectOrCreate?: TopicSourceCreateOrConnectWithoutSourceInput | TopicSourceCreateOrConnectWithoutSourceInput[]
+    createMany?: TopicSourceCreateManySourceInputEnvelope
+    connect?: TopicSourceWhereUniqueInput | TopicSourceWhereUniqueInput[]
+  }
+
+  export type JobSourceUncheckedCreateNestedManyWithoutSourceInput = {
+    create?: XOR<JobSourceCreateWithoutSourceInput, JobSourceUncheckedCreateWithoutSourceInput> | JobSourceCreateWithoutSourceInput[] | JobSourceUncheckedCreateWithoutSourceInput[]
+    connectOrCreate?: JobSourceCreateOrConnectWithoutSourceInput | JobSourceCreateOrConnectWithoutSourceInput[]
+    createMany?: JobSourceCreateManySourceInputEnvelope
+    connect?: JobSourceWhereUniqueInput | JobSourceWhereUniqueInput[]
   }
 
   export type EnumSourceCategoryFieldUpdateOperationsInput = {
@@ -42472,6 +54447,34 @@ export namespace Prisma {
     deleteMany?: QuerySourcePolicyScalarWhereInput | QuerySourcePolicyScalarWhereInput[]
   }
 
+  export type TopicSourceUpdateManyWithoutSourceNestedInput = {
+    create?: XOR<TopicSourceCreateWithoutSourceInput, TopicSourceUncheckedCreateWithoutSourceInput> | TopicSourceCreateWithoutSourceInput[] | TopicSourceUncheckedCreateWithoutSourceInput[]
+    connectOrCreate?: TopicSourceCreateOrConnectWithoutSourceInput | TopicSourceCreateOrConnectWithoutSourceInput[]
+    upsert?: TopicSourceUpsertWithWhereUniqueWithoutSourceInput | TopicSourceUpsertWithWhereUniqueWithoutSourceInput[]
+    createMany?: TopicSourceCreateManySourceInputEnvelope
+    set?: TopicSourceWhereUniqueInput | TopicSourceWhereUniqueInput[]
+    disconnect?: TopicSourceWhereUniqueInput | TopicSourceWhereUniqueInput[]
+    delete?: TopicSourceWhereUniqueInput | TopicSourceWhereUniqueInput[]
+    connect?: TopicSourceWhereUniqueInput | TopicSourceWhereUniqueInput[]
+    update?: TopicSourceUpdateWithWhereUniqueWithoutSourceInput | TopicSourceUpdateWithWhereUniqueWithoutSourceInput[]
+    updateMany?: TopicSourceUpdateManyWithWhereWithoutSourceInput | TopicSourceUpdateManyWithWhereWithoutSourceInput[]
+    deleteMany?: TopicSourceScalarWhereInput | TopicSourceScalarWhereInput[]
+  }
+
+  export type JobSourceUpdateManyWithoutSourceNestedInput = {
+    create?: XOR<JobSourceCreateWithoutSourceInput, JobSourceUncheckedCreateWithoutSourceInput> | JobSourceCreateWithoutSourceInput[] | JobSourceUncheckedCreateWithoutSourceInput[]
+    connectOrCreate?: JobSourceCreateOrConnectWithoutSourceInput | JobSourceCreateOrConnectWithoutSourceInput[]
+    upsert?: JobSourceUpsertWithWhereUniqueWithoutSourceInput | JobSourceUpsertWithWhereUniqueWithoutSourceInput[]
+    createMany?: JobSourceCreateManySourceInputEnvelope
+    set?: JobSourceWhereUniqueInput | JobSourceWhereUniqueInput[]
+    disconnect?: JobSourceWhereUniqueInput | JobSourceWhereUniqueInput[]
+    delete?: JobSourceWhereUniqueInput | JobSourceWhereUniqueInput[]
+    connect?: JobSourceWhereUniqueInput | JobSourceWhereUniqueInput[]
+    update?: JobSourceUpdateWithWhereUniqueWithoutSourceInput | JobSourceUpdateWithWhereUniqueWithoutSourceInput[]
+    updateMany?: JobSourceUpdateManyWithWhereWithoutSourceInput | JobSourceUpdateManyWithWhereWithoutSourceInput[]
+    deleteMany?: JobSourceScalarWhereInput | JobSourceScalarWhereInput[]
+  }
+
   export type WebSourceConfigUncheckedUpdateOneWithoutSourceNestedInput = {
     create?: XOR<WebSourceConfigCreateWithoutSourceInput, WebSourceConfigUncheckedCreateWithoutSourceInput>
     connectOrCreate?: WebSourceConfigCreateOrConnectWithoutSourceInput
@@ -42561,6 +54564,34 @@ export namespace Prisma {
     update?: QuerySourcePolicyUpdateWithWhereUniqueWithoutSourceInput | QuerySourcePolicyUpdateWithWhereUniqueWithoutSourceInput[]
     updateMany?: QuerySourcePolicyUpdateManyWithWhereWithoutSourceInput | QuerySourcePolicyUpdateManyWithWhereWithoutSourceInput[]
     deleteMany?: QuerySourcePolicyScalarWhereInput | QuerySourcePolicyScalarWhereInput[]
+  }
+
+  export type TopicSourceUncheckedUpdateManyWithoutSourceNestedInput = {
+    create?: XOR<TopicSourceCreateWithoutSourceInput, TopicSourceUncheckedCreateWithoutSourceInput> | TopicSourceCreateWithoutSourceInput[] | TopicSourceUncheckedCreateWithoutSourceInput[]
+    connectOrCreate?: TopicSourceCreateOrConnectWithoutSourceInput | TopicSourceCreateOrConnectWithoutSourceInput[]
+    upsert?: TopicSourceUpsertWithWhereUniqueWithoutSourceInput | TopicSourceUpsertWithWhereUniqueWithoutSourceInput[]
+    createMany?: TopicSourceCreateManySourceInputEnvelope
+    set?: TopicSourceWhereUniqueInput | TopicSourceWhereUniqueInput[]
+    disconnect?: TopicSourceWhereUniqueInput | TopicSourceWhereUniqueInput[]
+    delete?: TopicSourceWhereUniqueInput | TopicSourceWhereUniqueInput[]
+    connect?: TopicSourceWhereUniqueInput | TopicSourceWhereUniqueInput[]
+    update?: TopicSourceUpdateWithWhereUniqueWithoutSourceInput | TopicSourceUpdateWithWhereUniqueWithoutSourceInput[]
+    updateMany?: TopicSourceUpdateManyWithWhereWithoutSourceInput | TopicSourceUpdateManyWithWhereWithoutSourceInput[]
+    deleteMany?: TopicSourceScalarWhereInput | TopicSourceScalarWhereInput[]
+  }
+
+  export type JobSourceUncheckedUpdateManyWithoutSourceNestedInput = {
+    create?: XOR<JobSourceCreateWithoutSourceInput, JobSourceUncheckedCreateWithoutSourceInput> | JobSourceCreateWithoutSourceInput[] | JobSourceUncheckedCreateWithoutSourceInput[]
+    connectOrCreate?: JobSourceCreateOrConnectWithoutSourceInput | JobSourceCreateOrConnectWithoutSourceInput[]
+    upsert?: JobSourceUpsertWithWhereUniqueWithoutSourceInput | JobSourceUpsertWithWhereUniqueWithoutSourceInput[]
+    createMany?: JobSourceCreateManySourceInputEnvelope
+    set?: JobSourceWhereUniqueInput | JobSourceWhereUniqueInput[]
+    disconnect?: JobSourceWhereUniqueInput | JobSourceWhereUniqueInput[]
+    delete?: JobSourceWhereUniqueInput | JobSourceWhereUniqueInput[]
+    connect?: JobSourceWhereUniqueInput | JobSourceWhereUniqueInput[]
+    update?: JobSourceUpdateWithWhereUniqueWithoutSourceInput | JobSourceUpdateWithWhereUniqueWithoutSourceInput[]
+    updateMany?: JobSourceUpdateManyWithWhereWithoutSourceInput | JobSourceUpdateManyWithWhereWithoutSourceInput[]
+    deleteMany?: JobSourceScalarWhereInput | JobSourceScalarWhereInput[]
   }
 
   export type SourceCreateNestedOneWithoutIdentityInput = {
@@ -42941,6 +54972,440 @@ export namespace Prisma {
     update?: XOR<XOR<SourceUpdateToOneWithWhereWithoutQuerySourcePoliciesInput, SourceUpdateWithoutQuerySourcePoliciesInput>, SourceUncheckedUpdateWithoutQuerySourcePoliciesInput>
   }
 
+  export type TopicTermCreateNestedManyWithoutTopicInput = {
+    create?: XOR<TopicTermCreateWithoutTopicInput, TopicTermUncheckedCreateWithoutTopicInput> | TopicTermCreateWithoutTopicInput[] | TopicTermUncheckedCreateWithoutTopicInput[]
+    connectOrCreate?: TopicTermCreateOrConnectWithoutTopicInput | TopicTermCreateOrConnectWithoutTopicInput[]
+    createMany?: TopicTermCreateManyTopicInputEnvelope
+    connect?: TopicTermWhereUniqueInput | TopicTermWhereUniqueInput[]
+  }
+
+  export type TopicSourceCreateNestedManyWithoutTopicInput = {
+    create?: XOR<TopicSourceCreateWithoutTopicInput, TopicSourceUncheckedCreateWithoutTopicInput> | TopicSourceCreateWithoutTopicInput[] | TopicSourceUncheckedCreateWithoutTopicInput[]
+    connectOrCreate?: TopicSourceCreateOrConnectWithoutTopicInput | TopicSourceCreateOrConnectWithoutTopicInput[]
+    createMany?: TopicSourceCreateManyTopicInputEnvelope
+    connect?: TopicSourceWhereUniqueInput | TopicSourceWhereUniqueInput[]
+  }
+
+  export type JobTopicCreateNestedManyWithoutTopicInput = {
+    create?: XOR<JobTopicCreateWithoutTopicInput, JobTopicUncheckedCreateWithoutTopicInput> | JobTopicCreateWithoutTopicInput[] | JobTopicUncheckedCreateWithoutTopicInput[]
+    connectOrCreate?: JobTopicCreateOrConnectWithoutTopicInput | JobTopicCreateOrConnectWithoutTopicInput[]
+    createMany?: JobTopicCreateManyTopicInputEnvelope
+    connect?: JobTopicWhereUniqueInput | JobTopicWhereUniqueInput[]
+  }
+
+  export type ContentTopicScoreCreateNestedManyWithoutTopicInput = {
+    create?: XOR<ContentTopicScoreCreateWithoutTopicInput, ContentTopicScoreUncheckedCreateWithoutTopicInput> | ContentTopicScoreCreateWithoutTopicInput[] | ContentTopicScoreUncheckedCreateWithoutTopicInput[]
+    connectOrCreate?: ContentTopicScoreCreateOrConnectWithoutTopicInput | ContentTopicScoreCreateOrConnectWithoutTopicInput[]
+    createMany?: ContentTopicScoreCreateManyTopicInputEnvelope
+    connect?: ContentTopicScoreWhereUniqueInput | ContentTopicScoreWhereUniqueInput[]
+  }
+
+  export type TopicTermUncheckedCreateNestedManyWithoutTopicInput = {
+    create?: XOR<TopicTermCreateWithoutTopicInput, TopicTermUncheckedCreateWithoutTopicInput> | TopicTermCreateWithoutTopicInput[] | TopicTermUncheckedCreateWithoutTopicInput[]
+    connectOrCreate?: TopicTermCreateOrConnectWithoutTopicInput | TopicTermCreateOrConnectWithoutTopicInput[]
+    createMany?: TopicTermCreateManyTopicInputEnvelope
+    connect?: TopicTermWhereUniqueInput | TopicTermWhereUniqueInput[]
+  }
+
+  export type TopicSourceUncheckedCreateNestedManyWithoutTopicInput = {
+    create?: XOR<TopicSourceCreateWithoutTopicInput, TopicSourceUncheckedCreateWithoutTopicInput> | TopicSourceCreateWithoutTopicInput[] | TopicSourceUncheckedCreateWithoutTopicInput[]
+    connectOrCreate?: TopicSourceCreateOrConnectWithoutTopicInput | TopicSourceCreateOrConnectWithoutTopicInput[]
+    createMany?: TopicSourceCreateManyTopicInputEnvelope
+    connect?: TopicSourceWhereUniqueInput | TopicSourceWhereUniqueInput[]
+  }
+
+  export type JobTopicUncheckedCreateNestedManyWithoutTopicInput = {
+    create?: XOR<JobTopicCreateWithoutTopicInput, JobTopicUncheckedCreateWithoutTopicInput> | JobTopicCreateWithoutTopicInput[] | JobTopicUncheckedCreateWithoutTopicInput[]
+    connectOrCreate?: JobTopicCreateOrConnectWithoutTopicInput | JobTopicCreateOrConnectWithoutTopicInput[]
+    createMany?: JobTopicCreateManyTopicInputEnvelope
+    connect?: JobTopicWhereUniqueInput | JobTopicWhereUniqueInput[]
+  }
+
+  export type ContentTopicScoreUncheckedCreateNestedManyWithoutTopicInput = {
+    create?: XOR<ContentTopicScoreCreateWithoutTopicInput, ContentTopicScoreUncheckedCreateWithoutTopicInput> | ContentTopicScoreCreateWithoutTopicInput[] | ContentTopicScoreUncheckedCreateWithoutTopicInput[]
+    connectOrCreate?: ContentTopicScoreCreateOrConnectWithoutTopicInput | ContentTopicScoreCreateOrConnectWithoutTopicInput[]
+    createMany?: ContentTopicScoreCreateManyTopicInputEnvelope
+    connect?: ContentTopicScoreWhereUniqueInput | ContentTopicScoreWhereUniqueInput[]
+  }
+
+  export type TopicTermUpdateManyWithoutTopicNestedInput = {
+    create?: XOR<TopicTermCreateWithoutTopicInput, TopicTermUncheckedCreateWithoutTopicInput> | TopicTermCreateWithoutTopicInput[] | TopicTermUncheckedCreateWithoutTopicInput[]
+    connectOrCreate?: TopicTermCreateOrConnectWithoutTopicInput | TopicTermCreateOrConnectWithoutTopicInput[]
+    upsert?: TopicTermUpsertWithWhereUniqueWithoutTopicInput | TopicTermUpsertWithWhereUniqueWithoutTopicInput[]
+    createMany?: TopicTermCreateManyTopicInputEnvelope
+    set?: TopicTermWhereUniqueInput | TopicTermWhereUniqueInput[]
+    disconnect?: TopicTermWhereUniqueInput | TopicTermWhereUniqueInput[]
+    delete?: TopicTermWhereUniqueInput | TopicTermWhereUniqueInput[]
+    connect?: TopicTermWhereUniqueInput | TopicTermWhereUniqueInput[]
+    update?: TopicTermUpdateWithWhereUniqueWithoutTopicInput | TopicTermUpdateWithWhereUniqueWithoutTopicInput[]
+    updateMany?: TopicTermUpdateManyWithWhereWithoutTopicInput | TopicTermUpdateManyWithWhereWithoutTopicInput[]
+    deleteMany?: TopicTermScalarWhereInput | TopicTermScalarWhereInput[]
+  }
+
+  export type TopicSourceUpdateManyWithoutTopicNestedInput = {
+    create?: XOR<TopicSourceCreateWithoutTopicInput, TopicSourceUncheckedCreateWithoutTopicInput> | TopicSourceCreateWithoutTopicInput[] | TopicSourceUncheckedCreateWithoutTopicInput[]
+    connectOrCreate?: TopicSourceCreateOrConnectWithoutTopicInput | TopicSourceCreateOrConnectWithoutTopicInput[]
+    upsert?: TopicSourceUpsertWithWhereUniqueWithoutTopicInput | TopicSourceUpsertWithWhereUniqueWithoutTopicInput[]
+    createMany?: TopicSourceCreateManyTopicInputEnvelope
+    set?: TopicSourceWhereUniqueInput | TopicSourceWhereUniqueInput[]
+    disconnect?: TopicSourceWhereUniqueInput | TopicSourceWhereUniqueInput[]
+    delete?: TopicSourceWhereUniqueInput | TopicSourceWhereUniqueInput[]
+    connect?: TopicSourceWhereUniqueInput | TopicSourceWhereUniqueInput[]
+    update?: TopicSourceUpdateWithWhereUniqueWithoutTopicInput | TopicSourceUpdateWithWhereUniqueWithoutTopicInput[]
+    updateMany?: TopicSourceUpdateManyWithWhereWithoutTopicInput | TopicSourceUpdateManyWithWhereWithoutTopicInput[]
+    deleteMany?: TopicSourceScalarWhereInput | TopicSourceScalarWhereInput[]
+  }
+
+  export type JobTopicUpdateManyWithoutTopicNestedInput = {
+    create?: XOR<JobTopicCreateWithoutTopicInput, JobTopicUncheckedCreateWithoutTopicInput> | JobTopicCreateWithoutTopicInput[] | JobTopicUncheckedCreateWithoutTopicInput[]
+    connectOrCreate?: JobTopicCreateOrConnectWithoutTopicInput | JobTopicCreateOrConnectWithoutTopicInput[]
+    upsert?: JobTopicUpsertWithWhereUniqueWithoutTopicInput | JobTopicUpsertWithWhereUniqueWithoutTopicInput[]
+    createMany?: JobTopicCreateManyTopicInputEnvelope
+    set?: JobTopicWhereUniqueInput | JobTopicWhereUniqueInput[]
+    disconnect?: JobTopicWhereUniqueInput | JobTopicWhereUniqueInput[]
+    delete?: JobTopicWhereUniqueInput | JobTopicWhereUniqueInput[]
+    connect?: JobTopicWhereUniqueInput | JobTopicWhereUniqueInput[]
+    update?: JobTopicUpdateWithWhereUniqueWithoutTopicInput | JobTopicUpdateWithWhereUniqueWithoutTopicInput[]
+    updateMany?: JobTopicUpdateManyWithWhereWithoutTopicInput | JobTopicUpdateManyWithWhereWithoutTopicInput[]
+    deleteMany?: JobTopicScalarWhereInput | JobTopicScalarWhereInput[]
+  }
+
+  export type ContentTopicScoreUpdateManyWithoutTopicNestedInput = {
+    create?: XOR<ContentTopicScoreCreateWithoutTopicInput, ContentTopicScoreUncheckedCreateWithoutTopicInput> | ContentTopicScoreCreateWithoutTopicInput[] | ContentTopicScoreUncheckedCreateWithoutTopicInput[]
+    connectOrCreate?: ContentTopicScoreCreateOrConnectWithoutTopicInput | ContentTopicScoreCreateOrConnectWithoutTopicInput[]
+    upsert?: ContentTopicScoreUpsertWithWhereUniqueWithoutTopicInput | ContentTopicScoreUpsertWithWhereUniqueWithoutTopicInput[]
+    createMany?: ContentTopicScoreCreateManyTopicInputEnvelope
+    set?: ContentTopicScoreWhereUniqueInput | ContentTopicScoreWhereUniqueInput[]
+    disconnect?: ContentTopicScoreWhereUniqueInput | ContentTopicScoreWhereUniqueInput[]
+    delete?: ContentTopicScoreWhereUniqueInput | ContentTopicScoreWhereUniqueInput[]
+    connect?: ContentTopicScoreWhereUniqueInput | ContentTopicScoreWhereUniqueInput[]
+    update?: ContentTopicScoreUpdateWithWhereUniqueWithoutTopicInput | ContentTopicScoreUpdateWithWhereUniqueWithoutTopicInput[]
+    updateMany?: ContentTopicScoreUpdateManyWithWhereWithoutTopicInput | ContentTopicScoreUpdateManyWithWhereWithoutTopicInput[]
+    deleteMany?: ContentTopicScoreScalarWhereInput | ContentTopicScoreScalarWhereInput[]
+  }
+
+  export type TopicTermUncheckedUpdateManyWithoutTopicNestedInput = {
+    create?: XOR<TopicTermCreateWithoutTopicInput, TopicTermUncheckedCreateWithoutTopicInput> | TopicTermCreateWithoutTopicInput[] | TopicTermUncheckedCreateWithoutTopicInput[]
+    connectOrCreate?: TopicTermCreateOrConnectWithoutTopicInput | TopicTermCreateOrConnectWithoutTopicInput[]
+    upsert?: TopicTermUpsertWithWhereUniqueWithoutTopicInput | TopicTermUpsertWithWhereUniqueWithoutTopicInput[]
+    createMany?: TopicTermCreateManyTopicInputEnvelope
+    set?: TopicTermWhereUniqueInput | TopicTermWhereUniqueInput[]
+    disconnect?: TopicTermWhereUniqueInput | TopicTermWhereUniqueInput[]
+    delete?: TopicTermWhereUniqueInput | TopicTermWhereUniqueInput[]
+    connect?: TopicTermWhereUniqueInput | TopicTermWhereUniqueInput[]
+    update?: TopicTermUpdateWithWhereUniqueWithoutTopicInput | TopicTermUpdateWithWhereUniqueWithoutTopicInput[]
+    updateMany?: TopicTermUpdateManyWithWhereWithoutTopicInput | TopicTermUpdateManyWithWhereWithoutTopicInput[]
+    deleteMany?: TopicTermScalarWhereInput | TopicTermScalarWhereInput[]
+  }
+
+  export type TopicSourceUncheckedUpdateManyWithoutTopicNestedInput = {
+    create?: XOR<TopicSourceCreateWithoutTopicInput, TopicSourceUncheckedCreateWithoutTopicInput> | TopicSourceCreateWithoutTopicInput[] | TopicSourceUncheckedCreateWithoutTopicInput[]
+    connectOrCreate?: TopicSourceCreateOrConnectWithoutTopicInput | TopicSourceCreateOrConnectWithoutTopicInput[]
+    upsert?: TopicSourceUpsertWithWhereUniqueWithoutTopicInput | TopicSourceUpsertWithWhereUniqueWithoutTopicInput[]
+    createMany?: TopicSourceCreateManyTopicInputEnvelope
+    set?: TopicSourceWhereUniqueInput | TopicSourceWhereUniqueInput[]
+    disconnect?: TopicSourceWhereUniqueInput | TopicSourceWhereUniqueInput[]
+    delete?: TopicSourceWhereUniqueInput | TopicSourceWhereUniqueInput[]
+    connect?: TopicSourceWhereUniqueInput | TopicSourceWhereUniqueInput[]
+    update?: TopicSourceUpdateWithWhereUniqueWithoutTopicInput | TopicSourceUpdateWithWhereUniqueWithoutTopicInput[]
+    updateMany?: TopicSourceUpdateManyWithWhereWithoutTopicInput | TopicSourceUpdateManyWithWhereWithoutTopicInput[]
+    deleteMany?: TopicSourceScalarWhereInput | TopicSourceScalarWhereInput[]
+  }
+
+  export type JobTopicUncheckedUpdateManyWithoutTopicNestedInput = {
+    create?: XOR<JobTopicCreateWithoutTopicInput, JobTopicUncheckedCreateWithoutTopicInput> | JobTopicCreateWithoutTopicInput[] | JobTopicUncheckedCreateWithoutTopicInput[]
+    connectOrCreate?: JobTopicCreateOrConnectWithoutTopicInput | JobTopicCreateOrConnectWithoutTopicInput[]
+    upsert?: JobTopicUpsertWithWhereUniqueWithoutTopicInput | JobTopicUpsertWithWhereUniqueWithoutTopicInput[]
+    createMany?: JobTopicCreateManyTopicInputEnvelope
+    set?: JobTopicWhereUniqueInput | JobTopicWhereUniqueInput[]
+    disconnect?: JobTopicWhereUniqueInput | JobTopicWhereUniqueInput[]
+    delete?: JobTopicWhereUniqueInput | JobTopicWhereUniqueInput[]
+    connect?: JobTopicWhereUniqueInput | JobTopicWhereUniqueInput[]
+    update?: JobTopicUpdateWithWhereUniqueWithoutTopicInput | JobTopicUpdateWithWhereUniqueWithoutTopicInput[]
+    updateMany?: JobTopicUpdateManyWithWhereWithoutTopicInput | JobTopicUpdateManyWithWhereWithoutTopicInput[]
+    deleteMany?: JobTopicScalarWhereInput | JobTopicScalarWhereInput[]
+  }
+
+  export type ContentTopicScoreUncheckedUpdateManyWithoutTopicNestedInput = {
+    create?: XOR<ContentTopicScoreCreateWithoutTopicInput, ContentTopicScoreUncheckedCreateWithoutTopicInput> | ContentTopicScoreCreateWithoutTopicInput[] | ContentTopicScoreUncheckedCreateWithoutTopicInput[]
+    connectOrCreate?: ContentTopicScoreCreateOrConnectWithoutTopicInput | ContentTopicScoreCreateOrConnectWithoutTopicInput[]
+    upsert?: ContentTopicScoreUpsertWithWhereUniqueWithoutTopicInput | ContentTopicScoreUpsertWithWhereUniqueWithoutTopicInput[]
+    createMany?: ContentTopicScoreCreateManyTopicInputEnvelope
+    set?: ContentTopicScoreWhereUniqueInput | ContentTopicScoreWhereUniqueInput[]
+    disconnect?: ContentTopicScoreWhereUniqueInput | ContentTopicScoreWhereUniqueInput[]
+    delete?: ContentTopicScoreWhereUniqueInput | ContentTopicScoreWhereUniqueInput[]
+    connect?: ContentTopicScoreWhereUniqueInput | ContentTopicScoreWhereUniqueInput[]
+    update?: ContentTopicScoreUpdateWithWhereUniqueWithoutTopicInput | ContentTopicScoreUpdateWithWhereUniqueWithoutTopicInput[]
+    updateMany?: ContentTopicScoreUpdateManyWithWhereWithoutTopicInput | ContentTopicScoreUpdateManyWithWhereWithoutTopicInput[]
+    deleteMany?: ContentTopicScoreScalarWhereInput | ContentTopicScoreScalarWhereInput[]
+  }
+
+  export type TopicCreateNestedOneWithoutTermsInput = {
+    create?: XOR<TopicCreateWithoutTermsInput, TopicUncheckedCreateWithoutTermsInput>
+    connectOrCreate?: TopicCreateOrConnectWithoutTermsInput
+    connect?: TopicWhereUniqueInput
+  }
+
+  export type EnumTopicTermTypeFieldUpdateOperationsInput = {
+    set?: $Enums.TopicTermType
+  }
+
+  export type FloatFieldUpdateOperationsInput = {
+    set?: number
+    increment?: number
+    decrement?: number
+    multiply?: number
+    divide?: number
+  }
+
+  export type TopicUpdateOneRequiredWithoutTermsNestedInput = {
+    create?: XOR<TopicCreateWithoutTermsInput, TopicUncheckedCreateWithoutTermsInput>
+    connectOrCreate?: TopicCreateOrConnectWithoutTermsInput
+    upsert?: TopicUpsertWithoutTermsInput
+    connect?: TopicWhereUniqueInput
+    update?: XOR<XOR<TopicUpdateToOneWithWhereWithoutTermsInput, TopicUpdateWithoutTermsInput>, TopicUncheckedUpdateWithoutTermsInput>
+  }
+
+  export type TopicCreateNestedOneWithoutSourcesInput = {
+    create?: XOR<TopicCreateWithoutSourcesInput, TopicUncheckedCreateWithoutSourcesInput>
+    connectOrCreate?: TopicCreateOrConnectWithoutSourcesInput
+    connect?: TopicWhereUniqueInput
+  }
+
+  export type SourceCreateNestedOneWithoutTopicSourcesInput = {
+    create?: XOR<SourceCreateWithoutTopicSourcesInput, SourceUncheckedCreateWithoutTopicSourcesInput>
+    connectOrCreate?: SourceCreateOrConnectWithoutTopicSourcesInput
+    connect?: SourceWhereUniqueInput
+  }
+
+  export type TopicUpdateOneRequiredWithoutSourcesNestedInput = {
+    create?: XOR<TopicCreateWithoutSourcesInput, TopicUncheckedCreateWithoutSourcesInput>
+    connectOrCreate?: TopicCreateOrConnectWithoutSourcesInput
+    upsert?: TopicUpsertWithoutSourcesInput
+    connect?: TopicWhereUniqueInput
+    update?: XOR<XOR<TopicUpdateToOneWithWhereWithoutSourcesInput, TopicUpdateWithoutSourcesInput>, TopicUncheckedUpdateWithoutSourcesInput>
+  }
+
+  export type SourceUpdateOneRequiredWithoutTopicSourcesNestedInput = {
+    create?: XOR<SourceCreateWithoutTopicSourcesInput, SourceUncheckedCreateWithoutTopicSourcesInput>
+    connectOrCreate?: SourceCreateOrConnectWithoutTopicSourcesInput
+    upsert?: SourceUpsertWithoutTopicSourcesInput
+    connect?: SourceWhereUniqueInput
+    update?: XOR<XOR<SourceUpdateToOneWithWhereWithoutTopicSourcesInput, SourceUpdateWithoutTopicSourcesInput>, SourceUncheckedUpdateWithoutTopicSourcesInput>
+  }
+
+  export type JobTopicCreateNestedManyWithoutJobInput = {
+    create?: XOR<JobTopicCreateWithoutJobInput, JobTopicUncheckedCreateWithoutJobInput> | JobTopicCreateWithoutJobInput[] | JobTopicUncheckedCreateWithoutJobInput[]
+    connectOrCreate?: JobTopicCreateOrConnectWithoutJobInput | JobTopicCreateOrConnectWithoutJobInput[]
+    createMany?: JobTopicCreateManyJobInputEnvelope
+    connect?: JobTopicWhereUniqueInput | JobTopicWhereUniqueInput[]
+  }
+
+  export type JobSourceCreateNestedManyWithoutJobInput = {
+    create?: XOR<JobSourceCreateWithoutJobInput, JobSourceUncheckedCreateWithoutJobInput> | JobSourceCreateWithoutJobInput[] | JobSourceUncheckedCreateWithoutJobInput[]
+    connectOrCreate?: JobSourceCreateOrConnectWithoutJobInput | JobSourceCreateOrConnectWithoutJobInput[]
+    createMany?: JobSourceCreateManyJobInputEnvelope
+    connect?: JobSourceWhereUniqueInput | JobSourceWhereUniqueInput[]
+  }
+
+  export type JobRunCreateNestedManyWithoutJobInput = {
+    create?: XOR<JobRunCreateWithoutJobInput, JobRunUncheckedCreateWithoutJobInput> | JobRunCreateWithoutJobInput[] | JobRunUncheckedCreateWithoutJobInput[]
+    connectOrCreate?: JobRunCreateOrConnectWithoutJobInput | JobRunCreateOrConnectWithoutJobInput[]
+    createMany?: JobRunCreateManyJobInputEnvelope
+    connect?: JobRunWhereUniqueInput | JobRunWhereUniqueInput[]
+  }
+
+  export type JobTopicUncheckedCreateNestedManyWithoutJobInput = {
+    create?: XOR<JobTopicCreateWithoutJobInput, JobTopicUncheckedCreateWithoutJobInput> | JobTopicCreateWithoutJobInput[] | JobTopicUncheckedCreateWithoutJobInput[]
+    connectOrCreate?: JobTopicCreateOrConnectWithoutJobInput | JobTopicCreateOrConnectWithoutJobInput[]
+    createMany?: JobTopicCreateManyJobInputEnvelope
+    connect?: JobTopicWhereUniqueInput | JobTopicWhereUniqueInput[]
+  }
+
+  export type JobSourceUncheckedCreateNestedManyWithoutJobInput = {
+    create?: XOR<JobSourceCreateWithoutJobInput, JobSourceUncheckedCreateWithoutJobInput> | JobSourceCreateWithoutJobInput[] | JobSourceUncheckedCreateWithoutJobInput[]
+    connectOrCreate?: JobSourceCreateOrConnectWithoutJobInput | JobSourceCreateOrConnectWithoutJobInput[]
+    createMany?: JobSourceCreateManyJobInputEnvelope
+    connect?: JobSourceWhereUniqueInput | JobSourceWhereUniqueInput[]
+  }
+
+  export type JobRunUncheckedCreateNestedManyWithoutJobInput = {
+    create?: XOR<JobRunCreateWithoutJobInput, JobRunUncheckedCreateWithoutJobInput> | JobRunCreateWithoutJobInput[] | JobRunUncheckedCreateWithoutJobInput[]
+    connectOrCreate?: JobRunCreateOrConnectWithoutJobInput | JobRunCreateOrConnectWithoutJobInput[]
+    createMany?: JobRunCreateManyJobInputEnvelope
+    connect?: JobRunWhereUniqueInput | JobRunWhereUniqueInput[]
+  }
+
+  export type EnumJobTypeFieldUpdateOperationsInput = {
+    set?: $Enums.JobType
+  }
+
+  export type JobTopicUpdateManyWithoutJobNestedInput = {
+    create?: XOR<JobTopicCreateWithoutJobInput, JobTopicUncheckedCreateWithoutJobInput> | JobTopicCreateWithoutJobInput[] | JobTopicUncheckedCreateWithoutJobInput[]
+    connectOrCreate?: JobTopicCreateOrConnectWithoutJobInput | JobTopicCreateOrConnectWithoutJobInput[]
+    upsert?: JobTopicUpsertWithWhereUniqueWithoutJobInput | JobTopicUpsertWithWhereUniqueWithoutJobInput[]
+    createMany?: JobTopicCreateManyJobInputEnvelope
+    set?: JobTopicWhereUniqueInput | JobTopicWhereUniqueInput[]
+    disconnect?: JobTopicWhereUniqueInput | JobTopicWhereUniqueInput[]
+    delete?: JobTopicWhereUniqueInput | JobTopicWhereUniqueInput[]
+    connect?: JobTopicWhereUniqueInput | JobTopicWhereUniqueInput[]
+    update?: JobTopicUpdateWithWhereUniqueWithoutJobInput | JobTopicUpdateWithWhereUniqueWithoutJobInput[]
+    updateMany?: JobTopicUpdateManyWithWhereWithoutJobInput | JobTopicUpdateManyWithWhereWithoutJobInput[]
+    deleteMany?: JobTopicScalarWhereInput | JobTopicScalarWhereInput[]
+  }
+
+  export type JobSourceUpdateManyWithoutJobNestedInput = {
+    create?: XOR<JobSourceCreateWithoutJobInput, JobSourceUncheckedCreateWithoutJobInput> | JobSourceCreateWithoutJobInput[] | JobSourceUncheckedCreateWithoutJobInput[]
+    connectOrCreate?: JobSourceCreateOrConnectWithoutJobInput | JobSourceCreateOrConnectWithoutJobInput[]
+    upsert?: JobSourceUpsertWithWhereUniqueWithoutJobInput | JobSourceUpsertWithWhereUniqueWithoutJobInput[]
+    createMany?: JobSourceCreateManyJobInputEnvelope
+    set?: JobSourceWhereUniqueInput | JobSourceWhereUniqueInput[]
+    disconnect?: JobSourceWhereUniqueInput | JobSourceWhereUniqueInput[]
+    delete?: JobSourceWhereUniqueInput | JobSourceWhereUniqueInput[]
+    connect?: JobSourceWhereUniqueInput | JobSourceWhereUniqueInput[]
+    update?: JobSourceUpdateWithWhereUniqueWithoutJobInput | JobSourceUpdateWithWhereUniqueWithoutJobInput[]
+    updateMany?: JobSourceUpdateManyWithWhereWithoutJobInput | JobSourceUpdateManyWithWhereWithoutJobInput[]
+    deleteMany?: JobSourceScalarWhereInput | JobSourceScalarWhereInput[]
+  }
+
+  export type JobRunUpdateManyWithoutJobNestedInput = {
+    create?: XOR<JobRunCreateWithoutJobInput, JobRunUncheckedCreateWithoutJobInput> | JobRunCreateWithoutJobInput[] | JobRunUncheckedCreateWithoutJobInput[]
+    connectOrCreate?: JobRunCreateOrConnectWithoutJobInput | JobRunCreateOrConnectWithoutJobInput[]
+    upsert?: JobRunUpsertWithWhereUniqueWithoutJobInput | JobRunUpsertWithWhereUniqueWithoutJobInput[]
+    createMany?: JobRunCreateManyJobInputEnvelope
+    set?: JobRunWhereUniqueInput | JobRunWhereUniqueInput[]
+    disconnect?: JobRunWhereUniqueInput | JobRunWhereUniqueInput[]
+    delete?: JobRunWhereUniqueInput | JobRunWhereUniqueInput[]
+    connect?: JobRunWhereUniqueInput | JobRunWhereUniqueInput[]
+    update?: JobRunUpdateWithWhereUniqueWithoutJobInput | JobRunUpdateWithWhereUniqueWithoutJobInput[]
+    updateMany?: JobRunUpdateManyWithWhereWithoutJobInput | JobRunUpdateManyWithWhereWithoutJobInput[]
+    deleteMany?: JobRunScalarWhereInput | JobRunScalarWhereInput[]
+  }
+
+  export type JobTopicUncheckedUpdateManyWithoutJobNestedInput = {
+    create?: XOR<JobTopicCreateWithoutJobInput, JobTopicUncheckedCreateWithoutJobInput> | JobTopicCreateWithoutJobInput[] | JobTopicUncheckedCreateWithoutJobInput[]
+    connectOrCreate?: JobTopicCreateOrConnectWithoutJobInput | JobTopicCreateOrConnectWithoutJobInput[]
+    upsert?: JobTopicUpsertWithWhereUniqueWithoutJobInput | JobTopicUpsertWithWhereUniqueWithoutJobInput[]
+    createMany?: JobTopicCreateManyJobInputEnvelope
+    set?: JobTopicWhereUniqueInput | JobTopicWhereUniqueInput[]
+    disconnect?: JobTopicWhereUniqueInput | JobTopicWhereUniqueInput[]
+    delete?: JobTopicWhereUniqueInput | JobTopicWhereUniqueInput[]
+    connect?: JobTopicWhereUniqueInput | JobTopicWhereUniqueInput[]
+    update?: JobTopicUpdateWithWhereUniqueWithoutJobInput | JobTopicUpdateWithWhereUniqueWithoutJobInput[]
+    updateMany?: JobTopicUpdateManyWithWhereWithoutJobInput | JobTopicUpdateManyWithWhereWithoutJobInput[]
+    deleteMany?: JobTopicScalarWhereInput | JobTopicScalarWhereInput[]
+  }
+
+  export type JobSourceUncheckedUpdateManyWithoutJobNestedInput = {
+    create?: XOR<JobSourceCreateWithoutJobInput, JobSourceUncheckedCreateWithoutJobInput> | JobSourceCreateWithoutJobInput[] | JobSourceUncheckedCreateWithoutJobInput[]
+    connectOrCreate?: JobSourceCreateOrConnectWithoutJobInput | JobSourceCreateOrConnectWithoutJobInput[]
+    upsert?: JobSourceUpsertWithWhereUniqueWithoutJobInput | JobSourceUpsertWithWhereUniqueWithoutJobInput[]
+    createMany?: JobSourceCreateManyJobInputEnvelope
+    set?: JobSourceWhereUniqueInput | JobSourceWhereUniqueInput[]
+    disconnect?: JobSourceWhereUniqueInput | JobSourceWhereUniqueInput[]
+    delete?: JobSourceWhereUniqueInput | JobSourceWhereUniqueInput[]
+    connect?: JobSourceWhereUniqueInput | JobSourceWhereUniqueInput[]
+    update?: JobSourceUpdateWithWhereUniqueWithoutJobInput | JobSourceUpdateWithWhereUniqueWithoutJobInput[]
+    updateMany?: JobSourceUpdateManyWithWhereWithoutJobInput | JobSourceUpdateManyWithWhereWithoutJobInput[]
+    deleteMany?: JobSourceScalarWhereInput | JobSourceScalarWhereInput[]
+  }
+
+  export type JobRunUncheckedUpdateManyWithoutJobNestedInput = {
+    create?: XOR<JobRunCreateWithoutJobInput, JobRunUncheckedCreateWithoutJobInput> | JobRunCreateWithoutJobInput[] | JobRunUncheckedCreateWithoutJobInput[]
+    connectOrCreate?: JobRunCreateOrConnectWithoutJobInput | JobRunCreateOrConnectWithoutJobInput[]
+    upsert?: JobRunUpsertWithWhereUniqueWithoutJobInput | JobRunUpsertWithWhereUniqueWithoutJobInput[]
+    createMany?: JobRunCreateManyJobInputEnvelope
+    set?: JobRunWhereUniqueInput | JobRunWhereUniqueInput[]
+    disconnect?: JobRunWhereUniqueInput | JobRunWhereUniqueInput[]
+    delete?: JobRunWhereUniqueInput | JobRunWhereUniqueInput[]
+    connect?: JobRunWhereUniqueInput | JobRunWhereUniqueInput[]
+    update?: JobRunUpdateWithWhereUniqueWithoutJobInput | JobRunUpdateWithWhereUniqueWithoutJobInput[]
+    updateMany?: JobRunUpdateManyWithWhereWithoutJobInput | JobRunUpdateManyWithWhereWithoutJobInput[]
+    deleteMany?: JobRunScalarWhereInput | JobRunScalarWhereInput[]
+  }
+
+  export type JobCreateNestedOneWithoutJobTopicsInput = {
+    create?: XOR<JobCreateWithoutJobTopicsInput, JobUncheckedCreateWithoutJobTopicsInput>
+    connectOrCreate?: JobCreateOrConnectWithoutJobTopicsInput
+    connect?: JobWhereUniqueInput
+  }
+
+  export type TopicCreateNestedOneWithoutJobTopicsInput = {
+    create?: XOR<TopicCreateWithoutJobTopicsInput, TopicUncheckedCreateWithoutJobTopicsInput>
+    connectOrCreate?: TopicCreateOrConnectWithoutJobTopicsInput
+    connect?: TopicWhereUniqueInput
+  }
+
+  export type JobUpdateOneRequiredWithoutJobTopicsNestedInput = {
+    create?: XOR<JobCreateWithoutJobTopicsInput, JobUncheckedCreateWithoutJobTopicsInput>
+    connectOrCreate?: JobCreateOrConnectWithoutJobTopicsInput
+    upsert?: JobUpsertWithoutJobTopicsInput
+    connect?: JobWhereUniqueInput
+    update?: XOR<XOR<JobUpdateToOneWithWhereWithoutJobTopicsInput, JobUpdateWithoutJobTopicsInput>, JobUncheckedUpdateWithoutJobTopicsInput>
+  }
+
+  export type TopicUpdateOneRequiredWithoutJobTopicsNestedInput = {
+    create?: XOR<TopicCreateWithoutJobTopicsInput, TopicUncheckedCreateWithoutJobTopicsInput>
+    connectOrCreate?: TopicCreateOrConnectWithoutJobTopicsInput
+    upsert?: TopicUpsertWithoutJobTopicsInput
+    connect?: TopicWhereUniqueInput
+    update?: XOR<XOR<TopicUpdateToOneWithWhereWithoutJobTopicsInput, TopicUpdateWithoutJobTopicsInput>, TopicUncheckedUpdateWithoutJobTopicsInput>
+  }
+
+  export type JobCreateNestedOneWithoutJobSourcesInput = {
+    create?: XOR<JobCreateWithoutJobSourcesInput, JobUncheckedCreateWithoutJobSourcesInput>
+    connectOrCreate?: JobCreateOrConnectWithoutJobSourcesInput
+    connect?: JobWhereUniqueInput
+  }
+
+  export type SourceCreateNestedOneWithoutJobSourcesInput = {
+    create?: XOR<SourceCreateWithoutJobSourcesInput, SourceUncheckedCreateWithoutJobSourcesInput>
+    connectOrCreate?: SourceCreateOrConnectWithoutJobSourcesInput
+    connect?: SourceWhereUniqueInput
+  }
+
+  export type JobUpdateOneRequiredWithoutJobSourcesNestedInput = {
+    create?: XOR<JobCreateWithoutJobSourcesInput, JobUncheckedCreateWithoutJobSourcesInput>
+    connectOrCreate?: JobCreateOrConnectWithoutJobSourcesInput
+    upsert?: JobUpsertWithoutJobSourcesInput
+    connect?: JobWhereUniqueInput
+    update?: XOR<XOR<JobUpdateToOneWithWhereWithoutJobSourcesInput, JobUpdateWithoutJobSourcesInput>, JobUncheckedUpdateWithoutJobSourcesInput>
+  }
+
+  export type SourceUpdateOneRequiredWithoutJobSourcesNestedInput = {
+    create?: XOR<SourceCreateWithoutJobSourcesInput, SourceUncheckedCreateWithoutJobSourcesInput>
+    connectOrCreate?: SourceCreateOrConnectWithoutJobSourcesInput
+    upsert?: SourceUpsertWithoutJobSourcesInput
+    connect?: SourceWhereUniqueInput
+    update?: XOR<XOR<SourceUpdateToOneWithWhereWithoutJobSourcesInput, SourceUpdateWithoutJobSourcesInput>, SourceUncheckedUpdateWithoutJobSourcesInput>
+  }
+
+  export type JobCreateNestedOneWithoutRunsInput = {
+    create?: XOR<JobCreateWithoutRunsInput, JobUncheckedCreateWithoutRunsInput>
+    connectOrCreate?: JobCreateOrConnectWithoutRunsInput
+    connect?: JobWhereUniqueInput
+  }
+
+  export type EnumTaskStatusFieldUpdateOperationsInput = {
+    set?: $Enums.TaskStatus
+  }
+
+  export type IntFieldUpdateOperationsInput = {
+    set?: number
+    increment?: number
+    decrement?: number
+    multiply?: number
+    divide?: number
+  }
+
+  export type JobUpdateOneRequiredWithoutRunsNestedInput = {
+    create?: XOR<JobCreateWithoutRunsInput, JobUncheckedCreateWithoutRunsInput>
+    connectOrCreate?: JobCreateOrConnectWithoutRunsInput
+    upsert?: JobUpsertWithoutRunsInput
+    connect?: JobWhereUniqueInput
+    update?: XOR<XOR<JobUpdateToOneWithWhereWithoutRunsInput, JobUpdateWithoutRunsInput>, JobUncheckedUpdateWithoutRunsInput>
+  }
+
   export type QueryCreateNestedOneWithoutQueryRunsInput = {
     create?: XOR<QueryCreateWithoutQueryRunsInput, QueryUncheckedCreateWithoutQueryRunsInput>
     connectOrCreate?: QueryCreateOrConnectWithoutQueryRunsInput
@@ -42959,18 +55424,6 @@ export namespace Prisma {
     connectOrCreate?: TaskEventCreateOrConnectWithoutRunInput | TaskEventCreateOrConnectWithoutRunInput[]
     createMany?: TaskEventCreateManyRunInputEnvelope
     connect?: TaskEventWhereUniqueInput | TaskEventWhereUniqueInput[]
-  }
-
-  export type EnumTaskStatusFieldUpdateOperationsInput = {
-    set?: $Enums.TaskStatus
-  }
-
-  export type IntFieldUpdateOperationsInput = {
-    set?: number
-    increment?: number
-    decrement?: number
-    multiply?: number
-    divide?: number
   }
 
   export type QueryUpdateOneRequiredWithoutQueryRunsNestedInput = {
@@ -43037,6 +55490,13 @@ export namespace Prisma {
     connect?: ContentSubjectMatchWhereUniqueInput | ContentSubjectMatchWhereUniqueInput[]
   }
 
+  export type ContentTopicScoreCreateNestedManyWithoutContentInput = {
+    create?: XOR<ContentTopicScoreCreateWithoutContentInput, ContentTopicScoreUncheckedCreateWithoutContentInput> | ContentTopicScoreCreateWithoutContentInput[] | ContentTopicScoreUncheckedCreateWithoutContentInput[]
+    connectOrCreate?: ContentTopicScoreCreateOrConnectWithoutContentInput | ContentTopicScoreCreateOrConnectWithoutContentInput[]
+    createMany?: ContentTopicScoreCreateManyContentInputEnvelope
+    connect?: ContentTopicScoreWhereUniqueInput | ContentTopicScoreWhereUniqueInput[]
+  }
+
   export type ContentEntityCreateNestedOneWithoutContentInput = {
     create?: XOR<ContentEntityCreateWithoutContentInput, ContentEntityUncheckedCreateWithoutContentInput>
     connectOrCreate?: ContentEntityCreateOrConnectWithoutContentInput
@@ -43062,6 +55522,13 @@ export namespace Prisma {
     connectOrCreate?: ContentSubjectMatchCreateOrConnectWithoutContentInput | ContentSubjectMatchCreateOrConnectWithoutContentInput[]
     createMany?: ContentSubjectMatchCreateManyContentInputEnvelope
     connect?: ContentSubjectMatchWhereUniqueInput | ContentSubjectMatchWhereUniqueInput[]
+  }
+
+  export type ContentTopicScoreUncheckedCreateNestedManyWithoutContentInput = {
+    create?: XOR<ContentTopicScoreCreateWithoutContentInput, ContentTopicScoreUncheckedCreateWithoutContentInput> | ContentTopicScoreCreateWithoutContentInput[] | ContentTopicScoreUncheckedCreateWithoutContentInput[]
+    connectOrCreate?: ContentTopicScoreCreateOrConnectWithoutContentInput | ContentTopicScoreCreateOrConnectWithoutContentInput[]
+    createMany?: ContentTopicScoreCreateManyContentInputEnvelope
+    connect?: ContentTopicScoreWhereUniqueInput | ContentTopicScoreWhereUniqueInput[]
   }
 
   export type ContentEntityUncheckedCreateNestedOneWithoutContentInput = {
@@ -43107,6 +55574,20 @@ export namespace Prisma {
     update?: ContentSubjectMatchUpdateWithWhereUniqueWithoutContentInput | ContentSubjectMatchUpdateWithWhereUniqueWithoutContentInput[]
     updateMany?: ContentSubjectMatchUpdateManyWithWhereWithoutContentInput | ContentSubjectMatchUpdateManyWithWhereWithoutContentInput[]
     deleteMany?: ContentSubjectMatchScalarWhereInput | ContentSubjectMatchScalarWhereInput[]
+  }
+
+  export type ContentTopicScoreUpdateManyWithoutContentNestedInput = {
+    create?: XOR<ContentTopicScoreCreateWithoutContentInput, ContentTopicScoreUncheckedCreateWithoutContentInput> | ContentTopicScoreCreateWithoutContentInput[] | ContentTopicScoreUncheckedCreateWithoutContentInput[]
+    connectOrCreate?: ContentTopicScoreCreateOrConnectWithoutContentInput | ContentTopicScoreCreateOrConnectWithoutContentInput[]
+    upsert?: ContentTopicScoreUpsertWithWhereUniqueWithoutContentInput | ContentTopicScoreUpsertWithWhereUniqueWithoutContentInput[]
+    createMany?: ContentTopicScoreCreateManyContentInputEnvelope
+    set?: ContentTopicScoreWhereUniqueInput | ContentTopicScoreWhereUniqueInput[]
+    disconnect?: ContentTopicScoreWhereUniqueInput | ContentTopicScoreWhereUniqueInput[]
+    delete?: ContentTopicScoreWhereUniqueInput | ContentTopicScoreWhereUniqueInput[]
+    connect?: ContentTopicScoreWhereUniqueInput | ContentTopicScoreWhereUniqueInput[]
+    update?: ContentTopicScoreUpdateWithWhereUniqueWithoutContentInput | ContentTopicScoreUpdateWithWhereUniqueWithoutContentInput[]
+    updateMany?: ContentTopicScoreUpdateManyWithWhereWithoutContentInput | ContentTopicScoreUpdateManyWithWhereWithoutContentInput[]
+    deleteMany?: ContentTopicScoreScalarWhereInput | ContentTopicScoreScalarWhereInput[]
   }
 
   export type ContentEntityUpdateOneWithoutContentNestedInput = {
@@ -43159,6 +55640,20 @@ export namespace Prisma {
     update?: ContentSubjectMatchUpdateWithWhereUniqueWithoutContentInput | ContentSubjectMatchUpdateWithWhereUniqueWithoutContentInput[]
     updateMany?: ContentSubjectMatchUpdateManyWithWhereWithoutContentInput | ContentSubjectMatchUpdateManyWithWhereWithoutContentInput[]
     deleteMany?: ContentSubjectMatchScalarWhereInput | ContentSubjectMatchScalarWhereInput[]
+  }
+
+  export type ContentTopicScoreUncheckedUpdateManyWithoutContentNestedInput = {
+    create?: XOR<ContentTopicScoreCreateWithoutContentInput, ContentTopicScoreUncheckedCreateWithoutContentInput> | ContentTopicScoreCreateWithoutContentInput[] | ContentTopicScoreUncheckedCreateWithoutContentInput[]
+    connectOrCreate?: ContentTopicScoreCreateOrConnectWithoutContentInput | ContentTopicScoreCreateOrConnectWithoutContentInput[]
+    upsert?: ContentTopicScoreUpsertWithWhereUniqueWithoutContentInput | ContentTopicScoreUpsertWithWhereUniqueWithoutContentInput[]
+    createMany?: ContentTopicScoreCreateManyContentInputEnvelope
+    set?: ContentTopicScoreWhereUniqueInput | ContentTopicScoreWhereUniqueInput[]
+    disconnect?: ContentTopicScoreWhereUniqueInput | ContentTopicScoreWhereUniqueInput[]
+    delete?: ContentTopicScoreWhereUniqueInput | ContentTopicScoreWhereUniqueInput[]
+    connect?: ContentTopicScoreWhereUniqueInput | ContentTopicScoreWhereUniqueInput[]
+    update?: ContentTopicScoreUpdateWithWhereUniqueWithoutContentInput | ContentTopicScoreUpdateWithWhereUniqueWithoutContentInput[]
+    updateMany?: ContentTopicScoreUpdateManyWithWhereWithoutContentInput | ContentTopicScoreUpdateManyWithWhereWithoutContentInput[]
+    deleteMany?: ContentTopicScoreScalarWhereInput | ContentTopicScoreScalarWhereInput[]
   }
 
   export type ContentEntityUncheckedUpdateOneWithoutContentNestedInput = {
@@ -43310,6 +55805,34 @@ export namespace Prisma {
     upsert?: ContentUpsertWithoutEntitiesInput
     connect?: ContentWhereUniqueInput
     update?: XOR<XOR<ContentUpdateToOneWithWhereWithoutEntitiesInput, ContentUpdateWithoutEntitiesInput>, ContentUncheckedUpdateWithoutEntitiesInput>
+  }
+
+  export type ContentCreateNestedOneWithoutTopicScoresInput = {
+    create?: XOR<ContentCreateWithoutTopicScoresInput, ContentUncheckedCreateWithoutTopicScoresInput>
+    connectOrCreate?: ContentCreateOrConnectWithoutTopicScoresInput
+    connect?: ContentWhereUniqueInput
+  }
+
+  export type TopicCreateNestedOneWithoutScoresInput = {
+    create?: XOR<TopicCreateWithoutScoresInput, TopicUncheckedCreateWithoutScoresInput>
+    connectOrCreate?: TopicCreateOrConnectWithoutScoresInput
+    connect?: TopicWhereUniqueInput
+  }
+
+  export type ContentUpdateOneRequiredWithoutTopicScoresNestedInput = {
+    create?: XOR<ContentCreateWithoutTopicScoresInput, ContentUncheckedCreateWithoutTopicScoresInput>
+    connectOrCreate?: ContentCreateOrConnectWithoutTopicScoresInput
+    upsert?: ContentUpsertWithoutTopicScoresInput
+    connect?: ContentWhereUniqueInput
+    update?: XOR<XOR<ContentUpdateToOneWithWhereWithoutTopicScoresInput, ContentUpdateWithoutTopicScoresInput>, ContentUncheckedUpdateWithoutTopicScoresInput>
+  }
+
+  export type TopicUpdateOneRequiredWithoutScoresNestedInput = {
+    create?: XOR<TopicCreateWithoutScoresInput, TopicUncheckedCreateWithoutScoresInput>
+    connectOrCreate?: TopicCreateOrConnectWithoutScoresInput
+    upsert?: TopicUpsertWithoutScoresInput
+    connect?: TopicWhereUniqueInput
+    update?: XOR<XOR<TopicUpdateToOneWithWhereWithoutScoresInput, TopicUpdateWithoutScoresInput>, TopicUncheckedUpdateWithoutScoresInput>
   }
 
   export type ContentCreateNestedOneWithoutFavoritesInput = {
@@ -44078,6 +56601,67 @@ export namespace Prisma {
     _max?: NestedEnumQueryContentFilterModeFilter<$PrismaModel>
   }
 
+  export type NestedEnumTopicTermTypeFilter<$PrismaModel = never> = {
+    equals?: $Enums.TopicTermType | EnumTopicTermTypeFieldRefInput<$PrismaModel>
+    in?: $Enums.TopicTermType[] | ListEnumTopicTermTypeFieldRefInput<$PrismaModel>
+    notIn?: $Enums.TopicTermType[] | ListEnumTopicTermTypeFieldRefInput<$PrismaModel>
+    not?: NestedEnumTopicTermTypeFilter<$PrismaModel> | $Enums.TopicTermType
+  }
+
+  export type NestedFloatFilter<$PrismaModel = never> = {
+    equals?: number | FloatFieldRefInput<$PrismaModel>
+    in?: number[] | ListFloatFieldRefInput<$PrismaModel>
+    notIn?: number[] | ListFloatFieldRefInput<$PrismaModel>
+    lt?: number | FloatFieldRefInput<$PrismaModel>
+    lte?: number | FloatFieldRefInput<$PrismaModel>
+    gt?: number | FloatFieldRefInput<$PrismaModel>
+    gte?: number | FloatFieldRefInput<$PrismaModel>
+    not?: NestedFloatFilter<$PrismaModel> | number
+  }
+
+  export type NestedEnumTopicTermTypeWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: $Enums.TopicTermType | EnumTopicTermTypeFieldRefInput<$PrismaModel>
+    in?: $Enums.TopicTermType[] | ListEnumTopicTermTypeFieldRefInput<$PrismaModel>
+    notIn?: $Enums.TopicTermType[] | ListEnumTopicTermTypeFieldRefInput<$PrismaModel>
+    not?: NestedEnumTopicTermTypeWithAggregatesFilter<$PrismaModel> | $Enums.TopicTermType
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedEnumTopicTermTypeFilter<$PrismaModel>
+    _max?: NestedEnumTopicTermTypeFilter<$PrismaModel>
+  }
+
+  export type NestedFloatWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: number | FloatFieldRefInput<$PrismaModel>
+    in?: number[] | ListFloatFieldRefInput<$PrismaModel>
+    notIn?: number[] | ListFloatFieldRefInput<$PrismaModel>
+    lt?: number | FloatFieldRefInput<$PrismaModel>
+    lte?: number | FloatFieldRefInput<$PrismaModel>
+    gt?: number | FloatFieldRefInput<$PrismaModel>
+    gte?: number | FloatFieldRefInput<$PrismaModel>
+    not?: NestedFloatWithAggregatesFilter<$PrismaModel> | number
+    _count?: NestedIntFilter<$PrismaModel>
+    _avg?: NestedFloatFilter<$PrismaModel>
+    _sum?: NestedFloatFilter<$PrismaModel>
+    _min?: NestedFloatFilter<$PrismaModel>
+    _max?: NestedFloatFilter<$PrismaModel>
+  }
+
+  export type NestedEnumJobTypeFilter<$PrismaModel = never> = {
+    equals?: $Enums.JobType | EnumJobTypeFieldRefInput<$PrismaModel>
+    in?: $Enums.JobType[] | ListEnumJobTypeFieldRefInput<$PrismaModel>
+    notIn?: $Enums.JobType[] | ListEnumJobTypeFieldRefInput<$PrismaModel>
+    not?: NestedEnumJobTypeFilter<$PrismaModel> | $Enums.JobType
+  }
+
+  export type NestedEnumJobTypeWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: $Enums.JobType | EnumJobTypeFieldRefInput<$PrismaModel>
+    in?: $Enums.JobType[] | ListEnumJobTypeFieldRefInput<$PrismaModel>
+    notIn?: $Enums.JobType[] | ListEnumJobTypeFieldRefInput<$PrismaModel>
+    not?: NestedEnumJobTypeWithAggregatesFilter<$PrismaModel> | $Enums.JobType
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedEnumJobTypeFilter<$PrismaModel>
+    _max?: NestedEnumJobTypeFilter<$PrismaModel>
+  }
+
   export type NestedEnumTaskStatusFilter<$PrismaModel = never> = {
     equals?: $Enums.TaskStatus | EnumTaskStatusFieldRefInput<$PrismaModel>
     in?: $Enums.TaskStatus[] | ListEnumTaskStatusFieldRefInput<$PrismaModel>
@@ -44109,17 +56693,6 @@ export namespace Prisma {
     _sum?: NestedIntFilter<$PrismaModel>
     _min?: NestedIntFilter<$PrismaModel>
     _max?: NestedIntFilter<$PrismaModel>
-  }
-
-  export type NestedFloatFilter<$PrismaModel = never> = {
-    equals?: number | FloatFieldRefInput<$PrismaModel>
-    in?: number[] | ListFloatFieldRefInput<$PrismaModel>
-    notIn?: number[] | ListFloatFieldRefInput<$PrismaModel>
-    lt?: number | FloatFieldRefInput<$PrismaModel>
-    lte?: number | FloatFieldRefInput<$PrismaModel>
-    gt?: number | FloatFieldRefInput<$PrismaModel>
-    gte?: number | FloatFieldRefInput<$PrismaModel>
-    not?: NestedFloatFilter<$PrismaModel> | number
   }
 
   export type NestedEnumContentTypeFilter<$PrismaModel = never> = {
@@ -44332,6 +56905,8 @@ export namespace Prisma {
     identity?: SourceIdentityCreateNestedOneWithoutSourceInput
     queries?: QueryCreateNestedManyWithoutSourcesInput
     querySourcePolicies?: QuerySourcePolicyCreateNestedManyWithoutSourceInput
+    topicSources?: TopicSourceCreateNestedManyWithoutSourceInput
+    jobSources?: JobSourceCreateNestedManyWithoutSourceInput
   }
 
   export type SourceUncheckedCreateWithoutDerivedKeywordsInput = {
@@ -44355,6 +56930,8 @@ export namespace Prisma {
     identity?: SourceIdentityUncheckedCreateNestedOneWithoutSourceInput
     queries?: QueryUncheckedCreateNestedManyWithoutSourcesInput
     querySourcePolicies?: QuerySourcePolicyUncheckedCreateNestedManyWithoutSourceInput
+    topicSources?: TopicSourceUncheckedCreateNestedManyWithoutSourceInput
+    jobSources?: JobSourceUncheckedCreateNestedManyWithoutSourceInput
   }
 
   export type SourceCreateOrConnectWithoutDerivedKeywordsInput = {
@@ -44516,6 +57093,8 @@ export namespace Prisma {
     identity?: SourceIdentityUpdateOneWithoutSourceNestedInput
     queries?: QueryUpdateManyWithoutSourcesNestedInput
     querySourcePolicies?: QuerySourcePolicyUpdateManyWithoutSourceNestedInput
+    topicSources?: TopicSourceUpdateManyWithoutSourceNestedInput
+    jobSources?: JobSourceUpdateManyWithoutSourceNestedInput
   }
 
   export type SourceUncheckedUpdateWithoutDerivedKeywordsInput = {
@@ -44539,6 +57118,8 @@ export namespace Prisma {
     identity?: SourceIdentityUncheckedUpdateOneWithoutSourceNestedInput
     queries?: QueryUncheckedUpdateManyWithoutSourcesNestedInput
     querySourcePolicies?: QuerySourcePolicyUncheckedUpdateManyWithoutSourceNestedInput
+    topicSources?: TopicSourceUncheckedUpdateManyWithoutSourceNestedInput
+    jobSources?: JobSourceUncheckedUpdateManyWithoutSourceNestedInput
   }
 
   export type QueryUpsertWithWhereUniqueWithoutKeywordsInput = {
@@ -44653,6 +57234,8 @@ export namespace Prisma {
     queries?: QueryCreateNestedManyWithoutSourcesInput
     derivedKeywords?: KeywordCreateNestedManyWithoutDeriveSourceInput
     querySourcePolicies?: QuerySourcePolicyCreateNestedManyWithoutSourceInput
+    topicSources?: TopicSourceCreateNestedManyWithoutSourceInput
+    jobSources?: JobSourceCreateNestedManyWithoutSourceInput
   }
 
   export type SourceUncheckedCreateWithoutProxyInput = {
@@ -44676,6 +57259,8 @@ export namespace Prisma {
     queries?: QueryUncheckedCreateNestedManyWithoutSourcesInput
     derivedKeywords?: KeywordUncheckedCreateNestedManyWithoutDeriveSourceInput
     querySourcePolicies?: QuerySourcePolicyUncheckedCreateNestedManyWithoutSourceInput
+    topicSources?: TopicSourceUncheckedCreateNestedManyWithoutSourceInput
+    jobSources?: JobSourceUncheckedCreateNestedManyWithoutSourceInput
   }
 
   export type SourceCreateOrConnectWithoutProxyInput = {
@@ -44933,6 +57518,8 @@ export namespace Prisma {
     queries?: QueryCreateNestedManyWithoutSourcesInput
     derivedKeywords?: KeywordCreateNestedManyWithoutDeriveSourceInput
     querySourcePolicies?: QuerySourcePolicyCreateNestedManyWithoutSourceInput
+    topicSources?: TopicSourceCreateNestedManyWithoutSourceInput
+    jobSources?: JobSourceCreateNestedManyWithoutSourceInput
   }
 
   export type SourceUncheckedCreateWithoutCredentialInput = {
@@ -44956,6 +57543,8 @@ export namespace Prisma {
     queries?: QueryUncheckedCreateNestedManyWithoutSourcesInput
     derivedKeywords?: KeywordUncheckedCreateNestedManyWithoutDeriveSourceInput
     querySourcePolicies?: QuerySourcePolicyUncheckedCreateNestedManyWithoutSourceInput
+    topicSources?: TopicSourceUncheckedCreateNestedManyWithoutSourceInput
+    jobSources?: JobSourceUncheckedCreateNestedManyWithoutSourceInput
   }
 
   export type SourceCreateOrConnectWithoutCredentialInput = {
@@ -45406,6 +57995,60 @@ export namespace Prisma {
     skipDuplicates?: boolean
   }
 
+  export type TopicSourceCreateWithoutSourceInput = {
+    id?: string
+    enabled?: boolean
+    retrievalPolicy?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    topic: TopicCreateNestedOneWithoutSourcesInput
+  }
+
+  export type TopicSourceUncheckedCreateWithoutSourceInput = {
+    id?: string
+    topicId: string
+    enabled?: boolean
+    retrievalPolicy?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type TopicSourceCreateOrConnectWithoutSourceInput = {
+    where: TopicSourceWhereUniqueInput
+    create: XOR<TopicSourceCreateWithoutSourceInput, TopicSourceUncheckedCreateWithoutSourceInput>
+  }
+
+  export type TopicSourceCreateManySourceInputEnvelope = {
+    data: TopicSourceCreateManySourceInput | TopicSourceCreateManySourceInput[]
+    skipDuplicates?: boolean
+  }
+
+  export type JobSourceCreateWithoutSourceInput = {
+    id?: string
+    recallBindingOverride?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    job: JobCreateNestedOneWithoutJobSourcesInput
+  }
+
+  export type JobSourceUncheckedCreateWithoutSourceInput = {
+    id?: string
+    jobId: string
+    recallBindingOverride?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type JobSourceCreateOrConnectWithoutSourceInput = {
+    where: JobSourceWhereUniqueInput
+    create: XOR<JobSourceCreateWithoutSourceInput, JobSourceUncheckedCreateWithoutSourceInput>
+  }
+
+  export type JobSourceCreateManySourceInputEnvelope = {
+    data: JobSourceCreateManySourceInput | JobSourceCreateManySourceInput[]
+    skipDuplicates?: boolean
+  }
+
   export type ProxyUpsertWithoutSourcesInput = {
     update: XOR<ProxyUpdateWithoutSourcesInput, ProxyUncheckedUpdateWithoutSourcesInput>
     create: XOR<ProxyCreateWithoutSourcesInput, ProxyUncheckedCreateWithoutSourcesInput>
@@ -45706,6 +58349,63 @@ export namespace Prisma {
     updatedAt?: DateTimeFilter<"QuerySourcePolicy"> | Date | string
   }
 
+  export type TopicSourceUpsertWithWhereUniqueWithoutSourceInput = {
+    where: TopicSourceWhereUniqueInput
+    update: XOR<TopicSourceUpdateWithoutSourceInput, TopicSourceUncheckedUpdateWithoutSourceInput>
+    create: XOR<TopicSourceCreateWithoutSourceInput, TopicSourceUncheckedCreateWithoutSourceInput>
+  }
+
+  export type TopicSourceUpdateWithWhereUniqueWithoutSourceInput = {
+    where: TopicSourceWhereUniqueInput
+    data: XOR<TopicSourceUpdateWithoutSourceInput, TopicSourceUncheckedUpdateWithoutSourceInput>
+  }
+
+  export type TopicSourceUpdateManyWithWhereWithoutSourceInput = {
+    where: TopicSourceScalarWhereInput
+    data: XOR<TopicSourceUpdateManyMutationInput, TopicSourceUncheckedUpdateManyWithoutSourceInput>
+  }
+
+  export type TopicSourceScalarWhereInput = {
+    AND?: TopicSourceScalarWhereInput | TopicSourceScalarWhereInput[]
+    OR?: TopicSourceScalarWhereInput[]
+    NOT?: TopicSourceScalarWhereInput | TopicSourceScalarWhereInput[]
+    id?: StringFilter<"TopicSource"> | string
+    topicId?: StringFilter<"TopicSource"> | string
+    sourceId?: StringFilter<"TopicSource"> | string
+    enabled?: BoolFilter<"TopicSource"> | boolean
+    retrievalPolicy?: JsonNullableFilter<"TopicSource">
+    createdAt?: DateTimeFilter<"TopicSource"> | Date | string
+    updatedAt?: DateTimeFilter<"TopicSource"> | Date | string
+  }
+
+  export type JobSourceUpsertWithWhereUniqueWithoutSourceInput = {
+    where: JobSourceWhereUniqueInput
+    update: XOR<JobSourceUpdateWithoutSourceInput, JobSourceUncheckedUpdateWithoutSourceInput>
+    create: XOR<JobSourceCreateWithoutSourceInput, JobSourceUncheckedCreateWithoutSourceInput>
+  }
+
+  export type JobSourceUpdateWithWhereUniqueWithoutSourceInput = {
+    where: JobSourceWhereUniqueInput
+    data: XOR<JobSourceUpdateWithoutSourceInput, JobSourceUncheckedUpdateWithoutSourceInput>
+  }
+
+  export type JobSourceUpdateManyWithWhereWithoutSourceInput = {
+    where: JobSourceScalarWhereInput
+    data: XOR<JobSourceUpdateManyMutationInput, JobSourceUncheckedUpdateManyWithoutSourceInput>
+  }
+
+  export type JobSourceScalarWhereInput = {
+    AND?: JobSourceScalarWhereInput | JobSourceScalarWhereInput[]
+    OR?: JobSourceScalarWhereInput[]
+    NOT?: JobSourceScalarWhereInput | JobSourceScalarWhereInput[]
+    id?: StringFilter<"JobSource"> | string
+    jobId?: StringFilter<"JobSource"> | string
+    sourceId?: StringFilter<"JobSource"> | string
+    recallBindingOverride?: JsonNullableFilter<"JobSource">
+    createdAt?: DateTimeFilter<"JobSource"> | Date | string
+    updatedAt?: DateTimeFilter<"JobSource"> | Date | string
+  }
+
   export type SourceCreateWithoutIdentityInput = {
     id?: string
     name: string
@@ -45727,6 +58427,8 @@ export namespace Prisma {
     queries?: QueryCreateNestedManyWithoutSourcesInput
     derivedKeywords?: KeywordCreateNestedManyWithoutDeriveSourceInput
     querySourcePolicies?: QuerySourcePolicyCreateNestedManyWithoutSourceInput
+    topicSources?: TopicSourceCreateNestedManyWithoutSourceInput
+    jobSources?: JobSourceCreateNestedManyWithoutSourceInput
   }
 
   export type SourceUncheckedCreateWithoutIdentityInput = {
@@ -45750,6 +58452,8 @@ export namespace Prisma {
     queries?: QueryUncheckedCreateNestedManyWithoutSourcesInput
     derivedKeywords?: KeywordUncheckedCreateNestedManyWithoutDeriveSourceInput
     querySourcePolicies?: QuerySourcePolicyUncheckedCreateNestedManyWithoutSourceInput
+    topicSources?: TopicSourceUncheckedCreateNestedManyWithoutSourceInput
+    jobSources?: JobSourceUncheckedCreateNestedManyWithoutSourceInput
   }
 
   export type SourceCreateOrConnectWithoutIdentityInput = {
@@ -45789,6 +58493,8 @@ export namespace Prisma {
     queries?: QueryUpdateManyWithoutSourcesNestedInput
     derivedKeywords?: KeywordUpdateManyWithoutDeriveSourceNestedInput
     querySourcePolicies?: QuerySourcePolicyUpdateManyWithoutSourceNestedInput
+    topicSources?: TopicSourceUpdateManyWithoutSourceNestedInput
+    jobSources?: JobSourceUpdateManyWithoutSourceNestedInput
   }
 
   export type SourceUncheckedUpdateWithoutIdentityInput = {
@@ -45812,6 +58518,8 @@ export namespace Prisma {
     queries?: QueryUncheckedUpdateManyWithoutSourcesNestedInput
     derivedKeywords?: KeywordUncheckedUpdateManyWithoutDeriveSourceNestedInput
     querySourcePolicies?: QuerySourcePolicyUncheckedUpdateManyWithoutSourceNestedInput
+    topicSources?: TopicSourceUncheckedUpdateManyWithoutSourceNestedInput
+    jobSources?: JobSourceUncheckedUpdateManyWithoutSourceNestedInput
   }
 
   export type SourceCreateWithoutWebInput = {
@@ -45835,6 +58543,8 @@ export namespace Prisma {
     queries?: QueryCreateNestedManyWithoutSourcesInput
     derivedKeywords?: KeywordCreateNestedManyWithoutDeriveSourceInput
     querySourcePolicies?: QuerySourcePolicyCreateNestedManyWithoutSourceInput
+    topicSources?: TopicSourceCreateNestedManyWithoutSourceInput
+    jobSources?: JobSourceCreateNestedManyWithoutSourceInput
   }
 
   export type SourceUncheckedCreateWithoutWebInput = {
@@ -45858,6 +58568,8 @@ export namespace Prisma {
     queries?: QueryUncheckedCreateNestedManyWithoutSourcesInput
     derivedKeywords?: KeywordUncheckedCreateNestedManyWithoutDeriveSourceInput
     querySourcePolicies?: QuerySourcePolicyUncheckedCreateNestedManyWithoutSourceInput
+    topicSources?: TopicSourceUncheckedCreateNestedManyWithoutSourceInput
+    jobSources?: JobSourceUncheckedCreateNestedManyWithoutSourceInput
   }
 
   export type SourceCreateOrConnectWithoutWebInput = {
@@ -45928,6 +58640,8 @@ export namespace Prisma {
     queries?: QueryUpdateManyWithoutSourcesNestedInput
     derivedKeywords?: KeywordUpdateManyWithoutDeriveSourceNestedInput
     querySourcePolicies?: QuerySourcePolicyUpdateManyWithoutSourceNestedInput
+    topicSources?: TopicSourceUpdateManyWithoutSourceNestedInput
+    jobSources?: JobSourceUpdateManyWithoutSourceNestedInput
   }
 
   export type SourceUncheckedUpdateWithoutWebInput = {
@@ -45951,6 +58665,8 @@ export namespace Prisma {
     queries?: QueryUncheckedUpdateManyWithoutSourcesNestedInput
     derivedKeywords?: KeywordUncheckedUpdateManyWithoutDeriveSourceNestedInput
     querySourcePolicies?: QuerySourcePolicyUncheckedUpdateManyWithoutSourceNestedInput
+    topicSources?: TopicSourceUncheckedUpdateManyWithoutSourceNestedInput
+    jobSources?: JobSourceUncheckedUpdateManyWithoutSourceNestedInput
   }
 
   export type ProxyUpsertWithoutWebOverridesInput = {
@@ -46011,6 +58727,8 @@ export namespace Prisma {
     queries?: QueryCreateNestedManyWithoutSourcesInput
     derivedKeywords?: KeywordCreateNestedManyWithoutDeriveSourceInput
     querySourcePolicies?: QuerySourcePolicyCreateNestedManyWithoutSourceInput
+    topicSources?: TopicSourceCreateNestedManyWithoutSourceInput
+    jobSources?: JobSourceCreateNestedManyWithoutSourceInput
   }
 
   export type SourceUncheckedCreateWithoutDarknetInput = {
@@ -46034,6 +58752,8 @@ export namespace Prisma {
     queries?: QueryUncheckedCreateNestedManyWithoutSourcesInput
     derivedKeywords?: KeywordUncheckedCreateNestedManyWithoutDeriveSourceInput
     querySourcePolicies?: QuerySourcePolicyUncheckedCreateNestedManyWithoutSourceInput
+    topicSources?: TopicSourceUncheckedCreateNestedManyWithoutSourceInput
+    jobSources?: JobSourceUncheckedCreateNestedManyWithoutSourceInput
   }
 
   export type SourceCreateOrConnectWithoutDarknetInput = {
@@ -46104,6 +58824,8 @@ export namespace Prisma {
     queries?: QueryUpdateManyWithoutSourcesNestedInput
     derivedKeywords?: KeywordUpdateManyWithoutDeriveSourceNestedInput
     querySourcePolicies?: QuerySourcePolicyUpdateManyWithoutSourceNestedInput
+    topicSources?: TopicSourceUpdateManyWithoutSourceNestedInput
+    jobSources?: JobSourceUpdateManyWithoutSourceNestedInput
   }
 
   export type SourceUncheckedUpdateWithoutDarknetInput = {
@@ -46127,6 +58849,8 @@ export namespace Prisma {
     queries?: QueryUncheckedUpdateManyWithoutSourcesNestedInput
     derivedKeywords?: KeywordUncheckedUpdateManyWithoutDeriveSourceNestedInput
     querySourcePolicies?: QuerySourcePolicyUncheckedUpdateManyWithoutSourceNestedInput
+    topicSources?: TopicSourceUncheckedUpdateManyWithoutSourceNestedInput
+    jobSources?: JobSourceUncheckedUpdateManyWithoutSourceNestedInput
   }
 
   export type ProxyUpsertWithoutDarknetOverridesInput = {
@@ -46187,6 +58911,8 @@ export namespace Prisma {
     queries?: QueryCreateNestedManyWithoutSourcesInput
     derivedKeywords?: KeywordCreateNestedManyWithoutDeriveSourceInput
     querySourcePolicies?: QuerySourcePolicyCreateNestedManyWithoutSourceInput
+    topicSources?: TopicSourceCreateNestedManyWithoutSourceInput
+    jobSources?: JobSourceCreateNestedManyWithoutSourceInput
   }
 
   export type SourceUncheckedCreateWithoutSearchInput = {
@@ -46210,6 +58936,8 @@ export namespace Prisma {
     queries?: QueryUncheckedCreateNestedManyWithoutSourcesInput
     derivedKeywords?: KeywordUncheckedCreateNestedManyWithoutDeriveSourceInput
     querySourcePolicies?: QuerySourcePolicyUncheckedCreateNestedManyWithoutSourceInput
+    topicSources?: TopicSourceUncheckedCreateNestedManyWithoutSourceInput
+    jobSources?: JobSourceUncheckedCreateNestedManyWithoutSourceInput
   }
 
   export type SourceCreateOrConnectWithoutSearchInput = {
@@ -46276,6 +59004,8 @@ export namespace Prisma {
     queries?: QueryUpdateManyWithoutSourcesNestedInput
     derivedKeywords?: KeywordUpdateManyWithoutDeriveSourceNestedInput
     querySourcePolicies?: QuerySourcePolicyUpdateManyWithoutSourceNestedInput
+    topicSources?: TopicSourceUpdateManyWithoutSourceNestedInput
+    jobSources?: JobSourceUpdateManyWithoutSourceNestedInput
   }
 
   export type SourceUncheckedUpdateWithoutSearchInput = {
@@ -46299,6 +59029,8 @@ export namespace Prisma {
     queries?: QueryUncheckedUpdateManyWithoutSourcesNestedInput
     derivedKeywords?: KeywordUncheckedUpdateManyWithoutDeriveSourceNestedInput
     querySourcePolicies?: QuerySourcePolicyUncheckedUpdateManyWithoutSourceNestedInput
+    topicSources?: TopicSourceUncheckedUpdateManyWithoutSourceNestedInput
+    jobSources?: JobSourceUncheckedUpdateManyWithoutSourceNestedInput
   }
 
   export type CredentialUpsertWithoutSearchOverridesInput = {
@@ -46355,6 +59087,8 @@ export namespace Prisma {
     queries?: QueryCreateNestedManyWithoutSourcesInput
     derivedKeywords?: KeywordCreateNestedManyWithoutDeriveSourceInput
     querySourcePolicies?: QuerySourcePolicyCreateNestedManyWithoutSourceInput
+    topicSources?: TopicSourceCreateNestedManyWithoutSourceInput
+    jobSources?: JobSourceCreateNestedManyWithoutSourceInput
   }
 
   export type SourceUncheckedCreateWithoutSocialInput = {
@@ -46378,6 +59112,8 @@ export namespace Prisma {
     queries?: QueryUncheckedCreateNestedManyWithoutSourcesInput
     derivedKeywords?: KeywordUncheckedCreateNestedManyWithoutDeriveSourceInput
     querySourcePolicies?: QuerySourcePolicyUncheckedCreateNestedManyWithoutSourceInput
+    topicSources?: TopicSourceUncheckedCreateNestedManyWithoutSourceInput
+    jobSources?: JobSourceUncheckedCreateNestedManyWithoutSourceInput
   }
 
   export type SourceCreateOrConnectWithoutSocialInput = {
@@ -46475,6 +59211,8 @@ export namespace Prisma {
     queries?: QueryUpdateManyWithoutSourcesNestedInput
     derivedKeywords?: KeywordUpdateManyWithoutDeriveSourceNestedInput
     querySourcePolicies?: QuerySourcePolicyUpdateManyWithoutSourceNestedInput
+    topicSources?: TopicSourceUpdateManyWithoutSourceNestedInput
+    jobSources?: JobSourceUpdateManyWithoutSourceNestedInput
   }
 
   export type SourceUncheckedUpdateWithoutSocialInput = {
@@ -46498,6 +59236,8 @@ export namespace Prisma {
     queries?: QueryUncheckedUpdateManyWithoutSourcesNestedInput
     derivedKeywords?: KeywordUncheckedUpdateManyWithoutDeriveSourceNestedInput
     querySourcePolicies?: QuerySourcePolicyUncheckedUpdateManyWithoutSourceNestedInput
+    topicSources?: TopicSourceUncheckedUpdateManyWithoutSourceNestedInput
+    jobSources?: JobSourceUncheckedUpdateManyWithoutSourceNestedInput
   }
 
   export type CredentialUpsertWithoutSocialOverridesInput = {
@@ -46634,6 +59374,8 @@ export namespace Prisma {
     identity?: SourceIdentityCreateNestedOneWithoutSourceInput
     derivedKeywords?: KeywordCreateNestedManyWithoutDeriveSourceInput
     querySourcePolicies?: QuerySourcePolicyCreateNestedManyWithoutSourceInput
+    topicSources?: TopicSourceCreateNestedManyWithoutSourceInput
+    jobSources?: JobSourceCreateNestedManyWithoutSourceInput
   }
 
   export type SourceUncheckedCreateWithoutQueriesInput = {
@@ -46657,6 +59399,8 @@ export namespace Prisma {
     identity?: SourceIdentityUncheckedCreateNestedOneWithoutSourceInput
     derivedKeywords?: KeywordUncheckedCreateNestedManyWithoutDeriveSourceInput
     querySourcePolicies?: QuerySourcePolicyUncheckedCreateNestedManyWithoutSourceInput
+    topicSources?: TopicSourceUncheckedCreateNestedManyWithoutSourceInput
+    jobSources?: JobSourceUncheckedCreateNestedManyWithoutSourceInput
   }
 
   export type SourceCreateOrConnectWithoutQueriesInput = {
@@ -46866,6 +59610,8 @@ export namespace Prisma {
     identity?: SourceIdentityCreateNestedOneWithoutSourceInput
     queries?: QueryCreateNestedManyWithoutSourcesInput
     derivedKeywords?: KeywordCreateNestedManyWithoutDeriveSourceInput
+    topicSources?: TopicSourceCreateNestedManyWithoutSourceInput
+    jobSources?: JobSourceCreateNestedManyWithoutSourceInput
   }
 
   export type SourceUncheckedCreateWithoutQuerySourcePoliciesInput = {
@@ -46889,6 +59635,8 @@ export namespace Prisma {
     identity?: SourceIdentityUncheckedCreateNestedOneWithoutSourceInput
     queries?: QueryUncheckedCreateNestedManyWithoutSourcesInput
     derivedKeywords?: KeywordUncheckedCreateNestedManyWithoutDeriveSourceInput
+    topicSources?: TopicSourceUncheckedCreateNestedManyWithoutSourceInput
+    jobSources?: JobSourceUncheckedCreateNestedManyWithoutSourceInput
   }
 
   export type SourceCreateOrConnectWithoutQuerySourcePoliciesInput = {
@@ -46971,6 +59719,8 @@ export namespace Prisma {
     identity?: SourceIdentityUpdateOneWithoutSourceNestedInput
     queries?: QueryUpdateManyWithoutSourcesNestedInput
     derivedKeywords?: KeywordUpdateManyWithoutDeriveSourceNestedInput
+    topicSources?: TopicSourceUpdateManyWithoutSourceNestedInput
+    jobSources?: JobSourceUpdateManyWithoutSourceNestedInput
   }
 
   export type SourceUncheckedUpdateWithoutQuerySourcePoliciesInput = {
@@ -46994,6 +59744,1071 @@ export namespace Prisma {
     identity?: SourceIdentityUncheckedUpdateOneWithoutSourceNestedInput
     queries?: QueryUncheckedUpdateManyWithoutSourcesNestedInput
     derivedKeywords?: KeywordUncheckedUpdateManyWithoutDeriveSourceNestedInput
+    topicSources?: TopicSourceUncheckedUpdateManyWithoutSourceNestedInput
+    jobSources?: JobSourceUncheckedUpdateManyWithoutSourceNestedInput
+  }
+
+  export type TopicTermCreateWithoutTopicInput = {
+    id?: string
+    type: $Enums.TopicTermType
+    value: string
+    weight?: number
+    meta?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type TopicTermUncheckedCreateWithoutTopicInput = {
+    id?: string
+    type: $Enums.TopicTermType
+    value: string
+    weight?: number
+    meta?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type TopicTermCreateOrConnectWithoutTopicInput = {
+    where: TopicTermWhereUniqueInput
+    create: XOR<TopicTermCreateWithoutTopicInput, TopicTermUncheckedCreateWithoutTopicInput>
+  }
+
+  export type TopicTermCreateManyTopicInputEnvelope = {
+    data: TopicTermCreateManyTopicInput | TopicTermCreateManyTopicInput[]
+    skipDuplicates?: boolean
+  }
+
+  export type TopicSourceCreateWithoutTopicInput = {
+    id?: string
+    enabled?: boolean
+    retrievalPolicy?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    source: SourceCreateNestedOneWithoutTopicSourcesInput
+  }
+
+  export type TopicSourceUncheckedCreateWithoutTopicInput = {
+    id?: string
+    sourceId: string
+    enabled?: boolean
+    retrievalPolicy?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type TopicSourceCreateOrConnectWithoutTopicInput = {
+    where: TopicSourceWhereUniqueInput
+    create: XOR<TopicSourceCreateWithoutTopicInput, TopicSourceUncheckedCreateWithoutTopicInput>
+  }
+
+  export type TopicSourceCreateManyTopicInputEnvelope = {
+    data: TopicSourceCreateManyTopicInput | TopicSourceCreateManyTopicInput[]
+    skipDuplicates?: boolean
+  }
+
+  export type JobTopicCreateWithoutTopicInput = {
+    id?: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    job: JobCreateNestedOneWithoutJobTopicsInput
+  }
+
+  export type JobTopicUncheckedCreateWithoutTopicInput = {
+    id?: string
+    jobId: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type JobTopicCreateOrConnectWithoutTopicInput = {
+    where: JobTopicWhereUniqueInput
+    create: XOR<JobTopicCreateWithoutTopicInput, JobTopicUncheckedCreateWithoutTopicInput>
+  }
+
+  export type JobTopicCreateManyTopicInputEnvelope = {
+    data: JobTopicCreateManyTopicInput | JobTopicCreateManyTopicInput[]
+    skipDuplicates?: boolean
+  }
+
+  export type ContentTopicScoreCreateWithoutTopicInput = {
+    id?: string
+    vectorScore?: number | null
+    keywordScore?: number | null
+    exclusionPenalty?: number | null
+    finalScore?: number | null
+    reason?: string | null
+    explain?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    content: ContentCreateNestedOneWithoutTopicScoresInput
+  }
+
+  export type ContentTopicScoreUncheckedCreateWithoutTopicInput = {
+    id?: string
+    contentId: string
+    vectorScore?: number | null
+    keywordScore?: number | null
+    exclusionPenalty?: number | null
+    finalScore?: number | null
+    reason?: string | null
+    explain?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type ContentTopicScoreCreateOrConnectWithoutTopicInput = {
+    where: ContentTopicScoreWhereUniqueInput
+    create: XOR<ContentTopicScoreCreateWithoutTopicInput, ContentTopicScoreUncheckedCreateWithoutTopicInput>
+  }
+
+  export type ContentTopicScoreCreateManyTopicInputEnvelope = {
+    data: ContentTopicScoreCreateManyTopicInput | ContentTopicScoreCreateManyTopicInput[]
+    skipDuplicates?: boolean
+  }
+
+  export type TopicTermUpsertWithWhereUniqueWithoutTopicInput = {
+    where: TopicTermWhereUniqueInput
+    update: XOR<TopicTermUpdateWithoutTopicInput, TopicTermUncheckedUpdateWithoutTopicInput>
+    create: XOR<TopicTermCreateWithoutTopicInput, TopicTermUncheckedCreateWithoutTopicInput>
+  }
+
+  export type TopicTermUpdateWithWhereUniqueWithoutTopicInput = {
+    where: TopicTermWhereUniqueInput
+    data: XOR<TopicTermUpdateWithoutTopicInput, TopicTermUncheckedUpdateWithoutTopicInput>
+  }
+
+  export type TopicTermUpdateManyWithWhereWithoutTopicInput = {
+    where: TopicTermScalarWhereInput
+    data: XOR<TopicTermUpdateManyMutationInput, TopicTermUncheckedUpdateManyWithoutTopicInput>
+  }
+
+  export type TopicTermScalarWhereInput = {
+    AND?: TopicTermScalarWhereInput | TopicTermScalarWhereInput[]
+    OR?: TopicTermScalarWhereInput[]
+    NOT?: TopicTermScalarWhereInput | TopicTermScalarWhereInput[]
+    id?: StringFilter<"TopicTerm"> | string
+    topicId?: StringFilter<"TopicTerm"> | string
+    type?: EnumTopicTermTypeFilter<"TopicTerm"> | $Enums.TopicTermType
+    value?: StringFilter<"TopicTerm"> | string
+    weight?: FloatFilter<"TopicTerm"> | number
+    meta?: JsonNullableFilter<"TopicTerm">
+    createdAt?: DateTimeFilter<"TopicTerm"> | Date | string
+    updatedAt?: DateTimeFilter<"TopicTerm"> | Date | string
+  }
+
+  export type TopicSourceUpsertWithWhereUniqueWithoutTopicInput = {
+    where: TopicSourceWhereUniqueInput
+    update: XOR<TopicSourceUpdateWithoutTopicInput, TopicSourceUncheckedUpdateWithoutTopicInput>
+    create: XOR<TopicSourceCreateWithoutTopicInput, TopicSourceUncheckedCreateWithoutTopicInput>
+  }
+
+  export type TopicSourceUpdateWithWhereUniqueWithoutTopicInput = {
+    where: TopicSourceWhereUniqueInput
+    data: XOR<TopicSourceUpdateWithoutTopicInput, TopicSourceUncheckedUpdateWithoutTopicInput>
+  }
+
+  export type TopicSourceUpdateManyWithWhereWithoutTopicInput = {
+    where: TopicSourceScalarWhereInput
+    data: XOR<TopicSourceUpdateManyMutationInput, TopicSourceUncheckedUpdateManyWithoutTopicInput>
+  }
+
+  export type JobTopicUpsertWithWhereUniqueWithoutTopicInput = {
+    where: JobTopicWhereUniqueInput
+    update: XOR<JobTopicUpdateWithoutTopicInput, JobTopicUncheckedUpdateWithoutTopicInput>
+    create: XOR<JobTopicCreateWithoutTopicInput, JobTopicUncheckedCreateWithoutTopicInput>
+  }
+
+  export type JobTopicUpdateWithWhereUniqueWithoutTopicInput = {
+    where: JobTopicWhereUniqueInput
+    data: XOR<JobTopicUpdateWithoutTopicInput, JobTopicUncheckedUpdateWithoutTopicInput>
+  }
+
+  export type JobTopicUpdateManyWithWhereWithoutTopicInput = {
+    where: JobTopicScalarWhereInput
+    data: XOR<JobTopicUpdateManyMutationInput, JobTopicUncheckedUpdateManyWithoutTopicInput>
+  }
+
+  export type JobTopicScalarWhereInput = {
+    AND?: JobTopicScalarWhereInput | JobTopicScalarWhereInput[]
+    OR?: JobTopicScalarWhereInput[]
+    NOT?: JobTopicScalarWhereInput | JobTopicScalarWhereInput[]
+    id?: StringFilter<"JobTopic"> | string
+    jobId?: StringFilter<"JobTopic"> | string
+    topicId?: StringFilter<"JobTopic"> | string
+    createdAt?: DateTimeFilter<"JobTopic"> | Date | string
+    updatedAt?: DateTimeFilter<"JobTopic"> | Date | string
+  }
+
+  export type ContentTopicScoreUpsertWithWhereUniqueWithoutTopicInput = {
+    where: ContentTopicScoreWhereUniqueInput
+    update: XOR<ContentTopicScoreUpdateWithoutTopicInput, ContentTopicScoreUncheckedUpdateWithoutTopicInput>
+    create: XOR<ContentTopicScoreCreateWithoutTopicInput, ContentTopicScoreUncheckedCreateWithoutTopicInput>
+  }
+
+  export type ContentTopicScoreUpdateWithWhereUniqueWithoutTopicInput = {
+    where: ContentTopicScoreWhereUniqueInput
+    data: XOR<ContentTopicScoreUpdateWithoutTopicInput, ContentTopicScoreUncheckedUpdateWithoutTopicInput>
+  }
+
+  export type ContentTopicScoreUpdateManyWithWhereWithoutTopicInput = {
+    where: ContentTopicScoreScalarWhereInput
+    data: XOR<ContentTopicScoreUpdateManyMutationInput, ContentTopicScoreUncheckedUpdateManyWithoutTopicInput>
+  }
+
+  export type ContentTopicScoreScalarWhereInput = {
+    AND?: ContentTopicScoreScalarWhereInput | ContentTopicScoreScalarWhereInput[]
+    OR?: ContentTopicScoreScalarWhereInput[]
+    NOT?: ContentTopicScoreScalarWhereInput | ContentTopicScoreScalarWhereInput[]
+    id?: StringFilter<"ContentTopicScore"> | string
+    contentId?: StringFilter<"ContentTopicScore"> | string
+    topicId?: StringFilter<"ContentTopicScore"> | string
+    vectorScore?: FloatNullableFilter<"ContentTopicScore"> | number | null
+    keywordScore?: FloatNullableFilter<"ContentTopicScore"> | number | null
+    exclusionPenalty?: FloatNullableFilter<"ContentTopicScore"> | number | null
+    finalScore?: FloatNullableFilter<"ContentTopicScore"> | number | null
+    reason?: StringNullableFilter<"ContentTopicScore"> | string | null
+    explain?: JsonNullableFilter<"ContentTopicScore">
+    createdAt?: DateTimeFilter<"ContentTopicScore"> | Date | string
+    updatedAt?: DateTimeFilter<"ContentTopicScore"> | Date | string
+  }
+
+  export type TopicCreateWithoutTermsInput = {
+    id?: string
+    name: string
+    description?: string | null
+    enabled?: boolean
+    frequency?: $Enums.QueryFrequency
+    cronSchedule?: string | null
+    profile?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    sources?: TopicSourceCreateNestedManyWithoutTopicInput
+    jobTopics?: JobTopicCreateNestedManyWithoutTopicInput
+    scores?: ContentTopicScoreCreateNestedManyWithoutTopicInput
+  }
+
+  export type TopicUncheckedCreateWithoutTermsInput = {
+    id?: string
+    name: string
+    description?: string | null
+    enabled?: boolean
+    frequency?: $Enums.QueryFrequency
+    cronSchedule?: string | null
+    profile?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    sources?: TopicSourceUncheckedCreateNestedManyWithoutTopicInput
+    jobTopics?: JobTopicUncheckedCreateNestedManyWithoutTopicInput
+    scores?: ContentTopicScoreUncheckedCreateNestedManyWithoutTopicInput
+  }
+
+  export type TopicCreateOrConnectWithoutTermsInput = {
+    where: TopicWhereUniqueInput
+    create: XOR<TopicCreateWithoutTermsInput, TopicUncheckedCreateWithoutTermsInput>
+  }
+
+  export type TopicUpsertWithoutTermsInput = {
+    update: XOR<TopicUpdateWithoutTermsInput, TopicUncheckedUpdateWithoutTermsInput>
+    create: XOR<TopicCreateWithoutTermsInput, TopicUncheckedCreateWithoutTermsInput>
+    where?: TopicWhereInput
+  }
+
+  export type TopicUpdateToOneWithWhereWithoutTermsInput = {
+    where?: TopicWhereInput
+    data: XOR<TopicUpdateWithoutTermsInput, TopicUncheckedUpdateWithoutTermsInput>
+  }
+
+  export type TopicUpdateWithoutTermsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    enabled?: BoolFieldUpdateOperationsInput | boolean
+    frequency?: EnumQueryFrequencyFieldUpdateOperationsInput | $Enums.QueryFrequency
+    cronSchedule?: NullableStringFieldUpdateOperationsInput | string | null
+    profile?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    sources?: TopicSourceUpdateManyWithoutTopicNestedInput
+    jobTopics?: JobTopicUpdateManyWithoutTopicNestedInput
+    scores?: ContentTopicScoreUpdateManyWithoutTopicNestedInput
+  }
+
+  export type TopicUncheckedUpdateWithoutTermsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    enabled?: BoolFieldUpdateOperationsInput | boolean
+    frequency?: EnumQueryFrequencyFieldUpdateOperationsInput | $Enums.QueryFrequency
+    cronSchedule?: NullableStringFieldUpdateOperationsInput | string | null
+    profile?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    sources?: TopicSourceUncheckedUpdateManyWithoutTopicNestedInput
+    jobTopics?: JobTopicUncheckedUpdateManyWithoutTopicNestedInput
+    scores?: ContentTopicScoreUncheckedUpdateManyWithoutTopicNestedInput
+  }
+
+  export type TopicCreateWithoutSourcesInput = {
+    id?: string
+    name: string
+    description?: string | null
+    enabled?: boolean
+    frequency?: $Enums.QueryFrequency
+    cronSchedule?: string | null
+    profile?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    terms?: TopicTermCreateNestedManyWithoutTopicInput
+    jobTopics?: JobTopicCreateNestedManyWithoutTopicInput
+    scores?: ContentTopicScoreCreateNestedManyWithoutTopicInput
+  }
+
+  export type TopicUncheckedCreateWithoutSourcesInput = {
+    id?: string
+    name: string
+    description?: string | null
+    enabled?: boolean
+    frequency?: $Enums.QueryFrequency
+    cronSchedule?: string | null
+    profile?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    terms?: TopicTermUncheckedCreateNestedManyWithoutTopicInput
+    jobTopics?: JobTopicUncheckedCreateNestedManyWithoutTopicInput
+    scores?: ContentTopicScoreUncheckedCreateNestedManyWithoutTopicInput
+  }
+
+  export type TopicCreateOrConnectWithoutSourcesInput = {
+    where: TopicWhereUniqueInput
+    create: XOR<TopicCreateWithoutSourcesInput, TopicUncheckedCreateWithoutSourcesInput>
+  }
+
+  export type SourceCreateWithoutTopicSourcesInput = {
+    id?: string
+    name: string
+    description?: string | null
+    category: $Enums.SourceCategory
+    isDarknet?: boolean
+    active?: boolean
+    rateLimit?: number | null
+    lastFetchedAt?: Date | string | null
+    lastStatus?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    proxy?: ProxyCreateNestedOneWithoutSourcesInput
+    credential?: CredentialCreateNestedOneWithoutSourcesInput
+    web?: WebSourceConfigCreateNestedOneWithoutSourceInput
+    darknet?: DarknetSourceConfigCreateNestedOneWithoutSourceInput
+    search?: SearchEngineSourceConfigCreateNestedOneWithoutSourceInput
+    social?: SocialMediaSourceConfigCreateNestedOneWithoutSourceInput
+    identity?: SourceIdentityCreateNestedOneWithoutSourceInput
+    queries?: QueryCreateNestedManyWithoutSourcesInput
+    derivedKeywords?: KeywordCreateNestedManyWithoutDeriveSourceInput
+    querySourcePolicies?: QuerySourcePolicyCreateNestedManyWithoutSourceInput
+    jobSources?: JobSourceCreateNestedManyWithoutSourceInput
+  }
+
+  export type SourceUncheckedCreateWithoutTopicSourcesInput = {
+    id?: string
+    name: string
+    description?: string | null
+    category: $Enums.SourceCategory
+    isDarknet?: boolean
+    active?: boolean
+    rateLimit?: number | null
+    lastFetchedAt?: Date | string | null
+    lastStatus?: string | null
+    proxyId?: string | null
+    credentialId?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    web?: WebSourceConfigUncheckedCreateNestedOneWithoutSourceInput
+    darknet?: DarknetSourceConfigUncheckedCreateNestedOneWithoutSourceInput
+    search?: SearchEngineSourceConfigUncheckedCreateNestedOneWithoutSourceInput
+    social?: SocialMediaSourceConfigUncheckedCreateNestedOneWithoutSourceInput
+    identity?: SourceIdentityUncheckedCreateNestedOneWithoutSourceInput
+    queries?: QueryUncheckedCreateNestedManyWithoutSourcesInput
+    derivedKeywords?: KeywordUncheckedCreateNestedManyWithoutDeriveSourceInput
+    querySourcePolicies?: QuerySourcePolicyUncheckedCreateNestedManyWithoutSourceInput
+    jobSources?: JobSourceUncheckedCreateNestedManyWithoutSourceInput
+  }
+
+  export type SourceCreateOrConnectWithoutTopicSourcesInput = {
+    where: SourceWhereUniqueInput
+    create: XOR<SourceCreateWithoutTopicSourcesInput, SourceUncheckedCreateWithoutTopicSourcesInput>
+  }
+
+  export type TopicUpsertWithoutSourcesInput = {
+    update: XOR<TopicUpdateWithoutSourcesInput, TopicUncheckedUpdateWithoutSourcesInput>
+    create: XOR<TopicCreateWithoutSourcesInput, TopicUncheckedCreateWithoutSourcesInput>
+    where?: TopicWhereInput
+  }
+
+  export type TopicUpdateToOneWithWhereWithoutSourcesInput = {
+    where?: TopicWhereInput
+    data: XOR<TopicUpdateWithoutSourcesInput, TopicUncheckedUpdateWithoutSourcesInput>
+  }
+
+  export type TopicUpdateWithoutSourcesInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    enabled?: BoolFieldUpdateOperationsInput | boolean
+    frequency?: EnumQueryFrequencyFieldUpdateOperationsInput | $Enums.QueryFrequency
+    cronSchedule?: NullableStringFieldUpdateOperationsInput | string | null
+    profile?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    terms?: TopicTermUpdateManyWithoutTopicNestedInput
+    jobTopics?: JobTopicUpdateManyWithoutTopicNestedInput
+    scores?: ContentTopicScoreUpdateManyWithoutTopicNestedInput
+  }
+
+  export type TopicUncheckedUpdateWithoutSourcesInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    enabled?: BoolFieldUpdateOperationsInput | boolean
+    frequency?: EnumQueryFrequencyFieldUpdateOperationsInput | $Enums.QueryFrequency
+    cronSchedule?: NullableStringFieldUpdateOperationsInput | string | null
+    profile?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    terms?: TopicTermUncheckedUpdateManyWithoutTopicNestedInput
+    jobTopics?: JobTopicUncheckedUpdateManyWithoutTopicNestedInput
+    scores?: ContentTopicScoreUncheckedUpdateManyWithoutTopicNestedInput
+  }
+
+  export type SourceUpsertWithoutTopicSourcesInput = {
+    update: XOR<SourceUpdateWithoutTopicSourcesInput, SourceUncheckedUpdateWithoutTopicSourcesInput>
+    create: XOR<SourceCreateWithoutTopicSourcesInput, SourceUncheckedCreateWithoutTopicSourcesInput>
+    where?: SourceWhereInput
+  }
+
+  export type SourceUpdateToOneWithWhereWithoutTopicSourcesInput = {
+    where?: SourceWhereInput
+    data: XOR<SourceUpdateWithoutTopicSourcesInput, SourceUncheckedUpdateWithoutTopicSourcesInput>
+  }
+
+  export type SourceUpdateWithoutTopicSourcesInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    category?: EnumSourceCategoryFieldUpdateOperationsInput | $Enums.SourceCategory
+    isDarknet?: BoolFieldUpdateOperationsInput | boolean
+    active?: BoolFieldUpdateOperationsInput | boolean
+    rateLimit?: NullableIntFieldUpdateOperationsInput | number | null
+    lastFetchedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    lastStatus?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    proxy?: ProxyUpdateOneWithoutSourcesNestedInput
+    credential?: CredentialUpdateOneWithoutSourcesNestedInput
+    web?: WebSourceConfigUpdateOneWithoutSourceNestedInput
+    darknet?: DarknetSourceConfigUpdateOneWithoutSourceNestedInput
+    search?: SearchEngineSourceConfigUpdateOneWithoutSourceNestedInput
+    social?: SocialMediaSourceConfigUpdateOneWithoutSourceNestedInput
+    identity?: SourceIdentityUpdateOneWithoutSourceNestedInput
+    queries?: QueryUpdateManyWithoutSourcesNestedInput
+    derivedKeywords?: KeywordUpdateManyWithoutDeriveSourceNestedInput
+    querySourcePolicies?: QuerySourcePolicyUpdateManyWithoutSourceNestedInput
+    jobSources?: JobSourceUpdateManyWithoutSourceNestedInput
+  }
+
+  export type SourceUncheckedUpdateWithoutTopicSourcesInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    category?: EnumSourceCategoryFieldUpdateOperationsInput | $Enums.SourceCategory
+    isDarknet?: BoolFieldUpdateOperationsInput | boolean
+    active?: BoolFieldUpdateOperationsInput | boolean
+    rateLimit?: NullableIntFieldUpdateOperationsInput | number | null
+    lastFetchedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    lastStatus?: NullableStringFieldUpdateOperationsInput | string | null
+    proxyId?: NullableStringFieldUpdateOperationsInput | string | null
+    credentialId?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    web?: WebSourceConfigUncheckedUpdateOneWithoutSourceNestedInput
+    darknet?: DarknetSourceConfigUncheckedUpdateOneWithoutSourceNestedInput
+    search?: SearchEngineSourceConfigUncheckedUpdateOneWithoutSourceNestedInput
+    social?: SocialMediaSourceConfigUncheckedUpdateOneWithoutSourceNestedInput
+    identity?: SourceIdentityUncheckedUpdateOneWithoutSourceNestedInput
+    queries?: QueryUncheckedUpdateManyWithoutSourcesNestedInput
+    derivedKeywords?: KeywordUncheckedUpdateManyWithoutDeriveSourceNestedInput
+    querySourcePolicies?: QuerySourcePolicyUncheckedUpdateManyWithoutSourceNestedInput
+    jobSources?: JobSourceUncheckedUpdateManyWithoutSourceNestedInput
+  }
+
+  export type JobTopicCreateWithoutJobInput = {
+    id?: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    topic: TopicCreateNestedOneWithoutJobTopicsInput
+  }
+
+  export type JobTopicUncheckedCreateWithoutJobInput = {
+    id?: string
+    topicId: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type JobTopicCreateOrConnectWithoutJobInput = {
+    where: JobTopicWhereUniqueInput
+    create: XOR<JobTopicCreateWithoutJobInput, JobTopicUncheckedCreateWithoutJobInput>
+  }
+
+  export type JobTopicCreateManyJobInputEnvelope = {
+    data: JobTopicCreateManyJobInput | JobTopicCreateManyJobInput[]
+    skipDuplicates?: boolean
+  }
+
+  export type JobSourceCreateWithoutJobInput = {
+    id?: string
+    recallBindingOverride?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    source: SourceCreateNestedOneWithoutJobSourcesInput
+  }
+
+  export type JobSourceUncheckedCreateWithoutJobInput = {
+    id?: string
+    sourceId: string
+    recallBindingOverride?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type JobSourceCreateOrConnectWithoutJobInput = {
+    where: JobSourceWhereUniqueInput
+    create: XOR<JobSourceCreateWithoutJobInput, JobSourceUncheckedCreateWithoutJobInput>
+  }
+
+  export type JobSourceCreateManyJobInputEnvelope = {
+    data: JobSourceCreateManyJobInput | JobSourceCreateManyJobInput[]
+    skipDuplicates?: boolean
+  }
+
+  export type JobRunCreateWithoutJobInput = {
+    id?: string
+    status?: $Enums.TaskStatus
+    progress?: number
+    trigger?: string | null
+    startedAt?: Date | string | null
+    finishedAt?: Date | string | null
+    error?: string | null
+    meta?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type JobRunUncheckedCreateWithoutJobInput = {
+    id?: string
+    status?: $Enums.TaskStatus
+    progress?: number
+    trigger?: string | null
+    startedAt?: Date | string | null
+    finishedAt?: Date | string | null
+    error?: string | null
+    meta?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type JobRunCreateOrConnectWithoutJobInput = {
+    where: JobRunWhereUniqueInput
+    create: XOR<JobRunCreateWithoutJobInput, JobRunUncheckedCreateWithoutJobInput>
+  }
+
+  export type JobRunCreateManyJobInputEnvelope = {
+    data: JobRunCreateManyJobInput | JobRunCreateManyJobInput[]
+    skipDuplicates?: boolean
+  }
+
+  export type JobTopicUpsertWithWhereUniqueWithoutJobInput = {
+    where: JobTopicWhereUniqueInput
+    update: XOR<JobTopicUpdateWithoutJobInput, JobTopicUncheckedUpdateWithoutJobInput>
+    create: XOR<JobTopicCreateWithoutJobInput, JobTopicUncheckedCreateWithoutJobInput>
+  }
+
+  export type JobTopicUpdateWithWhereUniqueWithoutJobInput = {
+    where: JobTopicWhereUniqueInput
+    data: XOR<JobTopicUpdateWithoutJobInput, JobTopicUncheckedUpdateWithoutJobInput>
+  }
+
+  export type JobTopicUpdateManyWithWhereWithoutJobInput = {
+    where: JobTopicScalarWhereInput
+    data: XOR<JobTopicUpdateManyMutationInput, JobTopicUncheckedUpdateManyWithoutJobInput>
+  }
+
+  export type JobSourceUpsertWithWhereUniqueWithoutJobInput = {
+    where: JobSourceWhereUniqueInput
+    update: XOR<JobSourceUpdateWithoutJobInput, JobSourceUncheckedUpdateWithoutJobInput>
+    create: XOR<JobSourceCreateWithoutJobInput, JobSourceUncheckedCreateWithoutJobInput>
+  }
+
+  export type JobSourceUpdateWithWhereUniqueWithoutJobInput = {
+    where: JobSourceWhereUniqueInput
+    data: XOR<JobSourceUpdateWithoutJobInput, JobSourceUncheckedUpdateWithoutJobInput>
+  }
+
+  export type JobSourceUpdateManyWithWhereWithoutJobInput = {
+    where: JobSourceScalarWhereInput
+    data: XOR<JobSourceUpdateManyMutationInput, JobSourceUncheckedUpdateManyWithoutJobInput>
+  }
+
+  export type JobRunUpsertWithWhereUniqueWithoutJobInput = {
+    where: JobRunWhereUniqueInput
+    update: XOR<JobRunUpdateWithoutJobInput, JobRunUncheckedUpdateWithoutJobInput>
+    create: XOR<JobRunCreateWithoutJobInput, JobRunUncheckedCreateWithoutJobInput>
+  }
+
+  export type JobRunUpdateWithWhereUniqueWithoutJobInput = {
+    where: JobRunWhereUniqueInput
+    data: XOR<JobRunUpdateWithoutJobInput, JobRunUncheckedUpdateWithoutJobInput>
+  }
+
+  export type JobRunUpdateManyWithWhereWithoutJobInput = {
+    where: JobRunScalarWhereInput
+    data: XOR<JobRunUpdateManyMutationInput, JobRunUncheckedUpdateManyWithoutJobInput>
+  }
+
+  export type JobRunScalarWhereInput = {
+    AND?: JobRunScalarWhereInput | JobRunScalarWhereInput[]
+    OR?: JobRunScalarWhereInput[]
+    NOT?: JobRunScalarWhereInput | JobRunScalarWhereInput[]
+    id?: StringFilter<"JobRun"> | string
+    jobId?: StringFilter<"JobRun"> | string
+    status?: EnumTaskStatusFilter<"JobRun"> | $Enums.TaskStatus
+    progress?: IntFilter<"JobRun"> | number
+    trigger?: StringNullableFilter<"JobRun"> | string | null
+    startedAt?: DateTimeNullableFilter<"JobRun"> | Date | string | null
+    finishedAt?: DateTimeNullableFilter<"JobRun"> | Date | string | null
+    error?: StringNullableFilter<"JobRun"> | string | null
+    meta?: JsonNullableFilter<"JobRun">
+    createdAt?: DateTimeFilter<"JobRun"> | Date | string
+    updatedAt?: DateTimeFilter<"JobRun"> | Date | string
+  }
+
+  export type JobCreateWithoutJobTopicsInput = {
+    id?: string
+    name: string
+    type: $Enums.JobType
+    enabled?: boolean
+    frequency?: $Enums.QueryFrequency
+    cronSchedule?: string | null
+    triggerMode?: string | null
+    config?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    jobSources?: JobSourceCreateNestedManyWithoutJobInput
+    runs?: JobRunCreateNestedManyWithoutJobInput
+  }
+
+  export type JobUncheckedCreateWithoutJobTopicsInput = {
+    id?: string
+    name: string
+    type: $Enums.JobType
+    enabled?: boolean
+    frequency?: $Enums.QueryFrequency
+    cronSchedule?: string | null
+    triggerMode?: string | null
+    config?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    jobSources?: JobSourceUncheckedCreateNestedManyWithoutJobInput
+    runs?: JobRunUncheckedCreateNestedManyWithoutJobInput
+  }
+
+  export type JobCreateOrConnectWithoutJobTopicsInput = {
+    where: JobWhereUniqueInput
+    create: XOR<JobCreateWithoutJobTopicsInput, JobUncheckedCreateWithoutJobTopicsInput>
+  }
+
+  export type TopicCreateWithoutJobTopicsInput = {
+    id?: string
+    name: string
+    description?: string | null
+    enabled?: boolean
+    frequency?: $Enums.QueryFrequency
+    cronSchedule?: string | null
+    profile?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    terms?: TopicTermCreateNestedManyWithoutTopicInput
+    sources?: TopicSourceCreateNestedManyWithoutTopicInput
+    scores?: ContentTopicScoreCreateNestedManyWithoutTopicInput
+  }
+
+  export type TopicUncheckedCreateWithoutJobTopicsInput = {
+    id?: string
+    name: string
+    description?: string | null
+    enabled?: boolean
+    frequency?: $Enums.QueryFrequency
+    cronSchedule?: string | null
+    profile?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    terms?: TopicTermUncheckedCreateNestedManyWithoutTopicInput
+    sources?: TopicSourceUncheckedCreateNestedManyWithoutTopicInput
+    scores?: ContentTopicScoreUncheckedCreateNestedManyWithoutTopicInput
+  }
+
+  export type TopicCreateOrConnectWithoutJobTopicsInput = {
+    where: TopicWhereUniqueInput
+    create: XOR<TopicCreateWithoutJobTopicsInput, TopicUncheckedCreateWithoutJobTopicsInput>
+  }
+
+  export type JobUpsertWithoutJobTopicsInput = {
+    update: XOR<JobUpdateWithoutJobTopicsInput, JobUncheckedUpdateWithoutJobTopicsInput>
+    create: XOR<JobCreateWithoutJobTopicsInput, JobUncheckedCreateWithoutJobTopicsInput>
+    where?: JobWhereInput
+  }
+
+  export type JobUpdateToOneWithWhereWithoutJobTopicsInput = {
+    where?: JobWhereInput
+    data: XOR<JobUpdateWithoutJobTopicsInput, JobUncheckedUpdateWithoutJobTopicsInput>
+  }
+
+  export type JobUpdateWithoutJobTopicsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    type?: EnumJobTypeFieldUpdateOperationsInput | $Enums.JobType
+    enabled?: BoolFieldUpdateOperationsInput | boolean
+    frequency?: EnumQueryFrequencyFieldUpdateOperationsInput | $Enums.QueryFrequency
+    cronSchedule?: NullableStringFieldUpdateOperationsInput | string | null
+    triggerMode?: NullableStringFieldUpdateOperationsInput | string | null
+    config?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    jobSources?: JobSourceUpdateManyWithoutJobNestedInput
+    runs?: JobRunUpdateManyWithoutJobNestedInput
+  }
+
+  export type JobUncheckedUpdateWithoutJobTopicsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    type?: EnumJobTypeFieldUpdateOperationsInput | $Enums.JobType
+    enabled?: BoolFieldUpdateOperationsInput | boolean
+    frequency?: EnumQueryFrequencyFieldUpdateOperationsInput | $Enums.QueryFrequency
+    cronSchedule?: NullableStringFieldUpdateOperationsInput | string | null
+    triggerMode?: NullableStringFieldUpdateOperationsInput | string | null
+    config?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    jobSources?: JobSourceUncheckedUpdateManyWithoutJobNestedInput
+    runs?: JobRunUncheckedUpdateManyWithoutJobNestedInput
+  }
+
+  export type TopicUpsertWithoutJobTopicsInput = {
+    update: XOR<TopicUpdateWithoutJobTopicsInput, TopicUncheckedUpdateWithoutJobTopicsInput>
+    create: XOR<TopicCreateWithoutJobTopicsInput, TopicUncheckedCreateWithoutJobTopicsInput>
+    where?: TopicWhereInput
+  }
+
+  export type TopicUpdateToOneWithWhereWithoutJobTopicsInput = {
+    where?: TopicWhereInput
+    data: XOR<TopicUpdateWithoutJobTopicsInput, TopicUncheckedUpdateWithoutJobTopicsInput>
+  }
+
+  export type TopicUpdateWithoutJobTopicsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    enabled?: BoolFieldUpdateOperationsInput | boolean
+    frequency?: EnumQueryFrequencyFieldUpdateOperationsInput | $Enums.QueryFrequency
+    cronSchedule?: NullableStringFieldUpdateOperationsInput | string | null
+    profile?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    terms?: TopicTermUpdateManyWithoutTopicNestedInput
+    sources?: TopicSourceUpdateManyWithoutTopicNestedInput
+    scores?: ContentTopicScoreUpdateManyWithoutTopicNestedInput
+  }
+
+  export type TopicUncheckedUpdateWithoutJobTopicsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    enabled?: BoolFieldUpdateOperationsInput | boolean
+    frequency?: EnumQueryFrequencyFieldUpdateOperationsInput | $Enums.QueryFrequency
+    cronSchedule?: NullableStringFieldUpdateOperationsInput | string | null
+    profile?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    terms?: TopicTermUncheckedUpdateManyWithoutTopicNestedInput
+    sources?: TopicSourceUncheckedUpdateManyWithoutTopicNestedInput
+    scores?: ContentTopicScoreUncheckedUpdateManyWithoutTopicNestedInput
+  }
+
+  export type JobCreateWithoutJobSourcesInput = {
+    id?: string
+    name: string
+    type: $Enums.JobType
+    enabled?: boolean
+    frequency?: $Enums.QueryFrequency
+    cronSchedule?: string | null
+    triggerMode?: string | null
+    config?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    jobTopics?: JobTopicCreateNestedManyWithoutJobInput
+    runs?: JobRunCreateNestedManyWithoutJobInput
+  }
+
+  export type JobUncheckedCreateWithoutJobSourcesInput = {
+    id?: string
+    name: string
+    type: $Enums.JobType
+    enabled?: boolean
+    frequency?: $Enums.QueryFrequency
+    cronSchedule?: string | null
+    triggerMode?: string | null
+    config?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    jobTopics?: JobTopicUncheckedCreateNestedManyWithoutJobInput
+    runs?: JobRunUncheckedCreateNestedManyWithoutJobInput
+  }
+
+  export type JobCreateOrConnectWithoutJobSourcesInput = {
+    where: JobWhereUniqueInput
+    create: XOR<JobCreateWithoutJobSourcesInput, JobUncheckedCreateWithoutJobSourcesInput>
+  }
+
+  export type SourceCreateWithoutJobSourcesInput = {
+    id?: string
+    name: string
+    description?: string | null
+    category: $Enums.SourceCategory
+    isDarknet?: boolean
+    active?: boolean
+    rateLimit?: number | null
+    lastFetchedAt?: Date | string | null
+    lastStatus?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    proxy?: ProxyCreateNestedOneWithoutSourcesInput
+    credential?: CredentialCreateNestedOneWithoutSourcesInput
+    web?: WebSourceConfigCreateNestedOneWithoutSourceInput
+    darknet?: DarknetSourceConfigCreateNestedOneWithoutSourceInput
+    search?: SearchEngineSourceConfigCreateNestedOneWithoutSourceInput
+    social?: SocialMediaSourceConfigCreateNestedOneWithoutSourceInput
+    identity?: SourceIdentityCreateNestedOneWithoutSourceInput
+    queries?: QueryCreateNestedManyWithoutSourcesInput
+    derivedKeywords?: KeywordCreateNestedManyWithoutDeriveSourceInput
+    querySourcePolicies?: QuerySourcePolicyCreateNestedManyWithoutSourceInput
+    topicSources?: TopicSourceCreateNestedManyWithoutSourceInput
+  }
+
+  export type SourceUncheckedCreateWithoutJobSourcesInput = {
+    id?: string
+    name: string
+    description?: string | null
+    category: $Enums.SourceCategory
+    isDarknet?: boolean
+    active?: boolean
+    rateLimit?: number | null
+    lastFetchedAt?: Date | string | null
+    lastStatus?: string | null
+    proxyId?: string | null
+    credentialId?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    web?: WebSourceConfigUncheckedCreateNestedOneWithoutSourceInput
+    darknet?: DarknetSourceConfigUncheckedCreateNestedOneWithoutSourceInput
+    search?: SearchEngineSourceConfigUncheckedCreateNestedOneWithoutSourceInput
+    social?: SocialMediaSourceConfigUncheckedCreateNestedOneWithoutSourceInput
+    identity?: SourceIdentityUncheckedCreateNestedOneWithoutSourceInput
+    queries?: QueryUncheckedCreateNestedManyWithoutSourcesInput
+    derivedKeywords?: KeywordUncheckedCreateNestedManyWithoutDeriveSourceInput
+    querySourcePolicies?: QuerySourcePolicyUncheckedCreateNestedManyWithoutSourceInput
+    topicSources?: TopicSourceUncheckedCreateNestedManyWithoutSourceInput
+  }
+
+  export type SourceCreateOrConnectWithoutJobSourcesInput = {
+    where: SourceWhereUniqueInput
+    create: XOR<SourceCreateWithoutJobSourcesInput, SourceUncheckedCreateWithoutJobSourcesInput>
+  }
+
+  export type JobUpsertWithoutJobSourcesInput = {
+    update: XOR<JobUpdateWithoutJobSourcesInput, JobUncheckedUpdateWithoutJobSourcesInput>
+    create: XOR<JobCreateWithoutJobSourcesInput, JobUncheckedCreateWithoutJobSourcesInput>
+    where?: JobWhereInput
+  }
+
+  export type JobUpdateToOneWithWhereWithoutJobSourcesInput = {
+    where?: JobWhereInput
+    data: XOR<JobUpdateWithoutJobSourcesInput, JobUncheckedUpdateWithoutJobSourcesInput>
+  }
+
+  export type JobUpdateWithoutJobSourcesInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    type?: EnumJobTypeFieldUpdateOperationsInput | $Enums.JobType
+    enabled?: BoolFieldUpdateOperationsInput | boolean
+    frequency?: EnumQueryFrequencyFieldUpdateOperationsInput | $Enums.QueryFrequency
+    cronSchedule?: NullableStringFieldUpdateOperationsInput | string | null
+    triggerMode?: NullableStringFieldUpdateOperationsInput | string | null
+    config?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    jobTopics?: JobTopicUpdateManyWithoutJobNestedInput
+    runs?: JobRunUpdateManyWithoutJobNestedInput
+  }
+
+  export type JobUncheckedUpdateWithoutJobSourcesInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    type?: EnumJobTypeFieldUpdateOperationsInput | $Enums.JobType
+    enabled?: BoolFieldUpdateOperationsInput | boolean
+    frequency?: EnumQueryFrequencyFieldUpdateOperationsInput | $Enums.QueryFrequency
+    cronSchedule?: NullableStringFieldUpdateOperationsInput | string | null
+    triggerMode?: NullableStringFieldUpdateOperationsInput | string | null
+    config?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    jobTopics?: JobTopicUncheckedUpdateManyWithoutJobNestedInput
+    runs?: JobRunUncheckedUpdateManyWithoutJobNestedInput
+  }
+
+  export type SourceUpsertWithoutJobSourcesInput = {
+    update: XOR<SourceUpdateWithoutJobSourcesInput, SourceUncheckedUpdateWithoutJobSourcesInput>
+    create: XOR<SourceCreateWithoutJobSourcesInput, SourceUncheckedCreateWithoutJobSourcesInput>
+    where?: SourceWhereInput
+  }
+
+  export type SourceUpdateToOneWithWhereWithoutJobSourcesInput = {
+    where?: SourceWhereInput
+    data: XOR<SourceUpdateWithoutJobSourcesInput, SourceUncheckedUpdateWithoutJobSourcesInput>
+  }
+
+  export type SourceUpdateWithoutJobSourcesInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    category?: EnumSourceCategoryFieldUpdateOperationsInput | $Enums.SourceCategory
+    isDarknet?: BoolFieldUpdateOperationsInput | boolean
+    active?: BoolFieldUpdateOperationsInput | boolean
+    rateLimit?: NullableIntFieldUpdateOperationsInput | number | null
+    lastFetchedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    lastStatus?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    proxy?: ProxyUpdateOneWithoutSourcesNestedInput
+    credential?: CredentialUpdateOneWithoutSourcesNestedInput
+    web?: WebSourceConfigUpdateOneWithoutSourceNestedInput
+    darknet?: DarknetSourceConfigUpdateOneWithoutSourceNestedInput
+    search?: SearchEngineSourceConfigUpdateOneWithoutSourceNestedInput
+    social?: SocialMediaSourceConfigUpdateOneWithoutSourceNestedInput
+    identity?: SourceIdentityUpdateOneWithoutSourceNestedInput
+    queries?: QueryUpdateManyWithoutSourcesNestedInput
+    derivedKeywords?: KeywordUpdateManyWithoutDeriveSourceNestedInput
+    querySourcePolicies?: QuerySourcePolicyUpdateManyWithoutSourceNestedInput
+    topicSources?: TopicSourceUpdateManyWithoutSourceNestedInput
+  }
+
+  export type SourceUncheckedUpdateWithoutJobSourcesInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    category?: EnumSourceCategoryFieldUpdateOperationsInput | $Enums.SourceCategory
+    isDarknet?: BoolFieldUpdateOperationsInput | boolean
+    active?: BoolFieldUpdateOperationsInput | boolean
+    rateLimit?: NullableIntFieldUpdateOperationsInput | number | null
+    lastFetchedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    lastStatus?: NullableStringFieldUpdateOperationsInput | string | null
+    proxyId?: NullableStringFieldUpdateOperationsInput | string | null
+    credentialId?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    web?: WebSourceConfigUncheckedUpdateOneWithoutSourceNestedInput
+    darknet?: DarknetSourceConfigUncheckedUpdateOneWithoutSourceNestedInput
+    search?: SearchEngineSourceConfigUncheckedUpdateOneWithoutSourceNestedInput
+    social?: SocialMediaSourceConfigUncheckedUpdateOneWithoutSourceNestedInput
+    identity?: SourceIdentityUncheckedUpdateOneWithoutSourceNestedInput
+    queries?: QueryUncheckedUpdateManyWithoutSourcesNestedInput
+    derivedKeywords?: KeywordUncheckedUpdateManyWithoutDeriveSourceNestedInput
+    querySourcePolicies?: QuerySourcePolicyUncheckedUpdateManyWithoutSourceNestedInput
+    topicSources?: TopicSourceUncheckedUpdateManyWithoutSourceNestedInput
+  }
+
+  export type JobCreateWithoutRunsInput = {
+    id?: string
+    name: string
+    type: $Enums.JobType
+    enabled?: boolean
+    frequency?: $Enums.QueryFrequency
+    cronSchedule?: string | null
+    triggerMode?: string | null
+    config?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    jobTopics?: JobTopicCreateNestedManyWithoutJobInput
+    jobSources?: JobSourceCreateNestedManyWithoutJobInput
+  }
+
+  export type JobUncheckedCreateWithoutRunsInput = {
+    id?: string
+    name: string
+    type: $Enums.JobType
+    enabled?: boolean
+    frequency?: $Enums.QueryFrequency
+    cronSchedule?: string | null
+    triggerMode?: string | null
+    config?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    jobTopics?: JobTopicUncheckedCreateNestedManyWithoutJobInput
+    jobSources?: JobSourceUncheckedCreateNestedManyWithoutJobInput
+  }
+
+  export type JobCreateOrConnectWithoutRunsInput = {
+    where: JobWhereUniqueInput
+    create: XOR<JobCreateWithoutRunsInput, JobUncheckedCreateWithoutRunsInput>
+  }
+
+  export type JobUpsertWithoutRunsInput = {
+    update: XOR<JobUpdateWithoutRunsInput, JobUncheckedUpdateWithoutRunsInput>
+    create: XOR<JobCreateWithoutRunsInput, JobUncheckedCreateWithoutRunsInput>
+    where?: JobWhereInput
+  }
+
+  export type JobUpdateToOneWithWhereWithoutRunsInput = {
+    where?: JobWhereInput
+    data: XOR<JobUpdateWithoutRunsInput, JobUncheckedUpdateWithoutRunsInput>
+  }
+
+  export type JobUpdateWithoutRunsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    type?: EnumJobTypeFieldUpdateOperationsInput | $Enums.JobType
+    enabled?: BoolFieldUpdateOperationsInput | boolean
+    frequency?: EnumQueryFrequencyFieldUpdateOperationsInput | $Enums.QueryFrequency
+    cronSchedule?: NullableStringFieldUpdateOperationsInput | string | null
+    triggerMode?: NullableStringFieldUpdateOperationsInput | string | null
+    config?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    jobTopics?: JobTopicUpdateManyWithoutJobNestedInput
+    jobSources?: JobSourceUpdateManyWithoutJobNestedInput
+  }
+
+  export type JobUncheckedUpdateWithoutRunsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    type?: EnumJobTypeFieldUpdateOperationsInput | $Enums.JobType
+    enabled?: BoolFieldUpdateOperationsInput | boolean
+    frequency?: EnumQueryFrequencyFieldUpdateOperationsInput | $Enums.QueryFrequency
+    cronSchedule?: NullableStringFieldUpdateOperationsInput | string | null
+    triggerMode?: NullableStringFieldUpdateOperationsInput | string | null
+    config?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    jobTopics?: JobTopicUncheckedUpdateManyWithoutJobNestedInput
+    jobSources?: JobSourceUncheckedUpdateManyWithoutJobNestedInput
   }
 
   export type QueryCreateWithoutQueryRunsInput = {
@@ -47256,6 +61071,42 @@ export namespace Prisma {
     skipDuplicates?: boolean
   }
 
+  export type ContentTopicScoreCreateWithoutContentInput = {
+    id?: string
+    vectorScore?: number | null
+    keywordScore?: number | null
+    exclusionPenalty?: number | null
+    finalScore?: number | null
+    reason?: string | null
+    explain?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    topic: TopicCreateNestedOneWithoutScoresInput
+  }
+
+  export type ContentTopicScoreUncheckedCreateWithoutContentInput = {
+    id?: string
+    topicId: string
+    vectorScore?: number | null
+    keywordScore?: number | null
+    exclusionPenalty?: number | null
+    finalScore?: number | null
+    reason?: string | null
+    explain?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type ContentTopicScoreCreateOrConnectWithoutContentInput = {
+    where: ContentTopicScoreWhereUniqueInput
+    create: XOR<ContentTopicScoreCreateWithoutContentInput, ContentTopicScoreUncheckedCreateWithoutContentInput>
+  }
+
+  export type ContentTopicScoreCreateManyContentInputEnvelope = {
+    data: ContentTopicScoreCreateManyContentInput | ContentTopicScoreCreateManyContentInput[]
+    skipDuplicates?: boolean
+  }
+
   export type ContentEntityCreateWithoutContentInput = {
     id?: string
     persons?: ContentEntityCreatepersonsInput | string[]
@@ -47329,6 +61180,22 @@ export namespace Prisma {
     data: XOR<ContentSubjectMatchUpdateManyMutationInput, ContentSubjectMatchUncheckedUpdateManyWithoutContentInput>
   }
 
+  export type ContentTopicScoreUpsertWithWhereUniqueWithoutContentInput = {
+    where: ContentTopicScoreWhereUniqueInput
+    update: XOR<ContentTopicScoreUpdateWithoutContentInput, ContentTopicScoreUncheckedUpdateWithoutContentInput>
+    create: XOR<ContentTopicScoreCreateWithoutContentInput, ContentTopicScoreUncheckedCreateWithoutContentInput>
+  }
+
+  export type ContentTopicScoreUpdateWithWhereUniqueWithoutContentInput = {
+    where: ContentTopicScoreWhereUniqueInput
+    data: XOR<ContentTopicScoreUpdateWithoutContentInput, ContentTopicScoreUncheckedUpdateWithoutContentInput>
+  }
+
+  export type ContentTopicScoreUpdateManyWithWhereWithoutContentInput = {
+    where: ContentTopicScoreScalarWhereInput
+    data: XOR<ContentTopicScoreUpdateManyMutationInput, ContentTopicScoreUncheckedUpdateManyWithoutContentInput>
+  }
+
   export type ContentEntityUpsertWithoutContentInput = {
     update: XOR<ContentEntityUpdateWithoutContentInput, ContentEntityUncheckedUpdateWithoutContentInput>
     create: XOR<ContentEntityCreateWithoutContentInput, ContentEntityUncheckedCreateWithoutContentInput>
@@ -47394,6 +61261,7 @@ export namespace Prisma {
     createdAt?: Date | string
     updatedAt?: Date | string
     subjectMatches?: ContentSubjectMatchCreateNestedManyWithoutContentInput
+    topicScores?: ContentTopicScoreCreateNestedManyWithoutContentInput
     entities?: ContentEntityCreateNestedOneWithoutContentInput
     favorites?: FavoriteCreateNestedManyWithoutContentInput
   }
@@ -47412,6 +61280,7 @@ export namespace Prisma {
     createdAt?: Date | string
     updatedAt?: Date | string
     subjectMatches?: ContentSubjectMatchUncheckedCreateNestedManyWithoutContentInput
+    topicScores?: ContentTopicScoreUncheckedCreateNestedManyWithoutContentInput
     entities?: ContentEntityUncheckedCreateNestedOneWithoutContentInput
     favorites?: FavoriteUncheckedCreateNestedManyWithoutContentInput
   }
@@ -47489,6 +61358,7 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     subjectMatches?: ContentSubjectMatchUpdateManyWithoutContentNestedInput
+    topicScores?: ContentTopicScoreUpdateManyWithoutContentNestedInput
     entities?: ContentEntityUpdateOneWithoutContentNestedInput
     favorites?: FavoriteUpdateManyWithoutContentNestedInput
   }
@@ -47507,6 +61377,7 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     subjectMatches?: ContentSubjectMatchUncheckedUpdateManyWithoutContentNestedInput
+    topicScores?: ContentTopicScoreUncheckedUpdateManyWithoutContentNestedInput
     entities?: ContentEntityUncheckedUpdateOneWithoutContentNestedInput
     favorites?: FavoriteUncheckedUpdateManyWithoutContentNestedInput
   }
@@ -47574,6 +61445,7 @@ export namespace Prisma {
     createdAt?: Date | string
     updatedAt?: Date | string
     keywords?: ContentKeywordCreateNestedManyWithoutContentInput
+    topicScores?: ContentTopicScoreCreateNestedManyWithoutContentInput
     entities?: ContentEntityCreateNestedOneWithoutContentInput
     favorites?: FavoriteCreateNestedManyWithoutContentInput
   }
@@ -47592,6 +61464,7 @@ export namespace Prisma {
     createdAt?: Date | string
     updatedAt?: Date | string
     keywords?: ContentKeywordUncheckedCreateNestedManyWithoutContentInput
+    topicScores?: ContentTopicScoreUncheckedCreateNestedManyWithoutContentInput
     entities?: ContentEntityUncheckedCreateNestedOneWithoutContentInput
     favorites?: FavoriteUncheckedCreateNestedManyWithoutContentInput
   }
@@ -47669,6 +61542,7 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     keywords?: ContentKeywordUpdateManyWithoutContentNestedInput
+    topicScores?: ContentTopicScoreUpdateManyWithoutContentNestedInput
     entities?: ContentEntityUpdateOneWithoutContentNestedInput
     favorites?: FavoriteUpdateManyWithoutContentNestedInput
   }
@@ -47687,6 +61561,7 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     keywords?: ContentKeywordUncheckedUpdateManyWithoutContentNestedInput
+    topicScores?: ContentTopicScoreUncheckedUpdateManyWithoutContentNestedInput
     entities?: ContentEntityUncheckedUpdateOneWithoutContentNestedInput
     favorites?: FavoriteUncheckedUpdateManyWithoutContentNestedInput
   }
@@ -47755,6 +61630,7 @@ export namespace Prisma {
     updatedAt?: Date | string
     keywords?: ContentKeywordCreateNestedManyWithoutContentInput
     subjectMatches?: ContentSubjectMatchCreateNestedManyWithoutContentInput
+    topicScores?: ContentTopicScoreCreateNestedManyWithoutContentInput
     favorites?: FavoriteCreateNestedManyWithoutContentInput
   }
 
@@ -47773,6 +61649,7 @@ export namespace Prisma {
     updatedAt?: Date | string
     keywords?: ContentKeywordUncheckedCreateNestedManyWithoutContentInput
     subjectMatches?: ContentSubjectMatchUncheckedCreateNestedManyWithoutContentInput
+    topicScores?: ContentTopicScoreUncheckedCreateNestedManyWithoutContentInput
     favorites?: FavoriteUncheckedCreateNestedManyWithoutContentInput
   }
 
@@ -47807,6 +61684,7 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     keywords?: ContentKeywordUpdateManyWithoutContentNestedInput
     subjectMatches?: ContentSubjectMatchUpdateManyWithoutContentNestedInput
+    topicScores?: ContentTopicScoreUpdateManyWithoutContentNestedInput
     favorites?: FavoriteUpdateManyWithoutContentNestedInput
   }
 
@@ -47825,7 +61703,176 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     keywords?: ContentKeywordUncheckedUpdateManyWithoutContentNestedInput
     subjectMatches?: ContentSubjectMatchUncheckedUpdateManyWithoutContentNestedInput
+    topicScores?: ContentTopicScoreUncheckedUpdateManyWithoutContentNestedInput
     favorites?: FavoriteUncheckedUpdateManyWithoutContentNestedInput
+  }
+
+  export type ContentCreateWithoutTopicScoresInput = {
+    id?: string
+    title: string
+    summary: string
+    markdown: string
+    platform: string
+    type: $Enums.ContentType
+    time: Date | string
+    url?: string | null
+    image?: string | null
+    meta?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    keywords?: ContentKeywordCreateNestedManyWithoutContentInput
+    subjectMatches?: ContentSubjectMatchCreateNestedManyWithoutContentInput
+    entities?: ContentEntityCreateNestedOneWithoutContentInput
+    favorites?: FavoriteCreateNestedManyWithoutContentInput
+  }
+
+  export type ContentUncheckedCreateWithoutTopicScoresInput = {
+    id?: string
+    title: string
+    summary: string
+    markdown: string
+    platform: string
+    type: $Enums.ContentType
+    time: Date | string
+    url?: string | null
+    image?: string | null
+    meta?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    keywords?: ContentKeywordUncheckedCreateNestedManyWithoutContentInput
+    subjectMatches?: ContentSubjectMatchUncheckedCreateNestedManyWithoutContentInput
+    entities?: ContentEntityUncheckedCreateNestedOneWithoutContentInput
+    favorites?: FavoriteUncheckedCreateNestedManyWithoutContentInput
+  }
+
+  export type ContentCreateOrConnectWithoutTopicScoresInput = {
+    where: ContentWhereUniqueInput
+    create: XOR<ContentCreateWithoutTopicScoresInput, ContentUncheckedCreateWithoutTopicScoresInput>
+  }
+
+  export type TopicCreateWithoutScoresInput = {
+    id?: string
+    name: string
+    description?: string | null
+    enabled?: boolean
+    frequency?: $Enums.QueryFrequency
+    cronSchedule?: string | null
+    profile?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    terms?: TopicTermCreateNestedManyWithoutTopicInput
+    sources?: TopicSourceCreateNestedManyWithoutTopicInput
+    jobTopics?: JobTopicCreateNestedManyWithoutTopicInput
+  }
+
+  export type TopicUncheckedCreateWithoutScoresInput = {
+    id?: string
+    name: string
+    description?: string | null
+    enabled?: boolean
+    frequency?: $Enums.QueryFrequency
+    cronSchedule?: string | null
+    profile?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    terms?: TopicTermUncheckedCreateNestedManyWithoutTopicInput
+    sources?: TopicSourceUncheckedCreateNestedManyWithoutTopicInput
+    jobTopics?: JobTopicUncheckedCreateNestedManyWithoutTopicInput
+  }
+
+  export type TopicCreateOrConnectWithoutScoresInput = {
+    where: TopicWhereUniqueInput
+    create: XOR<TopicCreateWithoutScoresInput, TopicUncheckedCreateWithoutScoresInput>
+  }
+
+  export type ContentUpsertWithoutTopicScoresInput = {
+    update: XOR<ContentUpdateWithoutTopicScoresInput, ContentUncheckedUpdateWithoutTopicScoresInput>
+    create: XOR<ContentCreateWithoutTopicScoresInput, ContentUncheckedCreateWithoutTopicScoresInput>
+    where?: ContentWhereInput
+  }
+
+  export type ContentUpdateToOneWithWhereWithoutTopicScoresInput = {
+    where?: ContentWhereInput
+    data: XOR<ContentUpdateWithoutTopicScoresInput, ContentUncheckedUpdateWithoutTopicScoresInput>
+  }
+
+  export type ContentUpdateWithoutTopicScoresInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    title?: StringFieldUpdateOperationsInput | string
+    summary?: StringFieldUpdateOperationsInput | string
+    markdown?: StringFieldUpdateOperationsInput | string
+    platform?: StringFieldUpdateOperationsInput | string
+    type?: EnumContentTypeFieldUpdateOperationsInput | $Enums.ContentType
+    time?: DateTimeFieldUpdateOperationsInput | Date | string
+    url?: NullableStringFieldUpdateOperationsInput | string | null
+    image?: NullableStringFieldUpdateOperationsInput | string | null
+    meta?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    keywords?: ContentKeywordUpdateManyWithoutContentNestedInput
+    subjectMatches?: ContentSubjectMatchUpdateManyWithoutContentNestedInput
+    entities?: ContentEntityUpdateOneWithoutContentNestedInput
+    favorites?: FavoriteUpdateManyWithoutContentNestedInput
+  }
+
+  export type ContentUncheckedUpdateWithoutTopicScoresInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    title?: StringFieldUpdateOperationsInput | string
+    summary?: StringFieldUpdateOperationsInput | string
+    markdown?: StringFieldUpdateOperationsInput | string
+    platform?: StringFieldUpdateOperationsInput | string
+    type?: EnumContentTypeFieldUpdateOperationsInput | $Enums.ContentType
+    time?: DateTimeFieldUpdateOperationsInput | Date | string
+    url?: NullableStringFieldUpdateOperationsInput | string | null
+    image?: NullableStringFieldUpdateOperationsInput | string | null
+    meta?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    keywords?: ContentKeywordUncheckedUpdateManyWithoutContentNestedInput
+    subjectMatches?: ContentSubjectMatchUncheckedUpdateManyWithoutContentNestedInput
+    entities?: ContentEntityUncheckedUpdateOneWithoutContentNestedInput
+    favorites?: FavoriteUncheckedUpdateManyWithoutContentNestedInput
+  }
+
+  export type TopicUpsertWithoutScoresInput = {
+    update: XOR<TopicUpdateWithoutScoresInput, TopicUncheckedUpdateWithoutScoresInput>
+    create: XOR<TopicCreateWithoutScoresInput, TopicUncheckedCreateWithoutScoresInput>
+    where?: TopicWhereInput
+  }
+
+  export type TopicUpdateToOneWithWhereWithoutScoresInput = {
+    where?: TopicWhereInput
+    data: XOR<TopicUpdateWithoutScoresInput, TopicUncheckedUpdateWithoutScoresInput>
+  }
+
+  export type TopicUpdateWithoutScoresInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    enabled?: BoolFieldUpdateOperationsInput | boolean
+    frequency?: EnumQueryFrequencyFieldUpdateOperationsInput | $Enums.QueryFrequency
+    cronSchedule?: NullableStringFieldUpdateOperationsInput | string | null
+    profile?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    terms?: TopicTermUpdateManyWithoutTopicNestedInput
+    sources?: TopicSourceUpdateManyWithoutTopicNestedInput
+    jobTopics?: JobTopicUpdateManyWithoutTopicNestedInput
+  }
+
+  export type TopicUncheckedUpdateWithoutScoresInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    enabled?: BoolFieldUpdateOperationsInput | boolean
+    frequency?: EnumQueryFrequencyFieldUpdateOperationsInput | $Enums.QueryFrequency
+    cronSchedule?: NullableStringFieldUpdateOperationsInput | string | null
+    profile?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    terms?: TopicTermUncheckedUpdateManyWithoutTopicNestedInput
+    sources?: TopicSourceUncheckedUpdateManyWithoutTopicNestedInput
+    jobTopics?: JobTopicUncheckedUpdateManyWithoutTopicNestedInput
   }
 
   export type ContentCreateWithoutFavoritesInput = {
@@ -47843,6 +61890,7 @@ export namespace Prisma {
     updatedAt?: Date | string
     keywords?: ContentKeywordCreateNestedManyWithoutContentInput
     subjectMatches?: ContentSubjectMatchCreateNestedManyWithoutContentInput
+    topicScores?: ContentTopicScoreCreateNestedManyWithoutContentInput
     entities?: ContentEntityCreateNestedOneWithoutContentInput
   }
 
@@ -47861,6 +61909,7 @@ export namespace Prisma {
     updatedAt?: Date | string
     keywords?: ContentKeywordUncheckedCreateNestedManyWithoutContentInput
     subjectMatches?: ContentSubjectMatchUncheckedCreateNestedManyWithoutContentInput
+    topicScores?: ContentTopicScoreUncheckedCreateNestedManyWithoutContentInput
     entities?: ContentEntityUncheckedCreateNestedOneWithoutContentInput
   }
 
@@ -47895,6 +61944,7 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     keywords?: ContentKeywordUpdateManyWithoutContentNestedInput
     subjectMatches?: ContentSubjectMatchUpdateManyWithoutContentNestedInput
+    topicScores?: ContentTopicScoreUpdateManyWithoutContentNestedInput
     entities?: ContentEntityUpdateOneWithoutContentNestedInput
   }
 
@@ -47913,6 +61963,7 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     keywords?: ContentKeywordUncheckedUpdateManyWithoutContentNestedInput
     subjectMatches?: ContentSubjectMatchUncheckedUpdateManyWithoutContentNestedInput
+    topicScores?: ContentTopicScoreUncheckedUpdateManyWithoutContentNestedInput
     entities?: ContentEntityUncheckedUpdateOneWithoutContentNestedInput
   }
 
@@ -49022,6 +63073,8 @@ export namespace Prisma {
     queries?: QueryUpdateManyWithoutSourcesNestedInput
     derivedKeywords?: KeywordUpdateManyWithoutDeriveSourceNestedInput
     querySourcePolicies?: QuerySourcePolicyUpdateManyWithoutSourceNestedInput
+    topicSources?: TopicSourceUpdateManyWithoutSourceNestedInput
+    jobSources?: JobSourceUpdateManyWithoutSourceNestedInput
   }
 
   export type SourceUncheckedUpdateWithoutProxyInput = {
@@ -49045,6 +63098,8 @@ export namespace Prisma {
     queries?: QueryUncheckedUpdateManyWithoutSourcesNestedInput
     derivedKeywords?: KeywordUncheckedUpdateManyWithoutDeriveSourceNestedInput
     querySourcePolicies?: QuerySourcePolicyUncheckedUpdateManyWithoutSourceNestedInput
+    topicSources?: TopicSourceUncheckedUpdateManyWithoutSourceNestedInput
+    jobSources?: JobSourceUncheckedUpdateManyWithoutSourceNestedInput
   }
 
   export type SourceUncheckedUpdateManyWithoutProxyInput = {
@@ -49219,6 +63274,8 @@ export namespace Prisma {
     queries?: QueryUpdateManyWithoutSourcesNestedInput
     derivedKeywords?: KeywordUpdateManyWithoutDeriveSourceNestedInput
     querySourcePolicies?: QuerySourcePolicyUpdateManyWithoutSourceNestedInput
+    topicSources?: TopicSourceUpdateManyWithoutSourceNestedInput
+    jobSources?: JobSourceUpdateManyWithoutSourceNestedInput
   }
 
   export type SourceUncheckedUpdateWithoutCredentialInput = {
@@ -49242,6 +63299,8 @@ export namespace Prisma {
     queries?: QueryUncheckedUpdateManyWithoutSourcesNestedInput
     derivedKeywords?: KeywordUncheckedUpdateManyWithoutDeriveSourceNestedInput
     querySourcePolicies?: QuerySourcePolicyUncheckedUpdateManyWithoutSourceNestedInput
+    topicSources?: TopicSourceUncheckedUpdateManyWithoutSourceNestedInput
+    jobSources?: JobSourceUncheckedUpdateManyWithoutSourceNestedInput
   }
 
   export type SourceUncheckedUpdateManyWithoutCredentialInput = {
@@ -49346,6 +63405,23 @@ export namespace Prisma {
     queryId: string
     contentFilterEnabled?: boolean
     contentFilterMode?: $Enums.QueryContentFilterMode
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type TopicSourceCreateManySourceInput = {
+    id?: string
+    topicId: string
+    enabled?: boolean
+    retrievalPolicy?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type JobSourceCreateManySourceInput = {
+    id?: string
+    jobId: string
+    recallBindingOverride?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: Date | string
     updatedAt?: Date | string
   }
@@ -49476,6 +63552,57 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
+  export type TopicSourceUpdateWithoutSourceInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    enabled?: BoolFieldUpdateOperationsInput | boolean
+    retrievalPolicy?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    topic?: TopicUpdateOneRequiredWithoutSourcesNestedInput
+  }
+
+  export type TopicSourceUncheckedUpdateWithoutSourceInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    topicId?: StringFieldUpdateOperationsInput | string
+    enabled?: BoolFieldUpdateOperationsInput | boolean
+    retrievalPolicy?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type TopicSourceUncheckedUpdateManyWithoutSourceInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    topicId?: StringFieldUpdateOperationsInput | string
+    enabled?: BoolFieldUpdateOperationsInput | boolean
+    retrievalPolicy?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type JobSourceUpdateWithoutSourceInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    recallBindingOverride?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    job?: JobUpdateOneRequiredWithoutJobSourcesNestedInput
+  }
+
+  export type JobSourceUncheckedUpdateWithoutSourceInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    jobId?: StringFieldUpdateOperationsInput | string
+    recallBindingOverride?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type JobSourceUncheckedUpdateManyWithoutSourceInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    jobId?: StringFieldUpdateOperationsInput | string
+    recallBindingOverride?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
   export type QuerySourcePolicyCreateManyQueryInput = {
     id?: string
     sourceId: string
@@ -49573,6 +63700,8 @@ export namespace Prisma {
     identity?: SourceIdentityUpdateOneWithoutSourceNestedInput
     derivedKeywords?: KeywordUpdateManyWithoutDeriveSourceNestedInput
     querySourcePolicies?: QuerySourcePolicyUpdateManyWithoutSourceNestedInput
+    topicSources?: TopicSourceUpdateManyWithoutSourceNestedInput
+    jobSources?: JobSourceUpdateManyWithoutSourceNestedInput
   }
 
   export type SourceUncheckedUpdateWithoutQueriesInput = {
@@ -49596,6 +63725,8 @@ export namespace Prisma {
     identity?: SourceIdentityUncheckedUpdateOneWithoutSourceNestedInput
     derivedKeywords?: KeywordUncheckedUpdateManyWithoutDeriveSourceNestedInput
     querySourcePolicies?: QuerySourcePolicyUncheckedUpdateManyWithoutSourceNestedInput
+    topicSources?: TopicSourceUncheckedUpdateManyWithoutSourceNestedInput
+    jobSources?: JobSourceUncheckedUpdateManyWithoutSourceNestedInput
   }
 
   export type SourceUncheckedUpdateManyWithoutQueriesInput = {
@@ -49679,6 +63810,274 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
+  export type TopicTermCreateManyTopicInput = {
+    id?: string
+    type: $Enums.TopicTermType
+    value: string
+    weight?: number
+    meta?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type TopicSourceCreateManyTopicInput = {
+    id?: string
+    sourceId: string
+    enabled?: boolean
+    retrievalPolicy?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type JobTopicCreateManyTopicInput = {
+    id?: string
+    jobId: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type ContentTopicScoreCreateManyTopicInput = {
+    id?: string
+    contentId: string
+    vectorScore?: number | null
+    keywordScore?: number | null
+    exclusionPenalty?: number | null
+    finalScore?: number | null
+    reason?: string | null
+    explain?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type TopicTermUpdateWithoutTopicInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    type?: EnumTopicTermTypeFieldUpdateOperationsInput | $Enums.TopicTermType
+    value?: StringFieldUpdateOperationsInput | string
+    weight?: FloatFieldUpdateOperationsInput | number
+    meta?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type TopicTermUncheckedUpdateWithoutTopicInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    type?: EnumTopicTermTypeFieldUpdateOperationsInput | $Enums.TopicTermType
+    value?: StringFieldUpdateOperationsInput | string
+    weight?: FloatFieldUpdateOperationsInput | number
+    meta?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type TopicTermUncheckedUpdateManyWithoutTopicInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    type?: EnumTopicTermTypeFieldUpdateOperationsInput | $Enums.TopicTermType
+    value?: StringFieldUpdateOperationsInput | string
+    weight?: FloatFieldUpdateOperationsInput | number
+    meta?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type TopicSourceUpdateWithoutTopicInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    enabled?: BoolFieldUpdateOperationsInput | boolean
+    retrievalPolicy?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    source?: SourceUpdateOneRequiredWithoutTopicSourcesNestedInput
+  }
+
+  export type TopicSourceUncheckedUpdateWithoutTopicInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    sourceId?: StringFieldUpdateOperationsInput | string
+    enabled?: BoolFieldUpdateOperationsInput | boolean
+    retrievalPolicy?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type TopicSourceUncheckedUpdateManyWithoutTopicInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    sourceId?: StringFieldUpdateOperationsInput | string
+    enabled?: BoolFieldUpdateOperationsInput | boolean
+    retrievalPolicy?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type JobTopicUpdateWithoutTopicInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    job?: JobUpdateOneRequiredWithoutJobTopicsNestedInput
+  }
+
+  export type JobTopicUncheckedUpdateWithoutTopicInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    jobId?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type JobTopicUncheckedUpdateManyWithoutTopicInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    jobId?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type ContentTopicScoreUpdateWithoutTopicInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    vectorScore?: NullableFloatFieldUpdateOperationsInput | number | null
+    keywordScore?: NullableFloatFieldUpdateOperationsInput | number | null
+    exclusionPenalty?: NullableFloatFieldUpdateOperationsInput | number | null
+    finalScore?: NullableFloatFieldUpdateOperationsInput | number | null
+    reason?: NullableStringFieldUpdateOperationsInput | string | null
+    explain?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    content?: ContentUpdateOneRequiredWithoutTopicScoresNestedInput
+  }
+
+  export type ContentTopicScoreUncheckedUpdateWithoutTopicInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    contentId?: StringFieldUpdateOperationsInput | string
+    vectorScore?: NullableFloatFieldUpdateOperationsInput | number | null
+    keywordScore?: NullableFloatFieldUpdateOperationsInput | number | null
+    exclusionPenalty?: NullableFloatFieldUpdateOperationsInput | number | null
+    finalScore?: NullableFloatFieldUpdateOperationsInput | number | null
+    reason?: NullableStringFieldUpdateOperationsInput | string | null
+    explain?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type ContentTopicScoreUncheckedUpdateManyWithoutTopicInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    contentId?: StringFieldUpdateOperationsInput | string
+    vectorScore?: NullableFloatFieldUpdateOperationsInput | number | null
+    keywordScore?: NullableFloatFieldUpdateOperationsInput | number | null
+    exclusionPenalty?: NullableFloatFieldUpdateOperationsInput | number | null
+    finalScore?: NullableFloatFieldUpdateOperationsInput | number | null
+    reason?: NullableStringFieldUpdateOperationsInput | string | null
+    explain?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type JobTopicCreateManyJobInput = {
+    id?: string
+    topicId: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type JobSourceCreateManyJobInput = {
+    id?: string
+    sourceId: string
+    recallBindingOverride?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type JobRunCreateManyJobInput = {
+    id?: string
+    status?: $Enums.TaskStatus
+    progress?: number
+    trigger?: string | null
+    startedAt?: Date | string | null
+    finishedAt?: Date | string | null
+    error?: string | null
+    meta?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type JobTopicUpdateWithoutJobInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    topic?: TopicUpdateOneRequiredWithoutJobTopicsNestedInput
+  }
+
+  export type JobTopicUncheckedUpdateWithoutJobInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    topicId?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type JobTopicUncheckedUpdateManyWithoutJobInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    topicId?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type JobSourceUpdateWithoutJobInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    recallBindingOverride?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    source?: SourceUpdateOneRequiredWithoutJobSourcesNestedInput
+  }
+
+  export type JobSourceUncheckedUpdateWithoutJobInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    sourceId?: StringFieldUpdateOperationsInput | string
+    recallBindingOverride?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type JobSourceUncheckedUpdateManyWithoutJobInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    sourceId?: StringFieldUpdateOperationsInput | string
+    recallBindingOverride?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type JobRunUpdateWithoutJobInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    status?: EnumTaskStatusFieldUpdateOperationsInput | $Enums.TaskStatus
+    progress?: IntFieldUpdateOperationsInput | number
+    trigger?: NullableStringFieldUpdateOperationsInput | string | null
+    startedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    finishedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    error?: NullableStringFieldUpdateOperationsInput | string | null
+    meta?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type JobRunUncheckedUpdateWithoutJobInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    status?: EnumTaskStatusFieldUpdateOperationsInput | $Enums.TaskStatus
+    progress?: IntFieldUpdateOperationsInput | number
+    trigger?: NullableStringFieldUpdateOperationsInput | string | null
+    startedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    finishedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    error?: NullableStringFieldUpdateOperationsInput | string | null
+    meta?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type JobRunUncheckedUpdateManyWithoutJobInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    status?: EnumTaskStatusFieldUpdateOperationsInput | $Enums.TaskStatus
+    progress?: IntFieldUpdateOperationsInput | number
+    trigger?: NullableStringFieldUpdateOperationsInput | string | null
+    startedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    finishedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    error?: NullableStringFieldUpdateOperationsInput | string | null
+    meta?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
   export type TaskEventCreateManyRunInput = {
     id?: string
     type: string
@@ -49726,6 +64125,19 @@ export namespace Prisma {
     matchedExcludes?: ContentSubjectMatchCreatematchedExcludesInput | string[]
     matchSource?: $Enums.ContentSubjectMatchSource
     reason?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type ContentTopicScoreCreateManyContentInput = {
+    id?: string
+    topicId: string
+    vectorScore?: number | null
+    keywordScore?: number | null
+    exclusionPenalty?: number | null
+    finalScore?: number | null
+    reason?: string | null
+    explain?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: Date | string
     updatedAt?: Date | string
   }
@@ -49789,6 +64201,45 @@ export namespace Prisma {
     matchedExcludes?: ContentSubjectMatchUpdatematchedExcludesInput | string[]
     matchSource?: EnumContentSubjectMatchSourceFieldUpdateOperationsInput | $Enums.ContentSubjectMatchSource
     reason?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type ContentTopicScoreUpdateWithoutContentInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    vectorScore?: NullableFloatFieldUpdateOperationsInput | number | null
+    keywordScore?: NullableFloatFieldUpdateOperationsInput | number | null
+    exclusionPenalty?: NullableFloatFieldUpdateOperationsInput | number | null
+    finalScore?: NullableFloatFieldUpdateOperationsInput | number | null
+    reason?: NullableStringFieldUpdateOperationsInput | string | null
+    explain?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    topic?: TopicUpdateOneRequiredWithoutScoresNestedInput
+  }
+
+  export type ContentTopicScoreUncheckedUpdateWithoutContentInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    topicId?: StringFieldUpdateOperationsInput | string
+    vectorScore?: NullableFloatFieldUpdateOperationsInput | number | null
+    keywordScore?: NullableFloatFieldUpdateOperationsInput | number | null
+    exclusionPenalty?: NullableFloatFieldUpdateOperationsInput | number | null
+    finalScore?: NullableFloatFieldUpdateOperationsInput | number | null
+    reason?: NullableStringFieldUpdateOperationsInput | string | null
+    explain?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type ContentTopicScoreUncheckedUpdateManyWithoutContentInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    topicId?: StringFieldUpdateOperationsInput | string
+    vectorScore?: NullableFloatFieldUpdateOperationsInput | number | null
+    keywordScore?: NullableFloatFieldUpdateOperationsInput | number | null
+    exclusionPenalty?: NullableFloatFieldUpdateOperationsInput | number | null
+    finalScore?: NullableFloatFieldUpdateOperationsInput | number | null
+    reason?: NullableStringFieldUpdateOperationsInput | string | null
+    explain?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
