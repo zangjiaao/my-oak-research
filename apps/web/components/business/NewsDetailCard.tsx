@@ -252,7 +252,7 @@ const NewsDetailCard = ({
               }}
             >
               <ThumbsUp className="size-3.5" />
-              👍 相关
+              相关
             </Button>
             <Button
               size="sm"
@@ -263,7 +263,7 @@ const NewsDetailCard = ({
               }}
             >
               <ThumbsDown className="size-3.5" />
-              👎 无关
+              无关
             </Button>
             <Button
               size="sm"
@@ -274,7 +274,7 @@ const NewsDetailCard = ({
               }}
             >
               <MessageSquarePlus className="size-3.5" />
-              📝 备注
+              备注
             </Button>
           </div>
         ) : null}
