@@ -61,7 +61,7 @@ const TopicsPage = () => {
   return (
     <SettingCard
       title="Manage Topics"
-      description="Define topic scope with core, expansion, and exclusion terms."
+      description="Define topic scope with core, expansion, and exclusion terms. Run and scheduling are managed in Jobs."
       count={filteredTopics.length}
       countLabel="topics"
       filterComponent={filterComponent}
