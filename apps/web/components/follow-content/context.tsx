@@ -78,6 +78,20 @@ export type ContentItem = {
     finalScore: number | null;
     reason: string | null;
   }>;
+  topicScore?: {
+    topicId: string;
+    finalScore: number | null;
+  } | null;
+  entities?: {
+    persons: string[];
+    orgs: string[];
+    locations: string[];
+  } | null;
+  feedback?: {
+    topicId: string;
+    vote: "UP" | "DOWN" | "NONE";
+    note?: string | null;
+  } | null;
 };
 
 type FollowContentFilters = {
@@ -90,7 +104,7 @@ type FollowContentFilters = {
   topicId?: string;
   minTopicScore?: string;
   matchSource?: "QUERY" | "GATHER" | "AI" | "FUSED";
-  sort?: "time" | "matchScore" | "topicScore";
+  sort?: "time" | "relevance" | "matchScore" | "topicScore";
 };
 
 type SubjectOption = {
@@ -125,7 +139,7 @@ type FollowContentContextValue = {
     topicId: string;
     minTopicScore: string;
     matchSource: string;
-    sort: "time" | "matchScore" | "topicScore";
+    sort: "time" | "relevance" | "matchScore" | "topicScore";
   };
   subjectOptions: SubjectOption[];
   topicOptions: TopicOption[];
@@ -143,7 +157,7 @@ type FollowContentContextValue = {
   setTopicId: (val: string) => void;
   setMinTopicScore: (val: string) => void;
   setMatchSource: (val: string) => void;
-  setSort: (val: "time" | "matchScore" | "topicScore") => void;
+  setSort: (val: "time" | "relevance" | "matchScore" | "topicScore") => void;
 };
 
 const FollowContentContext = createContext<
@@ -213,6 +227,8 @@ const fetchContents = async (filters: FollowContentFilters) => {
 
   params.set("includeSubjectMatches", "true");
   params.set("includeTopicScores", "true");
+  params.set("includeEntities", "true");
+  params.set("includeFeedback", "true");
   params.set("limit", "30");
   const url = `/api/focus-bulletin/content${
     params.toString() ? `?${params.toString()}` : ""
@@ -249,7 +265,7 @@ export const FollowContentProvider = ({
   const [topicId, setTopicId] = useState("");
   const [minTopicScore, setMinTopicScore] = useState("");
   const [matchSource, setMatchSource] = useState("");
-  const [sort, setSort] = useState<"time" | "matchScore" | "topicScore">("time");
+  const [sort, setSort] = useState<"time" | "relevance" | "matchScore" | "topicScore">("relevance");
   const [selectedContentId, setSelectedContentId] = useState<string | null>(
     null
   );
@@ -376,7 +392,7 @@ export const FollowContentProvider = ({
 
   const contents: ContentItem[] = useMemo(() => {
     const items: ContentItem[] = data?.items ?? [];
-    if (sort === "topicScore") {
+    if (sort === "topicScore" || sort === "relevance") {
       return [...items].sort((left, right) => {
         const leftScore =
           left.topicScores?.find((score) =>

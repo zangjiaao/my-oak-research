@@ -7,12 +7,14 @@ import type {
   ContentSubjectMatch,
   ContentSubjectMatchSource,
   ContentTopicScore,
+  ContentEntity,
 } from "@/app/generated/prisma";
 import { buildRecordContentViews } from "@/lib/follow-content/record-content-view";
+const prismaAny = prisma as any;
 
 const contentTypeSchema = z.enum(["Web", "Client", "Darknet"]);
 const matchSourceSchema = z.enum(["QUERY", "GATHER", "AI", "FUSED"]);
-const sortSchema = z.enum(["time", "matchScore", "topicScore"]);
+const sortSchema = z.enum(["time", "relevance", "matchScore", "topicScore"]);
 const ContentQuerySchema = z.object({
   platform: z.string().trim().min(1).optional(),
   type: contentTypeSchema.optional(),
@@ -33,6 +35,14 @@ const ContentQuerySchema = z.object({
     .enum(["true", "false"])
     .optional()
     .transform((value) => value === "true"),
+  includeEntities: z
+    .enum(["true", "false"])
+    .optional()
+    .transform((value) => value === "true"),
+  includeFeedback: z
+    .enum(["true", "false"])
+    .optional()
+    .transform((value) => value === "true"),
   cursor: z.string().optional(),
   limit: z.coerce.number().int().min(1).max(50).default(20),
 });
@@ -42,6 +52,12 @@ const mapContent = (
     image?: string | null;
     subjectMatches?: ContentSubjectMatch[];
     topicScores?: ContentTopicScore[];
+    entities?: ContentEntity | null;
+    topicFeedbacks?: Array<{
+      vote: "UP" | "DOWN" | "NONE";
+      note: string | null;
+      topicId: string;
+    }>;
   }
 ) => {
   const views = buildRecordContentViews(item);
@@ -78,6 +94,26 @@ const mapContent = (
       finalScore: score.finalScore,
       reason: score.reason,
     })),
+    topicScore: item.topicScores?.[0]
+      ? {
+          topicId: item.topicScores[0].topicId,
+          finalScore: item.topicScores[0].finalScore,
+        }
+      : null,
+    entities: item.entities
+      ? {
+          persons: item.entities.persons ?? [],
+          orgs: item.entities.orgs ?? [],
+          locations: item.entities.locations ?? [],
+        }
+      : null,
+    feedback: item.topicFeedbacks?.[0]
+      ? {
+          topicId: item.topicFeedbacks[0].topicId,
+          vote: item.topicFeedbacks[0].vote,
+          note: item.topicFeedbacks[0].note,
+        }
+      : null,
   };
 };
 
@@ -116,9 +152,12 @@ export async function GET(request: Request) {
     sort,
     includeSubjectMatches,
     includeTopicScores,
+    includeEntities,
+    includeFeedback,
     cursor,
     limit,
   } = parsed.data;
+  const userId = request.headers.get("x-user-id")?.trim() || process.env.DEFAULT_USER_ID || "default-user-id";
 
   const where: Prisma.ContentWhereInput = {};
 
@@ -212,8 +251,28 @@ export async function GET(request: Request) {
             take: 0,
           },
         };
+  const includeEntityRelation = includeEntities
+    ? { entities: true as const }
+    : { entities: false as const };
+  const includeFeedbackRelation =
+    includeFeedback && topicId
+      ? {
+          topicFeedbacks: {
+            where: {
+              topicId,
+              userId,
+            },
+            take: 1,
+            orderBy: { updatedAt: "desc" as const },
+          },
+        }
+      : {
+          topicFeedbacks: {
+            take: 0,
+          },
+        };
 
-  const contents = await prisma.content.findMany({
+  const contents = await prismaAny.content.findMany({
     where,
     orderBy: { time: "desc" },
     take: limit + 1,
@@ -222,6 +281,8 @@ export async function GET(request: Request) {
     include: {
       ...includeSubjectMatchRelation,
       ...includeTopicScoreRelation,
+      ...includeEntityRelation,
+      ...includeFeedbackRelation,
     },
   });
 
@@ -229,20 +290,20 @@ export async function GET(request: Request) {
   const nextCursor = hasMore ? contents[limit].id : null;
   const pageItems = hasMore ? contents.slice(0, limit) : contents;
   const sortedItems =
-    sort === "matchScore" && subjectId
+    (sort === "matchScore" && subjectId)
       ? [...pageItems].sort((left, right) => {
           const leftScore = left.subjectMatches?.[0]?.matchScore ?? -1;
           const rightScore = right.subjectMatches?.[0]?.matchScore ?? -1;
           return rightScore - leftScore;
         })
-      : sort === "topicScore" && topicId
+      : (sort === "topicScore" || sort === "relevance") && topicId
         ? [...pageItems].sort((left, right) => {
             const leftScore = left.topicScores?.[0]?.finalScore ?? -1;
             const rightScore = right.topicScores?.[0]?.finalScore ?? -1;
             return rightScore - leftScore;
           })
       : pageItems;
-  const items = sortedItems.map((item) => mapContent(item));
+  const items = sortedItems.map((item: any) => mapContent(item));
 
   const response: ContentResponse = {
     items,

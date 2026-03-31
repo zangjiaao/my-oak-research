@@ -268,13 +268,14 @@ export const ContentFilters = () => {
           <Select
             value={filters.sort}
             onValueChange={(value) =>
-              setSort(value as "time" | "matchScore" | "topicScore")
+              setSort(value as "time" | "relevance" | "matchScore" | "topicScore")
             }
           >
             <SelectTrigger className="min-w-[150px]">
               <SelectValue placeholder="Sort" />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="relevance">Relevance Desc</SelectItem>
               <SelectItem value="time">Time Desc</SelectItem>
               <SelectItem value="matchScore">Score Desc</SelectItem>
               <SelectItem value="topicScore">Topic Score Desc</SelectItem>

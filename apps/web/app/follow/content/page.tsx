@@ -17,6 +17,16 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
@@ -28,6 +38,10 @@ const FollowContent = () => {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [noteDialogOpen, setNoteDialogOpen] = useState(false);
+  const [noteContentId, setNoteContentId] = useState<string | null>(null);
+  const [noteText, setNoteText] = useState("");
+  const [savingFeedback, setSavingFeedback] = useState(false);
   const detailRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   // 获取所有收藏的内容 ID，用于判断是否已收藏
@@ -38,6 +52,109 @@ const FollowContent = () => {
   );
 
   const isBookmarked = (id: string) => favoriteIds.has(id);
+  const selectedTopicId = filters.topicId || "";
+
+  const buildExpandableKeywords = (content: (typeof contents)[number]) => {
+    const keywords: Array<{
+      category: "PERSON" | "ORG" | "TECH" | "LOCATION";
+      label: string;
+    }> = [];
+    const pushUnique = (
+      category: "PERSON" | "ORG" | "TECH" | "LOCATION",
+      value: string
+    ) => {
+      const label = value.trim();
+      if (!label) return;
+      if (keywords.some((item) => item.category === category && item.label === label)) return;
+      keywords.push({ category, label });
+    };
+    for (const person of content.entities?.persons ?? []) {
+      pushUnique("PERSON", person);
+    }
+    for (const org of content.entities?.orgs ?? []) {
+      pushUnique("ORG", org);
+    }
+    for (const location of content.entities?.locations ?? []) {
+      pushUnique("LOCATION", location);
+    }
+    const techTerms = (content.topicScores ?? [])
+      .flatMap((score) => {
+        if (typeof score.reason !== "string") return [];
+        return score.reason
+          .split(/[,\s;:]+/)
+          .map((term) => term.trim())
+          .filter((term) => term.length >= 3);
+      })
+      .slice(0, 4);
+    for (const tech of techTerms) {
+      pushUnique("TECH", tech);
+    }
+    return keywords.slice(0, 8);
+  };
+
+  const submitFeedback = async (input: {
+    contentId: string;
+    vote?: "UP" | "DOWN" | "NONE";
+    note?: string | null;
+  }) => {
+    if (!selectedTopicId) {
+      toast.error("请先选择一个 Topic 再反馈");
+      return;
+    }
+    setSavingFeedback(true);
+    try {
+      const response = await fetch("/api/follow/content-feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contentId: input.contentId,
+          topicId: selectedTopicId,
+          vote: input.vote ?? "NONE",
+          note: input.note ?? null,
+        }),
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(payload?.error || "反馈提交失败");
+      }
+      toast.success("反馈已保存");
+      await queryClient.invalidateQueries({ queryKey: ["follow-content"] });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "反馈提交失败");
+    } finally {
+      setSavingFeedback(false);
+    }
+  };
+
+  const addKeywordToTopic = async (keyword: {
+    category: "PERSON" | "ORG" | "TECH" | "LOCATION";
+    label: string;
+  }) => {
+    if (!selectedTopicId) {
+      toast.error("请先选择 Topic 再添加词");
+      return;
+    }
+    try {
+      const response = await fetch(`/api/follow/topics/${selectedTopicId}/terms`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          value: keyword.label,
+          type: "EXPANSION",
+          weight: keyword.category === "TECH" ? 1.2 : 1,
+          meta: { source: "content-card", category: keyword.category },
+        }),
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(payload?.error || "添加关键词失败");
+      }
+      toast.success(`已添加关键词：${keyword.label}`);
+      await queryClient.invalidateQueries({ queryKey: ["topics"] });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "添加关键词失败");
+    }
+  };
 
   const sortedContents = useMemo(() => {
     if (filters.sort === "matchScore") {
@@ -58,7 +175,7 @@ const FollowContent = () => {
         return bTime - aTime;
       });
     }
-    if (filters.sort === "topicScore") {
+    if (filters.sort === "topicScore" || filters.sort === "relevance") {
       return [...contents].sort((a, b) => {
         const aScore =
           a.topicScores?.find((score) =>
@@ -206,6 +323,15 @@ const FollowContent = () => {
                 files={content.detailView?.files ?? []}
                 rawContent={content.rawRecordContent}
                 subjectMatch={content.subjectMatches?.[0]}
+                relevanceScore={
+                  content.topicScore?.topicId === selectedTopicId
+                    ? content.topicScore?.finalScore ?? null
+                    : content.topicScores?.find((score) =>
+                        selectedTopicId ? score.topicId === selectedTopicId : true
+                      )?.finalScore ?? null
+                }
+                expandableKeywords={buildExpandableKeywords(content)}
+                feedback={content.feedback ?? null}
                 bookmarked={isBookmarked(content.id)}
                 onBookmarkToggle={() => {
                   const currentlyBookmarked = isBookmarked(content.id);
@@ -219,6 +345,19 @@ const FollowContent = () => {
                   setDeleteOpen(true);
                 }}
                 deleting={deleting && deleteTargetId === content.id}
+                onAddKeyword={addKeywordToTopic}
+                onFeedbackVote={(vote) => {
+                  void submitFeedback({
+                    contentId: content.id,
+                    vote,
+                    note: content.feedback?.note ?? null,
+                  });
+                }}
+                onFeedbackNote={() => {
+                  setNoteContentId(content.id);
+                  setNoteText(content.feedback?.note ?? "");
+                  setNoteDialogOpen(true);
+                }}
                 className={
                   selectedContent?.id === content.id
                     ? "border-primary/35 bg-card shadow-[0_0_0_1px_hsl(var(--primary)/0.12)]"
@@ -260,6 +399,60 @@ const FollowContent = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <Dialog
+        open={noteDialogOpen}
+        onOpenChange={(open) => {
+          if (!savingFeedback) {
+            setNoteDialogOpen(open);
+            if (!open) {
+              setNoteContentId(null);
+              setNoteText("");
+            }
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>反馈备注</DialogTitle>
+            <DialogDescription>记录为什么相关或无关，系统会用于后续权重建议。</DialogDescription>
+          </DialogHeader>
+          <Textarea
+            value={noteText}
+            onChange={(event) => setNoteText(event.target.value)}
+            placeholder="例如：该内容和主题无关，主要在讲政策新闻"
+            rows={4}
+          />
+          <DialogFooter>
+            <Button
+              variant="outline"
+              disabled={savingFeedback}
+              onClick={() => {
+                setNoteDialogOpen(false);
+                setNoteContentId(null);
+                setNoteText("");
+              }}
+            >
+              取消
+            </Button>
+            <Button
+              disabled={savingFeedback || !noteContentId}
+              onClick={() => {
+                if (!noteContentId) return;
+                void submitFeedback({
+                  contentId: noteContentId,
+                  note: noteText || null,
+                }).then(() => {
+                  setNoteDialogOpen(false);
+                  setNoteContentId(null);
+                  setNoteText("");
+                });
+              }}
+            >
+              {savingFeedback ? "保存中..." : "保存备注"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
