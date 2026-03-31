@@ -27,6 +27,12 @@ export type KnowledgeProcessPayload = {
   chunkSize: number;
 };
 
+export type CollectFlowJobPayload = {
+  runId?: string;
+  jobId: string;
+  trigger?: "manual" | "scheduled" | "event";
+};
+
 export const defaultJobOpts: JobsOptions = {
   attempts: 3,
   backoff: { type: "exponential", delay: 2000 },
@@ -48,11 +54,22 @@ export const knowledgeQueue = new Queue<KnowledgeProcessPayload>("knowledge-proc
 export const knowledgeQueueEvents = new QueueEvents("knowledge-process", {
   connection: bullConnection,
 });
+export const collectFlowQueue = new Queue<CollectFlowJobPayload>("collect-job", {
+  connection: bullConnection,
+});
+export const collectFlowQueueEvents = new QueueEvents("collect-job", {
+  connection: bullConnection,
+});
 const SCHEDULED_COLLECT_JOB_NAME = "collect-scheduled";
+const SCHEDULED_COLLECT_FLOW_JOB_NAME = "collect-job-scheduled";
 const SCHEDULED_COLLECT_TZ = process.env.QUERY_SCHEDULE_TZ || "UTC";
 
 function getQueryCollectJobId(queryId: string) {
   return `query:${queryId}:collect`;
+}
+
+function getFlowCollectJobId(jobId: string) {
+  return `job:${jobId}:collect`;
 }
 
 export function resolveQueryCron(
@@ -110,6 +127,41 @@ export async function scheduleQueryCollect(options: {
   );
 }
 
+export async function unscheduleCollectJob(jobId: string) {
+  const scheduledJobId = getFlowCollectJobId(jobId);
+  const repeatables = await collectFlowQueue.getRepeatableJobs();
+  const targets = repeatables.filter(
+    (job) => job.name === SCHEDULED_COLLECT_FLOW_JOB_NAME && job.id === scheduledJobId
+  );
+  await Promise.all(
+    targets.map((job) => collectFlowQueue.removeRepeatableByKey(job.key))
+  );
+}
+
+export async function scheduleCollectJob(options: {
+  jobId: string;
+  frequency: QueryFrequency;
+  cronSchedule?: string | null;
+  enabled: boolean;
+}) {
+  const { jobId, frequency, cronSchedule, enabled } = options;
+  await unscheduleCollectJob(jobId);
+  if (!enabled) return;
+
+  const cron = resolveQueryCron(frequency, cronSchedule);
+  if (!cron) return;
+
+  await collectFlowQueue.add(
+    SCHEDULED_COLLECT_FLOW_JOB_NAME,
+    { jobId, trigger: "scheduled" },
+    {
+      ...defaultJobOpts,
+      jobId: getFlowCollectJobId(jobId),
+      repeat: { pattern: cron, tz: SCHEDULED_COLLECT_TZ },
+    }
+  );
+}
+
 // Pub/Sub for task events (SSE/WebSocket can subscribe to `task:<runId>`)
 export async function publishTaskEvent(runId: string, payload: unknown) {
   const pub = createClient({
@@ -159,3 +211,12 @@ export function createKnowledgeWorker(
   });
 }
 
+export function createCollectJobWorker(
+  processor: (job: { data: CollectFlowJobPayload }) => Promise<unknown>,
+  concurrency = 3
+) {
+  return new Worker<CollectFlowJobPayload>("collect-job", processor, {
+    connection: bullConnection,
+    concurrency,
+  });
+}

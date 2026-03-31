@@ -11,6 +11,7 @@ import {
   KeywordStrategy,
   ContentSubjectMatchSource,
   QueryContentFilterMode,
+  JobType,
 } from "@/app/generated/prisma";
 import {
   SourceWithRelations,
@@ -20,6 +21,7 @@ import {
   DarknetSource,
 } from "@/lib/types";
 import { llmGateway, browserAgent } from "@oak/agents";
+import { createEmbedding } from "@oak/agents/embeddings";
 import { publishTaskEvent, publishContentEvent } from "@/lib/queue";
 import { logger } from "@/lib/logger";
 import { downloadFile } from "@/lib/storage";
@@ -27,10 +29,31 @@ import { redact, stripPromptLike } from "@/lib/security";
 import { writeWorkerApiIoLog } from "./api-io-log";
 import { buildNormalizedRecordContent } from "./record-content-normalizer";
 import { unwrapCredentialPayload } from "@/lib/credential-secret";
+import { toVectorLiteral } from "@/lib/topic-vector";
 
 const SKIP_AI_SUMMARY = process.env.COLLECTOR_SKIP_AI_SUMMARY !== "false";
 const ENABLE_SUBJECT_AI_SCORE =
   process.env.COLLECTOR_ENABLE_SUBJECT_AI_SCORE !== "false";
+const RETRIEVAL_VECTOR_TOP_N = Number(process.env.RETRIEVAL_VECTOR_TOP_N ?? 15);
+const RETRIEVAL_BM25_TOP_N = Number(process.env.RETRIEVAL_BM25_TOP_N ?? 30);
+const RETRIEVAL_FUSION_ALPHA = Math.min(
+  1,
+  Math.max(0, Number(process.env.RETRIEVAL_FUSION_ALPHA ?? 0.65))
+);
+const RETRIEVAL_HIGH_THRESHOLD = Number(
+  process.env.RETRIEVAL_HIGH_THRESHOLD ?? 0.7
+);
+const RETRIEVAL_LOW_THRESHOLD = Number(
+  process.env.RETRIEVAL_LOW_THRESHOLD ?? 0.5
+);
+const TOPIC_RECALL_LLM_ENABLED =
+  process.env.TOPIC_RECALL_LLM_ENABLED !== "false";
+const TOPIC_RECALL_QUERY_LIMIT = Number(
+  process.env.TOPIC_RECALL_QUERY_LIMIT ?? 8
+);
+const TOPIC_RECALL_TIMEOUT_MS = Number(
+  process.env.TOPIC_RECALL_TIMEOUT_MS ?? 8000
+);
 
 const ContentAnalyzeSchema = z.object({
   summary: z.string().min(30).max(400),
@@ -44,6 +67,9 @@ const ContentAnalyzeSchema = z.object({
       })
     )
     .default([]),
+});
+const TopicRecallQueriesSchema = z.object({
+  queries: z.array(z.string().min(1).max(180)).min(1).max(16),
 });
 
 type ContentAnalyzeResult = {
@@ -86,6 +112,30 @@ type QueryKeyword = {
   synonyms: string[];
 };
 
+type TopicTermLite = {
+  type: "CORE" | "EXPANSION" | "EXCLUSION";
+  value: string;
+  weight?: number | null;
+};
+
+type JobCollectorTopic = {
+  id: string;
+  name: string;
+  enabled?: boolean;
+  description?: string | null;
+  terms: TopicTermLite[];
+};
+
+type TopicVectorMatch = {
+  topicId: string;
+  similarity: number;
+};
+
+type TopicSparseMatch = {
+  topicId: string;
+  score: number;
+};
+
 type GatherSocialDriver = "playwright" | "xhttp";
 type GatherOutputField = string[] | Record<string, string>;
 type GatherOutputPayload = {
@@ -99,6 +149,14 @@ type GatherIntentPayload = {
 type SourceRuntimePolicy = {
   contentFilterEnabled: boolean;
   contentFilterMode: QueryContentFilterMode;
+  recallBindingOverride?: unknown;
+};
+
+type RecallQueryOrigin = "llm_recall" | "static_fallback";
+type SourceRecallQueryBundle = {
+  queries: string[];
+  origin: RecallQueryOrigin;
+  generatedCount: number;
 };
 type GatherDriverPayload = {
   name: GatherSocialDriver;
@@ -609,11 +667,657 @@ export async function runFocusCollector(runId: string, queryId: string) {
   }
 }
 
+export async function runJobCollector(params: {
+  runId: string;
+  jobId: string;
+  jobType: JobType;
+  topics: JobCollectorTopic[];
+  sources: SourceWithRelations[];
+  sourcePolicyBySourceId: Map<string, SourceRuntimePolicy>;
+}) {
+  const { runId, jobId, jobType, topics, sources, sourcePolicyBySourceId } = params;
+  const send = async (event: unknown) => publishTaskEvent(runId, event);
+  const pseudoQueryId = `job:${jobId}`;
+  const keywords = buildTopicKeywords(topics);
+  const enabledTopicsForScoring = (await prisma.topic.findMany({
+    where: { enabled: true },
+    include: { terms: true },
+  })) as unknown as JobCollectorTopic[];
+  const topicById = new Map(enabledTopicsForScoring.map((topic) => [topic.id, topic]));
+
+  await prisma.jobRun.update({
+    where: { id: runId },
+    data: { status: "RUNNING", startedAt: new Date(), progress: 0 },
+  });
+  await send({ type: "start", message: "任务开始" });
+
+  const sourceRecallQueryBundles =
+    jobType === JobType.TOPIC_RETRIEVAL
+      ? await buildTopicRecallQueryBundles({
+          runId,
+          jobId,
+          topics,
+          sources,
+          fallbackKeywords: keywords,
+        })
+      : new Map<string, SourceRecallQueryBundle>();
+  const recallSummary = Array.from(sourceRecallQueryBundles.entries()).map(
+    ([sourceId, bundle]) => ({
+      sourceId,
+      origin: bundle.origin,
+      generatedCount: bundle.generatedCount,
+    })
+  );
+
+  await send({ type: "fetch", message: "拉取数据中" });
+  const rawItems = await fetchBySources(
+    sources,
+    runId,
+    pseudoQueryId,
+    keywords,
+    sourcePolicyBySourceId,
+    sourceRecallQueryBundles
+  );
+  const cleaned = await cleanAndDedup(rawItems, runId);
+
+  const sourceStats = new Map<
+    string,
+    {
+      sourceName: string;
+      sourceType: SourceCategory;
+      fetched: number;
+      cleaned: number;
+      dedupSkipped: number;
+      inserted: number;
+    }
+  >();
+  for (const source of sources) {
+    sourceStats.set(source.id, {
+      sourceName: source.name,
+      sourceType: source.category,
+      fetched: 0,
+      cleaned: 0,
+      dedupSkipped: 0,
+      inserted: 0,
+    });
+  }
+  for (const item of rawItems) {
+    const stats = sourceStats.get(item.sourceId);
+    if (stats) stats.fetched += 1;
+  }
+  for (const item of cleaned) {
+    const stats = sourceStats.get(item.sourceId);
+    if (stats) stats.cleaned += 1;
+  }
+
+  if (!cleaned.length) {
+    await send({ type: "done", message: "未抓取到内容", progress: 100 });
+    await prisma.jobRun.update({
+      where: { id: runId },
+      data: {
+        status: "SUCCEEDED",
+        progress: 100,
+        finishedAt: new Date(),
+        meta: {
+          summaryCount: 0,
+          topics: topics.length,
+          sources: sources.length,
+          recallSummary,
+        },
+      },
+    });
+    return;
+  }
+
+  const expandedKeywords = keywords.map((kw) => {
+    const parts = [kw.name, ...kw.includes];
+    return Array.from(new Set(parts)).join(", ");
+  });
+
+  for (let i = 0; i < cleaned.length; i++) {
+    const item = cleaned[i];
+    const existingContent = await findExistingContentBySourceRecord(item);
+    if (existingContent) {
+      const stats = sourceStats.get(item.sourceId);
+      if (stats) stats.dedupSkipped += 1;
+      const progress = Math.min(100, Math.floor(((i + 1) / cleaned.length) * 100));
+      await prisma.jobRun.update({
+        where: { id: runId },
+        data: { progress },
+      });
+      await send({
+        type: "dedup-skip",
+        message: "重复内容已跳过",
+        progress,
+        contentId: existingContent.id,
+        sourceId: item.sourceId,
+        recordId: item.recordId,
+        fingerprint: item.fingerprint,
+      });
+      continue;
+    }
+
+    const fallbackSummary = buildFallbackSummary(item);
+    let contentVector: number[] | null = null;
+    let vectorMatches: TopicVectorMatch[] = [];
+    let sparseMatches: TopicSparseMatch[] = [];
+    let topicMatches: TopicHybridMatch[] = [];
+    let maxFusionScore = 0;
+    try {
+      contentVector = await createEmbedding(
+        buildContentVectorInput(item, fallbackSummary)
+      );
+      vectorMatches = await queryTopTopicVectorMatches(
+        contentVector,
+        RETRIEVAL_VECTOR_TOP_N
+      );
+    } catch (error) {
+      logger.warn("content vector match failed", {
+        runId,
+        jobId,
+        sourceId: item.sourceId,
+        error: logger.normalizeError(error),
+      });
+      await send({
+        type: "vector-match-error",
+        message: "向量匹配失败，降级为关键词评分",
+        sourceId: item.sourceId,
+      });
+    }
+    try {
+      sparseMatches = await queryTopTopicSparseMatches({
+        title: item.title ?? "",
+        summary: fallbackSummary,
+        markdown: item.markdown ?? item.text,
+        topics: enabledTopicsForScoring,
+        limit: RETRIEVAL_BM25_TOP_N,
+      });
+    } catch (error) {
+      logger.warn("content sparse match failed", {
+        runId,
+        jobId,
+        sourceId: item.sourceId,
+        error: logger.normalizeError(error),
+      });
+    }
+    topicMatches = mergeTopicMatches({
+      vectorMatches,
+      sparseMatches,
+    }).slice(0, Math.max(RETRIEVAL_VECTOR_TOP_N, RETRIEVAL_BM25_TOP_N));
+    maxFusionScore = topicMatches[0]?.fusionScore ?? 0;
+
+    const llmGate = resolveLlmGateDecision(maxFusionScore);
+    const llmTopics = buildTopicKeywords(
+      topicMatches
+        .map((match) => topicById.get(match.topicId))
+        .filter(Boolean)
+        .slice(0, 8) as JobCollectorTopic[]
+    );
+    const llmKeywords = llmTopics.length > 0 ? llmTopics : keywords;
+    const llmKeywordsSummary =
+      llmKeywords.map((kw) => [kw.name, ...kw.includes].join(", ")).join("; ") || "无关键词";
+    const shouldRunContentAnalyze =
+      (!SKIP_AI_SUMMARY || ENABLE_SUBJECT_AI_SCORE) && llmGate === "high";
+    let contentAnalyzeResult: ContentAnalyzeResult | null = null;
+    if (shouldRunContentAnalyze) {
+      await send({ type: "summary", message: `第 ${i + 1} 条内容AI分析` });
+      contentAnalyzeResult = await analyzeContentWithRetry(
+        item,
+        llmKeywords,
+        llmKeywordsSummary,
+        pseudoQueryId,
+        runId
+      );
+    } else {
+      await send({
+        type: "summary-skip",
+        message:
+          llmGate === "low"
+            ? "低相关内容，已跳过AI深度分析"
+            : "中相关内容，已跳过AI深度分析",
+        sourceId: item.sourceId,
+        maxSimilarity: roundScore(maxFusionScore),
+      });
+    }
+
+    const summary = SKIP_AI_SUMMARY
+      ? { summary: fallbackSummary, relevance: true }
+      : contentAnalyzeResult
+        ? { summary: contentAnalyzeResult.summary, relevance: contentAnalyzeResult.relevance }
+        : { summary: fallbackSummary, relevance: llmGate !== "low" };
+
+    const contentTitle =
+      item.title ??
+      (summary.summary.slice(0, 40).replace(/\s+/g, " ").trim() ||
+        `来源 ${item.platform}`);
+    const contentTime = item.recordTime ?? item.time ?? new Date();
+    const normalizedRecordContent = buildNormalizedRecordContent({
+      platform: item.platform,
+      intent: item.intent,
+      sourceId: item.sourceId,
+      fallbackTitle: contentTitle,
+      fallbackSummary: summary.summary,
+      fallbackMarkdown: item.markdown,
+      fallbackUrl: item.url,
+      fallbackTimeIso: contentTime.toISOString(),
+      recordId: item.recordId,
+      recordType: item.recordType,
+      recordIndex: item.recordIndex,
+      rawRecordContent: item.recordContent,
+    });
+    const sanitizedTitle = stripNullBytes(contentTitle);
+    const sanitizedSummary = stripNullBytes(summary.summary);
+    const sanitizedMarkdown = stripNullBytes(item.markdown);
+    const sanitizedPlatform = stripNullBytes(item.platform);
+    const sanitizedUrl = item.url ? stripNullBytes(item.url) : undefined;
+    const sanitizedRecordContent = sanitizeJsonForDb(
+      normalizedRecordContent
+    ) as Prisma.InputJsonValue;
+    const contentMeta: Record<string, unknown> = {
+      jobId,
+      runId,
+      sourceRequestId: item.sourceRequestId
+        ? stripNullBytes(item.sourceRequestId)
+        : null,
+      sourceFingerprint: item.fingerprint
+        ? stripNullBytes(item.fingerprint)
+        : null,
+      driver: item.driver ? stripNullBytes(item.driver) : null,
+      matchedKeywords: (item.matchedKeywords ?? []).map((term) =>
+        stripNullBytes(term)
+      ),
+      keywordMatchScore: item.keywordMatchScore ?? null,
+      recordId: stripNullBytesNullable(normalizedRecordContent.relation.recordId),
+      recordType: stripNullBytesNullable(normalizedRecordContent.relation.recordType),
+      recordTime: stripNullBytesNullable(normalizedRecordContent.detailView.publishedAt),
+      recordContent: sanitizedRecordContent,
+      schemaVersion: stripNullBytesNullable(normalizedRecordContent.schemaVersion),
+      recordIndex: normalizedRecordContent.relation.recordIndex,
+      keywords: expandedKeywords.map((keywordValue) => stripNullBytes(keywordValue)),
+      summaryRelevance: summary.relevance,
+      sourceId: stripNullBytes(item.sourceId),
+      sourceType: item.sourceType,
+      intent: item.intent ? stripNullBytes(item.intent) : null,
+      topicIds: topics.map((topic) => topic.id),
+      vectorMatch: {
+        topK: Math.max(RETRIEVAL_VECTOR_TOP_N, RETRIEVAL_BM25_TOP_N),
+        maxSimilarity: roundScore(maxFusionScore),
+        gate: llmGate,
+        matchedTopicIds: topicMatches.map((match) => match.topicId),
+        vectorTopN: RETRIEVAL_VECTOR_TOP_N,
+        bm25TopN: RETRIEVAL_BM25_TOP_N,
+      },
+    };
+
+    const content = await prisma.content.create({
+      data: {
+        title: sanitizedTitle,
+        summary: sanitizedSummary,
+        markdown: sanitizedMarkdown,
+        platform: sanitizedPlatform,
+        type: mapContentType(item.sourceType, item.sourceIsDarknet),
+        time: contentTime,
+        url: sanitizedUrl,
+        meta: contentMeta as Prisma.InputJsonValue,
+      },
+    });
+    if (contentVector) {
+      await saveContentVector(content.id, contentVector);
+    }
+
+    if (topicMatches.length > 0) {
+      await upsertContentTopicScores({
+        contentId: content.id,
+        contentText: `${content.title}\n${content.summary}\n${content.markdown}`,
+        topicsById: topicById,
+        topicMatches,
+      });
+    }
+
+    await publishContentEvent({
+      type: "content:created",
+      contentId: content.id,
+      jobId,
+      runId,
+      platform: content.platform,
+      time: content.time.toISOString(),
+    });
+
+    const progress = Math.min(100, Math.floor(((i + 1) / cleaned.length) * 100));
+    const stats = sourceStats.get(item.sourceId);
+    if (stats) stats.inserted += 1;
+    await prisma.jobRun.update({
+      where: { id: runId },
+      data: { progress },
+    });
+    await send({ type: "progress", message: "入库完成", progress });
+  }
+
+  const sourceSummaries = Array.from(sourceStats.entries()).map(([sourceId, stats]) => ({
+    sourceId,
+    sourceName: stats.sourceName,
+    sourceType: stats.sourceType,
+    fetched: stats.fetched,
+    cleaned: stats.cleaned,
+    dedupSkipped: stats.dedupSkipped,
+    inserted: stats.inserted,
+  }));
+  await prisma.jobRun.update({
+    where: { id: runId },
+    data: {
+      status: "SUCCEEDED",
+      finishedAt: new Date(),
+      progress: 100,
+      meta: {
+        summaryCount: cleaned.length,
+        topics: topics.length,
+        sources: sources.length,
+        sourceSummaries,
+        recallSummary,
+      },
+    },
+  });
+
+  await send({
+    type: "done",
+    message: "任务完成",
+    progress: 100,
+    summaryCount: cleaned.length,
+  });
+}
+
 function mapContentType(sourceType: SourceCategory, isDarknet?: boolean): ContentType {
   if (sourceType === "RETRIEVAL" && isDarknet) {
     return ContentType.Darknet;
   }
   return ContentType.Web;
+}
+
+function buildTopicKeywords(topics: JobCollectorTopic[]): QueryKeyword[] {
+  return topics.map((topic) => {
+    const coreTerms = topic.terms
+      .filter((term) => term.type === "CORE")
+      .map((term) => term.value);
+    const expansionTerms = topic.terms
+      .filter((term) => term.type === "EXPANSION")
+      .map((term) => term.value);
+    const exclusionTerms = topic.terms
+      .filter((term) => term.type === "EXCLUSION")
+      .map((term) => term.value);
+    return {
+      id: topic.id,
+      name: topic.name,
+      description: topic.description ?? null,
+      includes: Array.from(new Set([...coreTerms, ...expansionTerms])),
+      excludes: Array.from(new Set(exclusionTerms)),
+      synonyms: [],
+    };
+  });
+}
+
+function countTermMatches(contentText: string, terms: TopicTermLite[]): number {
+  let score = 0;
+  for (const term of terms) {
+    const normalized = term.value.trim().toLowerCase();
+    if (!normalized) continue;
+    if (contentText.includes(normalized)) {
+      score += term.weight ?? 1;
+    }
+  }
+  return score;
+}
+
+function buildContentVectorInput(item: CleanItem, fallbackSummary: string): string {
+  const markdownExcerpt = (item.markdown || item.text || "").slice(0, 4000);
+  return [item.title ?? "", fallbackSummary, markdownExcerpt]
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .join("\n");
+}
+
+async function saveContentVector(contentId: string, vector: number[]) {
+  await prisma.$executeRawUnsafe(
+    `UPDATE "Content" SET "vector" = $1::vector WHERE "id" = $2`,
+    toVectorLiteral(vector),
+    contentId
+  );
+}
+
+async function queryTopTopicVectorMatches(
+  contentVector: number[],
+  limit: number
+): Promise<TopicVectorMatch[]> {
+  const safeLimit = Math.max(1, Math.min(limit, 100));
+  const rows = await prisma.$queryRawUnsafe<Array<{ topicId: string; similarity: number | null }>>(
+    `SELECT t.id AS "topicId", (1 - (t."vector" <=> $1::vector))::float8 AS "similarity"
+     FROM "Topic" t
+     WHERE t."enabled" = TRUE
+       AND t."vector" IS NOT NULL
+     ORDER BY t."vector" <=> $1::vector
+     LIMIT $2`,
+    toVectorLiteral(contentVector),
+    safeLimit
+  );
+
+  return rows
+    .map((row) => ({
+      topicId: row.topicId,
+      similarity: typeof row.similarity === "number" ? row.similarity : 0,
+    }))
+    .filter((row) => row.topicId);
+}
+
+function buildTopicSparseQuery(topic: JobCollectorTopic): string {
+  const terms = topic.terms
+    .filter((term) => term.type !== "EXCLUSION")
+    .map((term) => term.value.trim().toLowerCase())
+    .filter(Boolean);
+  const values = Array.from(new Set([topic.name.trim().toLowerCase(), ...terms])).filter(Boolean);
+  return values.join(" ");
+}
+
+async function queryTopTopicSparseMatches(params: {
+  title: string;
+  summary: string;
+  markdown: string;
+  topics: JobCollectorTopic[];
+  limit: number;
+}): Promise<TopicSparseMatch[]> {
+  const topicQueries = params.topics
+    .map((topic) => ({ topicId: topic.id, queryText: buildTopicSparseQuery(topic) }))
+    .filter((item) => item.queryText.length > 0);
+  if (topicQueries.length === 0) {
+    return [];
+  }
+
+  const valuesPlaceholders: string[] = [];
+  const queryValues: unknown[] = [];
+  let valueIndex = 1;
+  for (const item of topicQueries) {
+    valuesPlaceholders.push(`($${valueIndex}, $${valueIndex + 1})`);
+    queryValues.push(item.topicId, item.queryText);
+    valueIndex += 2;
+  }
+
+  const titleParam = `$${valueIndex}`;
+  queryValues.push(params.title);
+  valueIndex += 1;
+  const summaryParam = `$${valueIndex}`;
+  queryValues.push(params.summary);
+  valueIndex += 1;
+  const markdownParam = `$${valueIndex}`;
+  queryValues.push(params.markdown);
+  valueIndex += 1;
+  const limitParam = `$${valueIndex}`;
+  queryValues.push(Math.max(1, Math.min(params.limit, 100)));
+
+  const rows = await prisma.$queryRawUnsafe<
+    Array<{ topicId: string; score: number | null }>
+  >(
+    `WITH topic_queries(topic_id, query_text) AS (
+       VALUES ${valuesPlaceholders.join(", ")}
+     )
+     SELECT
+       tq.topic_id AS "topicId",
+       ts_rank_cd(
+         setweight(to_tsvector('simple', coalesce(${titleParam}, '')), 'A') ||
+         setweight(to_tsvector('simple', coalesce(${summaryParam}, '')), 'B') ||
+         setweight(to_tsvector('simple', coalesce(${markdownParam}, '')), 'C'),
+         websearch_to_tsquery('simple', tq.query_text)
+       )::float8 AS "score"
+     FROM topic_queries tq
+     WHERE (
+       setweight(to_tsvector('simple', coalesce(${titleParam}, '')), 'A') ||
+       setweight(to_tsvector('simple', coalesce(${summaryParam}, '')), 'B') ||
+       setweight(to_tsvector('simple', coalesce(${markdownParam}, '')), 'C')
+     ) @@ websearch_to_tsquery('simple', tq.query_text)
+     ORDER BY "score" DESC
+     LIMIT ${limitParam}`,
+    ...queryValues
+  );
+
+  return rows
+    .map((row) => ({
+      topicId: row.topicId,
+      score: typeof row.score === "number" ? row.score : 0,
+    }))
+    .filter((row) => row.topicId);
+}
+
+function resolveLlmGateDecision(finalScore: number): "high" | "mid" | "low" {
+  if (finalScore >= RETRIEVAL_HIGH_THRESHOLD) {
+    return "high";
+  }
+  if (finalScore < RETRIEVAL_LOW_THRESHOLD) {
+    return "low";
+  }
+  return "mid";
+}
+
+function normalizeSparseScore(rawScore: number): number {
+  if (!Number.isFinite(rawScore) || rawScore <= 0) {
+    return 0;
+  }
+  return roundScore(Math.min(1, rawScore / 0.6));
+}
+
+type TopicHybridMatch = {
+  topicId: string;
+  vectorScore: number;
+  bm25Score: number;
+  fusionScore: number;
+};
+
+function mergeTopicMatches(params: {
+  vectorMatches: TopicVectorMatch[];
+  sparseMatches: TopicSparseMatch[];
+}): TopicHybridMatch[] {
+  const merged = new Map<string, TopicHybridMatch>();
+  for (const match of params.vectorMatches) {
+    const prev = merged.get(match.topicId) ?? {
+      topicId: match.topicId,
+      vectorScore: 0,
+      bm25Score: 0,
+      fusionScore: 0,
+    };
+    prev.vectorScore = roundScore(Math.max(prev.vectorScore, Math.max(0, Math.min(1, match.similarity))));
+    merged.set(match.topicId, prev);
+  }
+  for (const match of params.sparseMatches) {
+    const prev = merged.get(match.topicId) ?? {
+      topicId: match.topicId,
+      vectorScore: 0,
+      bm25Score: 0,
+      fusionScore: 0,
+    };
+    prev.bm25Score = roundScore(Math.max(prev.bm25Score, normalizeSparseScore(match.score)));
+    merged.set(match.topicId, prev);
+  }
+
+  for (const value of merged.values()) {
+    value.fusionScore = roundScore(
+      value.vectorScore * RETRIEVAL_FUSION_ALPHA +
+        value.bm25Score * (1 - RETRIEVAL_FUSION_ALPHA)
+    );
+  }
+
+  return Array.from(merged.values()).sort(
+    (left, right) => right.fusionScore - left.fusionScore
+  );
+}
+
+async function upsertContentTopicScores(params: {
+  contentId: string;
+  contentText: string;
+  topicsById: Map<string, JobCollectorTopic>;
+  topicMatches: TopicHybridMatch[];
+}) {
+  const normalizedText = params.contentText.toLowerCase();
+  for (const match of params.topicMatches) {
+    const topic = params.topicsById.get(match.topicId);
+    if (!topic) {
+      continue;
+    }
+    const coreTerms = topic.terms.filter((term) => term.type === "CORE");
+    const expansionTerms = topic.terms.filter((term) => term.type === "EXPANSION");
+    const exclusionTerms = topic.terms.filter((term) => term.type === "EXCLUSION");
+
+    const coreScore = countTermMatches(normalizedText, coreTerms);
+    const expansionScore = countTermMatches(normalizedText, expansionTerms);
+    const exclusionPenalty = countTermMatches(normalizedText, exclusionTerms);
+    const keywordScore = roundScore(match.bm25Score * 10 + coreScore + expansionScore);
+    const vectorScore = roundScore(Math.max(0, Math.min(1, match.vectorScore)));
+    const finalScore = roundScore(
+      Math.max(0, match.fusionScore - exclusionPenalty * 0.03)
+    );
+
+    if (finalScore < RETRIEVAL_LOW_THRESHOLD && exclusionPenalty > 0) {
+      continue;
+    }
+
+    await prisma.contentTopicScore.upsert({
+      where: {
+        contentId_topicId: {
+          contentId: params.contentId,
+          topicId: topic.id,
+        },
+      },
+      create: {
+        contentId: params.contentId,
+        topicId: topic.id,
+        vectorScore,
+        keywordScore,
+        exclusionPenalty,
+        finalScore,
+        reason: `vector:${vectorScore.toFixed(3)} core:${coreScore.toFixed(2)} expansion:${expansionScore.toFixed(2)} exclusion:${exclusionPenalty.toFixed(2)}`,
+        explain: {
+          bm25Score: match.bm25Score,
+          fusionScore: match.fusionScore,
+          vectorScore,
+          coreScore,
+          expansionScore,
+          exclusionPenalty,
+          keywordScore,
+        } as Prisma.InputJsonValue,
+      },
+      update: {
+        vectorScore,
+        keywordScore,
+        exclusionPenalty,
+        finalScore,
+        reason: `vector:${vectorScore.toFixed(3)} core:${coreScore.toFixed(2)} expansion:${expansionScore.toFixed(2)} exclusion:${exclusionPenalty.toFixed(2)}`,
+        explain: {
+          bm25Score: match.bm25Score,
+          fusionScore: match.fusionScore,
+          vectorScore,
+          coreScore,
+          expansionScore,
+          exclusionPenalty,
+          keywordScore,
+        } as Prisma.InputJsonValue,
+      },
+    });
+  }
 }
 
 function buildKeywordFilterTerms(
@@ -667,6 +1371,240 @@ function buildRecallQueries(keywords: QueryKeyword[]): string[] {
   return Array.from(new Set(queries.map((query) => query.trim()).filter(Boolean)));
 }
 
+function resolveTopicRecallLimit(): number {
+  if (!Number.isFinite(TOPIC_RECALL_QUERY_LIMIT) || TOPIC_RECALL_QUERY_LIMIT < 1) {
+    return 8;
+  }
+  return Math.max(1, Math.min(Math.floor(TOPIC_RECALL_QUERY_LIMIT), 16));
+}
+
+function resolveTopicRecallTimeoutMs(): number {
+  if (!Number.isFinite(TOPIC_RECALL_TIMEOUT_MS) || TOPIC_RECALL_TIMEOUT_MS < 500) {
+    return 8000;
+  }
+  return Math.max(500, Math.min(Math.floor(TOPIC_RECALL_TIMEOUT_MS), 30_000));
+}
+
+function normalizeRecallQueries(queries: string[], limit: number): string[] {
+  return Array.from(new Set(queries.map((query) => query.trim()).filter(Boolean))).slice(
+    0,
+    Math.max(1, Math.min(limit, 64))
+  );
+}
+
+function isTopicRecallSource(source: SourceWithRelations): boolean {
+  if (source.category === "RETRIEVAL" && !source.isDarknet) {
+    return true;
+  }
+  if (source.category === "INTERACTIVE") {
+    const socialSource = source as SocialMediaSource;
+    const intent = resolveGatherIntent(asObject(socialSource.social?.config)).type
+      .trim()
+      .toLowerCase();
+    return intent === "search";
+  }
+  return false;
+}
+
+function buildSourceRecallContext(source: SourceWithRelations): string {
+  if (source.category === "RETRIEVAL" && !source.isDarknet) {
+    const searchSource = source as SearchEngineSource;
+    const platform = (searchSource.search?.platform ?? "custom").toString();
+    const engine = (searchSource.search?.engine ?? "custom").toString();
+    const objective = (
+      (searchSource.search as unknown as { objective?: string })?.objective ?? ""
+    )
+      .trim()
+      .slice(0, 300);
+    return `sourceType:search\nplatform:${platform}\nengine:${engine}\nobjective:${objective || "none"}`;
+  }
+  if (source.category === "INTERACTIVE") {
+    const socialSource = source as SocialMediaSource;
+    const intent = resolveGatherIntent(asObject(socialSource.social?.config)).type
+      .trim()
+      .toLowerCase();
+    const platform = (socialSource.social?.platform ?? "unknown").toString();
+    return `sourceType:social\nplatform:${platform}\nintent:${intent || "unknown"}`;
+  }
+  return `sourceType:${source.category.toLowerCase()}`;
+}
+
+function buildTopicRecallPrompt(params: {
+  topics: JobCollectorTopic[];
+  source: SourceWithRelations;
+  limit: number;
+}): string {
+  const topicPayload = params.topics.map((topic) => {
+    const coreTerms = topic.terms
+      .filter((term) => term.type === "CORE")
+      .map((term) => term.value.trim())
+      .filter(Boolean);
+    const expansionTerms = topic.terms
+      .filter((term) => term.type === "EXPANSION")
+      .map((term) => term.value.trim())
+      .filter(Boolean);
+    const exclusionTerms = topic.terms
+      .filter((term) => term.type === "EXCLUSION")
+      .map((term) => term.value.trim())
+      .filter(Boolean);
+    return {
+      topicId: topic.id,
+      name: topic.name,
+      description: topic.description ?? "",
+      coreTerms,
+      expansionTerms,
+      exclusionTerms,
+    };
+  });
+  return stripPromptLike(
+    `你是检索 query 生成器。请输出 JSON：{"queries":["..."]}。
+要求：
+1) 仅输出搜索 query 文本数组，数量 3-${params.limit}；
+2) query 需要覆盖主题核心词与扩展词，避免重复；
+3) 保持短句可检索，允许中英混合；
+4) 如存在排除词，请在 query 中尽量体现负向约束（如 -term）；
+5) 不要输出解释、不要输出 markdown。
+
+Source:
+name: ${params.source.name}
+${buildSourceRecallContext(params.source)}
+
+Topics(JSON):
+${JSON.stringify(topicPayload)}`
+  );
+}
+
+async function withTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  message: string
+): Promise<T> {
+  let timer: NodeJS.Timeout | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_, reject) => {
+        timer = setTimeout(() => reject(new Error(message)), timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
+async function buildTopicRecallQueryBundles(params: {
+  runId: string;
+  jobId: string;
+  topics: JobCollectorTopic[];
+  sources: SourceWithRelations[];
+  fallbackKeywords: QueryKeyword[];
+}): Promise<Map<string, SourceRecallQueryBundle>> {
+  const bundles = new Map<string, SourceRecallQueryBundle>();
+  if (params.topics.length === 0) {
+    return bundles;
+  }
+  const recallSources = params.sources.filter((source) => isTopicRecallSource(source));
+  if (recallSources.length === 0) {
+    return bundles;
+  }
+
+  const fallbackQueries = normalizeRecallQueries(
+    buildRecallQueries(params.fallbackKeywords),
+    resolveTopicRecallLimit()
+  );
+  const recallLimit = resolveTopicRecallLimit();
+  const timeoutMs = resolveTopicRecallTimeoutMs();
+
+  for (const source of recallSources) {
+    await publishTaskEvent(params.runId, {
+      type: "recall-generate-start",
+      sourceId: source.id,
+      message: `为 ${source.name} 生成动态召回词`,
+    });
+    if (!TOPIC_RECALL_LLM_ENABLED) {
+      bundles.set(source.id, {
+        queries: fallbackQueries,
+        origin: "static_fallback",
+        generatedCount: fallbackQueries.length,
+      });
+      await publishTaskEvent(params.runId, {
+        type: "recall-generate-fallback",
+        sourceId: source.id,
+        message: "动态召回词已关闭，使用静态词项",
+        generatedCount: fallbackQueries.length,
+      });
+      continue;
+    }
+
+    try {
+      const prompt = buildTopicRecallPrompt({
+        topics: params.topics,
+        source,
+        limit: recallLimit,
+      });
+      const response = await withTimeout(
+        llmGateway.json<z.infer<typeof TopicRecallQueriesSchema>>(
+          "topic-recall-query",
+          {
+            prompt: redact(prompt),
+            schema: TopicRecallQueriesSchema,
+            temperature: 0.2,
+            maxOutputTokens: 512,
+            metadata: {
+              runId: params.runId,
+              jobId: params.jobId,
+              sourceId: source.id,
+              sourceName: source.name,
+            },
+          }
+        ),
+        timeoutMs,
+        `topic recall generation timeout after ${timeoutMs}ms`
+      );
+      const queries = normalizeRecallQueries(response.queries ?? [], recallLimit);
+      const effectiveQueries = queries.length > 0 ? queries : fallbackQueries;
+      const origin: RecallQueryOrigin =
+        queries.length > 0 ? "llm_recall" : "static_fallback";
+      bundles.set(source.id, {
+        queries: effectiveQueries,
+        origin,
+        generatedCount: effectiveQueries.length,
+      });
+      await publishTaskEvent(params.runId, {
+        type: "recall-generate-success",
+        sourceId: source.id,
+        message:
+          origin === "llm_recall"
+            ? `动态召回词生成成功（${effectiveQueries.length}条）`
+            : `动态召回词为空，降级静态词项（${effectiveQueries.length}条）`,
+        origin,
+        generatedCount: effectiveQueries.length,
+      });
+    } catch (error) {
+      logger.warn("topic recall generation failed", {
+        runId: params.runId,
+        jobId: params.jobId,
+        sourceId: source.id,
+        sourceName: source.name,
+        error: logger.normalizeError(error),
+      });
+      bundles.set(source.id, {
+        queries: fallbackQueries,
+        origin: "static_fallback",
+        generatedCount: fallbackQueries.length,
+      });
+      await publishTaskEvent(params.runId, {
+        type: "recall-generate-error",
+        sourceId: source.id,
+        message: "动态召回词生成失败，已降级静态词项",
+        generatedCount: fallbackQueries.length,
+      });
+    }
+  }
+
+  return bundles;
+}
+
 function deduplicateItemsByUrlAndFingerprint(items: CleanItem[]): CleanItem[] {
   const seen = new Set<string>();
   const deduped: CleanItem[] = [];
@@ -711,7 +1649,8 @@ async function fetchBySources(
   runId: string,
   queryId: string,
   keywords: QueryKeyword[],
-  sourcePolicyBySourceId: Map<string, SourceRuntimePolicy>
+  sourcePolicyBySourceId: Map<string, SourceRuntimePolicy>,
+  sourceRecallQueryBundles?: Map<string, SourceRecallQueryBundle>
 ): Promise<CleanItem[]> {
   const sourceConcurrency = resolveSourceFetchConcurrency();
   const recallQueryLimit = resolveRecallQueryLimit();
@@ -735,6 +1674,7 @@ async function fetchBySources(
           contentFilterMode: QueryContentFilterMode.TERM_AND_WORD_BOUNDARY,
         };
         const strategy = resolveKeywordStrategy(source);
+        const sourceRecallBundle = sourceRecallQueryBundles?.get(source.id);
         const keywordFilterTerms =
           sourcePolicy.contentFilterEnabled &&
           (strategy === "PRECISION_ONLY" || strategy === "HYBRID")
@@ -742,7 +1682,7 @@ async function fetchBySources(
             : [];
         const rawRecallQueries =
           strategy === "RECALL_ONLY" || strategy === "HYBRID"
-            ? buildRecallQueries(keywords)
+            ? sourceRecallBundle?.queries ?? buildRecallQueries(keywords)
             : [];
         const recallQueries = rawRecallQueries.slice(0, recallQueryLimit);
         if (rawRecallQueries.length > recallQueries.length) {
@@ -771,7 +1711,8 @@ async function fetchBySources(
           keywordFilterTerms,
           recallQueries,
           objectiveFallback,
-          sourcePolicy
+          sourcePolicy,
+          sourceRecallBundle?.origin
         );
         console.log(
           `[collector] fetched ${fetched.length} items from ${source.name}`
@@ -877,7 +1818,8 @@ async function executeFetchDriver(
   keywordFilterTerms: string[],
   recallQueries: string[],
   objectiveFallback?: string,
-  sourcePolicy?: SourceRuntimePolicy
+  sourcePolicy?: SourceRuntimePolicy,
+  recallQueryOrigin?: RecallQueryOrigin
 ): Promise<CleanItem[]> {
   const gatherDispatchSource = resolveGatherDispatchSource(source);
   if (gatherDispatchSource) {
@@ -885,7 +1827,8 @@ async function executeFetchDriver(
       gatherDispatchSource,
       keywordFilterTerms,
       recallQueries,
-      sourcePolicy
+      sourcePolicy,
+      recallQueryOrigin
     );
   }
 
@@ -905,18 +1848,20 @@ async function executeFetchDriver(
         queryId,
         keywordFilterTerms,
         recallQueries,
-        sourcePolicy
+        sourcePolicy,
+        recallQueryOrigin
       );
     default:
       return fetchWithDefaultSource(
         source,
         runId,
         queryId,
-      keywordFilterTerms,
-      recallQueries,
-      objectiveFallback,
-      sourcePolicy
-    );
+        keywordFilterTerms,
+        recallQueries,
+        objectiveFallback,
+        sourcePolicy,
+        recallQueryOrigin
+      );
   }
 }
 
@@ -927,7 +1872,8 @@ async function fetchWithDefaultSource(
   keywordFilterTerms: string[],
   recallQueries: string[],
   objectiveFallback?: string,
-  sourcePolicy?: SourceRuntimePolicy
+  sourcePolicy?: SourceRuntimePolicy,
+  recallQueryOrigin?: RecallQueryOrigin
 ): Promise<CleanItem[]> {
   console.log(
     `[collector] fetchWithDefaultSource ${source.name} (${source.category})`
@@ -944,6 +1890,7 @@ async function fetchWithDefaultSource(
       queryId,
       recallQueries,
       objectiveFallback,
+      recallQueryOrigin,
     });
   }
   if (source.category === "INTERACTIVE") {
@@ -951,7 +1898,8 @@ async function fetchWithDefaultSource(
       source as SocialMediaSource,
       keywordFilterTerms,
       recallQueries,
-      sourcePolicy
+      sourcePolicy,
+      recallQueryOrigin
     );
   }
   return [];
@@ -1085,7 +2033,8 @@ async function fetchAICrawlerSource(
   queryId: string,
   keywordFilterTerms: string[],
   recallQueries: string[],
-  sourcePolicy?: SourceRuntimePolicy
+  sourcePolicy?: SourceRuntimePolicy,
+  recallQueryOrigin?: RecallQueryOrigin
 ): Promise<CleanItem[]> {
   if (isWebSource(source) || isDarknetSource(source)) {
     console.log(
@@ -1101,6 +2050,7 @@ async function fetchAICrawlerSource(
       runId,
       queryId,
       recallQueries,
+      recallQueryOrigin,
     });
   }
   console.log(
@@ -1110,7 +2060,8 @@ async function fetchAICrawlerSource(
     source as SocialMediaSource,
     keywordFilterTerms,
     recallQueries,
-    sourcePolicy
+    sourcePolicy,
+    recallQueryOrigin
   );
 }
 
@@ -1197,6 +2148,7 @@ async function fetchSearchSource(
     queryId?: string;
     recallQueries?: string[];
     objectiveFallback?: string;
+    recallQueryOrigin?: RecallQueryOrigin;
   }
 ): Promise<CleanItem[]> {
   console.log(`[collector] fetchSearchSource ${source.name}`);
@@ -1235,6 +2187,7 @@ async function fetchSearchSource(
   }
   const allItems: CleanItem[] = [];
   const searchSuccessSignatures = await loadRunSearchSuccessSignatures(context?.runId);
+  const recallOrigin = context?.recallQueryOrigin ?? "static_fallback";
   for (const recallQuery of searchQueries) {
     const normalizedRecallQuery = recallQuery.trim();
     if (!normalizedRecallQuery) continue;
@@ -1267,7 +2220,7 @@ async function fetchSearchSource(
         recallQueryCount: searchQueries.length,
         queryOrigin:
           context?.recallQueries && context.recallQueries.length > 0
-            ? "recall"
+            ? recallOrigin
             : "objective_fallback",
         rawRecallQueryCount: context?.recallQueries?.length ?? 0,
         effectiveRecallQueryCount: searchQueries.length,
@@ -1324,7 +2277,7 @@ async function fetchSearchSource(
         recallQueryCount: searchQueries.length,
         queryOrigin:
           context?.recallQueries && context.recallQueries.length > 0
-            ? "recall"
+            ? recallOrigin
             : "objective_fallback",
         rawRecallQueryCount: context?.recallQueries?.length ?? 0,
         effectiveRecallQueryCount: searchQueries.length,
@@ -1379,7 +2332,7 @@ async function fetchSearchSource(
         recallQueryCount: searchQueries.length,
         queryOrigin:
           context?.recallQueries && context.recallQueries.length > 0
-            ? "recall"
+            ? recallOrigin
             : "objective_fallback",
         rawRecallQueryCount: context?.recallQueries?.length ?? 0,
         effectiveRecallQueryCount: searchQueries.length,
@@ -1436,7 +2389,8 @@ async function fetchSocialSource(
   source: SocialMediaSource,
   keywordFilterTerms: string[],
   recallQueries: string[],
-  sourcePolicy?: SourceRuntimePolicy
+  sourcePolicy?: SourceRuntimePolicy,
+  _recallQueryOrigin?: RecallQueryOrigin
 ): Promise<CleanItem[]> {
   console.log(`[collector] fetchSocialSource ${source.name} via Python Gather`);
 
@@ -1486,7 +2440,10 @@ async function fetchSocialSource(
   const driverOption = normalizeGatherDriverOption(baseConfig, gatherDriver);
   const gatherUserId = resolveGatherPoolUserId(source, sourceConfigObj, driverOption);
   const normalizedIntentType = intent.type.trim().toLowerCase();
-  const recallBinding = resolveRecallBinding(sourceConfigObj);
+  const recallBinding = resolveRecallBinding(
+    sourceConfigObj,
+    sourcePolicy?.recallBindingOverride
+  );
   const fallbackRecallQueries = Array.from(
     new Set(keywordFilterTerms.map((term) => term.trim()).filter(Boolean))
   );
@@ -1796,16 +2753,36 @@ function injectRecallQueryIntoIntent(
     ...intent,
     args: {
       ...intent.args,
-      [argKeys[0] ?? "query"]: normalizedQuery,
+      [resolveRecallTargetArgKey(intent.args, argKeys)]: normalizedQuery,
     },
   };
 }
 
+function resolveRecallTargetArgKey(
+  args: Record<string, unknown>,
+  argKeys: string[]
+): string {
+  const normalizedArgKeys = normalizeStringArray(argKeys);
+  if (normalizedArgKeys.length === 0) return "query";
+  for (const key of normalizedArgKeys) {
+    if (Object.prototype.hasOwnProperty.call(args, key)) {
+      return key;
+    }
+  }
+  return normalizedArgKeys[0] ?? "query";
+}
+
 function resolveRecallBinding(
-  config: Record<string, unknown>
+  config: Record<string, unknown>,
+  overrides?: unknown
 ): { enabled: boolean; argKeys: string[] } {
+  const topLevelBinding = asObject(config.recallBinding);
   const intent = asObject(config.intent);
-  const recallBinding = asObject(intent.recallBinding);
+  const recallBinding = {
+    ...topLevelBinding,
+    ...asObject(intent.recallBinding),
+    ...asObject(overrides),
+  };
   const argKeys = normalizeStringArray(recallBinding.argKeys);
   return {
     enabled:

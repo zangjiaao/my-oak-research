@@ -10,12 +10,14 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { PencilIcon, TrashIcon } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export interface DataTableColumn<T> {
   key: string;
   label: string;
   render?: (item: T, index: number) => React.ReactNode;
   className?: string;
+  hideBelow?: "sm" | "md" | "lg";
 }
 
 export interface DataTableAction<T> {
@@ -51,77 +53,93 @@ export function DataTable<T extends { id: string }>({
   indexLabel = "ID",
 }: DataTableProps<T>) {
   const hasActions = actions.length > 0;
+  const getResponsiveClassName = (column: DataTableColumn<T>) => {
+    if (column.hideBelow === "sm") return "hidden sm:table-cell";
+    if (column.hideBelow === "md") return "hidden md:table-cell";
+    if (column.hideBelow === "lg") return "hidden lg:table-cell";
+    return "";
+  };
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          {showIndex && <TableHead>{indexLabel}</TableHead>}
-          {columns.map((column) => (
-            <TableHead key={column.key} className={column.className}>
-              {column.label}
-            </TableHead>
-          ))}
-          {hasActions && <TableHead>Actions</TableHead>}
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {data.length === 0 ? (
+    <div className="w-full min-w-0">
+      <Table className="min-w-full">
+        <TableHeader>
           <TableRow>
-            <TableCell
-              colSpan={
-                columns.length + (showIndex ? 1 : 0) + (hasActions ? 1 : 0)
-              }
-              className="text-center text-muted-foreground py-8"
-            >
-              {emptyMessage}
-            </TableCell>
+            {showIndex && <TableHead>{indexLabel}</TableHead>}
+            {columns.map((column) => (
+              <TableHead
+                key={column.key}
+                className={cn(getResponsiveClassName(column), column.className)}
+              >
+                {column.label}
+              </TableHead>
+            ))}
+            {hasActions && <TableHead className="min-w-[120px] whitespace-nowrap">Actions</TableHead>}
           </TableRow>
-        ) : (
-          data.map((item, index) => (
-            <TableRow key={item.id}>
-              {showIndex && <TableCell>{index + 1}</TableCell>}
-              {columns.map((column) => (
-                <TableCell key={column.key} className={column.className}>
-                  {column.render
-                    ? column.render(item, index)
-                    : (item as any)[column.key]}
-                </TableCell>
-              ))}
-              {hasActions && (
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    {actions.map((action, actionIndex) => {
-                      if (action.render) {
-                        return (
-                          <div key={actionIndex}>{action.render(item)}</div>
-                        );
-                      }
-
-                      return (
-                        <Button
-                          key={actionIndex}
-                          size="sm"
-                          variant={action.variant || "outline"}
-                          onClick={() => action.onClick?.(item)}
-                        >
-                          {action.icon ||
-                            (action.type === "edit" ? (
-                              <PencilIcon className="size-3" />
-                            ) : (
-                              <TrashIcon className="size-3" />
-                            ))}
-                          {action.label}
-                        </Button>
-                      );
-                    })}
-                  </div>
-                </TableCell>
-              )}
+        </TableHeader>
+        <TableBody>
+          {data.length === 0 ? (
+            <TableRow>
+              <TableCell
+                colSpan={
+                  columns.length + (showIndex ? 1 : 0) + (hasActions ? 1 : 0)
+                }
+                className="py-8 text-center text-muted-foreground"
+              >
+                {emptyMessage}
+              </TableCell>
             </TableRow>
-          ))
-        )}
-      </TableBody>
-    </Table>
+          ) : (
+            data.map((item, index) => (
+              <TableRow key={item.id}>
+                {showIndex && <TableCell>{index + 1}</TableCell>}
+                {columns.map((column) => (
+                  <TableCell
+                    key={column.key}
+                    className={cn(getResponsiveClassName(column), column.className)}
+                  >
+                    {column.render
+                      ? column.render(item, index)
+                      : (item as any)[column.key]}
+                  </TableCell>
+                ))}
+                {hasActions && (
+                  <TableCell className="whitespace-nowrap">
+                    <div className="flex flex-nowrap items-center gap-1 whitespace-nowrap">
+                      {actions.map((action, actionIndex) => {
+                        if (action.render) {
+                          return (
+                            <div key={actionIndex} className="shrink-0">
+                              {action.render(item)}
+                            </div>
+                          );
+                        }
+
+                        return (
+                          <Button
+                            key={actionIndex}
+                            size="sm"
+                            variant={action.variant || "outline"}
+                            onClick={() => action.onClick?.(item)}
+                          >
+                            {action.icon ||
+                              (action.type === "edit" ? (
+                                <PencilIcon className="size-3" />
+                              ) : (
+                                <TrashIcon className="size-3" />
+                              ))}
+                            {action.label}
+                          </Button>
+                        );
+                      })}
+                    </div>
+                  </TableCell>
+                )}
+              </TableRow>
+            ))
+          )}
+        </TableBody>
+      </Table>
+    </div>
   );
 }

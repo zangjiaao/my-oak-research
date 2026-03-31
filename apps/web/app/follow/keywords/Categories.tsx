@@ -21,6 +21,7 @@ const CategoryTable = ({ categories }: { categories: Category[] }) => {
     {
       key: "description",
       label: "Description",
+      hideBelow: "md",
       render: (category) => category.description || "-",
     },
   ];

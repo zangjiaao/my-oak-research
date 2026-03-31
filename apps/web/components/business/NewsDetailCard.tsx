@@ -4,10 +4,18 @@ import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import {
   AudioLines,
   Bookmark,
+  Building2,
+  Cpu,
   FileText,
   Image as ImageIcon,
   Link as LinkIcon,
+  MapPin,
+  MessageSquarePlus,
+  Plus,
+  ThumbsDown,
+  ThumbsUp,
   Trash2,
+  User,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { cn } from "@/lib/utils";
@@ -29,11 +37,17 @@ const NewsDetailCard = ({
   files,
   rawContent,
   subjectMatch,
+  relevanceScore,
+  expandableKeywords,
+  feedback,
   className,
   bookmarked,
   onBookmarkToggle,
   onDeleteClick,
   deleting,
+  onAddKeyword,
+  onFeedbackVote,
+  onFeedbackNote,
 }: {
   title?: string;
   summary?: string;
@@ -56,12 +70,40 @@ const NewsDetailCard = ({
     matchedExcludes: string[];
     reason: string | null;
   };
+  relevanceScore?: number | null;
+  expandableKeywords?: Array<{
+    category: "PERSON" | "ORG" | "TECH" | "LOCATION" | "PRODUCT" | "EVENT" | "CONCEPT";
+    label: string;
+  }>;
+  feedback?: {
+    vote: "UP" | "DOWN" | "NONE";
+    note?: string | null;
+  } | null;
   className?: string;
   bookmarked?: boolean;
   onBookmarkToggle?: () => void;
   onDeleteClick?: () => void;
   deleting?: boolean;
+  onAddKeyword?: (keyword: {
+    category: "PERSON" | "ORG" | "TECH" | "LOCATION" | "PRODUCT" | "EVENT" | "CONCEPT";
+    label: string;
+  }) => void;
+  onFeedbackVote?: (vote: "UP" | "DOWN") => void;
+  onFeedbackNote?: () => void;
 }) => {
+  const keywordTagMeta: Record<
+    "PERSON" | "ORG" | "TECH" | "LOCATION" | "PRODUCT" | "EVENT" | "CONCEPT",
+    { icon: React.ComponentType<{ className?: string }>; emoji: string; label: string }
+  > = {
+    PERSON: { icon: User, emoji: "👤", label: "人物" },
+    ORG: { icon: Building2, emoji: "🏫", label: "机构" },
+    TECH: { icon: Cpu, emoji: "⚙️", label: "技术" },
+    LOCATION: { icon: MapPin, emoji: "📍", label: "地点" },
+    PRODUCT: { icon: Cpu, emoji: "🧩", label: "产品" },
+    EVENT: { icon: MessageSquarePlus, emoji: "📅", label: "事件" },
+    CONCEPT: { icon: FileText, emoji: "🏷️", label: "概念" },
+  };
+  const showFeedbackActions = Boolean(onFeedbackVote || onFeedbackNote);
   return (
     <Card
       className={cn(
@@ -114,6 +156,13 @@ const NewsDetailCard = ({
                 <Badge variant="outline">{subjectMatch.matchSource}</Badge>
               </div>
             ) : null}
+            {typeof relevanceScore === "number" ? (
+              <div className="flex items-center gap-2">
+                <Badge variant="secondary">
+                  🎓 相关度: {Math.max(0, Math.min(100, Math.round(relevanceScore * 100)))}%
+                </Badge>
+              </div>
+            ) : null}
           </div>
           <div className="flex shrink-0 items-center gap-1 self-start">
             <Button
@@ -160,6 +209,76 @@ const NewsDetailCard = ({
         <p className="max-w-3xl text-sm leading-6 text-muted-foreground/90 line-clamp-2">
           {summary || title || "News Summary"}
         </p>
+        {expandableKeywords?.length ? (
+          <div className="space-y-2 pt-1">
+            <p className="text-xs font-medium text-muted-foreground">🔍 可拓展关键词</p>
+            <div className="flex flex-wrap gap-2">
+              {expandableKeywords.slice(0, 8).map((keyword, index) => {
+                const meta = keywordTagMeta[keyword.category];
+                const Icon = meta.icon;
+                return (
+                  <Badge
+                    key={`${keyword.category}-${keyword.label}-${index}`}
+                    variant="outline"
+                    className="flex items-center gap-1.5"
+                  >
+                    <Icon className="size-3" />
+                    <span>{meta.emoji}</span>
+                    <span>{keyword.label}</span>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-4 w-4 p-0"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        onAddKeyword?.(keyword);
+                      }}
+                    >
+                      <Plus className="size-3" />
+                    </Button>
+                  </Badge>
+                );
+              })}
+            </div>
+          </div>
+        ) : null}
+        {showFeedbackActions ? (
+          <div className="flex flex-wrap items-center gap-2 pt-1">
+            <Button
+              size="sm"
+              variant={feedback?.vote === "UP" ? "default" : "outline"}
+              onClick={(event) => {
+                event.stopPropagation();
+                onFeedbackVote?.("UP");
+              }}
+            >
+              <ThumbsUp className="size-3.5" />
+              👍 相关
+            </Button>
+            <Button
+              size="sm"
+              variant={feedback?.vote === "DOWN" ? "destructive" : "outline"}
+              onClick={(event) => {
+                event.stopPropagation();
+                onFeedbackVote?.("DOWN");
+              }}
+            >
+              <ThumbsDown className="size-3.5" />
+              👎 无关
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={(event) => {
+                event.stopPropagation();
+                onFeedbackNote?.();
+              }}
+            >
+              <MessageSquarePlus className="size-3.5" />
+              📝 备注
+            </Button>
+          </div>
+        ) : null}
       </CardHeader>
       <CardContent className="flex-1 min-h-0 overflow-y-auto scrollbar-hide px-6 pb-4 pt-2 lg:px-8">
         <Tabs defaultValue="content" className="h-full gap-2">

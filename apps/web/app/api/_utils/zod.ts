@@ -566,3 +566,136 @@ export const QueryUpdateSchema = QueryCreateSchema.partial().superRefine((data, 
     });
   }
 });
+
+export const TopicTermTypeEnum = z.enum(["CORE", "EXPANSION", "EXCLUSION"]);
+
+export const TopicTermInputSchema = z.object({
+  type: TopicTermTypeEnum,
+  value: z.string().min(1).max(128),
+  weight: z.number().min(0).max(5).optional().default(1),
+  meta: z.preprocess((val) => parseJson(val), z.any().optional().nullable()),
+});
+
+export const TopicCreateSchema = z
+  .object({
+    name: z.string().min(1, "Name is required").max(64),
+    description: z
+      .string()
+      .max(500, "Description must be less than 500 characters")
+      .optional()
+      .nullable(),
+    profile: z.preprocess((val) => parseJson(val), z.any().optional().nullable()),
+    terms: z.array(TopicTermInputSchema).optional().default([]),
+  });
+
+export const TopicUpdateSchema = TopicCreateSchema.partial();
+
+export const JobTypeEnum = z.enum([
+  "TOPIC_RETRIEVAL",
+  "SOURCE_INGEST",
+  "SOURCE_ONESHOT",
+]);
+
+export const RecallBindingOverrideSchema = z.object({
+  enabled: z.boolean().optional().default(true),
+  argKeys: delimitedStringArray({
+    itemMin: 1,
+    itemMax: 64,
+    totalMax: 8,
+    minItems: 0,
+  }).optional().default([]),
+});
+
+export const JobSourceBindingInputSchema = z.object({
+  sourceId: z.string().cuid(),
+  recallBindingOverride: z
+    .preprocess((val) => parseJson(val), RecallBindingOverrideSchema.optional().nullable())
+    .optional(),
+});
+
+export const JobCreateSchema = z
+  .object({
+    name: z.string().min(1, "Name is required").max(64),
+    type: JobTypeEnum,
+    enabled: z.boolean().optional().default(true),
+    frequency: QueryFrequencyEnum.optional().default("MANUAL"),
+    cronSchedule: z.string().optional().nullable(),
+    triggerMode: z.string().optional().nullable(),
+    config: z.preprocess((val) => parseJson(val), z.any().optional().nullable()),
+    topicIds: z.preprocess(
+      (val) => {
+        if (Array.isArray(val)) {
+          return val.map((item) =>
+            typeof item === "object" && item && "id" in item
+              ? (item as { id: string }).id
+              : item
+          );
+        }
+        return val;
+      },
+      z.array(z.string().cuid()).optional().default([])
+    ),
+    sourceBindings: z.preprocess(
+      (val) => parseJson(val),
+      z.array(JobSourceBindingInputSchema).optional().default([])
+    ),
+  })
+  .superRefine((data, ctx) => {
+    if (data.frequency === "CRONTAB" && !data.cronSchedule) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["cronSchedule"],
+        message: "Cron schedule is required when frequency is CRONTAB",
+      });
+    }
+    if (data.frequency !== "CRONTAB" && data.cronSchedule) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["cronSchedule"],
+        message: "Cron schedule should not be set unless frequency is CRONTAB",
+      });
+    }
+    if (data.type === "TOPIC_RETRIEVAL") {
+      if (data.topicIds.length === 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["topicIds"],
+          message: "TOPIC_RETRIEVAL job requires at least one topic",
+        });
+      }
+      if (data.sourceBindings.length === 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["sourceBindings"],
+          message: "TOPIC_RETRIEVAL job requires at least one source",
+        });
+      }
+    }
+    if (
+      (data.type === "SOURCE_INGEST" || data.type === "SOURCE_ONESHOT") &&
+      data.sourceBindings.length === 0
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["sourceBindings"],
+        message: `${data.type} job requires at least one source`,
+      });
+    }
+  });
+
+export const JobUpdateSchema = JobCreateSchema.partial().superRefine((data, ctx) => {
+  if (data.frequency === "CRONTAB" && !data.cronSchedule) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["cronSchedule"],
+      message: "Cron schedule is required when frequency is CRONTAB",
+    });
+  }
+  if (data.frequency && data.frequency !== "CRONTAB" && data.cronSchedule) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["cronSchedule"],
+      message: "Cron schedule should not be set unless frequency is CRONTAB",
+    });
+  }
+});

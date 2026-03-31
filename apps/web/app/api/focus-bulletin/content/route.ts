@@ -6,12 +6,19 @@ import type {
   Content,
   ContentSubjectMatch,
   ContentSubjectMatchSource,
+  ContentTopicScore,
+  ContentEntity,
 } from "@/app/generated/prisma";
 import { buildRecordContentViews } from "@/lib/follow-content/record-content-view";
+const prismaAny = prisma as any;
+const DEFAULT_TOPIC_FILTER_MIN_SCORE = Math.max(
+  0,
+  Math.min(1, Number(process.env.TOPIC_FILTER_MIN_SCORE ?? 0.4))
+);
 
 const contentTypeSchema = z.enum(["Web", "Client", "Darknet"]);
 const matchSourceSchema = z.enum(["QUERY", "GATHER", "AI", "FUSED"]);
-const sortSchema = z.enum(["time", "matchScore"]);
+const sortSchema = z.enum(["time", "relevance", "matchScore", "topicScore"]);
 const ContentQuerySchema = z.object({
   platform: z.string().trim().min(1).optional(),
   type: contentTypeSchema.optional(),
@@ -20,9 +27,23 @@ const ContentQuerySchema = z.object({
   to: z.string().datetime().optional(),
   subjectId: z.string().min(1).optional(),
   minMatchScore: z.coerce.number().min(0).max(1).optional(),
+  topicId: z.string().min(1).optional(),
+  minTopicScore: z.coerce.number().min(0).optional(),
   matchSource: matchSourceSchema.optional(),
   sort: sortSchema.optional().default("time"),
   includeSubjectMatches: z
+    .enum(["true", "false"])
+    .optional()
+    .transform((value) => value === "true"),
+  includeTopicScores: z
+    .enum(["true", "false"])
+    .optional()
+    .transform((value) => value === "true"),
+  includeEntities: z
+    .enum(["true", "false"])
+    .optional()
+    .transform((value) => value === "true"),
+  includeFeedback: z
     .enum(["true", "false"])
     .optional()
     .transform((value) => value === "true"),
@@ -31,7 +52,17 @@ const ContentQuerySchema = z.object({
 });
 
 const mapContent = (
-  item: Content & { image?: string | null; subjectMatches?: ContentSubjectMatch[] }
+  item: Content & {
+    image?: string | null;
+    subjectMatches?: ContentSubjectMatch[];
+    topicScores?: ContentTopicScore[];
+    entities?: ContentEntity | null;
+    topicFeedbacks?: Array<{
+      vote: "UP" | "DOWN" | "NONE";
+      note: string | null;
+      topicId: string;
+    }>;
+  }
 ) => {
   const views = buildRecordContentViews(item);
   return {
@@ -59,6 +90,34 @@ const mapContent = (
       matchSource: match.matchSource,
       reason: match.reason,
     })),
+    topicScores: (item.topicScores ?? []).map((score) => ({
+      topicId: score.topicId,
+      vectorScore: score.vectorScore,
+      keywordScore: score.keywordScore,
+      exclusionPenalty: score.exclusionPenalty,
+      finalScore: score.finalScore,
+      reason: score.reason,
+    })),
+    topicScore: item.topicScores?.[0]
+      ? {
+          topicId: item.topicScores[0].topicId,
+          finalScore: item.topicScores[0].finalScore,
+        }
+      : null,
+    entities: item.entities
+      ? {
+          persons: item.entities.persons ?? [],
+          orgs: item.entities.orgs ?? [],
+          locations: item.entities.locations ?? [],
+        }
+      : null,
+    feedback: item.topicFeedbacks?.[0]
+      ? {
+          topicId: item.topicFeedbacks[0].topicId,
+          vote: item.topicFeedbacks[0].vote,
+          note: item.topicFeedbacks[0].note,
+        }
+      : null,
   };
 };
 
@@ -91,12 +150,34 @@ export async function GET(request: Request) {
     to,
     subjectId,
     minMatchScore,
+    topicId,
+    minTopicScore,
     matchSource,
     sort,
     includeSubjectMatches,
+    includeTopicScores,
+    includeEntities,
+    includeFeedback,
     cursor,
     limit,
   } = parsed.data;
+  const topicIds = Array.from(
+    new Set(
+      url.searchParams
+        .getAll("topicId")
+        .map((value) => value.trim())
+        .filter(Boolean)
+    )
+  );
+  const effectiveTopicIds = topicIds.length ? topicIds : topicId ? [topicId] : [];
+  const resolvedMinTopicScore =
+    minTopicScore != null
+      ? minTopicScore
+      : effectiveTopicIds.length
+        ? DEFAULT_TOPIC_FILTER_MIN_SCORE
+        : undefined;
+  const feedbackTopicId = effectiveTopicIds[0];
+  const userId = request.headers.get("x-user-id")?.trim() || process.env.DEFAULT_USER_ID || "default-user-id";
 
   const where: Prisma.ContentWhereInput = {};
 
@@ -144,6 +225,19 @@ export async function GET(request: Request) {
     };
   }
 
+  if (effectiveTopicIds.length || resolvedMinTopicScore != null) {
+    where.topicScores = {
+      some: {
+        ...(effectiveTopicIds.length
+          ? { topicId: { in: effectiveTopicIds } }
+          : {}),
+        ...(resolvedMinTopicScore != null
+          ? { finalScore: { gte: resolvedMinTopicScore } }
+          : {}),
+      },
+    };
+  }
+
   const includeSubjectMatchRelation =
     includeSubjectMatches || subjectId || resolvedMinMatchScore != null || matchSource
       ? {
@@ -165,28 +259,93 @@ export async function GET(request: Request) {
             take: 0,
           },
         };
+  const includeTopicScoreRelation =
+    includeTopicScores || effectiveTopicIds.length > 0 || resolvedMinTopicScore != null
+      ? {
+          topicScores: {
+            where: {
+              ...(effectiveTopicIds.length
+                ? { topicId: { in: effectiveTopicIds } }
+                : {}),
+              ...(resolvedMinTopicScore != null
+                ? { finalScore: { gte: resolvedMinTopicScore } }
+                : {}),
+            },
+            orderBy: { finalScore: "desc" as const },
+          },
+        }
+      : {
+          topicScores: {
+            take: 0,
+          },
+        };
+  const includeEntityRelation = includeEntities
+    ? { entities: true as const }
+    : { entities: false as const };
+  const includeFeedbackRelation =
+    includeFeedback && feedbackTopicId
+      ? {
+          topicFeedbacks: {
+            where: {
+              topicId: feedbackTopicId,
+              userId,
+            },
+            take: 1,
+            orderBy: { updatedAt: "desc" as const },
+          },
+        }
+      : {};
 
-  const contents = await prisma.content.findMany({
+  const contents = await prismaAny.content.findMany({
     where,
     orderBy: { time: "desc" },
     take: limit + 1,
     cursor: cursor ? { id: cursor } : undefined,
     skip: cursor ? 1 : 0,
-    include: includeSubjectMatchRelation,
+    include: {
+      ...includeSubjectMatchRelation,
+      ...includeTopicScoreRelation,
+      ...includeEntityRelation,
+      ...includeFeedbackRelation,
+    },
   });
 
   const hasMore = contents.length > limit;
   const nextCursor = hasMore ? contents[limit].id : null;
   const pageItems = hasMore ? contents.slice(0, limit) : contents;
   const sortedItems =
-    sort === "matchScore" && subjectId
+    (sort === "matchScore" && subjectId)
       ? [...pageItems].sort((left, right) => {
           const leftScore = left.subjectMatches?.[0]?.matchScore ?? -1;
           const rightScore = right.subjectMatches?.[0]?.matchScore ?? -1;
           return rightScore - leftScore;
         })
+      : (sort === "topicScore" || sort === "relevance") && effectiveTopicIds.length > 0
+        ? [...pageItems].sort((left, right) => {
+            const leftScore = Math.max(
+              ...(left.topicScores ?? [])
+                .filter((score: any) =>
+                  effectiveTopicIds.length
+                    ? effectiveTopicIds.includes(score.topicId)
+                    : true
+                )
+                .map((score: any) => score.finalScore ?? -1),
+              -1
+            );
+            const rightScore = Math.max(
+              ...(right.topicScores ?? [])
+                .filter((score: any) =>
+                  effectiveTopicIds.length
+                    ? effectiveTopicIds.includes(score.topicId)
+                    : true
+                )
+                .map((score: any) => score.finalScore ?? -1),
+              -1
+            );
+            return rightScore - leftScore;
+          })
       : pageItems;
-  const items = sortedItems.map((item) => mapContent(item));
+  const items = sortedItems.map((item: any) => mapContent(item));
 
   const response: ContentResponse = {
     items,

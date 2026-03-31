@@ -265,6 +265,83 @@ exports.Prisma.QuerySourcePolicyScalarFieldEnum = {
   updatedAt: 'updatedAt'
 };
 
+exports.Prisma.TopicScalarFieldEnum = {
+  id: 'id',
+  name: 'name',
+  description: 'description',
+  enabled: 'enabled',
+  frequency: 'frequency',
+  cronSchedule: 'cronSchedule',
+  profile: 'profile',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.TopicTermScalarFieldEnum = {
+  id: 'id',
+  topicId: 'topicId',
+  type: 'type',
+  value: 'value',
+  weight: 'weight',
+  meta: 'meta',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.TopicSourceScalarFieldEnum = {
+  id: 'id',
+  topicId: 'topicId',
+  sourceId: 'sourceId',
+  enabled: 'enabled',
+  retrievalPolicy: 'retrievalPolicy',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.JobScalarFieldEnum = {
+  id: 'id',
+  name: 'name',
+  type: 'type',
+  enabled: 'enabled',
+  frequency: 'frequency',
+  cronSchedule: 'cronSchedule',
+  triggerMode: 'triggerMode',
+  config: 'config',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.JobTopicScalarFieldEnum = {
+  id: 'id',
+  jobId: 'jobId',
+  topicId: 'topicId',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.JobSourceScalarFieldEnum = {
+  id: 'id',
+  jobId: 'jobId',
+  sourceId: 'sourceId',
+  recallBindingOverride: 'recallBindingOverride',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.JobRunScalarFieldEnum = {
+  id: 'id',
+  jobId: 'jobId',
+  status: 'status',
+  progress: 'progress',
+  trigger: 'trigger',
+  startedAt: 'startedAt',
+  finishedAt: 'finishedAt',
+  error: 'error',
+  meta: 'meta',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
 exports.Prisma.QueryRunScalarFieldEnum = {
   id: 'id',
   queryId: 'queryId',
@@ -329,6 +406,31 @@ exports.Prisma.ContentEntityScalarFieldEnum = {
   persons: 'persons',
   orgs: 'orgs',
   locations: 'locations'
+};
+
+exports.Prisma.ContentTopicScoreScalarFieldEnum = {
+  id: 'id',
+  contentId: 'contentId',
+  topicId: 'topicId',
+  vectorScore: 'vectorScore',
+  keywordScore: 'keywordScore',
+  exclusionPenalty: 'exclusionPenalty',
+  finalScore: 'finalScore',
+  reason: 'reason',
+  explain: 'explain',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.ContentTopicFeedbackScalarFieldEnum = {
+  id: 'id',
+  contentId: 'contentId',
+  topicId: 'topicId',
+  userId: 'userId',
+  vote: 'vote',
+  note: 'note',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
 };
 
 exports.Prisma.FavoriteScalarFieldEnum = {
@@ -511,6 +613,18 @@ exports.QueryContentFilterMode = exports.$Enums.QueryContentFilterMode = {
   SMART: 'SMART'
 };
 
+exports.TopicTermType = exports.$Enums.TopicTermType = {
+  CORE: 'CORE',
+  EXPANSION: 'EXPANSION',
+  EXCLUSION: 'EXCLUSION'
+};
+
+exports.JobType = exports.$Enums.JobType = {
+  TOPIC_RETRIEVAL: 'TOPIC_RETRIEVAL',
+  SOURCE_INGEST: 'SOURCE_INGEST',
+  SOURCE_ONESHOT: 'SOURCE_ONESHOT'
+};
+
 exports.TaskStatus = exports.$Enums.TaskStatus = {
   PENDING: 'PENDING',
   RUNNING: 'RUNNING',
@@ -530,6 +644,12 @@ exports.ContentSubjectMatchSource = exports.$Enums.ContentSubjectMatchSource = {
   GATHER: 'GATHER',
   AI: 'AI',
   FUSED: 'FUSED'
+};
+
+exports.FeedbackVote = exports.$Enums.FeedbackVote = {
+  UP: 'UP',
+  DOWN: 'DOWN',
+  NONE: 'NONE'
 };
 
 exports.ReportStatus = exports.$Enums.ReportStatus = {
@@ -556,12 +676,21 @@ exports.Prisma.ModelName = {
   SocialMediaSourceConfig: 'SocialMediaSourceConfig',
   Query: 'Query',
   QuerySourcePolicy: 'QuerySourcePolicy',
+  Topic: 'Topic',
+  TopicTerm: 'TopicTerm',
+  TopicSource: 'TopicSource',
+  Job: 'Job',
+  JobTopic: 'JobTopic',
+  JobSource: 'JobSource',
+  JobRun: 'JobRun',
   QueryRun: 'QueryRun',
   TaskEvent: 'TaskEvent',
   Content: 'Content',
   ContentKeyword: 'ContentKeyword',
   ContentSubjectMatch: 'ContentSubjectMatch',
   ContentEntity: 'ContentEntity',
+  ContentTopicScore: 'ContentTopicScore',
+  ContentTopicFeedback: 'ContentTopicFeedback',
   Favorite: 'Favorite',
   ReportTemplate: 'ReportTemplate',
   Report: 'Report',

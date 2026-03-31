@@ -40,11 +40,13 @@ const KeywordsTable = ({
     {
       key: "category",
       label: "Category",
+      hideBelow: "md",
       render: (keyword) => keyword.category?.name || "-",
     },
     {
       key: "description",
       label: "Description",
+      hideBelow: "md",
       className: "max-w-xs",
       render: (keyword) => (
         <div className="whitespace-normal">{keyword.description || "-"}</div>
@@ -53,6 +55,7 @@ const KeywordsTable = ({
     {
       key: "lang",
       label: "Lang",
+      hideBelow: "lg",
       className: "max-w-xs",
       render: (keyword) => (
         <div className="flex flex-wrap gap-1">
@@ -75,6 +78,7 @@ const KeywordsTable = ({
     {
       key: "includes",
       label: "Recall Terms",
+      hideBelow: "lg",
       render: (keyword) => (
         <div className="flex flex-wrap gap-1 max-w-md">
           {keyword.includes.map((include) => (

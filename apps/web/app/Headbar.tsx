@@ -55,13 +55,13 @@ const Headbar = () => {
 
   return (
     <header className="flex h-16 shrink-0 items-center border-b transition-[width,height] ease-linear">
-      <div className="flex w-full items-center gap-1 px-4 lg:gap-2 lg:px-6">
+      <div className="flex min-w-0 w-full items-center gap-1 px-4 lg:gap-2 lg:px-6">
         <SidebarTrigger className="-ml-1" />
         <Separator
           orientation="vertical"
           className="mx-2 data-[orientation=vertical]:h-4"
         />
-        <Breadcrumb>
+        <Breadcrumb className="min-w-0">
           <BreadcrumbList>
             {breadcrumbItems.map(
               (item: { label: string; href: string }, index: number) => (

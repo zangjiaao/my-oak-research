@@ -19,7 +19,18 @@ export const deepseek = createOpenAI({
   baseURL: `${deepseekBaseURL}/v1`,
 });
 
-// 3. Google Gemini Provider
+// 3. DashScope (Qwen / Bailian, OpenAI Compatible)
+const dashscopeApiKey = process.env.DASHSCOPE_API_KEY?.trim();
+const dashscopeBaseURL =
+  process.env.DASHSCOPE_BASE_URL?.trim() ||
+  "https://dashscope.aliyuncs.com/compatible-mode/v1";
+
+export const dashscope = createOpenAI({
+  apiKey: dashscopeApiKey,
+  baseURL: dashscopeBaseURL,
+});
+
+// 4. Google Gemini Provider
 export const google = createGoogleGenerativeAI({
   apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY?.trim(),
 });

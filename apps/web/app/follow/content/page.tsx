@@ -17,6 +17,16 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
@@ -28,6 +38,10 @@ const FollowContent = () => {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [noteDialogOpen, setNoteDialogOpen] = useState(false);
+  const [noteContentId, setNoteContentId] = useState<string | null>(null);
+  const [noteText, setNoteText] = useState("");
+  const [savingFeedback, setSavingFeedback] = useState(false);
   const detailRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   // 获取所有收藏的内容 ID，用于判断是否已收藏
@@ -38,37 +52,171 @@ const FollowContent = () => {
   );
 
   const isBookmarked = (id: string) => favoriteIds.has(id);
+  const selectedTopicId = filters.topicIds[0] ?? "";
+  const selectedTopicIds = filters.topicIds;
+  const hasTopicSelection = selectedTopicIds.length > 0;
 
-  const sortedContents = useMemo(() => {
-    if (filters.sort === "matchScore") {
-      return [...contents].sort((a, b) => {
-        const aScore =
-          a.subjectMatches?.find((match) =>
-            filters.subjectId ? match.subjectId === filters.subjectId : true
-          )?.score ?? -1;
-        const bScore =
-          b.subjectMatches?.find((match) =>
-            filters.subjectId ? match.subjectId === filters.subjectId : true
-          )?.score ?? -1;
-        if (aScore !== bScore) {
-          return bScore - aScore;
-        }
-        const aTime = new Date(a.detailView?.publishedAt ?? a.time).getTime();
-        const bTime = new Date(b.detailView?.publishedAt ?? b.time).getTime();
-        return bTime - aTime;
-      });
-    }
-    return [...contents].sort((a, b) => {
-      const aTime = new Date(a.detailView?.publishedAt ?? a.time).getTime();
-      const bTime = new Date(b.detailView?.publishedAt ?? b.time).getTime();
-      if (aTime !== bTime) {
-        return bTime - aTime;
+  const buildExpandableKeywords = (content: (typeof contents)[number]) => {
+    const keywords: Array<{
+      category: "PERSON" | "ORG" | "TECH" | "LOCATION" | "PRODUCT" | "EVENT" | "CONCEPT";
+      label: string;
+    }> = [];
+    const classifyKeywordCategory = (
+      label: string
+    ): "PERSON" | "ORG" | "TECH" | "LOCATION" | "PRODUCT" | "EVENT" | "CONCEPT" => {
+      if (/(大学|学院|学校|公司|集团|研究院|委员会|University|College|Inc|Ltd|Corp)/i.test(label)) {
+        return "ORG";
       }
-      const aIndex = a.relation?.recordIndex ?? Number.MAX_SAFE_INTEGER;
-      const bIndex = b.relation?.recordIndex ?? Number.MAX_SAFE_INTEGER;
-      return aIndex - bIndex;
-    });
-  }, [contents, filters.sort, filters.subjectId]);
+      if (/(教授|博士|先生|女士|主任|院长|老师|CEO|CTO)/i.test(label)) {
+        return "PERSON";
+      }
+      if (/(省|市|区|县|州|国|省份|地区|城区|园区|China|USA|Europe|Asia)/i.test(label)) {
+        return "LOCATION";
+      }
+      if (/(发布|大会|峰会|论坛|活动|赛事|会议|展会|发布会|summit|forum|conference|event)/i.test(label)) {
+        return "EVENT";
+      }
+      if (/(OpenClaw|产品|工具|客户端|服务|App|SDK|API|plugin|extension)/i.test(label)) {
+        return "PRODUCT";
+      }
+      if (/(AI|LLM|模型|系统|算法|框架|自动化|数据|向量|检索|embedding|rerank|RAG|workflow)/i.test(label)) {
+        return "TECH";
+      }
+      return "CONCEPT";
+    };
+    const isEntityLikeTerm = (value: string) => {
+      const normalized = value.trim();
+      if (!normalized) return false;
+      if (normalized.length > 40) return false;
+      if (/^\d+(\.\d+)?$/.test(normalized)) return false;
+      if (!/[\p{L}\p{Script=Han}]/u.test(normalized)) return false;
+      if (/[:：]/.test(normalized)) return false;
+      const lower = normalized.toLowerCase();
+      if (["vector", "core", "expansion", "exclusion", "score"].includes(lower)) {
+        return false;
+      }
+      return true;
+    };
+    const pushUnique = (
+      category:
+        | "PERSON"
+        | "ORG"
+        | "TECH"
+        | "LOCATION"
+        | "PRODUCT"
+        | "EVENT"
+        | "CONCEPT",
+      value: string
+    ) => {
+      const label = value.trim();
+      if (!label) return;
+      if (!isEntityLikeTerm(label)) return;
+      if (keywords.some((item) => item.category === category && item.label === label)) return;
+      keywords.push({ category, label });
+    };
+    for (const person of content.entities?.persons ?? []) {
+      pushUnique("PERSON", person);
+    }
+    for (const org of content.entities?.orgs ?? []) {
+      pushUnique("ORG", org);
+    }
+    for (const location of content.entities?.locations ?? []) {
+      pushUnique("LOCATION", location);
+    }
+    if (keywords.length < 4) {
+      const fallbackText = [content.detailView?.title, content.title, content.summary]
+        .filter(Boolean)
+        .join(" ");
+      const fallbackTerms = Array.from(
+        new Set(
+          fallbackText
+            .split(/[，。！？、；：,.!?;:/()（）\[\]\s\n\r\t"“”'‘’]+/)
+            .map((term) => term.trim())
+            .filter((term) => term.length >= 2 && term.length <= 24)
+        )
+      ).slice(0, 24);
+      for (const term of fallbackTerms) {
+        pushUnique(classifyKeywordCategory(term), term);
+      }
+    }
+    return keywords.slice(0, 8);
+  };
+
+  const getRelevanceScore = (content: (typeof contents)[number]) => {
+    const candidateScores = (content.topicScores ?? [])
+      .filter((score) =>
+        selectedTopicIds.length ? selectedTopicIds.includes(score.topicId) : true
+      )
+      .map((score) => score.finalScore ?? -1);
+    const maxScore = Math.max(...candidateScores, -1);
+    return maxScore >= 0 ? maxScore : null;
+  };
+
+  const submitFeedback = async (input: {
+    contentId: string;
+    vote?: "UP" | "DOWN" | "NONE";
+    note?: string | null;
+  }) => {
+    if (!selectedTopicId) {
+      toast.error("请先选择一个 Topic 再反馈");
+      return;
+    }
+    setSavingFeedback(true);
+    try {
+      const response = await fetch("/api/follow/content-feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contentId: input.contentId,
+          topicId: selectedTopicId,
+          vote: input.vote ?? "NONE",
+          note: input.note ?? null,
+        }),
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(payload?.error || "反馈提交失败");
+      }
+      toast.success("反馈已保存");
+      await queryClient.invalidateQueries({ queryKey: ["follow-content"] });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "反馈提交失败");
+    } finally {
+      setSavingFeedback(false);
+    }
+  };
+
+  const addKeywordToTopic = async (keyword: {
+    category: "PERSON" | "ORG" | "TECH" | "LOCATION" | "PRODUCT" | "EVENT" | "CONCEPT";
+    label: string;
+  }) => {
+    if (!selectedTopicId) {
+      toast.error("请先选择 Topic 再添加词");
+      return;
+    }
+    try {
+      const response = await fetch(`/api/follow/topics/${selectedTopicId}/terms`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          value: keyword.label,
+          type: "EXPANSION",
+          weight: ["TECH", "PRODUCT"].includes(keyword.category) ? 1.2 : 1,
+          meta: { source: "content-card", category: keyword.category },
+        }),
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(payload?.error || "添加关键词失败");
+      }
+      toast.success(`已添加关键词：${keyword.label}`);
+      await queryClient.invalidateQueries({ queryKey: ["topics"] });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "添加关键词失败");
+    }
+  };
+
+  const sortedContents = contents;
 
   useEffect(() => {
     if (!selectedContent?.id) {
@@ -188,6 +336,13 @@ const FollowContent = () => {
                 files={content.detailView?.files ?? []}
                 rawContent={content.rawRecordContent}
                 subjectMatch={content.subjectMatches?.[0]}
+                relevanceScore={
+                  hasTopicSelection ? getRelevanceScore(content) : null
+                }
+                expandableKeywords={
+                  hasTopicSelection ? buildExpandableKeywords(content) : []
+                }
+                feedback={hasTopicSelection ? content.feedback ?? null : null}
                 bookmarked={isBookmarked(content.id)}
                 onBookmarkToggle={() => {
                   const currentlyBookmarked = isBookmarked(content.id);
@@ -201,6 +356,27 @@ const FollowContent = () => {
                   setDeleteOpen(true);
                 }}
                 deleting={deleting && deleteTargetId === content.id}
+                onAddKeyword={hasTopicSelection ? addKeywordToTopic : undefined}
+                onFeedbackVote={
+                  hasTopicSelection
+                    ? (vote) => {
+                        void submitFeedback({
+                          contentId: content.id,
+                          vote,
+                          note: content.feedback?.note ?? null,
+                        });
+                      }
+                    : undefined
+                }
+                onFeedbackNote={
+                  hasTopicSelection
+                    ? () => {
+                        setNoteContentId(content.id);
+                        setNoteText(content.feedback?.note ?? "");
+                        setNoteDialogOpen(true);
+                      }
+                    : undefined
+                }
                 className={
                   selectedContent?.id === content.id
                     ? "border-primary/35 bg-card shadow-[0_0_0_1px_hsl(var(--primary)/0.12)]"
@@ -242,6 +418,60 @@ const FollowContent = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <Dialog
+        open={noteDialogOpen}
+        onOpenChange={(open) => {
+          if (!savingFeedback) {
+            setNoteDialogOpen(open);
+            if (!open) {
+              setNoteContentId(null);
+              setNoteText("");
+            }
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>反馈备注</DialogTitle>
+            <DialogDescription>记录为什么相关或无关，系统会用于后续权重建议。</DialogDescription>
+          </DialogHeader>
+          <Textarea
+            value={noteText}
+            onChange={(event) => setNoteText(event.target.value)}
+            placeholder="例如：该内容和主题无关，主要在讲政策新闻"
+            rows={4}
+          />
+          <DialogFooter>
+            <Button
+              variant="outline"
+              disabled={savingFeedback}
+              onClick={() => {
+                setNoteDialogOpen(false);
+                setNoteContentId(null);
+                setNoteText("");
+              }}
+            >
+              取消
+            </Button>
+            <Button
+              disabled={savingFeedback || !noteContentId}
+              onClick={() => {
+                if (!noteContentId) return;
+                void submitFeedback({
+                  contentId: noteContentId,
+                  note: noteText || null,
+                }).then(() => {
+                  setNoteDialogOpen(false);
+                  setNoteContentId(null);
+                  setNoteText("");
+                });
+              }}
+            >
+              {savingFeedback ? "保存中..." : "保存备注"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

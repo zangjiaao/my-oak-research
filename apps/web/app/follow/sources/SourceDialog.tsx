@@ -728,8 +728,12 @@ function buildPayloadFromUnified(input: {
     const objective = String(
       intentArgs.query ?? intentArgs.keyword ?? intentArgs.objective ?? ""
     ).trim();
-    if (!objective) {
-      return { error: "Retrieval source requires query/objective in intent args." };
+    const hasRecallBinding = recallBinding.enabled && recallBinding.argKeys.length > 0;
+    if (!objective && !hasRecallBinding) {
+      return {
+        error:
+          "Retrieval source requires either query/objective in intent args or at least one recall binding arg key.",
+      };
     }
 
     const mappedPlatform = SEARCH_PLATFORM_MAP[provider] ?? "CUSTOM";
@@ -1459,7 +1463,7 @@ const SourceDialog = ({
     if (boundArgKeys.length > 0) {
       for (const argKey of boundArgKeys) {
         if (Object.prototype.hasOwnProperty.call(previewIntentArgs, argKey)) {
-          previewIntentArgs[argKey] = "<由 Query Keywords 注入>";
+          previewIntentArgs[argKey] = "<由 Generated Query 注入>";
         }
       }
     }
@@ -1491,7 +1495,7 @@ const SourceDialog = ({
       sourceId: sourceIdPreview,
       platform: normalizedPlatform.toLowerCase(),
       userId: effectiveUserId,
-      keywords: ["<由 Query Keywords 注入>"],
+      keywords: ["<由 Generated Query 注入>"],
       driver: {
         name: capabilityDriver,
         ...driverPreview,
@@ -1904,8 +1908,8 @@ const SourceDialog = ({
                         </TooltipTrigger>
                         <TooltipContent sideOffset={6}>
                           {isRecallBound
-                            ? "该参数已关联召回词（Query 运行时会注入）"
-                            : "关联召回词注入到该参数"}
+                            ? "该参数已关联召回词（Job 运行时会注入动态检索词）"
+                            : "关联动态检索词注入到该参数"}
                         </TooltipContent>
                       </Tooltip>
                       <Button
@@ -1953,6 +1957,11 @@ const SourceDialog = ({
                 <p className="text-xs text-muted-foreground">
                   顺序：key | value | 召回词关联 | - | +。
                 </p>
+                {targetCategory === "RETRIEVAL" && !effectiveIsDarknet ? (
+                  <p className="text-xs text-muted-foreground">
+                    Retrieval 可不填静态 query/objective；若用于 Topic Job 动态检索，请至少绑定一个召回注入参数（如 `query`）。
+                  </p>
+                ) : null}
               </CardContent>
             </Card>
 

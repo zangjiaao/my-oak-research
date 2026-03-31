@@ -34,7 +34,8 @@ import {
   ScrollText,
   Globe,
   PencilLine,
-  MessageCircleQuestionMark,
+  Workflow,
+  Tags,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -76,9 +77,14 @@ const menuItems = [
         icon: Globe,
       },
       {
-        title: "Queries",
-        url: "/follow/queries",
-        icon: MessageCircleQuestionMark,
+        title: "Topics",
+        url: "/follow/topics",
+        icon: Tags,
+      },
+      {
+        title: "Jobs",
+        url: "/follow/jobs",
+        icon: Workflow,
       },
       {
         title: "Content",

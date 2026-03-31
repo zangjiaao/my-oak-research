@@ -11,6 +11,10 @@ import React, {
 import { useQuery } from "@tanstack/react-query";
 import { useQueryClient } from "@tanstack/react-query";
 
+const DEFAULT_TOPIC_FILTER_MIN_SCORE = Number(
+  process.env.NEXT_PUBLIC_TOPIC_FILTER_MIN_SCORE ?? 0.4
+);
+
 export type ContentItem = {
   id: string;
   title: string;
@@ -70,20 +74,37 @@ export type ContentItem = {
     matchSource: "QUERY" | "GATHER" | "AI" | "FUSED";
     reason: string | null;
   }>;
+  topicScores?: Array<{
+    topicId: string;
+    vectorScore: number | null;
+    keywordScore: number | null;
+    exclusionPenalty: number | null;
+    finalScore: number | null;
+    reason: string | null;
+  }>;
+  topicScore?: {
+    topicId: string;
+    finalScore: number | null;
+  } | null;
+  entities?: {
+    persons: string[];
+    orgs: string[];
+    locations: string[];
+  } | null;
+  feedback?: {
+    topicId: string;
+    vote: "UP" | "DOWN" | "NONE";
+    note?: string | null;
+  } | null;
 };
 
 type FollowContentFilters = {
-  platform?: string;
   search?: string;
-  from?: string;
-  to?: string;
-  subjectId?: string;
-  minMatchScore?: string;
-  matchSource?: "QUERY" | "GATHER" | "AI" | "FUSED";
-  sort?: "time" | "matchScore";
+  topicIds?: string[];
+  sort?: "time" | "relevance";
 };
 
-type SubjectOption = {
+type TopicOption = {
   id: string;
   name: string;
 };
@@ -100,90 +121,46 @@ type FollowContentContextValue = {
   error: Error | null;
   selectContent: (id: string) => void;
   filters: {
-    platform: string;
-    year: string;
-    month: string;
-    day: string;
     search: string;
-    subjectId: string;
-    minMatchScore: string;
-    matchSource: string;
-    sort: "time" | "matchScore";
+    topicIds: string[];
+    sort: "time" | "relevance";
   };
-  subjectOptions: SubjectOption[];
-  subjectOptionsError: string | null;
-  subjectOptionsLoading: boolean;
-  setPlatform: (val: string) => void;
-  setYear: (val: string) => void;
-  setMonth: (val: string) => void;
-  setDay: (val: string) => void;
+  topicOptions: TopicOption[];
+  topicOptionsError: string | null;
+  topicOptionsLoading: boolean;
   setSearch: (val: string) => void;
-  setSubjectId: (val: string) => void;
-  setMinMatchScore: (val: string) => void;
-  setMatchSource: (val: string) => void;
-  setSort: (val: "time" | "matchScore") => void;
+  setTopicIds: (val: string[]) => void;
+  setSort: (val: "time" | "relevance") => void;
 };
 
-const FollowContentContext = createContext<
-  FollowContentContextValue | undefined
->(undefined);
-
-const buildDateRange = (year?: string, month?: string, day?: string) => {
-  if (!year) {
-    return { from: undefined, to: undefined };
-  }
-
-  const parsedYear = Number(year);
-  if (Number.isNaN(parsedYear)) {
-    return { from: undefined, to: undefined };
-  }
-
-  const parsedMonth = month ? Number(month) - 1 : 0;
-  const parsedDay = day ? Number(day) : 1;
-  const start = new Date(Date.UTC(parsedYear, parsedMonth, parsedDay));
-
-  let end: Date;
-  if (day) {
-    end = new Date(start);
-    end.setUTCDate(start.getUTCDate() + 1);
-  } else if (month) {
-    end = new Date(Date.UTC(parsedYear, parsedMonth + 1, 1));
-  } else {
-    end = new Date(Date.UTC(parsedYear + 1, 0, 1));
-  }
-
-  return { from: start.toISOString(), to: end.toISOString() };
-};
+const FollowContentContext = createContext<FollowContentContextValue | undefined>(
+  undefined
+);
 
 const fetchContents = async (filters: FollowContentFilters) => {
   const params = new URLSearchParams();
+  const hasTopicSelection = (filters.topicIds?.length ?? 0) > 0;
+  const effectiveSort = hasTopicSelection
+    ? (filters.sort ?? "relevance")
+    : "time";
 
-  if (filters.platform) {
-    params.set("platform", filters.platform);
-  }
   if (filters.search) {
     params.set("search", filters.search);
   }
-  if (filters.from) {
-    params.set("from", filters.from);
+  for (const topicId of filters.topicIds ?? []) {
+    if (topicId) {
+      params.append("topicId", topicId);
+    }
   }
-  if (filters.to) {
-    params.set("to", filters.to);
+  if (hasTopicSelection) {
+    params.set("minTopicScore", String(DEFAULT_TOPIC_FILTER_MIN_SCORE));
   }
-  if (filters.subjectId) {
-    params.set("subjectId", filters.subjectId);
-  }
-  if (filters.minMatchScore) {
-    params.set("minMatchScore", filters.minMatchScore);
-  }
-  if (filters.matchSource) {
-    params.set("matchSource", filters.matchSource);
-  }
-  if (filters.sort) {
-    params.set("sort", filters.sort);
-  }
+  params.set("sort", effectiveSort);
 
   params.set("includeSubjectMatches", "true");
+  params.set("includeTopicScores", hasTopicSelection ? "true" : "false");
+  params.set("includeEntities", "true");
+  params.set("includeFeedback", hasTopicSelection ? "true" : "false");
   params.set("limit", "30");
   const url = `/api/focus-bulletin/content${
     params.toString() ? `?${params.toString()}` : ""
@@ -210,63 +187,48 @@ export const FollowContentProvider = ({
 }: {
   children: React.ReactNode;
 }) => {
-  const [platform, setPlatform] = useState("");
-  const [year, setYear] = useState("");
-  const [month, setMonth] = useState("");
-  const [day, setDay] = useState("");
   const [search, setSearch] = useState("");
-  const [subjectId, setSubjectId] = useState("");
-  const [minMatchScore, setMinMatchScore] = useState("");
-  const [matchSource, setMatchSource] = useState("");
-  const [sort, setSort] = useState<"time" | "matchScore">("time");
+  const [topicIds, setTopicIds] = useState<string[]>([]);
+  const [sort, setSort] = useState<"time" | "relevance">("time");
   const [selectedContentId, setSelectedContentId] = useState<string | null>(
     null
   );
   const queryClient = useQueryClient();
   const {
-    data: subjectOptionsData,
-    error: subjectOptionsQueryError,
-    isLoading: subjectOptionsLoading,
+    data: topicOptionsData,
+    error: topicOptionsQueryError,
+    isLoading: topicOptionsLoading,
   } = useQuery({
-    queryKey: ["keywords", "subject-options"],
-    queryFn: async (): Promise<SubjectOption[]> => {
-      const response = await fetch("/api/follow/keywords?pageSize=100", {
+    queryKey: ["topics", "topic-options"],
+    queryFn: async (): Promise<TopicOption[]> => {
+      const response = await fetch("/api/follow/topics", {
         cache: "no-store",
       });
       if (!response.ok) {
-        throw new Error("Can not fetch subjects");
+        throw new Error("Can not fetch topics");
       }
       const data = await response.json();
-      const items = Array.isArray(data?.items) ? data.items : [];
+      const items = Array.isArray(data) ? data : [];
       return items
         .map((item: { id?: string; name?: string }) => ({
           id: String(item.id ?? ""),
           name: String(item.name ?? ""),
         }))
-        .filter((item: SubjectOption) => Boolean(item.id && item.name));
-    },
+        .filter((item: TopicOption) => Boolean(item.id && item.name));
+      },
   });
-
-  const { from, to } = useMemo(
-    () => buildDateRange(year, month, day),
-    [year, month, day]
-  );
 
   const queryFilters = useMemo(
     () => ({
-      platform,
       search,
-      from,
-      to,
-      subjectId,
-      minMatchScore,
-      matchSource:
-        matchSource && matchSource !== "__all__"
-          ? (matchSource as "QUERY" | "GATHER" | "AI" | "FUSED")
-          : undefined,
+      topicIds,
       sort,
     }),
-    [platform, search, from, to, subjectId, minMatchScore, matchSource, sort]
+    [
+      search,
+      topicIds,
+      sort,
+    ]
   );
 
   const {
@@ -278,6 +240,12 @@ export const FollowContentProvider = ({
     queryFn: () => fetchContents(queryFilters),
     placeholderData: (prev) => prev,
   });
+
+  useEffect(() => {
+    if (!topicIds.length && sort !== "time") {
+      setSort("time");
+    }
+  }, [topicIds, sort]);
 
   useEffect(() => {
     const es = new EventSource("/api/focus-bulletin/content/stream");
@@ -309,26 +277,34 @@ export const FollowContentProvider = ({
 
   const contents: ContentItem[] = useMemo(() => {
     const items: ContentItem[] = data?.items ?? [];
-    if (sort !== "matchScore") {
-      return items;
+    if (sort === "relevance") {
+      return [...items].sort((left, right) => {
+        const leftScore = Math.max(
+          ...(left.topicScores ?? [])
+            .filter((score) =>
+              topicIds.length ? topicIds.includes(score.topicId) : true
+            )
+            .map((score) => score.finalScore ?? -1),
+          -1
+        );
+        const rightScore = Math.max(
+          ...(right.topicScores ?? [])
+            .filter((score) =>
+              topicIds.length ? topicIds.includes(score.topicId) : true
+            )
+            .map((score) => score.finalScore ?? -1),
+          -1
+        );
+        if (leftScore !== rightScore) {
+          return rightScore - leftScore;
+        }
+        const leftTime = new Date(left.detailView?.publishedAt ?? left.time).getTime();
+        const rightTime = new Date(right.detailView?.publishedAt ?? right.time).getTime();
+        return rightTime - leftTime;
+      });
     }
-    return [...items].sort((left, right) => {
-      const leftScore =
-        left.subjectMatches?.find((match) =>
-          subjectId ? match.subjectId === subjectId : true
-        )?.score ?? -1;
-      const rightScore =
-        right.subjectMatches?.find((match) =>
-          subjectId ? match.subjectId === subjectId : true
-        )?.score ?? -1;
-      if (leftScore !== rightScore) {
-        return rightScore - leftScore;
-      }
-      const leftTime = new Date(left.detailView?.publishedAt ?? left.time).getTime();
-      const rightTime = new Date(right.detailView?.publishedAt ?? right.time).getTime();
-      return rightTime - leftTime;
-    });
-  }, [data?.items, sort, subjectId]);
+    return items;
+  }, [data?.items, sort, topicIds]);
 
   useEffect(() => {
     if (isLoading) {
@@ -363,31 +339,19 @@ export const FollowContentProvider = ({
       isLoading,
       error: contentQueryError ?? null,
       selectContent,
-      subjectOptions: subjectOptionsData ?? [],
-      subjectOptionsError:
-        subjectOptionsQueryError instanceof Error
-          ? subjectOptionsQueryError.message
+      topicOptions: topicOptionsData ?? [],
+      topicOptionsError:
+        topicOptionsQueryError instanceof Error
+          ? topicOptionsQueryError.message
           : null,
-      subjectOptionsLoading,
+      topicOptionsLoading,
       filters: {
-        platform,
-        year,
-        month,
-        day,
         search,
-        subjectId,
-        minMatchScore,
-        matchSource,
+        topicIds,
         sort,
       },
-      setPlatform,
-      setYear,
-      setMonth,
-      setDay,
       setSearch,
-      setSubjectId,
-      setMinMatchScore,
-      setMatchSource,
+      setTopicIds,
       setSort,
     }),
     [
@@ -396,17 +360,11 @@ export const FollowContentProvider = ({
       isLoading,
       contentQueryError,
       selectContent,
-      subjectOptionsData,
-      subjectOptionsQueryError,
-      subjectOptionsLoading,
-      platform,
-      year,
-      month,
-      day,
+      topicOptionsData,
+      topicOptionsQueryError,
+      topicOptionsLoading,
       search,
-      subjectId,
-      minMatchScore,
-      matchSource,
+      topicIds,
       sort,
     ]
   );

@@ -4,8 +4,10 @@ import asyncio
 import hashlib
 import json
 import logging
+import os
 from contextlib import asynccontextmanager, suppress
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI
@@ -190,11 +192,32 @@ async def get_playwright_runtime() -> Any:
     if _RUNTIME is not None:
         return _RUNTIME
 
+    def _resolve_playwright_driver_node() -> Path:
+        import playwright
+
+        driver_dir = Path(playwright.__file__).resolve().parent / "driver"
+        node_name = "node.exe" if os.name == "nt" else "node"
+        return driver_dir / node_name
+
     from playwright.async_api import async_playwright
 
     async with _RUNTIME_LOCK:
         if _RUNTIME is None:
-            _RUNTIME = await async_playwright().start()
+            driver_node_path = _resolve_playwright_driver_node()
+            if not driver_node_path.exists():
+                raise RuntimeError(
+                    "Playwright driver binary is missing "
+                    f"({driver_node_path}). "
+                    "Please reinstall dependencies and Playwright browsers: "
+                    "`cd apps/gather && uv sync && uv run playwright install chromium`"
+                )
+            try:
+                _RUNTIME = await async_playwright().start()
+            except FileNotFoundError as error:
+                raise RuntimeError(
+                    "Playwright runtime failed to start because its driver binary is missing. "
+                    "Run: `cd apps/gather && uv sync && uv run playwright install chromium`"
+                ) from error
     return _RUNTIME
 
 

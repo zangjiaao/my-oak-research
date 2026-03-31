@@ -89,9 +89,9 @@ const KeywordSettingCard = ({ initialKeywords, categories }: Props) => {
       countLabel="keywords"
     >
       <div className="space-y-4">
-        <div className="flex gap-4 justify-between items-center">
-          <div className="flex gap-4 flex-1">
-            <div className="relative flex-1">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex min-w-[240px] flex-1 flex-wrap items-center gap-3">
+            <div className="relative min-w-[220px] flex-1">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 placeholder="Search keywords..."
@@ -101,7 +101,7 @@ const KeywordSettingCard = ({ initialKeywords, categories }: Props) => {
               />
             </div>
             <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-full min-w-[180px] sm:w-[220px]">
                 <SelectValue placeholder="Filter by category" />
               </SelectTrigger>
               <SelectContent>
@@ -117,7 +117,7 @@ const KeywordSettingCard = ({ initialKeywords, categories }: Props) => {
           <EditKeywordDialog
             categories={categories}
             triggerButton={
-              <Button>
+              <Button className="w-full sm:w-auto">
                 <PlusIcon className="size-4" />
                 Add Keyword
               </Button>

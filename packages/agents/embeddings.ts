@@ -1,5 +1,12 @@
 import { embedMany } from "ai";
-import { openai, deepseek, google } from "./provider";
+import { createHash } from "node:crypto";
+import { existsSync, mkdirSync } from "node:fs";
+import { createWriteStream } from "node:fs";
+import { homedir } from "node:os";
+import { basename, resolve } from "node:path";
+import { Readable } from "node:stream";
+import { pipeline } from "node:stream/promises";
+import { openai, deepseek, google, dashscope } from "./provider";
 
 type EmbeddingModel =
   | "text-embedding-ada-002"
@@ -7,8 +14,61 @@ type EmbeddingModel =
   | "text-embedding-3-large"
   | string;
 
+type EmbeddingProvider =
+  | "openai"
+  | "google"
+  | "deepseek"
+  | "dashscope"
+  | "local_gguf";
+
 const DEFAULT_MODEL: EmbeddingModel =
   (process.env.EMBEDDING_MODEL as EmbeddingModel) ?? "text-embedding-3-small";
+const DEFAULT_PROVIDER = (process.env.EMBEDDING_PROVIDER ??
+  "openai") as EmbeddingProvider;
+const DEFAULT_EMBEDDING_DIMENSION = Number(process.env.EMBEDDING_DIM ?? 1536);
+function resolveUserPath(inputPath: string) {
+  const trimmed = inputPath.trim();
+  if (trimmed === "~") {
+    return homedir();
+  }
+  if (trimmed.startsWith("~/")) {
+    return resolve(homedir(), trimmed.slice(2));
+  }
+  return resolve(trimmed);
+}
+
+const LOCAL_GGUF_CACHE_DIR = process.env.LOCAL_EMBED_CACHE_DIR?.trim()
+  ? resolveUserPath(process.env.LOCAL_EMBED_CACHE_DIR)
+  : resolve(homedir(), ".cache/oak/models");
+const LOCAL_GGUF_MODEL = process.env.LOCAL_EMBED_MODEL?.trim() ?? "";
+const LOCAL_GGUF_BATCH_SIZE = Math.max(
+  1,
+  Math.floor(Number(process.env.LOCAL_EMBED_BATCH_SIZE ?? 16))
+);
+const EMBEDDING_MAX_BATCH_LINES = Math.max(
+  1,
+  Math.floor(Number(process.env.EMBEDDING_MAX_BATCH_LINES ?? 8))
+);
+const EMBEDDING_MAX_INPUT_TOKENS = Math.max(
+  256,
+  Math.floor(Number(process.env.EMBEDDING_MAX_INPUT_TOKENS ?? 6000))
+);
+const EMBEDDING_MAX_INPUT_CHARS = Math.max(
+  512,
+  Math.floor(Number(process.env.EMBEDDING_MAX_INPUT_CHARS ?? 8000))
+);
+const EMBEDDING_RETRY_LIMIT = Math.max(
+  0,
+  Math.floor(Number(process.env.EMBEDDING_RETRY_LIMIT ?? 2))
+);
+const EMBEDDING_RETRY_SHRINK_RATIO = 0.7;
+const PROVIDER_MAX_BATCH_LINES: Record<EmbeddingProvider, number> = {
+  openai: 100,
+  google: 100,
+  deepseek: 100,
+  dashscope: 10,
+  local_gguf: LOCAL_GGUF_BATCH_SIZE,
+};
 
 /**
  * Select the correct embedding model instance based on string identifier
@@ -23,54 +83,310 @@ function getEmbeddingModel(modelId: string) {
   if (lower.includes("deepseek")) {
     return deepseek.embedding(modelId);
   }
+  if (
+    lower.includes("dashscope") ||
+    lower.includes("text-embedding-v3") ||
+    lower.includes("text-embedding-v4")
+  ) {
+    return dashscope.embedding(modelId);
+  }
   return openai.embedding(modelId);
 }
 
-// OpenAI embedding models have a limit of 8192 tokens.
-// We use a character limit as a safety proxy. 
-// 12000 characters is generally safe for both English and Chinese.
-const MAX_INPUT_CHARS = 12000;
+function resolveEmbeddingProvider(modelId: string): EmbeddingProvider {
+  const provider = DEFAULT_PROVIDER.toLowerCase();
+  if (provider === "local_gguf") {
+    return "local_gguf";
+  }
+  if (provider === "dashscope") {
+    return "dashscope";
+  }
+  const lower = modelId.toLowerCase();
+  if (lower.includes("gemini") || lower.includes("embedding-004")) {
+    return "google";
+  }
+  if (lower.includes("deepseek")) {
+    return "deepseek";
+  }
+  if (
+    lower.includes("dashscope") ||
+    lower.includes("text-embedding-v3") ||
+    lower.includes("text-embedding-v4")
+  ) {
+    return "dashscope";
+  }
+  return "openai";
+}
 
-function zeros(dim = 1536) {
+function estimateTokens(text: string): number {
+  const cjkChars = (text.match(/[\u3400-\u9FFF]/g) ?? []).length;
+  const otherChars = Math.max(0, text.length - cjkChars);
+  return Math.ceil(cjkChars * 1.3 + otherChars / 4);
+}
+
+function squeezeWhitespace(value: string): string {
+  return value.replace(/\s+/g, " ").trim();
+}
+
+function applyCharHardLimit(value: string): string {
+  if (value.length <= EMBEDDING_MAX_INPUT_CHARS) {
+    return value;
+  }
+  return value.slice(0, EMBEDDING_MAX_INPUT_CHARS);
+}
+
+function shrinkForRetry(value: string): string {
+  const nextLength = Math.max(
+    32,
+    Math.floor(value.length * EMBEDDING_RETRY_SHRINK_RATIO)
+  );
+  return value.slice(0, nextLength);
+}
+
+function prepareEmbeddingInput(value: string): string {
+  let normalized = squeezeWhitespace(value);
+  if (!normalized) {
+    return " ";
+  }
+  const estimatedTokens = estimateTokens(normalized);
+  if (estimatedTokens > EMBEDDING_MAX_INPUT_TOKENS) {
+    const ratio = EMBEDDING_MAX_INPUT_TOKENS / estimatedTokens;
+    const nextLength = Math.max(64, Math.floor(normalized.length * ratio));
+    normalized = normalized.slice(0, nextLength);
+  }
+  normalized = applyCharHardLimit(normalized);
+  return normalized || " ";
+}
+
+function isInputTooLongError(error: unknown): boolean {
+  const message =
+    error instanceof Error ? error.message : String(error ?? "");
+  const lower = message.toLowerCase();
+  return (
+    lower.includes("range of input length should be [1, 8192]") ||
+    lower.includes("context length") ||
+    lower.includes("token limit")
+  );
+}
+
+function zeros(dim = DEFAULT_EMBEDDING_DIMENSION) {
   return Array.from({ length: dim }, () => 0);
 }
 
+function normalizeDimension(input: number[], targetDim = DEFAULT_EMBEDDING_DIMENSION): number[] {
+  if (!Array.isArray(input) || input.length === 0) {
+    return zeros(targetDim);
+  }
+  if (input.length === targetDim) return input;
+  if (input.length > targetDim) {
+    return input.slice(0, targetDim);
+  }
+  return [...input, ...Array.from({ length: targetDim - input.length }, () => 0)];
+}
+
+type LocalEmbeddingEngine = {
+  embed: (text: string) => Promise<number[]>;
+};
+
+const localEngineCache = new Map<string, Promise<LocalEmbeddingEngine>>();
+
+function toHfDownloadUrl(modelRef: string): string {
+  const normalized = modelRef.slice(3);
+  const segments = normalized.split("/");
+  if (segments.length < 3) {
+    throw new Error(
+      `Invalid LOCAL_EMBED_MODEL hf reference: ${modelRef}. Expected hf:org/repo/file.gguf`
+    );
+  }
+  const [org, repo, ...fileParts] = segments;
+  const file = fileParts.join("/");
+  return `https://huggingface.co/${org}/${repo}/resolve/main/${file}`;
+}
+
+async function ensureLocalModelPath(modelId: string): Promise<string> {
+  if (!modelId) {
+    throw new Error(
+      "LOCAL_EMBED_MODEL is empty. Set EMBEDDING_PROVIDER=local_gguf and LOCAL_EMBED_MODEL."
+    );
+  }
+  if (!modelId.startsWith("hf:")) {
+    return resolve(modelId);
+  }
+  mkdirSync(LOCAL_GGUF_CACHE_DIR, { recursive: true });
+  const downloadUrl = toHfDownloadUrl(modelId);
+  const filenameHash = createHash("sha1").update(modelId).digest("hex").slice(0, 12);
+  const filename = `${basename(downloadUrl)}.${filenameHash}.gguf`;
+  const filePath = resolve(LOCAL_GGUF_CACHE_DIR, filename);
+  if (existsSync(filePath)) {
+    return filePath;
+  }
+  const response = await fetch(downloadUrl);
+  if (!response.ok || !response.body) {
+    throw new Error(
+      `Failed to download LOCAL_EMBED_MODEL from HuggingFace: ${response.status} ${response.statusText}`
+    );
+  }
+  const output = createWriteStream(filePath);
+  await pipeline(Readable.fromWeb(response.body as any), output);
+  return filePath;
+}
+
+async function createNodeLlamaLocalEngine(modelId: string): Promise<LocalEmbeddingEngine> {
+  let llamaModule: any;
+  try {
+    llamaModule = (await import("node-llama-cpp")) as any;
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : String(error);
+    throw new Error(
+      `Cannot load node-llama-cpp. Install it first with: npm install --workspace @oak/agents node-llama-cpp. Original error: ${message}`
+    );
+  }
+  const getLlama =
+    llamaModule?.getLlama ??
+    llamaModule?.default?.getLlama;
+  if (typeof getLlama !== "function") {
+    throw new Error(
+      "node-llama-cpp getLlama not found. Please install node-llama-cpp and ensure runtime supports GGUF."
+    );
+  }
+  const modelPath = await ensureLocalModelPath(modelId);
+  const llama = await getLlama();
+  const model = await llama.loadModel({ modelPath });
+  const embeddingContext =
+    typeof model?.createEmbeddingContext === "function"
+      ? await model.createEmbeddingContext()
+      : null;
+  if (!embeddingContext || typeof embeddingContext.getEmbeddingFor !== "function") {
+    throw new Error(
+      "Loaded GGUF model does not expose embedding context. Use an embedding-capable GGUF model."
+    );
+  }
+  const parseEmbedding = (result: any): number[] => {
+    if (Array.isArray(result)) return result as number[];
+    if (Array.isArray(result?.vector)) return result.vector as number[];
+    if (Array.isArray(result?.embedding)) return result.embedding as number[];
+    throw new Error("Unknown embedding result shape from node-llama-cpp.");
+  };
+  return {
+    embed: async (text: string) => {
+      const result = await embeddingContext.getEmbeddingFor(text);
+      return parseEmbedding(result);
+    },
+  };
+}
+
+async function getLocalEngine(modelId: string): Promise<LocalEmbeddingEngine> {
+  const cacheKey = modelId.trim();
+  let entry = localEngineCache.get(cacheKey);
+  if (!entry) {
+    entry = createNodeLlamaLocalEngine(cacheKey);
+    localEngineCache.set(cacheKey, entry);
+  }
+  return entry;
+}
+
+async function createLocalEmbeddings(
+  inputs: string[],
+  model: EmbeddingModel
+): Promise<number[][]> {
+  const modelId = LOCAL_GGUF_MODEL || String(model);
+  const engine = await getLocalEngine(modelId);
+  const embeddings: number[][] = [];
+  for (let start = 0; start < inputs.length; start += LOCAL_GGUF_BATCH_SIZE) {
+    const batch = inputs.slice(start, start + LOCAL_GGUF_BATCH_SIZE);
+    for (const input of batch) {
+      const normalized = prepareEmbeddingInput(input);
+      const vector = await engine.embed(normalized);
+      embeddings.push(normalizeDimension(vector));
+    }
+  }
+  return embeddings;
+}
+
+async function embedManyWithRetry(params: {
+  model: ReturnType<typeof getEmbeddingModel>;
+  values: string[];
+  provider: EmbeddingProvider;
+  batchIndex: number;
+}): Promise<number[][]> {
+  let attempt = 0;
+  let values = [...params.values];
+  while (true) {
+    try {
+      const { embeddings } = await embedMany({
+        model: params.model,
+        values,
+      });
+      return embeddings;
+    } catch (error) {
+      if (!isInputTooLongError(error) || attempt >= EMBEDDING_RETRY_LIMIT) {
+        throw error;
+      }
+      attempt += 1;
+      values = values.map((value) =>
+        prepareEmbeddingInput(shrinkForRetry(value))
+      );
+      console.warn(
+        `[embeddings] batch ${params.batchIndex} exceeded provider length limit, retrying attempt ${attempt}/${EMBEDDING_RETRY_LIMIT}`
+      );
+      if (params.provider === "dashscope") {
+        console.warn(
+          `[embeddings] provider=dashscope retry with shorter inputs to satisfy max_tokens=8192`
+        );
+      }
+    }
+  }
+}
 
 export async function createEmbeddings(
   inputs: string[],
   model: EmbeddingModel = DEFAULT_MODEL
 ): Promise<number[][]> {
+  const provider = resolveEmbeddingProvider(String(model));
   console.log(
-    `[embeddings] createEmbeddings called with model=${model}, inputs=${inputs.length}`
+    `[embeddings] createEmbeddings called with provider=${provider}, model=${model}, dim=${DEFAULT_EMBEDDING_DIMENSION}, inputs=${inputs.length}`
   );
 
   try {
-    const BATCH_SIZE = 100;
+    if (provider === "local_gguf") {
+      return await createLocalEmbeddings(inputs, model);
+    }
+
+    const providerBatchCap = PROVIDER_MAX_BATCH_LINES[provider] ?? 100;
+    const BATCH_SIZE = Math.max(
+      1,
+      Math.min(providerBatchCap, EMBEDDING_MAX_BATCH_LINES)
+    );
     const CONCURRENCY = 2;  // Reduced from 5 to 2 to stay under TPM limits
     const allEmbeddings: number[][] = new Array(inputs.length);
+    const resolvedModel = getEmbeddingModel(model);
 
     const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
     const processBatch = async (startIndex: number) => {
       const endIndex = Math.min(startIndex + BATCH_SIZE, inputs.length);
-      const batch = inputs.slice(startIndex, endIndex).map(v => {
-        if (v.length > MAX_INPUT_CHARS) {
-          console.warn(`[embeddings] Data too long (${v.length} chars), truncating to ${MAX_INPUT_CHARS}`);
-          return v.slice(0, MAX_INPUT_CHARS);
-        }
-        return v;
-      });
+      const batch = inputs
+        .slice(startIndex, endIndex)
+        .map((value) => prepareEmbeddingInput(value));
+      const batchIndex = Math.floor(startIndex / BATCH_SIZE) + 1;
 
-      console.log(`[embeddings] processing batch ${Math.floor(startIndex / BATCH_SIZE) + 1}/${Math.ceil(inputs.length / BATCH_SIZE)}...`);
+      console.log(
+        `[embeddings] processing batch ${batchIndex}/${Math.ceil(inputs.length / BATCH_SIZE)} with size=${batch.length}...`
+      );
 
-      const { embeddings } = await embedMany({
-        model: getEmbeddingModel(model),
+      const embeddings = await embedManyWithRetry({
+        model: resolvedModel,
         values: batch,
+        provider,
+        batchIndex,
       });
 
       // Insert back into the correct positions
       for (let j = 0; j < embeddings.length; j++) {
-        allEmbeddings[startIndex + j] = embeddings[j];
+        allEmbeddings[startIndex + j] = normalizeDimension(
+          embeddings[j] as number[]
+        );
       }
     };
 

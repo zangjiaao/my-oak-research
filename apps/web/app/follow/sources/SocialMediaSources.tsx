@@ -94,6 +94,7 @@ const SocialMediaSources = ({ sources, proxies, allSourceNames }: Props) => {
     {
       key: "platform",
       label: "Platform",
+      hideBelow: "md",
       className: "max-w-xs",
       render: (source) => (
         <span className="text-sm break-all whitespace-normal">
@@ -104,6 +105,7 @@ const SocialMediaSources = ({ sources, proxies, allSourceNames }: Props) => {
     {
       key: "description",
       label: "Description",
+      hideBelow: "md",
       className: "max-w-xs",
       render: (source) => (
         <div className="whitespace-normal">{source.description}</div>
@@ -112,6 +114,7 @@ const SocialMediaSources = ({ sources, proxies, allSourceNames }: Props) => {
     {
       key: "proxy",
       label: "Proxy",
+      hideBelow: "lg",
       render: (source) => source.proxy?.name || "None",
     },
   ];
