@@ -21,8 +21,19 @@ const DEFAULT_MODEL: EmbeddingModel =
 const DEFAULT_PROVIDER = (process.env.EMBEDDING_PROVIDER ??
   "openai") as EmbeddingProvider;
 const DEFAULT_EMBEDDING_DIMENSION = Number(process.env.EMBEDDING_DIM ?? 1536);
+function resolveUserPath(inputPath: string) {
+  const trimmed = inputPath.trim();
+  if (trimmed === "~") {
+    return homedir();
+  }
+  if (trimmed.startsWith("~/")) {
+    return resolve(homedir(), trimmed.slice(2));
+  }
+  return resolve(trimmed);
+}
+
 const LOCAL_GGUF_CACHE_DIR = process.env.LOCAL_EMBED_CACHE_DIR?.trim()
-  ? resolve(process.env.LOCAL_EMBED_CACHE_DIR.trim())
+  ? resolveUserPath(process.env.LOCAL_EMBED_CACHE_DIR)
   : resolve(homedir(), ".cache/oak/models");
 const LOCAL_GGUF_MODEL = process.env.LOCAL_EMBED_MODEL?.trim() ?? "";
 const LOCAL_GGUF_BATCH_SIZE = Math.max(
