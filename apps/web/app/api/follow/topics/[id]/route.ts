@@ -122,9 +122,32 @@ export async function DELETE(
 ) {
   const params = await paramsPromise;
   try {
-    await prismaAny.topic.delete({
+    const exists = await prismaAny.topic.findUnique({
       where: { id: params.id },
+      select: { id: true },
     });
+    if (!exists) {
+      return NextResponse.json({ error: "Topic not found" }, { status: 404 });
+    }
+
+    await prismaAny.$transaction(async (tx: any) => {
+      await tx.jobTopic.deleteMany({
+        where: { topicId: params.id },
+      });
+      await tx.topicSource.deleteMany({
+        where: { topicId: params.id },
+      });
+      await tx.contentTopicScore.deleteMany({
+        where: { topicId: params.id },
+      });
+      await tx.topicTerm.deleteMany({
+        where: { topicId: params.id },
+      });
+      await tx.topic.delete({
+        where: { id: params.id },
+      });
+    });
+
     return new NextResponse(null, { status: 204 });
   } catch (error) {
     logger.error("failed to delete topic", {
