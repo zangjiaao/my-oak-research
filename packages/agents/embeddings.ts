@@ -6,7 +6,7 @@ import { homedir } from "node:os";
 import { basename, resolve } from "node:path";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
-import { openai, deepseek, google } from "./provider";
+import { openai, deepseek, google, dashscope } from "./provider";
 
 type EmbeddingModel =
   | "text-embedding-ada-002"
@@ -14,7 +14,12 @@ type EmbeddingModel =
   | "text-embedding-3-large"
   | string;
 
-type EmbeddingProvider = "openai" | "google" | "deepseek" | "local_gguf";
+type EmbeddingProvider =
+  | "openai"
+  | "google"
+  | "deepseek"
+  | "dashscope"
+  | "local_gguf";
 
 const DEFAULT_MODEL: EmbeddingModel =
   (process.env.EMBEDDING_MODEL as EmbeddingModel) ?? "text-embedding-3-small";
@@ -54,6 +59,13 @@ function getEmbeddingModel(modelId: string) {
   if (lower.includes("deepseek")) {
     return deepseek.embedding(modelId);
   }
+  if (
+    lower.includes("dashscope") ||
+    lower.includes("text-embedding-v3") ||
+    lower.includes("text-embedding-v4")
+  ) {
+    return dashscope.embedding(modelId);
+  }
   return openai.embedding(modelId);
 }
 
@@ -62,12 +74,22 @@ function resolveEmbeddingProvider(modelId: string): EmbeddingProvider {
   if (provider === "local_gguf") {
     return "local_gguf";
   }
+  if (provider === "dashscope") {
+    return "dashscope";
+  }
   const lower = modelId.toLowerCase();
   if (lower.includes("gemini") || lower.includes("embedding-004")) {
     return "google";
   }
   if (lower.includes("deepseek")) {
     return "deepseek";
+  }
+  if (
+    lower.includes("dashscope") ||
+    lower.includes("text-embedding-v3") ||
+    lower.includes("text-embedding-v4")
+  ) {
+    return "dashscope";
   }
   return "openai";
 }
