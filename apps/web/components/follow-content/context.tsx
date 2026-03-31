@@ -139,6 +139,10 @@ const FollowContentContext = createContext<FollowContentContextValue | undefined
 
 const fetchContents = async (filters: FollowContentFilters) => {
   const params = new URLSearchParams();
+  const hasTopicSelection = (filters.topicIds?.length ?? 0) > 0;
+  const effectiveSort = hasTopicSelection
+    ? (filters.sort ?? "relevance")
+    : "time";
 
   if (filters.search) {
     params.set("search", filters.search);
@@ -148,17 +152,15 @@ const fetchContents = async (filters: FollowContentFilters) => {
       params.append("topicId", topicId);
     }
   }
-  if ((filters.topicIds?.length ?? 0) > 0) {
+  if (hasTopicSelection) {
     params.set("minTopicScore", String(DEFAULT_TOPIC_FILTER_MIN_SCORE));
   }
-  if (filters.sort) {
-    params.set("sort", filters.sort);
-  }
+  params.set("sort", effectiveSort);
 
   params.set("includeSubjectMatches", "true");
-  params.set("includeTopicScores", "true");
+  params.set("includeTopicScores", hasTopicSelection ? "true" : "false");
   params.set("includeEntities", "true");
-  params.set("includeFeedback", "true");
+  params.set("includeFeedback", hasTopicSelection ? "true" : "false");
   params.set("limit", "30");
   const url = `/api/focus-bulletin/content${
     params.toString() ? `?${params.toString()}` : ""
@@ -187,7 +189,7 @@ export const FollowContentProvider = ({
 }) => {
   const [search, setSearch] = useState("");
   const [topicIds, setTopicIds] = useState<string[]>([]);
-  const [sort, setSort] = useState<"time" | "relevance">("relevance");
+  const [sort, setSort] = useState<"time" | "relevance">("time");
   const [selectedContentId, setSelectedContentId] = useState<string | null>(
     null
   );
@@ -238,6 +240,12 @@ export const FollowContentProvider = ({
     queryFn: () => fetchContents(queryFilters),
     placeholderData: (prev) => prev,
   });
+
+  useEffect(() => {
+    if (!topicIds.length && sort !== "time") {
+      setSort("time");
+    }
+  }, [topicIds, sort]);
 
   useEffect(() => {
     const es = new EventSource("/api/focus-bulletin/content/stream");

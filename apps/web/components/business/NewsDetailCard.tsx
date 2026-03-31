@@ -103,6 +103,7 @@ const NewsDetailCard = ({
     EVENT: { icon: MessageSquarePlus, emoji: "📅", label: "事件" },
     CONCEPT: { icon: FileText, emoji: "🏷️", label: "概念" },
   };
+  const showFeedbackActions = Boolean(onFeedbackVote || onFeedbackNote);
   return (
     <Card
       className={cn(
@@ -241,41 +242,43 @@ const NewsDetailCard = ({
             </div>
           </div>
         ) : null}
-        <div className="flex flex-wrap items-center gap-2 pt-1">
-          <Button
-            size="sm"
-            variant={feedback?.vote === "UP" ? "default" : "outline"}
-            onClick={(event) => {
-              event.stopPropagation();
-              onFeedbackVote?.("UP");
-            }}
-          >
-            <ThumbsUp className="size-3.5" />
-            👍 相关
-          </Button>
-          <Button
-            size="sm"
-            variant={feedback?.vote === "DOWN" ? "destructive" : "outline"}
-            onClick={(event) => {
-              event.stopPropagation();
-              onFeedbackVote?.("DOWN");
-            }}
-          >
-            <ThumbsDown className="size-3.5" />
-            👎 无关
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={(event) => {
-              event.stopPropagation();
-              onFeedbackNote?.();
-            }}
-          >
-            <MessageSquarePlus className="size-3.5" />
-            📝 备注
-          </Button>
-        </div>
+        {showFeedbackActions ? (
+          <div className="flex flex-wrap items-center gap-2 pt-1">
+            <Button
+              size="sm"
+              variant={feedback?.vote === "UP" ? "default" : "outline"}
+              onClick={(event) => {
+                event.stopPropagation();
+                onFeedbackVote?.("UP");
+              }}
+            >
+              <ThumbsUp className="size-3.5" />
+              👍 相关
+            </Button>
+            <Button
+              size="sm"
+              variant={feedback?.vote === "DOWN" ? "destructive" : "outline"}
+              onClick={(event) => {
+                event.stopPropagation();
+                onFeedbackVote?.("DOWN");
+              }}
+            >
+              <ThumbsDown className="size-3.5" />
+              👎 无关
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={(event) => {
+                event.stopPropagation();
+                onFeedbackNote?.();
+              }}
+            >
+              <MessageSquarePlus className="size-3.5" />
+              📝 备注
+            </Button>
+          </div>
+        ) : null}
       </CardHeader>
       <CardContent className="flex-1 min-h-0 overflow-y-auto scrollbar-hide px-6 pb-4 pt-2 lg:px-8">
         <Tabs defaultValue="content" className="h-full gap-2">

@@ -54,6 +54,7 @@ const FollowContent = () => {
   const isBookmarked = (id: string) => favoriteIds.has(id);
   const selectedTopicId = filters.topicIds[0] ?? "";
   const selectedTopicIds = filters.topicIds;
+  const hasTopicSelection = selectedTopicIds.length > 0;
 
   const buildExpandableKeywords = (content: (typeof contents)[number]) => {
     const keywords: Array<{
@@ -336,10 +337,12 @@ const FollowContent = () => {
                 rawContent={content.rawRecordContent}
                 subjectMatch={content.subjectMatches?.[0]}
                 relevanceScore={
-                  getRelevanceScore(content)
+                  hasTopicSelection ? getRelevanceScore(content) : null
                 }
-                expandableKeywords={buildExpandableKeywords(content)}
-                feedback={content.feedback ?? null}
+                expandableKeywords={
+                  hasTopicSelection ? buildExpandableKeywords(content) : []
+                }
+                feedback={hasTopicSelection ? content.feedback ?? null : null}
                 bookmarked={isBookmarked(content.id)}
                 onBookmarkToggle={() => {
                   const currentlyBookmarked = isBookmarked(content.id);
@@ -353,19 +356,27 @@ const FollowContent = () => {
                   setDeleteOpen(true);
                 }}
                 deleting={deleting && deleteTargetId === content.id}
-                onAddKeyword={addKeywordToTopic}
-                onFeedbackVote={(vote) => {
-                  void submitFeedback({
-                    contentId: content.id,
-                    vote,
-                    note: content.feedback?.note ?? null,
-                  });
-                }}
-                onFeedbackNote={() => {
-                  setNoteContentId(content.id);
-                  setNoteText(content.feedback?.note ?? "");
-                  setNoteDialogOpen(true);
-                }}
+                onAddKeyword={hasTopicSelection ? addKeywordToTopic : undefined}
+                onFeedbackVote={
+                  hasTopicSelection
+                    ? (vote) => {
+                        void submitFeedback({
+                          contentId: content.id,
+                          vote,
+                          note: content.feedback?.note ?? null,
+                        });
+                      }
+                    : undefined
+                }
+                onFeedbackNote={
+                  hasTopicSelection
+                    ? () => {
+                        setNoteContentId(content.id);
+                        setNoteText(content.feedback?.note ?? "");
+                        setNoteDialogOpen(true);
+                      }
+                    : undefined
+                }
                 className={
                   selectedContent?.id === content.id
                     ? "border-primary/35 bg-card shadow-[0_0_0_1px_hsl(var(--primary)/0.12)]"

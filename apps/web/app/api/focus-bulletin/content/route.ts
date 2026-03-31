@@ -320,7 +320,7 @@ export async function GET(request: Request) {
           const rightScore = right.subjectMatches?.[0]?.matchScore ?? -1;
           return rightScore - leftScore;
         })
-      : (sort === "topicScore" || sort === "relevance")
+      : (sort === "topicScore" || sort === "relevance") && effectiveTopicIds.length > 0
         ? [...pageItems].sort((left, right) => {
             const leftScore = Math.max(
               ...(left.topicScores ?? [])

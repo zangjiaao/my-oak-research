@@ -23,6 +23,7 @@ export const ContentFilters = () => {
     setTopicIds,
     setSort,
   } = useFollowContent();
+  const hasTopicSelection = filters.topicIds.length > 0;
 
   return (
     <div className="m-1 space-y-2">
@@ -34,7 +35,14 @@ export const ContentFilters = () => {
               value: topic.id,
             }))}
             value={filters.topicIds}
-            onValueChange={setTopicIds}
+            onValueChange={(nextTopicIds) => {
+              const nextHasTopic = nextTopicIds.length > 0;
+              const currentHasTopic = filters.topicIds.length > 0;
+              setTopicIds(nextTopicIds);
+              if (nextHasTopic && !currentHasTopic) {
+                setSort("relevance");
+              }
+            }}
             placeholder={
               topicOptionsLoading ? "Loading topics..." : "筛选 Topic（可多选）"
             }
@@ -49,7 +57,9 @@ export const ContentFilters = () => {
             <SelectValue placeholder="排序方式" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="relevance">按评分排序</SelectItem>
+            {hasTopicSelection ? (
+              <SelectItem value="relevance">按评分排序</SelectItem>
+            ) : null}
             <SelectItem value="time">按日期排序</SelectItem>
           </SelectContent>
         </Select>
