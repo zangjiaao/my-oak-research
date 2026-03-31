@@ -60,12 +60,25 @@ const FollowContent = () => {
       category: "PERSON" | "ORG" | "TECH" | "LOCATION";
       label: string;
     }> = [];
+    const isEntityLikeTerm = (value: string) => {
+      const normalized = value.trim();
+      if (!normalized) return false;
+      if (normalized.length > 40) return false;
+      if (/^\d+(\.\d+)?$/.test(normalized)) return false;
+      if (!/[\p{L}\p{Script=Han}]/u.test(normalized)) return false;
+      const lower = normalized.toLowerCase();
+      if (["vector", "core", "expansion", "exclusion", "score"].includes(lower)) {
+        return false;
+      }
+      return true;
+    };
     const pushUnique = (
       category: "PERSON" | "ORG" | "TECH" | "LOCATION",
       value: string
     ) => {
       const label = value.trim();
       if (!label) return;
+      if (!isEntityLikeTerm(label)) return;
       if (keywords.some((item) => item.category === category && item.label === label)) return;
       keywords.push({ category, label });
     };
@@ -77,18 +90,6 @@ const FollowContent = () => {
     }
     for (const location of content.entities?.locations ?? []) {
       pushUnique("LOCATION", location);
-    }
-    const techTerms = (content.topicScores ?? [])
-      .flatMap((score) => {
-        if (typeof score.reason !== "string") return [];
-        return score.reason
-          .split(/[,\s;:]+/)
-          .map((term) => term.trim())
-          .filter((term) => term.length >= 3);
-      })
-      .slice(0, 4);
-    for (const tech of techTerms) {
-      pushUnique("TECH", tech);
     }
     return keywords.slice(0, 8);
   };
