@@ -75,6 +75,11 @@ export type ContentItem = {
     reason: string | null;
   }>;
   topicScores?: Array<{
+    llmReranked?: boolean;
+    llmRerankScore?: number | null;
+    baseFinalScore?: number | null;
+    llmRerankWeight?: number | null;
+    llmRerankForcedAt?: string | null;
     topicId: string;
     vectorScore: number | null;
     keywordScore: number | null;

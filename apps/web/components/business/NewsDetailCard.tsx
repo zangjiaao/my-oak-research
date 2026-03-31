@@ -52,6 +52,12 @@ const NewsDetailCard = ({
   onGenerateSummary,
   summaryGenerating,
   summaryUpdatedAt,
+  relevanceReranked,
+  relevanceBaseScore,
+  relevanceRerankScore,
+  relevanceRerankWeight,
+  onForceRerank,
+  reranking,
 }: {
   title?: string;
   summary?: string;
@@ -97,6 +103,12 @@ const NewsDetailCard = ({
   onGenerateSummary?: () => void;
   summaryGenerating?: boolean;
   summaryUpdatedAt?: string | null;
+  relevanceReranked?: boolean;
+  relevanceBaseScore?: number | null;
+  relevanceRerankScore?: number | null;
+  relevanceRerankWeight?: number | null;
+  onForceRerank?: () => void;
+  reranking?: boolean;
 }) => {
   const keywordTagMeta: Record<
     "PERSON" | "ORG" | "TECH" | "LOCATION" | "PRODUCT" | "EVENT" | "CONCEPT",
@@ -165,9 +177,60 @@ const NewsDetailCard = ({
             ) : null}
             {typeof relevanceScore === "number" ? (
               <div className="flex items-center gap-2">
-                <Badge variant="secondary">
-                  匹配度: {Math.max(0, Math.min(100, Math.round(relevanceScore * 100)))}%
-                </Badge>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Badge
+                      variant="secondary"
+                      className={cn(
+                        relevanceReranked
+                          ? "border-violet-200 bg-violet-100 text-violet-800 dark:border-violet-500/40 dark:bg-violet-500/20 dark:text-violet-200"
+                          : ""
+                      )}
+                    >
+                      匹配度: {Math.max(0, Math.min(100, Math.round(relevanceScore * 100)))}%
+                    </Badge>
+                  </TooltipTrigger>
+                  {relevanceReranked ? (
+                    <TooltipContent side="top" className="text-xs">
+                      base:{" "}
+                      {typeof relevanceBaseScore === "number"
+                        ? `${Math.round(relevanceBaseScore * 100)}%`
+                        : "N/A"}
+                      {" · "}
+                      llm:{" "}
+                      {typeof relevanceRerankScore === "number"
+                        ? `${Math.round(relevanceRerankScore * 100)}%`
+                        : "N/A"}
+                      {" · "}
+                      weight:{" "}
+                      {typeof relevanceRerankWeight === "number"
+                        ? relevanceRerankWeight.toFixed(2)
+                        : "N/A"}
+                    </TooltipContent>
+                  ) : null}
+                </Tooltip>
+                {relevanceReranked ? (
+                  <Badge
+                    variant="outline"
+                    className="border-violet-200 text-violet-700 dark:border-violet-500/40 dark:text-violet-200"
+                  >
+                    AI重排
+                  </Badge>
+                ) : null}
+                {onForceRerank ? (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={Boolean(reranking)}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onForceRerank();
+                    }}
+                  >
+                    <Sparkles className="size-3.5" />
+                    {reranking ? "重排中..." : "强制重排"}
+                  </Button>
+                ) : null}
               </div>
             ) : null}
           </div>

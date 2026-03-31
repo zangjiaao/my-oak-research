@@ -43,6 +43,7 @@ const FollowContent = () => {
   const [noteText, setNoteText] = useState("");
   const [savingFeedback, setSavingFeedback] = useState(false);
   const [summarizingContentId, setSummarizingContentId] = useState<string | null>(null);
+  const [rerankingContentId, setRerankingContentId] = useState<string | null>(null);
   const detailRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   // 获取所有收藏的内容 ID，用于判断是否已收藏
@@ -143,7 +144,29 @@ const FollowContent = () => {
     return keywords.slice(0, 8);
   };
 
+  const getSelectedTopicScore = (content: (typeof contents)[number]) => {
+    if (selectedTopicId) {
+      const matched = (content.topicScores ?? []).find(
+        (score) => score.topicId === selectedTopicId
+      );
+      return matched ?? null;
+    }
+    const candidates = content.topicScores ?? [];
+    if (!candidates.length) {
+      return null;
+    }
+    return candidates.reduce((best, current) => {
+      const bestScore = best.finalScore ?? -1;
+      const currentScore = current.finalScore ?? -1;
+      return currentScore > bestScore ? current : best;
+    });
+  };
+
   const getRelevanceScore = (content: (typeof contents)[number]) => {
+    const selectedScore = getSelectedTopicScore(content);
+    if (selectedScore) {
+      return selectedScore.finalScore ?? null;
+    }
     const candidateScores = (content.topicScores ?? [])
       .filter((score) =>
         selectedTopicIds.length ? selectedTopicIds.includes(score.topicId) : true
@@ -276,6 +299,34 @@ const FollowContent = () => {
     }
   };
 
+  const forceRerank = async (contentId: string) => {
+    if (!selectedTopicId) {
+      toast.error("请先选择一个 Topic 再重排");
+      return;
+    }
+    if (!contentId || rerankingContentId) {
+      return;
+    }
+    setRerankingContentId(contentId);
+    try {
+      const response = await fetch(`/api/focus-bulletin/content/${contentId}/rerank`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ topicId: selectedTopicId }),
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(payload?.error || "重排失败");
+      }
+      toast.success("AI重排完成");
+      await queryClient.invalidateQueries({ queryKey: ["follow-content"] });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "重排失败");
+    } finally {
+      setRerankingContentId(null);
+    }
+  };
+
   if (error) {
     return (
       <div className="h-[calc(100vh-7rem)] flex items-center justify-center text-sm text-destructive">
@@ -331,7 +382,11 @@ const FollowContent = () => {
     <div className="h-full">
       <ScrollArea className="h-full">
         <div className="flex flex-col gap-3 overflow-visible pb-6 pr-2 pl-1">
-          {sortedContents.map((content) => (
+          {sortedContents.map((content) => {
+            const selectedScore = hasTopicSelection
+              ? getSelectedTopicScore(content)
+              : null;
+            return (
             <div
               key={content.id}
               ref={(node) => {
@@ -362,6 +417,14 @@ const FollowContent = () => {
                 relevanceScore={
                   hasTopicSelection ? getRelevanceScore(content) : null
                 }
+                relevanceReranked={Boolean(selectedScore?.llmReranked)}
+                relevanceBaseScore={selectedScore?.baseFinalScore ?? null}
+                relevanceRerankScore={selectedScore?.llmRerankScore ?? null}
+                relevanceRerankWeight={selectedScore?.llmRerankWeight ?? null}
+                onForceRerank={
+                  hasTopicSelection ? () => void forceRerank(content.id) : undefined
+                }
+                reranking={rerankingContentId === content.id}
                 expandableKeywords={
                   hasTopicSelection ? buildExpandableKeywords(content) : []
                 }
@@ -412,7 +475,8 @@ const FollowContent = () => {
                 }
               />
             </div>
-          ))}
+            );
+          })}
         </div>
       </ScrollArea>
       <AlertDialog

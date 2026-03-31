@@ -53,6 +53,12 @@ const mapContent = (
     }>;
   }
 ) => {
+  const asObject = (value: unknown): Record<string, unknown> => {
+    if (value && typeof value === "object" && !Array.isArray(value)) {
+      return value as Record<string, unknown>;
+    }
+    return {};
+  };
   const views = buildRecordContentViews(item);
   const meta =
     item.meta && typeof item.meta === "object" && !Array.isArray(item.meta)
@@ -80,6 +86,32 @@ const mapContent = (
     rawRecordContent: views.rawRecordContent,
     media: views.media ?? [],
     topicScores: (item.topicScores ?? []).map((score) => ({
+      ...(() => {
+        const explain = asObject(score.explain);
+        const llmRerankScoreRaw = explain.llmRerankScore;
+        const baseFinalScoreRaw = explain.baseFinalScore;
+        const llmRerankWeightRaw = explain.llmRerankWeight;
+        const llmRerankForcedAtRaw = explain.llmRerankForcedAt;
+        const llmReranked =
+          typeof llmRerankScoreRaw === "number" &&
+          Number.isFinite(llmRerankScoreRaw);
+        return {
+          llmReranked,
+          llmRerankScore: llmReranked ? llmRerankScoreRaw : null,
+          baseFinalScore:
+            typeof baseFinalScoreRaw === "number" &&
+            Number.isFinite(baseFinalScoreRaw)
+              ? baseFinalScoreRaw
+              : null,
+          llmRerankWeight:
+            typeof llmRerankWeightRaw === "number" &&
+            Number.isFinite(llmRerankWeightRaw)
+              ? llmRerankWeightRaw
+              : null,
+          llmRerankForcedAt:
+            typeof llmRerankForcedAtRaw === "string" ? llmRerankForcedAtRaw : null,
+        };
+      })(),
       topicId: score.topicId,
       vectorScore: score.vectorScore,
       keywordScore: score.keywordScore,
