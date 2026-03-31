@@ -15,15 +15,9 @@ export async function GET(
     where: { id: params.id },
     include: {
       terms: true,
-      sources: {
-        include: {
-          source: true,
-        },
-      },
       _count: {
         select: {
           terms: true,
-          sources: true,
         },
       },
     },
@@ -36,7 +30,6 @@ export async function GET(
   return NextResponse.json({
     ...topic,
     termsCount: topic?._count?.terms ?? 0,
-    sourcesCount: topic?._count?.sources ?? 0,
   });
 }
 
@@ -50,7 +43,6 @@ export async function PATCH(
       where: { id: params.id },
       include: {
         terms: true,
-        sources: true,
       },
     });
     if (!existing) {
@@ -68,32 +60,12 @@ export async function PATCH(
 
     const data = parsed.data;
 
-    if (data.sourceIds && data.sourceIds.length > 0) {
-      const existingSources = await prisma.source.count({
-        where: { id: { in: data.sourceIds } },
-      });
-      if (existingSources !== data.sourceIds.length) {
-        return NextResponse.json(
-          { error: "One or more provided sourceIds do not exist." },
-          { status: 400 }
-        );
-      }
-    }
-
     const updated = await prismaAny.$transaction(async (tx: any) => {
       const topic = await tx.topic.update({
         where: { id: params.id },
         data: {
           ...(data.name !== undefined ? { name: data.name } : {}),
           ...(data.description !== undefined ? { description: data.description ?? null } : {}),
-          ...(data.enabled !== undefined ? { enabled: data.enabled } : {}),
-          ...(data.frequency !== undefined ? { frequency: data.frequency } : {}),
-          ...(data.frequency !== undefined
-            ? {
-                cronSchedule:
-                  data.frequency === "CRONTAB" ? data.cronSchedule ?? null : null,
-              }
-            : {}),
           ...(data.profile !== undefined ? { profile: data.profile ?? null } : {}),
         },
       });
@@ -118,33 +90,23 @@ export async function PATCH(
         }
       }
 
-      if (data.sourceIds !== undefined) {
-        await tx.topicSource.deleteMany({ where: { topicId: params.id } });
-        if (data.sourceIds.length > 0) {
-          await tx.topicSource.createMany({
-            data: data.sourceIds.map((sourceId) => ({
-              topicId: params.id,
-              sourceId,
-            })),
-            skipDuplicates: true,
-          });
-        }
-      }
-
       return tx.topic.findUnique({
         where: { id: topic.id },
         include: {
           terms: true,
-          sources: {
-            include: {
-              source: true,
+          _count: {
+            select: {
+              terms: true,
             },
           },
         },
       });
     });
 
-    return NextResponse.json(updated);
+    return NextResponse.json({
+      ...updated,
+      termsCount: updated?._count?.terms ?? 0,
+    });
   } catch (error) {
     logger.error("failed to update topic", {
       topicId: params.id,

@@ -2,55 +2,28 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { PencilIcon, PlayIcon, TrashIcon } from "lucide-react";
 import { DataTable, DataTableAction, DataTableColumn } from "@/components/common";
 import TopicDialog from "./TopicDialog";
 import TopicDeleteAlert from "./TopicDeleteAlert";
-import { SourceWithRelations, TopicWithAggregations } from "@/lib/types";
+import { TopicWithAggregations } from "@/lib/types";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 
 interface Props {
   topics: TopicWithAggregations[];
-  sources: SourceWithRelations[];
 }
 
-const TopicsTable = ({ topics, sources }: Props) => {
+const TopicsTable = ({ topics }: Props) => {
   const queryClient = useQueryClient();
   const [editingTopic, setEditingTopic] = useState<TopicWithAggregations | undefined>();
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [togglingMap, setTogglingMap] = useState<Record<string, boolean>>({});
   const [runningMap, setRunningMap] = useState<Record<string, boolean>>({});
 
   const handleEdit = (topic: TopicWithAggregations) => {
     setEditingTopic(topic);
     setDialogOpen(true);
-  };
-
-  const handleToggleEnabled = async (topic: TopicWithAggregations, enabled: boolean) => {
-    setTogglingMap((prev) => ({ ...prev, [topic.id]: true }));
-    try {
-      const response = await fetch(`/api/follow/topics/${topic.id}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ enabled }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to update topic status");
-      }
-
-      toast.success(enabled ? "Topic enabled" : "Topic paused");
-      queryClient.invalidateQueries({ queryKey: ["topics"] });
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to update topic status");
-    } finally {
-      setTogglingMap((prev) => ({ ...prev, [topic.id]: false }));
-    }
   };
 
   const columns: DataTableColumn<TopicWithAggregations>[] = [
@@ -66,11 +39,6 @@ const TopicsTable = ({ topics, sources }: Props) => {
       hideBelow: "md",
       className: "max-w-xs",
       render: (topic) => <div className="whitespace-normal">{topic.description || "-"}</div>,
-    },
-    {
-      key: "frequency",
-      label: "Frequency",
-      render: (topic) => topic.frequency,
     },
     {
       key: "terms",
@@ -90,41 +58,6 @@ const TopicsTable = ({ topics, sources }: Props) => {
           </div>
         );
       },
-    },
-    {
-      key: "sources",
-      label: "Sources",
-      hideBelow: "lg",
-      className: "max-w-[220px]",
-      render: (topic) => (
-        <div className="flex flex-wrap gap-1">
-          {(topic.sources ?? []).length > 0 ? (
-            topic.sources?.map((binding) => (
-              <Badge key={binding.id} variant="outline">
-                {binding.source?.name || binding.sourceId}
-              </Badge>
-            ))
-          ) : (
-            <span className="text-muted-foreground">-</span>
-          )}
-        </div>
-      ),
-    },
-    {
-      key: "enabled",
-      label: "Enabled",
-      className: "text-center",
-      render: (topic) => (
-        <div className="flex justify-center">
-          <Switch
-            checked={topic.enabled}
-            disabled={Boolean(togglingMap[topic.id])}
-            onCheckedChange={(nextChecked) => {
-              void handleToggleEnabled(topic, nextChecked);
-            }}
-          />
-        </div>
-      ),
     },
   ];
 
@@ -204,7 +137,6 @@ const TopicsTable = ({ topics, sources }: Props) => {
       <DataTable data={topics} columns={columns} actions={actions} emptyMessage="No topics found." />
       <TopicDialog
         topic={editingTopic}
-        sources={sources}
         open={dialogOpen}
         onOpenChange={(open) => {
           setDialogOpen(open);

@@ -75,25 +75,12 @@ export interface TopicTerm {
   weight: number;
 }
 
-export interface TopicSourceBinding {
-  id: string;
-  topicId: string;
-  sourceId: string;
-  enabled: boolean;
-  source?: SourceWithRelations;
-}
-
 export interface TopicWithAggregations {
   id: string;
   name: string;
   description?: string | null;
-  enabled: boolean;
-  frequency: FrequencyType;
-  cronSchedule?: string | null;
   terms?: TopicTerm[];
-  sources?: TopicSourceBinding[];
   termsCount?: number;
-  sourcesCount?: number;
 }
 
 export interface JobSourceBinding {

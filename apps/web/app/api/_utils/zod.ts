@@ -584,58 +584,11 @@ export const TopicCreateSchema = z
       .max(500, "Description must be less than 500 characters")
       .optional()
       .nullable(),
-    enabled: z.boolean().optional().default(true),
-    frequency: QueryFrequencyEnum.optional().default("MANUAL"),
-    cronSchedule: z.string().optional().nullable(),
     profile: z.preprocess((val) => parseJson(val), z.any().optional().nullable()),
     terms: z.array(TopicTermInputSchema).optional().default([]),
-    sourceIds: z.preprocess(
-      (val) => {
-        if (Array.isArray(val)) {
-          return val.map((item) =>
-            typeof item === "object" && item && "id" in item
-              ? (item as { id: string }).id
-              : item
-          );
-        }
-        return val;
-      },
-      z.array(z.string().cuid()).optional().default([])
-    ),
-  })
-  .superRefine((data, ctx) => {
-    if (data.frequency === "CRONTAB" && !data.cronSchedule) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["cronSchedule"],
-        message: "Cron schedule is required when frequency is CRONTAB",
-      });
-    }
-    if (data.frequency !== "CRONTAB" && data.cronSchedule) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["cronSchedule"],
-        message: "Cron schedule should not be set unless frequency is CRONTAB",
-      });
-    }
   });
 
-export const TopicUpdateSchema = TopicCreateSchema.partial().superRefine((data, ctx) => {
-  if (data.frequency === "CRONTAB" && !data.cronSchedule) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ["cronSchedule"],
-      message: "Cron schedule is required when frequency is CRONTAB",
-    });
-  }
-  if (data.frequency && data.frequency !== "CRONTAB" && data.cronSchedule) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ["cronSchedule"],
-      message: "Cron schedule should not be set unless frequency is CRONTAB",
-    });
-  }
-});
+export const TopicUpdateSchema = TopicCreateSchema.partial();
 
 export const JobTypeEnum = z.enum([
   "TOPIC_RETRIEVAL",

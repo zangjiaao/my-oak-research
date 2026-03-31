@@ -14,7 +14,7 @@ const TopicsPage = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [isDialogOpen, setDialogOpen] = useState(false);
 
-  const { topics, sources, topicsQuery } = useFollow();
+  const { topics, topicsQuery } = useFollow();
   const { isLoading, error } = topicsQuery;
 
   if (error) {
@@ -46,7 +46,6 @@ const TopicsPage = () => {
         />
       </div>
       <TopicDialog
-        sources={sources}
         open={isDialogOpen}
         onOpenChange={setDialogOpen}
         triggerButton={
@@ -74,7 +73,7 @@ const TopicsPage = () => {
           <Skeleton className="h-12 w-full" />
         </div>
       ) : (
-        <TopicsTable topics={filteredTopics} sources={sources} />
+        <TopicsTable topics={filteredTopics} />
       )}
     </SettingCard>
   );
