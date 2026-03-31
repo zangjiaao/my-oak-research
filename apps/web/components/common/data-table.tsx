@@ -74,7 +74,7 @@ export function DataTable<T extends { id: string }>({
                 {column.label}
               </TableHead>
             ))}
-            {hasActions && <TableHead className="min-w-[160px] whitespace-nowrap">Actions</TableHead>}
+            {hasActions && <TableHead className="min-w-[120px] whitespace-nowrap">Actions</TableHead>}
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -104,8 +104,8 @@ export function DataTable<T extends { id: string }>({
                   </TableCell>
                 ))}
                 {hasActions && (
-                  <TableCell>
-                    <div className="flex flex-wrap items-center gap-2">
+                  <TableCell className="whitespace-nowrap">
+                    <div className="flex flex-nowrap items-center gap-2 whitespace-nowrap">
                       {actions.map((action, actionIndex) => {
                         if (action.render) {
                           return (

@@ -164,18 +164,29 @@ const JobsTable = ({ jobs, topics, sources }: Props) => {
     {
       type: "custom",
       render: (job) => (
-        <Button size="sm" variant="default" disabled={Boolean(runningMap[job.id])} onClick={() => void handleRun(job)}>
+        <Button
+          size="sm"
+          variant="default"
+          className="h-8 w-8 p-0 sm:h-9 sm:w-auto sm:px-3"
+          disabled={Boolean(runningMap[job.id])}
+          onClick={() => void handleRun(job)}
+        >
           <PlayIcon className="size-3" />
-          Run
+          <span className="hidden sm:inline">Run</span>
         </Button>
       ),
     },
     {
       type: "custom",
       render: (job) => (
-        <Button size="sm" variant="outline" onClick={() => handleEdit(job)}>
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-8 w-8 p-0 sm:h-9 sm:w-auto sm:px-3"
+          onClick={() => handleEdit(job)}
+        >
           <PencilIcon className="size-3" />
-          Edit
+          <span className="hidden sm:inline">Edit</span>
         </Button>
       ),
     },
@@ -185,9 +196,13 @@ const JobsTable = ({ jobs, topics, sources }: Props) => {
         <JobDeleteAlert
           job={job}
           triggerButton={
-            <Button size="sm" variant="destructive">
+            <Button
+              size="sm"
+              variant="destructive"
+              className="h-8 w-8 p-0 sm:h-9 sm:w-auto sm:px-3"
+            >
               <TrashIcon className="size-3" />
-              Delete
+              <span className="hidden sm:inline">Delete</span>
             </Button>
           }
         />

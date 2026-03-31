@@ -133,9 +133,14 @@ const TopicsTable = ({ topics, sources }: Props) => {
     {
       type: "custom",
       render: (topic) => (
-        <Button size="sm" variant="outline" onClick={() => handleEdit(topic)}>
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-8 w-8 p-0 sm:h-9 sm:w-auto sm:px-3"
+          onClick={() => handleEdit(topic)}
+        >
           <PencilIcon className="size-3" />
-          Edit
+          <span className="hidden sm:inline">Edit</span>
         </Button>
       ),
     },
@@ -145,6 +150,7 @@ const TopicsTable = ({ topics, sources }: Props) => {
         <Button
           size="sm"
           variant="default"
+          className="h-8 w-8 p-0 sm:h-9 sm:w-auto sm:px-3"
           disabled={Boolean(runningMap[topic.id])}
           onClick={async () => {
             setRunningMap((prev) => ({ ...prev, [topic.id]: true }));
@@ -170,7 +176,7 @@ const TopicsTable = ({ topics, sources }: Props) => {
           }}
         >
           <PlayIcon className="size-3" />
-          Run
+          <span className="hidden sm:inline">Run</span>
         </Button>
       ),
     },
@@ -180,9 +186,13 @@ const TopicsTable = ({ topics, sources }: Props) => {
         <TopicDeleteAlert
           topic={topic}
           triggerButton={
-            <Button size="sm" variant="destructive">
+            <Button
+              size="sm"
+              variant="destructive"
+              className="h-8 w-8 p-0 sm:h-9 sm:w-auto sm:px-3"
+            >
               <TrashIcon className="size-3" />
-              Delete
+              <span className="hidden sm:inline">Delete</span>
             </Button>
           }
         />
