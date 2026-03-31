@@ -72,7 +72,7 @@ const NewsDetailCard = ({
   };
   relevanceScore?: number | null;
   expandableKeywords?: Array<{
-    category: "PERSON" | "ORG" | "TECH" | "LOCATION";
+    category: "PERSON" | "ORG" | "TECH" | "LOCATION" | "PRODUCT" | "EVENT" | "CONCEPT";
     label: string;
   }>;
   feedback?: {
@@ -84,18 +84,24 @@ const NewsDetailCard = ({
   onBookmarkToggle?: () => void;
   onDeleteClick?: () => void;
   deleting?: boolean;
-  onAddKeyword?: (keyword: { category: "PERSON" | "ORG" | "TECH" | "LOCATION"; label: string }) => void;
+  onAddKeyword?: (keyword: {
+    category: "PERSON" | "ORG" | "TECH" | "LOCATION" | "PRODUCT" | "EVENT" | "CONCEPT";
+    label: string;
+  }) => void;
   onFeedbackVote?: (vote: "UP" | "DOWN") => void;
   onFeedbackNote?: () => void;
 }) => {
   const keywordTagMeta: Record<
-    "PERSON" | "ORG" | "TECH" | "LOCATION",
+    "PERSON" | "ORG" | "TECH" | "LOCATION" | "PRODUCT" | "EVENT" | "CONCEPT",
     { icon: React.ComponentType<{ className?: string }>; emoji: string; label: string }
   > = {
     PERSON: { icon: User, emoji: "👤", label: "人物" },
     ORG: { icon: Building2, emoji: "🏫", label: "机构" },
     TECH: { icon: Cpu, emoji: "⚙️", label: "技术" },
     LOCATION: { icon: MapPin, emoji: "📍", label: "地点" },
+    PRODUCT: { icon: Cpu, emoji: "🧩", label: "产品" },
+    EVENT: { icon: MessageSquarePlus, emoji: "📅", label: "事件" },
+    CONCEPT: { icon: FileText, emoji: "🏷️", label: "概念" },
   };
   return (
     <Card

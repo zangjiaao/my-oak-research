@@ -57,15 +57,39 @@ const FollowContent = () => {
 
   const buildExpandableKeywords = (content: (typeof contents)[number]) => {
     const keywords: Array<{
-      category: "PERSON" | "ORG" | "TECH" | "LOCATION";
+      category: "PERSON" | "ORG" | "TECH" | "LOCATION" | "PRODUCT" | "EVENT" | "CONCEPT";
       label: string;
     }> = [];
+    const classifyKeywordCategory = (
+      label: string
+    ): "PERSON" | "ORG" | "TECH" | "LOCATION" | "PRODUCT" | "EVENT" | "CONCEPT" => {
+      if (/(大学|学院|学校|公司|集团|研究院|委员会|University|College|Inc|Ltd|Corp)/i.test(label)) {
+        return "ORG";
+      }
+      if (/(教授|博士|先生|女士|主任|院长|老师|CEO|CTO)/i.test(label)) {
+        return "PERSON";
+      }
+      if (/(省|市|区|县|州|国|省份|地区|城区|园区|China|USA|Europe|Asia)/i.test(label)) {
+        return "LOCATION";
+      }
+      if (/(发布|大会|峰会|论坛|活动|赛事|会议|展会|发布会|summit|forum|conference|event)/i.test(label)) {
+        return "EVENT";
+      }
+      if (/(OpenClaw|产品|工具|客户端|服务|App|SDK|API|plugin|extension)/i.test(label)) {
+        return "PRODUCT";
+      }
+      if (/(AI|LLM|模型|系统|算法|框架|自动化|数据|向量|检索|embedding|rerank|RAG|workflow)/i.test(label)) {
+        return "TECH";
+      }
+      return "CONCEPT";
+    };
     const isEntityLikeTerm = (value: string) => {
       const normalized = value.trim();
       if (!normalized) return false;
       if (normalized.length > 40) return false;
       if (/^\d+(\.\d+)?$/.test(normalized)) return false;
       if (!/[\p{L}\p{Script=Han}]/u.test(normalized)) return false;
+      if (/[:：]/.test(normalized)) return false;
       const lower = normalized.toLowerCase();
       if (["vector", "core", "expansion", "exclusion", "score"].includes(lower)) {
         return false;
@@ -73,7 +97,14 @@ const FollowContent = () => {
       return true;
     };
     const pushUnique = (
-      category: "PERSON" | "ORG" | "TECH" | "LOCATION",
+      category:
+        | "PERSON"
+        | "ORG"
+        | "TECH"
+        | "LOCATION"
+        | "PRODUCT"
+        | "EVENT"
+        | "CONCEPT",
       value: string
     ) => {
       const label = value.trim();
@@ -90,6 +121,22 @@ const FollowContent = () => {
     }
     for (const location of content.entities?.locations ?? []) {
       pushUnique("LOCATION", location);
+    }
+    if (keywords.length < 4) {
+      const fallbackText = [content.detailView?.title, content.title, content.summary]
+        .filter(Boolean)
+        .join(" ");
+      const fallbackTerms = Array.from(
+        new Set(
+          fallbackText
+            .split(/[，。！？、；：,.!?;:/()（）\[\]\s\n\r\t"“”'‘’]+/)
+            .map((term) => term.trim())
+            .filter((term) => term.length >= 2 && term.length <= 24)
+        )
+      ).slice(0, 24);
+      for (const term of fallbackTerms) {
+        pushUnique(classifyKeywordCategory(term), term);
+      }
     }
     return keywords.slice(0, 8);
   };
@@ -139,7 +186,7 @@ const FollowContent = () => {
   };
 
   const addKeywordToTopic = async (keyword: {
-    category: "PERSON" | "ORG" | "TECH" | "LOCATION";
+    category: "PERSON" | "ORG" | "TECH" | "LOCATION" | "PRODUCT" | "EVENT" | "CONCEPT";
     label: string;
   }) => {
     if (!selectedTopicId) {
@@ -153,7 +200,7 @@ const FollowContent = () => {
         body: JSON.stringify({
           value: keyword.label,
           type: "EXPANSION",
-          weight: keyword.category === "TECH" ? 1.2 : 1,
+          weight: ["TECH", "PRODUCT"].includes(keyword.category) ? 1.2 : 1,
           meta: { source: "content-card", category: keyword.category },
         }),
       });
