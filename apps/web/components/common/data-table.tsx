@@ -53,75 +53,77 @@ export function DataTable<T extends { id: string }>({
   const hasActions = actions.length > 0;
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          {showIndex && <TableHead>{indexLabel}</TableHead>}
-          {columns.map((column) => (
-            <TableHead key={column.key} className={column.className}>
-              {column.label}
-            </TableHead>
-          ))}
-          {hasActions && <TableHead>Actions</TableHead>}
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {data.length === 0 ? (
+    <div className="w-full overflow-x-auto">
+      <Table className="min-w-max">
+        <TableHeader>
           <TableRow>
-            <TableCell
-              colSpan={
-                columns.length + (showIndex ? 1 : 0) + (hasActions ? 1 : 0)
-              }
-              className="text-center text-muted-foreground py-8"
-            >
-              {emptyMessage}
-            </TableCell>
+            {showIndex && <TableHead>{indexLabel}</TableHead>}
+            {columns.map((column) => (
+              <TableHead key={column.key} className={column.className}>
+                {column.label}
+              </TableHead>
+            ))}
+            {hasActions && <TableHead className="min-w-[220px]">Actions</TableHead>}
           </TableRow>
-        ) : (
-          data.map((item, index) => (
-            <TableRow key={item.id}>
-              {showIndex && <TableCell>{index + 1}</TableCell>}
-              {columns.map((column) => (
-                <TableCell key={column.key} className={column.className}>
-                  {column.render
-                    ? column.render(item, index)
-                    : (item as any)[column.key]}
-                </TableCell>
-              ))}
-              {hasActions && (
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    {actions.map((action, actionIndex) => {
-                      if (action.render) {
-                        return (
-                          <div key={actionIndex}>{action.render(item)}</div>
-                        );
-                      }
-
-                      return (
-                        <Button
-                          key={actionIndex}
-                          size="sm"
-                          variant={action.variant || "outline"}
-                          onClick={() => action.onClick?.(item)}
-                        >
-                          {action.icon ||
-                            (action.type === "edit" ? (
-                              <PencilIcon className="size-3" />
-                            ) : (
-                              <TrashIcon className="size-3" />
-                            ))}
-                          {action.label}
-                        </Button>
-                      );
-                    })}
-                  </div>
-                </TableCell>
-              )}
+        </TableHeader>
+        <TableBody>
+          {data.length === 0 ? (
+            <TableRow>
+              <TableCell
+                colSpan={
+                  columns.length + (showIndex ? 1 : 0) + (hasActions ? 1 : 0)
+                }
+                className="py-8 text-center text-muted-foreground"
+              >
+                {emptyMessage}
+              </TableCell>
             </TableRow>
-          ))
-        )}
-      </TableBody>
-    </Table>
+          ) : (
+            data.map((item, index) => (
+              <TableRow key={item.id}>
+                {showIndex && <TableCell>{index + 1}</TableCell>}
+                {columns.map((column) => (
+                  <TableCell key={column.key} className={column.className}>
+                    {column.render
+                      ? column.render(item, index)
+                      : (item as any)[column.key]}
+                  </TableCell>
+                ))}
+                {hasActions && (
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      {actions.map((action, actionIndex) => {
+                        if (action.render) {
+                          return (
+                            <div key={actionIndex}>{action.render(item)}</div>
+                          );
+                        }
+
+                        return (
+                          <Button
+                            key={actionIndex}
+                            size="sm"
+                            variant={action.variant || "outline"}
+                            onClick={() => action.onClick?.(item)}
+                          >
+                            {action.icon ||
+                              (action.type === "edit" ? (
+                                <PencilIcon className="size-3" />
+                              ) : (
+                                <TrashIcon className="size-3" />
+                              ))}
+                            {action.label}
+                          </Button>
+                        );
+                      })}
+                    </div>
+                  </TableCell>
+                )}
+              </TableRow>
+            ))
+          )}
+        </TableBody>
+      </Table>
+    </div>
   );
 }

@@ -57,23 +57,25 @@ const TopicsTable = ({ topics, sources }: Props) => {
     {
       key: "name",
       label: "Name",
+      className: "min-w-[220px]",
       render: (topic) => topic.name,
     },
     {
       key: "description",
       label: "Description",
-      className: "max-w-xs",
+      className: "hidden max-w-xs min-w-[240px] md:table-cell",
       render: (topic) => <div className="whitespace-normal">{topic.description || "-"}</div>,
     },
     {
       key: "frequency",
       label: "Frequency",
+      className: "min-w-[110px]",
       render: (topic) => topic.frequency,
     },
     {
       key: "terms",
       label: "Terms",
-      className: "max-w-md",
+      className: "min-w-[160px]",
       render: (topic) => {
         const terms = topic.terms ?? [];
         const core = terms.filter((term) => term.type === "CORE").length;
@@ -91,7 +93,7 @@ const TopicsTable = ({ topics, sources }: Props) => {
     {
       key: "sources",
       label: "Sources",
-      className: "max-w-md",
+      className: "min-w-[220px]",
       render: (topic) => (
         <div className="flex flex-wrap gap-1">
           {(topic.sources ?? []).length > 0 ? (
@@ -109,7 +111,7 @@ const TopicsTable = ({ topics, sources }: Props) => {
     {
       key: "enabled",
       label: "Enabled",
-      className: "w-24 text-center",
+      className: "min-w-[90px] text-center",
       render: (topic) => (
         <div className="flex justify-center">
           <Switch
