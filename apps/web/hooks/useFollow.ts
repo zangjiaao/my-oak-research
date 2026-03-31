@@ -1,6 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { Keyword, Category, Proxy } from "@/app/generated/prisma";
-import { QueryWithAggregations, SourceWithRelations } from "@/lib/types";
+import {
+  JobWithAggregations,
+  QueryWithAggregations,
+  SourceWithRelations,
+  TopicWithAggregations,
+} from "@/lib/types";
 
 const fetcher = async <T>(url: string): Promise<T[]> => {
   const response = await fetch(url);
@@ -52,6 +57,18 @@ export const useFollow = () => {
       ),
   });
 
+  const { data: topics = [], ...topicsQuery } = useQuery<TopicWithAggregations[]>(
+    {
+      queryKey: ["topics"],
+      queryFn: () => fetcher<TopicWithAggregations>("/api/follow/topics?includeRelations=true"),
+    }
+  );
+
+  const { data: jobs = [], ...jobsQuery } = useQuery<JobWithAggregations[]>({
+    queryKey: ["jobs"],
+    queryFn: () => fetcher<JobWithAggregations>("/api/follow/jobs"),
+  });
+
   return {
     keywords,
     keywordsQuery,
@@ -63,5 +80,9 @@ export const useFollow = () => {
     proxiesQuery,
     queries,
     queriesQuery,
+    topics,
+    topicsQuery,
+    jobs,
+    jobsQuery,
   };
 };

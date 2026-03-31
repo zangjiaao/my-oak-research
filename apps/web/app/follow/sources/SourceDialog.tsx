@@ -1459,7 +1459,7 @@ const SourceDialog = ({
     if (boundArgKeys.length > 0) {
       for (const argKey of boundArgKeys) {
         if (Object.prototype.hasOwnProperty.call(previewIntentArgs, argKey)) {
-          previewIntentArgs[argKey] = "<由 Query Keywords 注入>";
+          previewIntentArgs[argKey] = "<由 Generated Query 注入>";
         }
       }
     }
@@ -1491,7 +1491,7 @@ const SourceDialog = ({
       sourceId: sourceIdPreview,
       platform: normalizedPlatform.toLowerCase(),
       userId: effectiveUserId,
-      keywords: ["<由 Query Keywords 注入>"],
+      keywords: ["<由 Generated Query 注入>"],
       driver: {
         name: capabilityDriver,
         ...driverPreview,
@@ -1904,8 +1904,8 @@ const SourceDialog = ({
                         </TooltipTrigger>
                         <TooltipContent sideOffset={6}>
                           {isRecallBound
-                            ? "该参数已关联召回词（Query 运行时会注入）"
-                            : "关联召回词注入到该参数"}
+                            ? "该参数已关联召回词（Job 运行时会注入动态检索词）"
+                            : "关联动态检索词注入到该参数"}
                         </TooltipContent>
                       </Tooltip>
                       <Button

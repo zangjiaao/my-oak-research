@@ -56,3 +56,81 @@ export type SourceWithRelations =
   | DarknetSource
   | SocialMediaSource
   | SearchEngineSource;
+
+export type TopicTermType = "CORE" | "EXPANSION" | "EXCLUSION";
+export type FrequencyType =
+  | "MANUAL"
+  | "HOURLY"
+  | "DAILY"
+  | "WEEKLY"
+  | "MONTHLY"
+  | "CRONTAB";
+export type JobType = "TOPIC_RETRIEVAL" | "SOURCE_INGEST" | "SOURCE_ONESHOT";
+
+export interface TopicTerm {
+  id: string;
+  topicId: string;
+  type: TopicTermType;
+  value: string;
+  weight: number;
+}
+
+export interface TopicSourceBinding {
+  id: string;
+  topicId: string;
+  sourceId: string;
+  enabled: boolean;
+  source?: SourceWithRelations;
+}
+
+export interface TopicWithAggregations {
+  id: string;
+  name: string;
+  description?: string | null;
+  enabled: boolean;
+  frequency: FrequencyType;
+  cronSchedule?: string | null;
+  terms?: TopicTerm[];
+  sources?: TopicSourceBinding[];
+  termsCount?: number;
+  sourcesCount?: number;
+}
+
+export interface JobSourceBinding {
+  id: string;
+  sourceId: string;
+  recallBindingOverride?: {
+    enabled?: boolean;
+    argKeys?: string[];
+  } | null;
+  source?: SourceWithRelations;
+}
+
+export interface JobTopicBinding {
+  id: string;
+  topicId: string;
+  topic?: TopicWithAggregations;
+}
+
+export interface JobRunSummary {
+  id: string;
+  status: "PENDING" | "RUNNING" | "SUCCEEDED" | "FAILED" | "CANCELLED";
+  progress: number;
+  startedAt?: string | null;
+  finishedAt?: string | null;
+  error?: string | null;
+}
+
+export interface JobWithAggregations {
+  id: string;
+  name: string;
+  type: JobType;
+  enabled: boolean;
+  frequency: FrequencyType;
+  cronSchedule?: string | null;
+  triggerMode?: string | null;
+  jobTopics?: JobTopicBinding[];
+  jobSources?: JobSourceBinding[];
+  runs?: JobRunSummary[];
+  latestRun?: JobRunSummary | null;
+}
