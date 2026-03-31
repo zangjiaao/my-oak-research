@@ -508,6 +508,7 @@ model Content {
   url       String?
   image     String? // 封面图（可选）
   vector    Unsupported("vector(1536)")?
+  searchVector Unsupported("tsvector")?
   meta      Json?
   keywords  ContentKeyword[]
   subjectMatches ContentSubjectMatch[]

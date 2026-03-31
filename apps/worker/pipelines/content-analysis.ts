@@ -33,9 +33,18 @@ import { toVectorLiteral } from "@/lib/topic-vector";
 const SKIP_AI_SUMMARY = process.env.COLLECTOR_SKIP_AI_SUMMARY !== "false";
 const ENABLE_SUBJECT_AI_SCORE =
   process.env.COLLECTOR_ENABLE_SUBJECT_AI_SCORE !== "false";
-const VECTOR_MATCH_TOP_K = Number(process.env.COLLECTOR_VECTOR_TOP_K ?? 15);
-const VECTOR_SIMILARITY_HIGH = 0.7;
-const VECTOR_SIMILARITY_LOW = 0.5;
+const RETRIEVAL_VECTOR_TOP_N = Number(process.env.RETRIEVAL_VECTOR_TOP_N ?? 15);
+const RETRIEVAL_BM25_TOP_N = Number(process.env.RETRIEVAL_BM25_TOP_N ?? 30);
+const RETRIEVAL_FUSION_ALPHA = Math.min(
+  1,
+  Math.max(0, Number(process.env.RETRIEVAL_FUSION_ALPHA ?? 0.65))
+);
+const RETRIEVAL_HIGH_THRESHOLD = Number(
+  process.env.RETRIEVAL_HIGH_THRESHOLD ?? 0.7
+);
+const RETRIEVAL_LOW_THRESHOLD = Number(
+  process.env.RETRIEVAL_LOW_THRESHOLD ?? 0.5
+);
 
 const ContentAnalyzeSchema = z.object({
   summary: z.string().min(30).max(400),
@@ -108,6 +117,11 @@ type JobCollectorTopic = {
 type TopicVectorMatch = {
   topicId: string;
   similarity: number;
+};
+
+type TopicSparseMatch = {
+  topicId: string;
+  score: number;
 };
 
 type GatherSocialDriver = "playwright" | "xhttp";
@@ -745,14 +759,18 @@ export async function runJobCollector(params: {
 
     const fallbackSummary = buildFallbackSummary(item);
     let contentVector: number[] | null = null;
-    let topicMatches: TopicVectorMatch[] = [];
-    let maxSimilarity = 0;
+    let vectorMatches: TopicVectorMatch[] = [];
+    let sparseMatches: TopicSparseMatch[] = [];
+    let topicMatches: TopicHybridMatch[] = [];
+    let maxFusionScore = 0;
     try {
       contentVector = await createEmbedding(
         buildContentVectorInput(item, fallbackSummary)
       );
-      topicMatches = await queryTopTopicVectorMatches(contentVector, VECTOR_MATCH_TOP_K);
-      maxSimilarity = topicMatches[0]?.similarity ?? 0;
+      vectorMatches = await queryTopTopicVectorMatches(
+        contentVector,
+        RETRIEVAL_VECTOR_TOP_N
+      );
     } catch (error) {
       logger.warn("content vector match failed", {
         runId,
@@ -766,16 +784,29 @@ export async function runJobCollector(params: {
         sourceId: item.sourceId,
       });
     }
-    if (topicMatches.length === 0) {
-      topicMatches = buildKeywordFallbackTopicMatches(
-        `${item.title ?? ""}\n${item.text}\n${item.markdown}`,
-        enabledTopicsForScoring,
-        VECTOR_MATCH_TOP_K
-      );
-      maxSimilarity = topicMatches[0]?.similarity ?? 0;
+    try {
+      sparseMatches = await queryTopTopicSparseMatches({
+        title: item.title ?? "",
+        summary: fallbackSummary,
+        markdown: item.markdown ?? item.text,
+        topics: enabledTopicsForScoring,
+        limit: RETRIEVAL_BM25_TOP_N,
+      });
+    } catch (error) {
+      logger.warn("content sparse match failed", {
+        runId,
+        jobId,
+        sourceId: item.sourceId,
+        error: logger.normalizeError(error),
+      });
     }
+    topicMatches = mergeTopicMatches({
+      vectorMatches,
+      sparseMatches,
+    }).slice(0, Math.max(RETRIEVAL_VECTOR_TOP_N, RETRIEVAL_BM25_TOP_N));
+    maxFusionScore = topicMatches[0]?.fusionScore ?? 0;
 
-    const llmGate = resolveLlmGateDecision(maxSimilarity);
+    const llmGate = resolveLlmGateDecision(maxFusionScore);
     const llmTopics = buildTopicKeywords(
       topicMatches
         .map((match) => topicById.get(match.topicId))
@@ -805,7 +836,7 @@ export async function runJobCollector(params: {
             ? "低相关内容，已跳过AI深度分析"
             : "中相关内容，已跳过AI深度分析",
         sourceId: item.sourceId,
-        maxSimilarity: roundScore(maxSimilarity),
+        maxSimilarity: roundScore(maxFusionScore),
       });
     }
 
@@ -869,10 +900,12 @@ export async function runJobCollector(params: {
       intent: item.intent ? stripNullBytes(item.intent) : null,
       topicIds: topics.map((topic) => topic.id),
       vectorMatch: {
-        topK: VECTOR_MATCH_TOP_K,
-        maxSimilarity: roundScore(maxSimilarity),
+        topK: Math.max(RETRIEVAL_VECTOR_TOP_N, RETRIEVAL_BM25_TOP_N),
+        maxSimilarity: roundScore(maxFusionScore),
         gate: llmGate,
         matchedTopicIds: topicMatches.map((match) => match.topicId),
+        vectorTopN: RETRIEVAL_VECTOR_TOP_N,
+        bm25TopN: RETRIEVAL_BM25_TOP_N,
       },
     };
 
@@ -1032,57 +1065,150 @@ async function queryTopTopicVectorMatches(
     .filter((row) => row.topicId);
 }
 
-function resolveLlmGateDecision(maxSimilarity: number): "high" | "mid" | "low" {
-  if (maxSimilarity >= VECTOR_SIMILARITY_HIGH) {
+function buildTopicSparseQuery(topic: JobCollectorTopic): string {
+  const terms = topic.terms
+    .filter((term) => term.type !== "EXCLUSION")
+    .map((term) => term.value.trim().toLowerCase())
+    .filter(Boolean);
+  const values = Array.from(new Set([topic.name.trim().toLowerCase(), ...terms])).filter(Boolean);
+  return values.join(" ");
+}
+
+async function queryTopTopicSparseMatches(params: {
+  title: string;
+  summary: string;
+  markdown: string;
+  topics: JobCollectorTopic[];
+  limit: number;
+}): Promise<TopicSparseMatch[]> {
+  const topicQueries = params.topics
+    .map((topic) => ({ topicId: topic.id, queryText: buildTopicSparseQuery(topic) }))
+    .filter((item) => item.queryText.length > 0);
+  if (topicQueries.length === 0) {
+    return [];
+  }
+
+  const valuesPlaceholders: string[] = [];
+  const queryValues: unknown[] = [];
+  let valueIndex = 1;
+  for (const item of topicQueries) {
+    valuesPlaceholders.push(`($${valueIndex}, $${valueIndex + 1})`);
+    queryValues.push(item.topicId, item.queryText);
+    valueIndex += 2;
+  }
+
+  const titleParam = `$${valueIndex}`;
+  queryValues.push(params.title);
+  valueIndex += 1;
+  const summaryParam = `$${valueIndex}`;
+  queryValues.push(params.summary);
+  valueIndex += 1;
+  const markdownParam = `$${valueIndex}`;
+  queryValues.push(params.markdown);
+  valueIndex += 1;
+  const limitParam = `$${valueIndex}`;
+  queryValues.push(Math.max(1, Math.min(params.limit, 100)));
+
+  const rows = await prisma.$queryRawUnsafe<
+    Array<{ topicId: string; score: number | null }>
+  >(
+    `WITH topic_queries(topic_id, query_text) AS (
+       VALUES ${valuesPlaceholders.join(", ")}
+     )
+     SELECT
+       tq.topic_id AS "topicId",
+       ts_rank_cd(
+         setweight(to_tsvector('simple', coalesce(${titleParam}, '')), 'A') ||
+         setweight(to_tsvector('simple', coalesce(${summaryParam}, '')), 'B') ||
+         setweight(to_tsvector('simple', coalesce(${markdownParam}, '')), 'C'),
+         websearch_to_tsquery('simple', tq.query_text)
+       )::float8 AS "score"
+     FROM topic_queries tq
+     WHERE (
+       setweight(to_tsvector('simple', coalesce(${titleParam}, '')), 'A') ||
+       setweight(to_tsvector('simple', coalesce(${summaryParam}, '')), 'B') ||
+       setweight(to_tsvector('simple', coalesce(${markdownParam}, '')), 'C')
+     ) @@ websearch_to_tsquery('simple', tq.query_text)
+     ORDER BY "score" DESC
+     LIMIT ${limitParam}`,
+    ...queryValues
+  );
+
+  return rows
+    .map((row) => ({
+      topicId: row.topicId,
+      score: typeof row.score === "number" ? row.score : 0,
+    }))
+    .filter((row) => row.topicId);
+}
+
+function resolveLlmGateDecision(finalScore: number): "high" | "mid" | "low" {
+  if (finalScore >= RETRIEVAL_HIGH_THRESHOLD) {
     return "high";
   }
-  if (maxSimilarity < VECTOR_SIMILARITY_LOW) {
+  if (finalScore < RETRIEVAL_LOW_THRESHOLD) {
     return "low";
   }
   return "mid";
 }
 
-function buildKeywordFallbackTopicMatches(
-  contentText: string,
-  topics: JobCollectorTopic[],
-  limit: number
-): TopicVectorMatch[] {
-  const normalizedText = contentText.toLowerCase();
-  const scored = topics
-    .map((topic) => {
-      const coreScore = countTermMatches(
-        normalizedText,
-        topic.terms.filter((term) => term.type === "CORE")
-      );
-      const expansionScore = countTermMatches(
-        normalizedText,
-        topic.terms.filter((term) => term.type === "EXPANSION")
-      );
-      const exclusionPenalty = countTermMatches(
-        normalizedText,
-        topic.terms.filter((term) => term.type === "EXCLUSION")
-      );
-      const signal = coreScore * 2 + expansionScore - exclusionPenalty;
-      return {
-        topicId: topic.id,
-        signal,
-      };
-    })
-    .filter((item) => item.signal > 0)
-    .sort((left, right) => right.signal - left.signal)
-    .slice(0, Math.max(1, Math.min(limit, 100)));
+function normalizeSparseScore(rawScore: number): number {
+  if (!Number.isFinite(rawScore) || rawScore <= 0) {
+    return 0;
+  }
+  return roundScore(Math.min(1, rawScore / 0.6));
+}
 
-  return scored.map((item) => ({
-    topicId: item.topicId,
-    similarity: 0.5,
-  }));
+type TopicHybridMatch = {
+  topicId: string;
+  vectorScore: number;
+  bm25Score: number;
+  fusionScore: number;
+};
+
+function mergeTopicMatches(params: {
+  vectorMatches: TopicVectorMatch[];
+  sparseMatches: TopicSparseMatch[];
+}): TopicHybridMatch[] {
+  const merged = new Map<string, TopicHybridMatch>();
+  for (const match of params.vectorMatches) {
+    const prev = merged.get(match.topicId) ?? {
+      topicId: match.topicId,
+      vectorScore: 0,
+      bm25Score: 0,
+      fusionScore: 0,
+    };
+    prev.vectorScore = roundScore(Math.max(prev.vectorScore, Math.max(0, Math.min(1, match.similarity))));
+    merged.set(match.topicId, prev);
+  }
+  for (const match of params.sparseMatches) {
+    const prev = merged.get(match.topicId) ?? {
+      topicId: match.topicId,
+      vectorScore: 0,
+      bm25Score: 0,
+      fusionScore: 0,
+    };
+    prev.bm25Score = roundScore(Math.max(prev.bm25Score, normalizeSparseScore(match.score)));
+    merged.set(match.topicId, prev);
+  }
+
+  for (const value of merged.values()) {
+    value.fusionScore = roundScore(
+      value.vectorScore * RETRIEVAL_FUSION_ALPHA +
+        value.bm25Score * (1 - RETRIEVAL_FUSION_ALPHA)
+    );
+  }
+
+  return Array.from(merged.values()).sort(
+    (left, right) => right.fusionScore - left.fusionScore
+  );
 }
 
 async function upsertContentTopicScores(params: {
   contentId: string;
   contentText: string;
   topicsById: Map<string, JobCollectorTopic>;
-  topicMatches: TopicVectorMatch[];
+  topicMatches: TopicHybridMatch[];
 }) {
   const normalizedText = params.contentText.toLowerCase();
   for (const match of params.topicMatches) {
@@ -1097,13 +1223,13 @@ async function upsertContentTopicScores(params: {
     const coreScore = countTermMatches(normalizedText, coreTerms);
     const expansionScore = countTermMatches(normalizedText, expansionTerms);
     const exclusionPenalty = countTermMatches(normalizedText, exclusionTerms);
-    const keywordScore = coreScore * 2 + expansionScore;
-    const vectorScore = roundScore(Math.max(0, Math.min(1, match.similarity)));
+    const keywordScore = roundScore(match.bm25Score * 10 + coreScore + expansionScore);
+    const vectorScore = roundScore(Math.max(0, Math.min(1, match.vectorScore)));
     const finalScore = roundScore(
-      Math.max(0, vectorScore * 0.7 + (keywordScore - exclusionPenalty) * 0.3)
+      Math.max(0, match.fusionScore - exclusionPenalty * 0.03)
     );
 
-    if (keywordScore <= 0 && exclusionPenalty <= 0 && vectorScore < VECTOR_SIMILARITY_LOW) {
+    if (finalScore < RETRIEVAL_LOW_THRESHOLD && exclusionPenalty > 0) {
       continue;
     }
 
@@ -1123,6 +1249,8 @@ async function upsertContentTopicScores(params: {
         finalScore,
         reason: `vector:${vectorScore.toFixed(3)} core:${coreScore.toFixed(2)} expansion:${expansionScore.toFixed(2)} exclusion:${exclusionPenalty.toFixed(2)}`,
         explain: {
+          bm25Score: match.bm25Score,
+          fusionScore: match.fusionScore,
           vectorScore,
           coreScore,
           expansionScore,
@@ -1137,6 +1265,8 @@ async function upsertContentTopicScores(params: {
         finalScore,
         reason: `vector:${vectorScore.toFixed(3)} core:${coreScore.toFixed(2)} expansion:${expansionScore.toFixed(2)} exclusion:${exclusionPenalty.toFixed(2)}`,
         explain: {
+          bm25Score: match.bm25Score,
+          fusionScore: match.fusionScore,
           vectorScore,
           coreScore,
           expansionScore,

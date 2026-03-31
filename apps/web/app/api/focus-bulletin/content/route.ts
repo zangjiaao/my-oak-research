@@ -306,10 +306,28 @@ export async function GET(request: Request) {
           const rightScore = right.subjectMatches?.[0]?.matchScore ?? -1;
           return rightScore - leftScore;
         })
-      : (sort === "topicScore" || sort === "relevance") && effectiveTopicIds.length > 0
+      : (sort === "topicScore" || sort === "relevance")
         ? [...pageItems].sort((left, right) => {
-            const leftScore = left.topicScores?.[0]?.finalScore ?? -1;
-            const rightScore = right.topicScores?.[0]?.finalScore ?? -1;
+            const leftScore = Math.max(
+              ...(left.topicScores ?? [])
+                .filter((score: any) =>
+                  effectiveTopicIds.length
+                    ? effectiveTopicIds.includes(score.topicId)
+                    : true
+                )
+                .map((score: any) => score.finalScore ?? -1),
+              -1
+            );
+            const rightScore = Math.max(
+              ...(right.topicScores ?? [])
+                .filter((score: any) =>
+                  effectiveTopicIds.length
+                    ? effectiveTopicIds.includes(score.topicId)
+                    : true
+                )
+                .map((score: any) => score.finalScore ?? -1),
+              -1
+            );
             return rightScore - leftScore;
           })
       : pageItems;
