@@ -2,6 +2,7 @@ import prisma from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { logger } from "@/lib/logger";
+import { refreshTopicVector } from "@/lib/topic-vector";
 
 const prismaAny = prisma as any;
 
@@ -56,6 +57,15 @@ export async function POST(
         meta: parsed.data.meta ?? null,
       },
     });
+
+    try {
+      await refreshTopicVector(prismaAny, params.id);
+    } catch (error) {
+      logger.warn("topic vector refresh failed", {
+        topicId: params.id,
+        error: logger.normalizeError(error),
+      });
+    }
 
     return NextResponse.json(created, { status: 201 });
   } catch (error) {

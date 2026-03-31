@@ -507,6 +507,7 @@ model Content {
   time      DateTime
   url       String?
   image     String? // 封面图（可选）
+  vector    Unsupported("vector(1536)")?
   meta      Json?
   keywords  ContentKeyword[]
   subjectMatches ContentSubjectMatch[]

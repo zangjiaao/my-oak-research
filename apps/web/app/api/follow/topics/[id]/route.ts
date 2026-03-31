@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { TopicUpdateSchema } from "@/app/api/_utils/zod";
 import { logger } from "@/lib/logger";
 import { z } from "zod";
+import { refreshTopicVector } from "@/lib/topic-vector";
 
 const prismaAny = prisma as any;
 
@@ -102,6 +103,15 @@ export async function PATCH(
         },
       });
     });
+
+    try {
+      await refreshTopicVector(prismaAny, params.id);
+    } catch (error) {
+      logger.warn("topic vector refresh failed", {
+        topicId: params.id,
+        error: logger.normalizeError(error),
+      });
+    }
 
     return NextResponse.json({
       ...updated,

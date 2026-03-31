@@ -20,6 +20,7 @@ import {
   DarknetSource,
 } from "@/lib/types";
 import { llmGateway, browserAgent } from "@oak/agents";
+import { createEmbedding } from "@oak/agents/embeddings";
 import { publishTaskEvent, publishContentEvent } from "@/lib/queue";
 import { logger } from "@/lib/logger";
 import { downloadFile } from "@/lib/storage";
@@ -27,10 +28,14 @@ import { redact, stripPromptLike } from "@/lib/security";
 import { writeWorkerApiIoLog } from "./api-io-log";
 import { buildNormalizedRecordContent } from "./record-content-normalizer";
 import { unwrapCredentialPayload } from "@/lib/credential-secret";
+import { toVectorLiteral } from "@/lib/topic-vector";
 
 const SKIP_AI_SUMMARY = process.env.COLLECTOR_SKIP_AI_SUMMARY !== "false";
 const ENABLE_SUBJECT_AI_SCORE =
   process.env.COLLECTOR_ENABLE_SUBJECT_AI_SCORE !== "false";
+const VECTOR_MATCH_TOP_K = Number(process.env.COLLECTOR_VECTOR_TOP_K ?? 15);
+const VECTOR_SIMILARITY_HIGH = 0.7;
+const VECTOR_SIMILARITY_LOW = 0.5;
 
 const ContentAnalyzeSchema = z.object({
   summary: z.string().min(30).max(400),
@@ -95,8 +100,14 @@ type TopicTermLite = {
 type JobCollectorTopic = {
   id: string;
   name: string;
+  enabled?: boolean;
   description?: string | null;
   terms: TopicTermLite[];
+};
+
+type TopicVectorMatch = {
+  topicId: string;
+  similarity: number;
 };
 
 type GatherSocialDriver = "playwright" | "xhttp";
@@ -634,6 +645,11 @@ export async function runJobCollector(params: {
   const send = async (event: unknown) => publishTaskEvent(runId, event);
   const pseudoQueryId = `job:${jobId}`;
   const keywords = buildTopicKeywords(topics);
+  const enabledTopicsForScoring = (await prisma.topic.findMany({
+    where: { enabled: true },
+    include: { terms: true },
+  })) as unknown as JobCollectorTopic[];
+  const topicById = new Map(enabledTopicsForScoring.map((topic) => [topic.id, topic]));
 
   await prisma.jobRun.update({
     where: { id: runId },
@@ -703,7 +719,6 @@ export async function runJobCollector(params: {
     const parts = [kw.name, ...kw.includes];
     return Array.from(new Set(parts)).join(", ");
   });
-  const keywordsStr = expandedKeywords.join("; ") || "无关键词";
 
   for (let i = 0; i < cleaned.length; i++) {
     const item = cleaned[i];
@@ -728,24 +743,77 @@ export async function runJobCollector(params: {
       continue;
     }
 
-    const shouldRunContentAnalyze = !SKIP_AI_SUMMARY || ENABLE_SUBJECT_AI_SCORE;
+    const fallbackSummary = buildFallbackSummary(item);
+    let contentVector: number[] | null = null;
+    let topicMatches: TopicVectorMatch[] = [];
+    let maxSimilarity = 0;
+    try {
+      contentVector = await createEmbedding(
+        buildContentVectorInput(item, fallbackSummary)
+      );
+      topicMatches = await queryTopTopicVectorMatches(contentVector, VECTOR_MATCH_TOP_K);
+      maxSimilarity = topicMatches[0]?.similarity ?? 0;
+    } catch (error) {
+      logger.warn("content vector match failed", {
+        runId,
+        jobId,
+        sourceId: item.sourceId,
+        error: logger.normalizeError(error),
+      });
+      await send({
+        type: "vector-match-error",
+        message: "向量匹配失败，降级为关键词评分",
+        sourceId: item.sourceId,
+      });
+    }
+    if (topicMatches.length === 0) {
+      topicMatches = buildKeywordFallbackTopicMatches(
+        `${item.title ?? ""}\n${item.text}\n${item.markdown}`,
+        enabledTopicsForScoring,
+        VECTOR_MATCH_TOP_K
+      );
+      maxSimilarity = topicMatches[0]?.similarity ?? 0;
+    }
+
+    const llmGate = resolveLlmGateDecision(maxSimilarity);
+    const llmTopics = buildTopicKeywords(
+      topicMatches
+        .map((match) => topicById.get(match.topicId))
+        .filter(Boolean)
+        .slice(0, 8) as JobCollectorTopic[]
+    );
+    const llmKeywords = llmTopics.length > 0 ? llmTopics : keywords;
+    const llmKeywordsSummary =
+      llmKeywords.map((kw) => [kw.name, ...kw.includes].join(", ")).join("; ") || "无关键词";
+    const shouldRunContentAnalyze =
+      (!SKIP_AI_SUMMARY || ENABLE_SUBJECT_AI_SCORE) && llmGate === "high";
     let contentAnalyzeResult: ContentAnalyzeResult | null = null;
     if (shouldRunContentAnalyze) {
       await send({ type: "summary", message: `第 ${i + 1} 条内容AI分析` });
       contentAnalyzeResult = await analyzeContentWithRetry(
         item,
-        keywords,
-        keywordsStr,
+        llmKeywords,
+        llmKeywordsSummary,
         pseudoQueryId,
         runId
       );
+    } else {
+      await send({
+        type: "summary-skip",
+        message:
+          llmGate === "low"
+            ? "低相关内容，已跳过AI深度分析"
+            : "中相关内容，已跳过AI深度分析",
+        sourceId: item.sourceId,
+        maxSimilarity: roundScore(maxSimilarity),
+      });
     }
 
     const summary = SKIP_AI_SUMMARY
-      ? { summary: buildFallbackSummary(item), relevance: true }
+      ? { summary: fallbackSummary, relevance: true }
       : contentAnalyzeResult
         ? { summary: contentAnalyzeResult.summary, relevance: contentAnalyzeResult.relevance }
-        : { summary: buildFallbackSummary(item), relevance: true };
+        : { summary: fallbackSummary, relevance: llmGate !== "low" };
 
     const contentTitle =
       item.title ??
@@ -800,6 +868,12 @@ export async function runJobCollector(params: {
       sourceType: item.sourceType,
       intent: item.intent ? stripNullBytes(item.intent) : null,
       topicIds: topics.map((topic) => topic.id),
+      vectorMatch: {
+        topK: VECTOR_MATCH_TOP_K,
+        maxSimilarity: roundScore(maxSimilarity),
+        gate: llmGate,
+        matchedTopicIds: topicMatches.map((match) => match.topicId),
+      },
     };
 
     const content = await prisma.content.create({
@@ -814,12 +888,16 @@ export async function runJobCollector(params: {
         meta: contentMeta as Prisma.InputJsonValue,
       },
     });
+    if (contentVector) {
+      await saveContentVector(content.id, contentVector);
+    }
 
-    if (topics.length > 0) {
+    if (topicMatches.length > 0) {
       await upsertContentTopicScores({
         contentId: content.id,
         contentText: `${content.title}\n${content.summary}\n${content.markdown}`,
-        topics,
+        topicsById: topicById,
+        topicMatches,
       });
     }
 
@@ -915,13 +993,103 @@ function countTermMatches(contentText: string, terms: TopicTermLite[]): number {
   return score;
 }
 
+function buildContentVectorInput(item: CleanItem, fallbackSummary: string): string {
+  return [item.title ?? "", fallbackSummary, item.markdown || item.text || ""]
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .join("\n");
+}
+
+async function saveContentVector(contentId: string, vector: number[]) {
+  await prisma.$executeRawUnsafe(
+    `UPDATE "Content" SET "vector" = $1::vector WHERE "id" = $2`,
+    toVectorLiteral(vector),
+    contentId
+  );
+}
+
+async function queryTopTopicVectorMatches(
+  contentVector: number[],
+  limit: number
+): Promise<TopicVectorMatch[]> {
+  const safeLimit = Math.max(1, Math.min(limit, 100));
+  const rows = await prisma.$queryRawUnsafe<Array<{ topicId: string; similarity: number | null }>>(
+    `SELECT t.id AS "topicId", (1 - (t."vector" <=> $1::vector))::float8 AS "similarity"
+     FROM "Topic" t
+     WHERE t."enabled" = TRUE
+       AND t."vector" IS NOT NULL
+     ORDER BY t."vector" <=> $1::vector
+     LIMIT $2`,
+    toVectorLiteral(contentVector),
+    safeLimit
+  );
+
+  return rows
+    .map((row) => ({
+      topicId: row.topicId,
+      similarity: typeof row.similarity === "number" ? row.similarity : 0,
+    }))
+    .filter((row) => row.topicId);
+}
+
+function resolveLlmGateDecision(maxSimilarity: number): "high" | "mid" | "low" {
+  if (maxSimilarity >= VECTOR_SIMILARITY_HIGH) {
+    return "high";
+  }
+  if (maxSimilarity < VECTOR_SIMILARITY_LOW) {
+    return "low";
+  }
+  return "mid";
+}
+
+function buildKeywordFallbackTopicMatches(
+  contentText: string,
+  topics: JobCollectorTopic[],
+  limit: number
+): TopicVectorMatch[] {
+  const normalizedText = contentText.toLowerCase();
+  const scored = topics
+    .map((topic) => {
+      const coreScore = countTermMatches(
+        normalizedText,
+        topic.terms.filter((term) => term.type === "CORE")
+      );
+      const expansionScore = countTermMatches(
+        normalizedText,
+        topic.terms.filter((term) => term.type === "EXPANSION")
+      );
+      const exclusionPenalty = countTermMatches(
+        normalizedText,
+        topic.terms.filter((term) => term.type === "EXCLUSION")
+      );
+      const signal = coreScore * 2 + expansionScore - exclusionPenalty;
+      return {
+        topicId: topic.id,
+        signal,
+      };
+    })
+    .filter((item) => item.signal > 0)
+    .sort((left, right) => right.signal - left.signal)
+    .slice(0, Math.max(1, Math.min(limit, 100)));
+
+  return scored.map((item) => ({
+    topicId: item.topicId,
+    similarity: 0.5,
+  }));
+}
+
 async function upsertContentTopicScores(params: {
   contentId: string;
   contentText: string;
-  topics: JobCollectorTopic[];
+  topicsById: Map<string, JobCollectorTopic>;
+  topicMatches: TopicVectorMatch[];
 }) {
   const normalizedText = params.contentText.toLowerCase();
-  for (const topic of params.topics) {
+  for (const match of params.topicMatches) {
+    const topic = params.topicsById.get(match.topicId);
+    if (!topic) {
+      continue;
+    }
     const coreTerms = topic.terms.filter((term) => term.type === "CORE");
     const expansionTerms = topic.terms.filter((term) => term.type === "EXPANSION");
     const exclusionTerms = topic.terms.filter((term) => term.type === "EXCLUSION");
@@ -930,9 +1098,12 @@ async function upsertContentTopicScores(params: {
     const expansionScore = countTermMatches(normalizedText, expansionTerms);
     const exclusionPenalty = countTermMatches(normalizedText, exclusionTerms);
     const keywordScore = coreScore * 2 + expansionScore;
-    const finalScore = Math.max(0, keywordScore - exclusionPenalty);
+    const vectorScore = roundScore(Math.max(0, Math.min(1, match.similarity)));
+    const finalScore = roundScore(
+      Math.max(0, vectorScore * 0.7 + (keywordScore - exclusionPenalty) * 0.3)
+    );
 
-    if (keywordScore <= 0 && exclusionPenalty <= 0) {
+    if (keywordScore <= 0 && exclusionPenalty <= 0 && vectorScore < VECTOR_SIMILARITY_LOW) {
       continue;
     }
 
@@ -946,25 +1117,31 @@ async function upsertContentTopicScores(params: {
       create: {
         contentId: params.contentId,
         topicId: topic.id,
+        vectorScore,
         keywordScore,
         exclusionPenalty,
         finalScore,
-        reason: `core:${coreScore.toFixed(2)} expansion:${expansionScore.toFixed(2)} exclusion:${exclusionPenalty.toFixed(2)}`,
+        reason: `vector:${vectorScore.toFixed(3)} core:${coreScore.toFixed(2)} expansion:${expansionScore.toFixed(2)} exclusion:${exclusionPenalty.toFixed(2)}`,
         explain: {
+          vectorScore,
           coreScore,
           expansionScore,
           exclusionPenalty,
+          keywordScore,
         } as Prisma.InputJsonValue,
       },
       update: {
+        vectorScore,
         keywordScore,
         exclusionPenalty,
         finalScore,
-        reason: `core:${coreScore.toFixed(2)} expansion:${expansionScore.toFixed(2)} exclusion:${exclusionPenalty.toFixed(2)}`,
+        reason: `vector:${vectorScore.toFixed(3)} core:${coreScore.toFixed(2)} expansion:${expansionScore.toFixed(2)} exclusion:${exclusionPenalty.toFixed(2)}`,
         explain: {
+          vectorScore,
           coreScore,
           expansionScore,
           exclusionPenalty,
+          keywordScore,
         } as Prisma.InputJsonValue,
       },
     });

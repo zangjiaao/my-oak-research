@@ -498,7 +498,7 @@ enum ContentType {
 }
 
 model Content {
-  id             String                 @id @default(cuid())
+  id             String                       @id @default(cuid())
   title          String
   summary        String
   markdown       String
@@ -507,14 +507,15 @@ model Content {
   time           DateTime
   url            String?
   image          String? // 封面图（可选）
+  vector         Unsupported("vector(1536)")?
   meta           Json?
   keywords       ContentKeyword[]
   subjectMatches ContentSubjectMatch[]
   topicScores    ContentTopicScore[]
   topicFeedbacks ContentTopicFeedback[]
   entities       ContentEntity?
-  createdAt      DateTime               @default(now())
-  updatedAt      DateTime               @updatedAt
+  createdAt      DateTime                     @default(now())
+  updatedAt      DateTime                     @updatedAt
   favorites      Favorite[]
 
   @@index([platform, time])
