@@ -41,6 +41,20 @@ async function defaultDeleteFn(id: string, endpoint: string) {
     throw new Error(error || "Failed to delete item");
   }
 
+  if (response.status === 204) {
+    return null;
+  }
+
+  const contentLength = response.headers.get("content-length");
+  if (contentLength === "0") {
+    return null;
+  }
+
+  const contentType = response.headers.get("content-type") ?? "";
+  if (!contentType.toLowerCase().includes("application/json")) {
+    return null;
+  }
+
   return response.json();
 }
 
