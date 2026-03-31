@@ -117,6 +117,7 @@ const QueriesTable = ({ queries, keywords, sources }: Props) => {
     {
       key: "progress",
       label: "Progress",
+      hideBelow: "md",
       className: "w-36 text-center",
       render: (query) => {
         const runtime = progressMap[query.id];
@@ -132,6 +133,7 @@ const QueriesTable = ({ queries, keywords, sources }: Props) => {
     {
       key: "description",
       label: "Description",
+      hideBelow: "md",
       className: "max-w-xs",
       render: (query) => (
         <div className="whitespace-normal">{query.description || "-"}</div>
@@ -140,11 +142,13 @@ const QueriesTable = ({ queries, keywords, sources }: Props) => {
     {
       key: "frequency",
       label: "Frequency",
+      hideBelow: "lg",
       render: (query) => query.frequency,
     },
     {
       key: "keywordsCount",
       label: "Keywords",
+      hideBelow: "lg",
       className: "max-w-md",
       render: (query) => (
         <div className="flex flex-wrap gap-1">
@@ -163,6 +167,7 @@ const QueriesTable = ({ queries, keywords, sources }: Props) => {
     {
       key: "sourcesCount",
       label: "Sources",
+      hideBelow: "lg",
       className: "max-w-md",
       render: (query) => (
         <div className="flex flex-wrap gap-1">

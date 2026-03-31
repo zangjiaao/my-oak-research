@@ -65,6 +65,7 @@ const DarknetSources = ({ sources, proxies, allSourceNames }: Props) => {
     {
       key: "description",
       label: "Description",
+      hideBelow: "md",
       className: "max-w-xs",
       render: (source) => (
         <div className="whitespace-normal">{source.description}</div>
@@ -73,6 +74,7 @@ const DarknetSources = ({ sources, proxies, allSourceNames }: Props) => {
     {
       key: "domain",
       label: "Domain",
+      hideBelow: "md",
       className: "max-w-xs",
       render: (source) => (
         <span className="text-sm break-all whitespace-normal">
@@ -83,6 +85,7 @@ const DarknetSources = ({ sources, proxies, allSourceNames }: Props) => {
     {
       key: "proxy",
       label: "Proxy",
+      hideBelow: "lg",
       render: (source) =>
         source.darknet.proxyId ? (source.darknet.proxy?.name ?? "—") : "None",
     },

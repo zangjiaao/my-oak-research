@@ -58,11 +58,13 @@ const Proxies = ({ proxies }: Props) => {
     {
       key: "type",
       label: "Type",
+      hideBelow: "md",
       render: (proxy) => proxy.type,
     },
     {
       key: "url",
       label: "URL",
+      hideBelow: "md",
       render: (proxy) => proxy.url,
     },
   ];

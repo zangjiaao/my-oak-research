@@ -80,12 +80,14 @@ const JobsTable = ({ jobs, topics, sources }: Props) => {
     {
       key: "type",
       label: "Type",
+      hideBelow: "md",
       className: "min-w-[170px]",
       render: (job) => <Badge variant="outline">{job.type}</Badge>,
     },
     {
       key: "progress",
       label: "Progress",
+      hideBelow: "md",
       className: "min-w-[130px] text-center",
       render: (job) => (
         <div className="mx-auto w-24">
@@ -96,13 +98,15 @@ const JobsTable = ({ jobs, topics, sources }: Props) => {
     {
       key: "frequency",
       label: "Frequency",
+      hideBelow: "lg",
       className: "min-w-[110px]",
       render: (job) => job.frequency,
     },
     {
       key: "topics",
       label: "Topics",
-      className: "hidden min-w-[220px] md:table-cell",
+      hideBelow: "lg",
+      className: "min-w-[220px]",
       render: (job) => {
         const rows = job.jobTopics ?? [];
         return rows.length > 0 ? (
@@ -121,6 +125,7 @@ const JobsTable = ({ jobs, topics, sources }: Props) => {
     {
       key: "sources",
       label: "Sources",
+      hideBelow: "lg",
       className: "min-w-[220px]",
       render: (job) => {
         const rows = job.jobSources ?? [];

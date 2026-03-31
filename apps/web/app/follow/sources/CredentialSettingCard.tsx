@@ -295,16 +295,19 @@ export default function CredentialSettingCard() {
     {
       key: "authType",
       label: "Auth Type",
+      hideBelow: "md",
       render: (item) => item.authType ?? "-",
     },
     {
       key: "usageCount",
       label: "Usage",
+      hideBelow: "md",
       render: (item) => String(item.usageCount ?? 0),
     },
     {
       key: "updatedAt",
       label: "Updated",
+      hideBelow: "lg",
       render: (item) => new Date(item.updatedAt).toLocaleString(),
     },
   ];

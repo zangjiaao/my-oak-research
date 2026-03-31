@@ -10,12 +10,14 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { PencilIcon, TrashIcon } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export interface DataTableColumn<T> {
   key: string;
   label: string;
   render?: (item: T, index: number) => React.ReactNode;
   className?: string;
+  hideBelow?: "sm" | "md" | "lg";
 }
 
 export interface DataTableAction<T> {
@@ -51,19 +53,28 @@ export function DataTable<T extends { id: string }>({
   indexLabel = "ID",
 }: DataTableProps<T>) {
   const hasActions = actions.length > 0;
+  const getResponsiveClassName = (column: DataTableColumn<T>) => {
+    if (column.hideBelow === "sm") return "hidden sm:table-cell";
+    if (column.hideBelow === "md") return "hidden md:table-cell";
+    if (column.hideBelow === "lg") return "hidden lg:table-cell";
+    return "";
+  };
 
   return (
-    <div className="w-full overflow-x-auto">
-      <Table className="min-w-max">
+    <div className="w-full min-w-0">
+      <Table className="min-w-full">
         <TableHeader>
           <TableRow>
             {showIndex && <TableHead>{indexLabel}</TableHead>}
             {columns.map((column) => (
-              <TableHead key={column.key} className={column.className}>
+              <TableHead
+                key={column.key}
+                className={cn(getResponsiveClassName(column), column.className)}
+              >
                 {column.label}
               </TableHead>
             ))}
-            {hasActions && <TableHead className="min-w-[220px]">Actions</TableHead>}
+            {hasActions && <TableHead className="min-w-[160px] whitespace-nowrap">Actions</TableHead>}
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -83,7 +94,10 @@ export function DataTable<T extends { id: string }>({
               <TableRow key={item.id}>
                 {showIndex && <TableCell>{index + 1}</TableCell>}
                 {columns.map((column) => (
-                  <TableCell key={column.key} className={column.className}>
+                  <TableCell
+                    key={column.key}
+                    className={cn(getResponsiveClassName(column), column.className)}
+                  >
                     {column.render
                       ? column.render(item, index)
                       : (item as any)[column.key]}
@@ -91,7 +105,7 @@ export function DataTable<T extends { id: string }>({
                 ))}
                 {hasActions && (
                   <TableCell>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       {actions.map((action, actionIndex) => {
                         if (action.render) {
                           return (

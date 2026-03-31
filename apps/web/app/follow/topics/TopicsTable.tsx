@@ -63,7 +63,8 @@ const TopicsTable = ({ topics, sources }: Props) => {
     {
       key: "description",
       label: "Description",
-      className: "hidden max-w-xs min-w-[240px] md:table-cell",
+      hideBelow: "md",
+      className: "max-w-xs min-w-[240px]",
       render: (topic) => <div className="whitespace-normal">{topic.description || "-"}</div>,
     },
     {
@@ -75,6 +76,7 @@ const TopicsTable = ({ topics, sources }: Props) => {
     {
       key: "terms",
       label: "Terms",
+      hideBelow: "md",
       className: "min-w-[160px]",
       render: (topic) => {
         const terms = topic.terms ?? [];
@@ -93,6 +95,7 @@ const TopicsTable = ({ topics, sources }: Props) => {
     {
       key: "sources",
       label: "Sources",
+      hideBelow: "lg",
       className: "min-w-[220px]",
       render: (topic) => (
         <div className="flex flex-wrap gap-1">
