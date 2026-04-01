@@ -8,7 +8,7 @@ import React, {
   useMemo,
   useState,
 } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useQueryClient } from "@tanstack/react-query";
 
 const DEFAULT_TOPIC_FILTER_MIN_SCORE = Number(
@@ -136,8 +136,11 @@ type FollowContentContextValue = {
   contents: ContentItem[];
   selectedContent: ContentItem | null;
   isLoading: boolean;
+  hasMore: boolean;
+  isFetchingMore: boolean;
   error: Error | null;
   selectContent: (id: string) => void;
+  loadMore: () => void;
   filters: {
     search: string;
     topicIds: string[];
@@ -155,7 +158,10 @@ const FollowContentContext = createContext<FollowContentContextValue | undefined
   undefined
 );
 
-const fetchContents = async (filters: FollowContentFilters) => {
+const fetchContents = async (
+  filters: FollowContentFilters,
+  cursor?: string | null
+) => {
   const params = new URLSearchParams();
   const hasTopicSelection = (filters.topicIds?.length ?? 0) > 0;
   const effectiveSort = hasTopicSelection
@@ -179,6 +185,9 @@ const fetchContents = async (filters: FollowContentFilters) => {
   params.set("includeTopicScores", hasTopicSelection ? "true" : "false");
   params.set("includeEntities", "true");
   params.set("includeFeedback", hasTopicSelection ? "true" : "false");
+  if (cursor) {
+    params.set("cursor", cursor);
+  }
   params.set("limit", "30");
   const url = `/api/focus-bulletin/content${
     params.toString() ? `?${params.toString()}` : ""
@@ -252,11 +261,19 @@ export const FollowContentProvider = ({
   const {
     data,
     isLoading,
+    isFetchingNextPage,
+    hasNextPage,
+    fetchNextPage,
     error: contentQueryError,
-  } = useQuery<FollowContentResponse>({
+  } = useInfiniteQuery<FollowContentResponse>({
     queryKey: ["follow-content", queryFilters],
-    queryFn: () => fetchContents(queryFilters),
-    placeholderData: (prev) => prev,
+    queryFn: ({ pageParam }) =>
+      fetchContents(
+        queryFilters,
+        typeof pageParam === "string" || pageParam == null ? pageParam : null
+      ),
+    initialPageParam: null as string | null,
+    getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
   });
 
   useEffect(() => {
@@ -294,7 +311,10 @@ export const FollowContentProvider = ({
   }, [queryClient]);
 
   const contents: ContentItem[] = useMemo(() => {
-    const items: ContentItem[] = data?.items ?? [];
+    const mergedItems = (data?.pages ?? []).flatMap((page) => page.items ?? []);
+    const items = Array.from(
+      new Map(mergedItems.map((item) => [item.id, item])).values()
+    ) as ContentItem[];
     if (sort === "relevance") {
       return [...items].sort((left, right) => {
         const leftScore = Math.max(
@@ -322,7 +342,7 @@ export const FollowContentProvider = ({
       });
     }
     return items;
-  }, [data?.items, sort, topicIds]);
+  }, [data?.pages, sort, topicIds]);
 
   useEffect(() => {
     if (isLoading) {
@@ -349,14 +369,23 @@ export const FollowContentProvider = ({
   const selectContent = useCallback((id: string) => {
     setSelectedContentId(id);
   }, []);
+  const loadMore = useCallback(() => {
+    if (!hasNextPage || isFetchingNextPage) {
+      return;
+    }
+    void fetchNextPage();
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
 
   const contextValue = useMemo(
     () => ({
       contents,
       selectedContent,
       isLoading,
+      hasMore: Boolean(hasNextPage),
+      isFetchingMore: isFetchingNextPage,
       error: contentQueryError ?? null,
       selectContent,
+      loadMore,
       topicOptions: topicOptionsData ?? [],
       topicOptionsError:
         topicOptionsQueryError instanceof Error
@@ -376,8 +405,11 @@ export const FollowContentProvider = ({
       contents,
       selectedContent,
       isLoading,
+      hasNextPage,
+      isFetchingNextPage,
       contentQueryError,
       selectContent,
+      loadMore,
       topicOptionsData,
       topicOptionsQueryError,
       topicOptionsLoading,
