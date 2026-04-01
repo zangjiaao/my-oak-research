@@ -9,26 +9,21 @@ const RerankSchema = z.object({
   topicId: z.string().cuid(),
 });
 
-const RerankResultSchema = z.object({
-  score: z.number().min(0).max(1),
-  keywords: z
-    .array(
-      z.object({
-        category: z.enum([
-          "PERSON",
-          "ORG",
-          "LOCATION",
-          "TECH",
-          "PRODUCT",
-          "EVENT",
-          "CONCEPT",
-        ]),
-        label: z.string().min(1).max(40),
-      })
-    )
-    .default([]),
-});
-type RerankKeyword = z.infer<typeof RerankResultSchema>["keywords"][number];
+const KEYWORD_CATEGORIES = [
+  "PERSON",
+  "ORG",
+  "LOCATION",
+  "TECH",
+  "PRODUCT",
+  "EVENT",
+  "CONCEPT",
+] as const;
+type KeywordCategory = (typeof KEYWORD_CATEGORIES)[number];
+const KEYWORD_CATEGORY_SET = new Set<string>(KEYWORD_CATEGORIES);
+type RerankKeyword = {
+  category: KeywordCategory;
+  label: string;
+};
 
 function asObject(value: unknown): Record<string, unknown> {
   if (value && typeof value === "object" && !Array.isArray(value)) {
@@ -47,12 +42,59 @@ function roundScore(value: number): number {
 }
 
 function normalizeKeywordLabel(label: string): string | null {
-  const normalized = label.trim();
+  const stripped = label
+    .replace(/^[\s\p{P}\p{S}]+|[\s\p{P}\p{S}]+$/gu, "")
+    .trim();
+  if (!stripped) return null;
+  const normalized = stripped.length > 40 ? stripped.slice(0, 40).trim() : stripped;
   if (!normalized) return null;
-  if (normalized.length < 2 || normalized.length > 40) return null;
+  if (normalized.length < 2) return null;
   if (!/[\p{L}\p{Script=Han}]/u.test(normalized)) return null;
   if (/[:：]/.test(normalized)) return null;
   return normalized;
+}
+
+function normalizeRerankScore(rawScore: unknown): number | null {
+  let score: number | null = null;
+  if (typeof rawScore === "number" && Number.isFinite(rawScore)) {
+    score = rawScore;
+  } else if (typeof rawScore === "string") {
+    const parsed = Number(rawScore.trim());
+    if (Number.isFinite(parsed)) {
+      score = parsed;
+    }
+  }
+  if (score == null) return null;
+  if (score < 0 || score > 1) return null;
+  return roundScore(score);
+}
+
+function normalizeKeywordCategory(rawCategory: unknown): KeywordCategory {
+  if (typeof rawCategory !== "string") return "CONCEPT";
+  const normalized = rawCategory.trim().toUpperCase();
+  if (KEYWORD_CATEGORY_SET.has(normalized)) {
+    return normalized as KeywordCategory;
+  }
+  const aliasMap = new Map<string, KeywordCategory>([
+    ["PEOPLE", "PERSON"],
+    ["人物", "PERSON"],
+    ["ORGANIZATION", "ORG"],
+    ["ORGANISATION", "ORG"],
+    ["机构", "ORG"],
+    ["组织", "ORG"],
+    ["REGION", "LOCATION"],
+    ["地点", "LOCATION"],
+    ["地理", "LOCATION"],
+    ["TECHNOLOGY", "TECH"],
+    ["技术", "TECH"],
+    ["PROD", "PRODUCT"],
+    ["产品", "PRODUCT"],
+    ["新闻事件", "EVENT"],
+    ["事件", "EVENT"],
+    ["TOPIC", "CONCEPT"],
+    ["概念", "CONCEPT"],
+  ]);
+  return aliasMap.get(normalized) ?? "CONCEPT";
 }
 
 function collectTerms(
@@ -200,32 +242,60 @@ export async function POST(
     return NextResponse.json({ error: "LLM rerank failed" }, { status: 502 });
   }
 
-  const checked = RerankResultSchema.safeParse(llmPayload);
-  if (!checked.success) {
+  const llmPayloadObject = asObject(llmPayload);
+  const llmRerankScore = normalizeRerankScore(llmPayloadObject.score);
+  if (llmRerankScore == null) {
     logger.error("invalid rerank score payload", {
       contentId,
       topicId,
       model,
-      details: checked.error.flatten(),
+      details: {
+        score: llmPayloadObject.score ?? null,
+        payload: llmPayloadObject,
+      },
     });
     return NextResponse.json({ error: "Invalid rerank result" }, { status: 502 });
   }
 
-  const llmRerankScore = roundScore(checked.data.score);
+  const rawKeywords = Array.isArray(llmPayloadObject.keywords)
+    ? llmPayloadObject.keywords
+    : [];
+  let discardedKeywords = 0;
+  let categoryCoercedCount = 0;
   const llmRerankKeywords = Array.from(
     new Map(
-      checked.data.keywords
-        .map((item) => ({
-          category: item.category,
-          label: normalizeKeywordLabel(item.label),
-        }))
-        .filter(
-          (item): item is { category: RerankKeyword["category"]; label: string } =>
-            Boolean(item.label)
-        )
+      rawKeywords
+        .map((item) => {
+          const raw = asObject(item);
+          const category = normalizeKeywordCategory(raw.category);
+          if (typeof raw.category === "string" && raw.category.trim().toUpperCase() !== category) {
+            categoryCoercedCount += 1;
+          }
+          const label = normalizeKeywordLabel(String(raw.label ?? ""));
+          if (!label) {
+            discardedKeywords += 1;
+            return null;
+          }
+          return {
+            category,
+            label,
+          };
+        })
+        .filter((item): item is RerankKeyword => Boolean(item))
         .map((item) => [`${item.category}:${item.label}`, item])
     ).values()
   ).slice(0, 12);
+  if (discardedKeywords > 0 || categoryCoercedCount > 0) {
+    logger.warn("rerank keywords partially normalized", {
+      contentId,
+      topicId,
+      model,
+      rawKeywordsCount: rawKeywords.length,
+      acceptedKeywordsCount: llmRerankKeywords.length,
+      discardedKeywords,
+      categoryCoercedCount,
+    });
+  }
   const rerankWeight = Math.max(
     0,
     Math.min(1, Number(process.env.RETRIEVAL_LLM_RERANK_WEIGHT ?? 0.2))
