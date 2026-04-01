@@ -377,8 +377,16 @@ const FollowContent = () => {
               onClick={() => selectContent(content.id)}
             >
               <NewsDetailCard
-                title={content.detailView?.title ?? content.title}
-                summary={content.aiSummary ?? undefined}
+                title={
+                  content.cleanedTitle ??
+                  content.detailView?.title ??
+                  content.title
+                }
+                summary={
+                  content.cleanedSummary ??
+                  content.aiSummary ??
+                  undefined
+                }
                 cleanMarkdown={
                   content.cleanedMarkdown
                     ? stripLeadingMarkdownHeading(content.cleanedMarkdown)

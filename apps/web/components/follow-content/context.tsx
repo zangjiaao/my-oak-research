@@ -115,6 +115,8 @@ export type ContentItem = {
   } | null;
   aiSummary?: string | null;
   aiSummaryUpdatedAt?: string | null;
+  cleanedTitle?: string | null;
+  cleanedSummary?: string | null;
   cleanedMarkdown?: string | null;
 };
 

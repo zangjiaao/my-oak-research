@@ -445,6 +445,14 @@ const mapContent = (
     typeof meta.cleanedMarkdown === "string" && meta.cleanedMarkdown.trim()
       ? meta.cleanedMarkdown.trim()
       : null;
+  const cleanedTitle =
+    typeof meta.cleanedTitle === "string" && meta.cleanedTitle.trim()
+      ? meta.cleanedTitle.trim()
+      : null;
+  const cleanedSummary =
+    typeof meta.cleanedSummary === "string" && meta.cleanedSummary.trim()
+      ? meta.cleanedSummary.trim()
+      : null;
   const aiSummaryUpdatedAt =
     typeof meta.aiSummaryUpdatedAt === "string" ? meta.aiSummaryUpdatedAt : null;
   return {
@@ -552,8 +560,10 @@ const mapContent = (
           note: item.topicFeedbacks[0].note,
         }
       : null,
-    aiSummary,
+    aiSummary: aiSummary ?? cleanedSummary,
     aiSummaryUpdatedAt,
+    cleanedTitle,
+    cleanedSummary,
     cleanedMarkdown,
   };
 };

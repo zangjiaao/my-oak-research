@@ -85,8 +85,19 @@ const DYNAMIC_TOPIC_SCORING_ENABLED =
   process.env.DYNAMIC_TOPIC_SCORING_ENABLED !== "false";
 const CONTENT_CLEAN_LLM_ENABLED =
   process.env.CONTENT_CLEAN_LLM_ENABLED !== "false";
-const CONTENT_AUTO_REWRITE_ENABLED =
-  process.env.CONTENT_AUTO_REWRITE_ENABLED === "true";
+const CONTENT_AUTO_CLEAN_ENABLED =
+  process.env.CONTENT_AUTO_CLEAN_ENABLED !== "false" &&
+  process.env.CONTENT_AUTO_REWRITE_ENABLED !== "false";
+const CONTENT_MEANING_GATE_ENABLED =
+  process.env.CONTENT_MEANING_GATE_ENABLED !== "false";
+const CONTENT_MEANING_GATE_PREVIEW_CHARS = Math.max(
+  80,
+  Number(process.env.CONTENT_MEANING_GATE_PREVIEW_CHARS ?? 200)
+);
+const CONTENT_MEANING_GATE_MIN_SCORE = Math.max(
+  0,
+  Math.min(1, Number(process.env.CONTENT_MEANING_GATE_MIN_SCORE ?? 0.45))
+);
 const CONTENT_FORMATTER_MAX_INPUT_CHARS = Math.max(
   1000,
   Number(process.env.CONTENT_FORMATTER_MAX_INPUT_CHARS ?? 16000)
@@ -153,6 +164,11 @@ const ContentAnalyzeSchemaWithRewrite = z.object({
     )
     .default([]),
 });
+const ContentMeaningSchema = z.object({
+  meaningful: z.boolean(),
+  score: z.number().min(0).max(1),
+  reason: z.string().min(1).max(240),
+});
 const ContentAnalyzeSchema = z.object({
   title: z.string().min(4).max(120),
   summary: z.string().min(30).max(400),
@@ -189,6 +205,12 @@ type ContentAnalyzeResult = {
   subjectsByKeyword: Map<string, { score: number | null; reason: string | null }>;
 };
 
+type ContentMeaningResult = {
+  meaningful: boolean;
+  score: number;
+  reason: string;
+};
+
 type PreparedSummaryContent = {
   markdown: string;
   text: string;
@@ -220,6 +242,8 @@ type CleanItem = {
   recordIndex?: number;
   intent?: string;
   sourceRequestId?: string;
+  meaningScore?: number;
+  meaningReason?: string;
 };
 
 type QueryKeyword = {
@@ -620,7 +644,10 @@ export async function runFocusCollector(runId: string, queryId: string) {
     }
 
     const shouldRunContentAnalyze =
-      CONTENT_CLEAN_LLM_ENABLED || !SKIP_AI_SUMMARY || ENABLE_SUBJECT_AI_SCORE;
+      CONTENT_AUTO_CLEAN_ENABLED ||
+      CONTENT_CLEAN_LLM_ENABLED ||
+      !SKIP_AI_SUMMARY ||
+      ENABLE_SUBJECT_AI_SCORE;
     let contentAnalyzeResult: ContentAnalyzeResult | null = null;
     if (shouldRunContentAnalyze) {
       await send({ type: "summary", message: `第 ${i + 1} 条内容AI分析` });
@@ -663,9 +690,8 @@ export async function runFocusCollector(runId: string, queryId: string) {
     }
 
     const contentTitle =
-      generatedTitle ||
       item.title ||
-      (summary.summary.slice(0, 40).replace(/\s+/g, " ").trim() ||
+      (preparedSummaryContent.text.slice(0, 40).replace(/\s+/g, " ").trim() ||
         `来源 ${item.platform}`);
     const contentTime = item.recordTime ?? item.time ?? new Date();
     const normalizedRecordContent = buildNormalizedRecordContent({
@@ -718,7 +744,7 @@ export async function runFocusCollector(runId: string, queryId: string) {
         stripNullBytes(keywordValue)
       ),
       summaryRelevance: summary.relevance,
-      aiSummary: sanitizedSummary,
+      aiSummary: generatedSummary || sanitizedSummary,
       aiSummaryUpdatedAt: contentTime.toISOString(),
       aiSummaryModel:
         contentAnalyzeResult
@@ -730,12 +756,17 @@ export async function runFocusCollector(runId: string, queryId: string) {
       contentCleanProvider: contentAnalyzeResult ? "llm" : "legacy",
       contentCleanedMarkdownChars: sanitizedCleanedMarkdown.length,
       contentCleanLlmEnabled: CONTENT_CLEAN_LLM_ENABLED,
-      contentAutoRewriteEnabled: CONTENT_AUTO_REWRITE_ENABLED,
+      contentAutoCleanEnabled: CONTENT_AUTO_CLEAN_ENABLED,
+      meaningScore:
+        typeof item.meaningScore === "number" ? roundScore(item.meaningScore) : null,
+      meaningReason: item.meaningReason ? stripNullBytes(item.meaningReason) : null,
       sourceId: stripNullBytes(item.sourceId),
       sourceType: item.sourceType,
       intent: item.intent ? stripNullBytes(item.intent) : null,
     };
     if (sanitizedCleanedMarkdown) {
+      contentMeta.cleanedTitle = generatedTitle || null;
+      contentMeta.cleanedSummary = generatedSummary || null;
       contentMeta.cleanedMarkdown = sanitizedCleanedMarkdown;
       contentMeta.cleanedMarkdownUpdatedAt = contentTime.toISOString();
       contentMeta.cleanedMarkdownModel =
@@ -1055,6 +1086,7 @@ export async function runJobCollector(params: {
     const llmKeywordsSummary =
       llmKeywords.map((kw) => [kw.name, ...kw.includes].join(", ")).join("; ") || "无关键词";
     const shouldRunContentAnalyze =
+      CONTENT_AUTO_CLEAN_ENABLED ||
       CONTENT_CLEAN_LLM_ENABLED ||
       ((!SKIP_AI_SUMMARY || ENABLE_SUBJECT_AI_SCORE) && llmGate === "high");
     let contentAnalyzeResult: ContentAnalyzeResult | null = null;
@@ -1096,15 +1128,15 @@ export async function runJobCollector(params: {
             summary: fallbackSummary,
             relevance: llmGate !== "low",
           };
+    const generatedSummary = normalizeGeneratedSummary(contentAnalyzeResult?.summary);
     const generatedTitle = normalizeGeneratedTitle(contentAnalyzeResult?.title);
     const generatedMarkdown = normalizeGeneratedMarkdown(
       contentAnalyzeResult?.cleanedMarkdown
     );
 
     const contentTitle =
-      generatedTitle ||
       item.title ||
-      (summary.summary.slice(0, 40).replace(/\s+/g, " ").trim() ||
+      (preparedSummaryContent.text.slice(0, 40).replace(/\s+/g, " ").trim() ||
         `来源 ${item.platform}`);
     const contentTime = item.recordTime ?? item.time ?? new Date();
     const normalizedRecordContent = buildNormalizedRecordContent({
@@ -1154,7 +1186,7 @@ export async function runJobCollector(params: {
       recordIndex: normalizedRecordContent.relation.recordIndex,
       keywords: expandedKeywords.map((keywordValue) => stripNullBytes(keywordValue)),
       summaryRelevance: summary.relevance,
-      aiSummary: sanitizedSummary,
+      aiSummary: generatedSummary || sanitizedSummary,
       aiSummaryUpdatedAt: contentTime.toISOString(),
       aiSummaryModel:
         contentAnalyzeResult
@@ -1166,7 +1198,10 @@ export async function runJobCollector(params: {
       contentCleanProvider: contentAnalyzeResult ? "llm" : "legacy",
       contentCleanedMarkdownChars: sanitizedCleanedMarkdown.length,
       contentCleanLlmEnabled: CONTENT_CLEAN_LLM_ENABLED,
-      contentAutoRewriteEnabled: CONTENT_AUTO_REWRITE_ENABLED,
+      contentAutoCleanEnabled: CONTENT_AUTO_CLEAN_ENABLED,
+      meaningScore:
+        typeof item.meaningScore === "number" ? roundScore(item.meaningScore) : null,
+      meaningReason: item.meaningReason ? stripNullBytes(item.meaningReason) : null,
       sourceId: stripNullBytes(item.sourceId),
       sourceType: item.sourceType,
       intent: item.intent ? stripNullBytes(item.intent) : null,
@@ -1181,6 +1216,8 @@ export async function runJobCollector(params: {
       },
     };
     if (sanitizedCleanedMarkdown) {
+      contentMeta.cleanedTitle = generatedTitle || null;
+      contentMeta.cleanedSummary = generatedSummary || null;
       contentMeta.cleanedMarkdown = sanitizedCleanedMarkdown;
       contentMeta.cleanedMarkdownUpdatedAt = contentTime.toISOString();
       contentMeta.cleanedMarkdownModel =
@@ -2157,17 +2194,74 @@ async function fetchBySources(
             });
           }
         }
-        preLlmFilterResult.passed.forEach((item) => {
+        let passedItems = preLlmFilterResult.passed;
+        if (CONTENT_MEANING_GATE_ENABLED && passedItems.length > 0) {
+          const meaningPassed: CleanItem[] = [];
+          const meaningSkipped: Array<{
+            item: CleanItem;
+            score: number;
+            reason: string;
+          }> = [];
+          for (const candidate of passedItems) {
+            const meaning = await analyzeContentMeaningWithRetry(
+              candidate,
+              runId,
+              queryId
+            );
+            if (meaning.meaningful) {
+              candidate.meaningScore = meaning.score;
+              candidate.meaningReason = meaning.reason;
+              meaningPassed.push(candidate);
+              await publishTaskEvent(runId, {
+                type: "meaning-gate-passed",
+                sourceId: source.id,
+                score: meaning.score,
+                reason: meaning.reason,
+              });
+            } else {
+              meaningSkipped.push({
+                item: candidate,
+                score: meaning.score,
+                reason: meaning.reason,
+              });
+            }
+          }
+          if (meaningSkipped.length > 0) {
+            await publishTaskEvent(runId, {
+              type: "meaning-gate-skipped",
+              message: `来源 ${source.name} 跳过 ${meaningSkipped.length} 条无意义内容`,
+              sourceId: source.id,
+              driver,
+              skippedCount: meaningSkipped.length,
+              minScore: CONTENT_MEANING_GATE_MIN_SCORE,
+            });
+            for (const skipped of meaningSkipped) {
+              logger.info("content meaning gate skipped item", {
+                runId,
+                queryId,
+                sourceId: source.id,
+                sourceName: source.name,
+                driver,
+                url: skipped.item.url ?? null,
+                score: skipped.score,
+                reason: skipped.reason,
+              });
+            }
+          }
+          passedItems = meaningPassed;
+        }
+
+        passedItems.forEach((item) => {
           item.driver = driver;
         });
         await publishTaskEvent(runId, {
           type: "fetch-success",
           message: `抓取 ${source.name} 完成`,
-          count: preLlmFilterResult.passed.length,
+          count: passedItems.length,
           sourceId: source.id,
           driver,
         });
-        return preLlmFilterResult.passed;
+        return passedItems;
       } catch (error) {
         await publishTaskEvent(runId, {
           type: "error",
@@ -4294,7 +4388,7 @@ async function analyzeContentWithRetry(
   "title": "简洁、准确的中文标题（4-120字）",
   "summary": "2-3句中文摘要（30-400字）",
   ${
-    CONTENT_AUTO_REWRITE_ENABLED
+    CONTENT_AUTO_CLEAN_ENABLED
       ? '"cleanedMarkdown": "清洗后的 Markdown 正文（800-1200字，保留关键信息，禁止新增事实）",'
       : ""
   }
@@ -4316,7 +4410,7 @@ async function analyzeContentWithRetry(
 5) score 以主题语义为主，不能因为单词子串命中就高分；
 6) 只出现词形但语义无关时，给低分（接近 0）;
 ${
-  CONTENT_AUTO_REWRITE_ENABLED
+  CONTENT_AUTO_CLEAN_ENABLED
     ? "7) cleanedMarkdown 仅可忠实转述原文，不得引入新事实、外部背景或推断。"
     : ""
 }
@@ -4328,7 +4422,7 @@ ${summaryInput.promptText}`
   );
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
-      const schema = CONTENT_AUTO_REWRITE_ENABLED
+      const schema = CONTENT_AUTO_CLEAN_ENABLED
         ? ContentAnalyzeSchemaWithRewrite
         : ContentAnalyzeSchema;
       const result = await llmGateway.json<
@@ -4395,6 +4489,79 @@ ${summaryInput.promptText}`
     }
   }
   throw new Error("内容分析失败");
+}
+
+async function analyzeContentMeaningWithRetry(
+  item: CleanItem,
+  runId: string,
+  queryId: string
+): Promise<ContentMeaningResult> {
+  const preview = markdownToText(`${item.title ?? ""}\n${item.markdown ?? item.text}`)
+    .slice(0, CONTENT_MEANING_GATE_PREVIEW_CHARS)
+    .trim();
+  if (!preview) {
+    return { meaningful: false, score: 0, reason: "empty_preview" };
+  }
+  const prompt = stripPromptLike(
+    `你是内容质量闸门。请只输出 JSON，结构为：
+{
+  "meaningful": true/false,
+  "score": 0-1,
+  "reason": "不超过240字的中文原因"
+}
+
+判断标准：
+1) meaningful=true 仅当内容包含可阅读、可理解且有信息价值的主体信息；
+2) meaningful=false 适用于错误页、跳转页、模板噪音、碎片句、广告残片、无语义乱码；
+3) 只判断“是否有意义”，不做扩写；
+4) 严格基于输入内容，不要编造。
+
+平台: ${item.platform}
+链接: ${item.url ?? "N/A"}
+内容前${CONTENT_MEANING_GATE_PREVIEW_CHARS}字:
+${preview}`
+  );
+
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    try {
+      const result = await llmGateway.json<z.infer<typeof ContentMeaningSchema>>(
+        "content-meaning-gate",
+        {
+          prompt: redact(prompt),
+          schema: ContentMeaningSchema,
+          temperature: 0.1,
+          metadata: {
+            runId,
+            queryId,
+            source: item.platform,
+            sourceId: item.sourceId,
+          },
+        }
+      );
+      return {
+        meaningful: result.meaningful && result.score >= CONTENT_MEANING_GATE_MIN_SCORE,
+        score: roundScore(result.score),
+        reason: result.reason.trim().slice(0, 240),
+      };
+    } catch (error) {
+      if (attempt === 2) {
+        logger.warn("content meaning gate failed, fallback pass", {
+          runId,
+          queryId,
+          source: item.platform,
+          sourceId: item.sourceId,
+          error: logger.normalizeError(error),
+        });
+        return {
+          meaningful: true,
+          score: 0.5,
+          reason: "meaning_gate_failed_fallback_pass",
+        };
+      }
+      await new Promise((resolve) => setTimeout(resolve, 300 * attempt));
+    }
+  }
+  return { meaningful: true, score: 0.5, reason: "meaning_gate_fallback_pass" };
 }
 
 async function findExistingContentBySourceRecord(
