@@ -4,7 +4,6 @@ import { TopicCreateSchema } from "@/app/api/_utils/zod";
 import { logger } from "@/lib/logger";
 import { z } from "zod";
 import { refreshTopicVector } from "@/lib/topic-vector";
-import { refreshTopicTermsAuto } from "@/lib/topic-terms-auto";
 
 const prismaAny = prisma as any;
 
@@ -102,28 +101,11 @@ export async function POST(req: Request) {
       });
     }
 
-    let autoTermsResult = {
-      autoTermsUpdated: false,
-      autoTermsCount: 0,
-      vectorRefreshed: false,
-      rescoreScheduled: false,
-      rescoreJobId: null as string | null,
-      autoTermsReason: null as string | null,
-    };
-    if (!data.terms?.length) {
-      autoTermsResult = await refreshTopicTermsAuto({
-        prismaAny,
-        topicId: created.id,
-        trigger: "topic-create",
-      });
-    }
-
     return NextResponse.json(
       {
         ...created,
         termsCount: created?._count?.terms ?? 0,
         initialVectorRefreshed,
-        ...autoTermsResult,
       },
       { status: 201 }
     );
