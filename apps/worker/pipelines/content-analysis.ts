@@ -76,7 +76,7 @@ const RETRIEVAL_LLM_RERANK_MIN_SCORE = Math.max(
 const TOPIC_RECALL_LLM_ENABLED =
   process.env.TOPIC_RECALL_LLM_ENABLED !== "false";
 const TOPIC_RECALL_QUERY_LIMIT = Number(
-  process.env.TOPIC_RECALL_QUERY_LIMIT ?? 8
+  process.env.TOPIC_RECALL_QUERY_LIMIT ?? 4
 );
 const TOPIC_RECALL_TIMEOUT_MS = Number(
   process.env.TOPIC_RECALL_TIMEOUT_MS ?? 8000
@@ -308,6 +308,15 @@ async function loadRunSearchSuccessSignatures(runId?: string): Promise<Set<strin
   const set = new Set(existing);
   runSearchSignatureCache.set(runId, set);
   return set;
+}
+
+function shouldPersistSearchSuccessSignatures(context?: {
+  runId?: string;
+  queryId?: string;
+}): boolean {
+  if (!context?.runId) return false;
+  if (!context.queryId) return false;
+  return !context.queryId.startsWith("job:");
 }
 
 async function persistRunSearchSuccessSignatures(
@@ -1951,10 +1960,10 @@ function resolveSourceFetchConcurrency(): number {
 
 function resolveRecallQueryLimit(): number {
   const raw = process.env.COLLECT_RECALL_QUERY_LIMIT;
-  if (!raw) return 64;
+  if (!raw) return 16;
   const parsed = Number(raw);
   if (!Number.isFinite(parsed) || parsed < 1) {
-    return 64;
+    return 16;
   }
   return Math.floor(parsed);
 }
@@ -2383,9 +2392,27 @@ async function fetchSearchSource(
     return [];
   }
   const allItems: CleanItem[] = [];
-  const searchSuccessSignatures = await loadRunSearchSuccessSignatures(context?.runId);
+  const enableSearchSuccessDedup = shouldPersistSearchSuccessSignatures({
+    runId: context?.runId,
+    queryId: context?.queryId,
+  });
+  const searchSuccessSignatures = enableSearchSuccessDedup
+    ? await loadRunSearchSuccessSignatures(context?.runId)
+    : new Set<string>();
   const recallOrigin = context?.recallQueryOrigin ?? "static_fallback";
-  for (const recallQuery of searchQueries) {
+  let successCount = 0;
+  let failedCount = 0;
+  const sourceStartedAt = Date.now();
+  logger.info("search source fetch start", {
+    sourceId: source.id,
+    sourceName: source.name,
+    runId: context?.runId,
+    queryId: context?.queryId,
+    provider,
+    recallQueryCount: searchQueries.length,
+    dedupByQueryRun: enableSearchSuccessDedup,
+  });
+  for (const [index, recallQuery] of searchQueries.entries()) {
     const normalizedRecallQuery = recallQuery.trim();
     if (!normalizedRecallQuery) continue;
     const signature = buildSearchSuccessSignature({
@@ -2450,6 +2477,32 @@ async function fetchSearchSource(
         },
       ];
     }
+    const queryIndex = index + 1;
+    const queryStartedAt = Date.now();
+    logger.info("search request start", {
+      sourceId: source.id,
+      sourceName: source.name,
+      runId: context?.runId,
+      queryId: context?.queryId,
+      provider,
+      recallQuery: normalizedRecallQuery,
+      queryIndex,
+      totalQueries: searchQueries.length,
+      timeoutMs: request.timeoutMs ?? 12_000,
+      url: request.url,
+      method: request.method,
+    });
+    if (context?.runId) {
+      await publishTaskEvent(context.runId, {
+        type: "fetch-search-query-start",
+        sourceId: source.id,
+        message: `检索中 (${queryIndex}/${searchQueries.length})：${normalizedRecallQuery}`,
+        provider,
+        queryIndex,
+        totalQueries: searchQueries.length,
+        timeoutMs: request.timeoutMs ?? 12_000,
+      });
+    }
 
     try {
       const response = await fetchWithTimeoutDetailed(request.url, {
@@ -2494,8 +2547,35 @@ async function fetchSearchSource(
         requestId: parsedResult.requestId,
       });
       searchSuccessSignatures.add(signature);
-      if (context?.runId) {
+      if (enableSearchSuccessDedup && context?.runId) {
         await persistRunSearchSuccessSignatures(context.runId, searchSuccessSignatures);
+      }
+      successCount += 1;
+      const elapsedMs = Date.now() - queryStartedAt;
+      logger.info("search request done", {
+        sourceId: source.id,
+        sourceName: source.name,
+        runId: context?.runId,
+        queryId: context?.queryId,
+        provider,
+        recallQuery: normalizedRecallQuery,
+        queryIndex,
+        totalQueries: searchQueries.length,
+        statusCode: response.statusCode,
+        parsedCount: parsedResult.items.length,
+        elapsedMs,
+      });
+      if (context?.runId) {
+        await publishTaskEvent(context.runId, {
+          type: "fetch-search-query-done",
+          sourceId: source.id,
+          message: `检索完成 (${queryIndex}/${searchQueries.length})：${normalizedRecallQuery}`,
+          provider,
+          queryIndex,
+          totalQueries: searchQueries.length,
+          parsedCount: parsedResult.items.length,
+          elapsedMs,
+        });
       }
 
       allItems.push(
@@ -2513,6 +2593,8 @@ async function fetchSearchSource(
         }))
       );
     } catch (error) {
+      failedCount += 1;
+      const elapsedMs = Date.now() - queryStartedAt;
       writeWorkerApiIoLog({
         event: "search-request-response",
         runId: context?.runId,
@@ -2560,10 +2642,43 @@ async function fetchSearchSource(
         queryId: context?.queryId,
         provider,
         url: request.url,
+        queryIndex,
+        totalQueries: searchQueries.length,
+        elapsedMs,
         error: logger.normalizeError(error),
       });
+      if (context?.runId) {
+        await publishTaskEvent(context.runId, {
+          type: "fetch-search-query-fail",
+          sourceId: source.id,
+          message: `检索失败 (${queryIndex}/${searchQueries.length})：${normalizedRecallQuery}`,
+          provider,
+          queryIndex,
+          totalQueries: searchQueries.length,
+          elapsedMs,
+          error:
+            error instanceof Error
+              ? error.name === "AbortError"
+                ? `Request timeout after ${request.timeoutMs ?? 12_000}ms`
+                : error.message
+              : "unknown search request error",
+        });
+      }
     }
   }
+  logger.info("search source fetch summary", {
+    sourceId: source.id,
+    sourceName: source.name,
+    runId: context?.runId,
+    queryId: context?.queryId,
+    provider,
+    recallQueryCount: searchQueries.length,
+    successCount,
+    failedCount,
+    totalItems: allItems.length,
+    elapsedMs: Date.now() - sourceStartedAt,
+    dedupByQueryRun: enableSearchSuccessDedup,
+  });
 
   const dedupedItems = deduplicateItemsByUrlAndFingerprint(allItems);
   if (!dedupedItems.length) {
@@ -3922,7 +4037,7 @@ function buildSearchRequest(
       toNumberOption(options.request_timeout_ms, options.requestTimeoutMs) ??
       toNumberOption(options.timeout_ms, options.timeoutMs) ??
       toNumberOption(process.env.WORKER_PARALLEL_REQUEST_TIMEOUT_MS) ??
-      90_000;
+      15_000;
     const payload: Record<string, unknown> = {
       mode: pickString(options.mode) ?? "one-shot",
       objective,
