@@ -30,6 +30,7 @@ type TopicTermRefreshResult = {
   rescoreScheduled: boolean;
   rescoreJobId: string | null;
   vectorRefreshed: boolean;
+  autoTermsReason: string | null;
 };
 
 function normalizeTermValue(value: string): string | null {
@@ -53,6 +54,7 @@ export async function refreshTopicTermsAuto(params: {
       rescoreScheduled: false,
       rescoreJobId: null,
       vectorRefreshed: false,
+      autoTermsReason: "disabled",
     };
   }
 
@@ -80,6 +82,7 @@ export async function refreshTopicTermsAuto(params: {
       rescoreScheduled: false,
       rescoreJobId: null,
       vectorRefreshed: false,
+      autoTermsReason: "topic-not-found",
     };
   }
 
@@ -126,6 +129,7 @@ export async function refreshTopicTermsAuto(params: {
       rescoreScheduled: false,
       rescoreJobId: null,
       vectorRefreshed: false,
+      autoTermsReason: "llm-request-failed",
     };
   }
 
@@ -142,6 +146,7 @@ export async function refreshTopicTermsAuto(params: {
       rescoreScheduled: false,
       rescoreJobId: null,
       vectorRefreshed: false,
+      autoTermsReason: "invalid-llm-payload",
     };
   }
 
@@ -168,6 +173,7 @@ export async function refreshTopicTermsAuto(params: {
       rescoreScheduled: false,
       rescoreJobId: null,
       vectorRefreshed: false,
+      autoTermsReason: "empty-terms",
     };
   }
 
@@ -220,5 +226,6 @@ export async function refreshTopicTermsAuto(params: {
     vectorRefreshed,
     rescoreScheduled,
     rescoreJobId,
+    autoTermsReason: null,
   };
 }

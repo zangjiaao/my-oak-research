@@ -108,6 +108,7 @@ export async function POST(req: Request) {
       vectorRefreshed: false,
       rescoreScheduled: false,
       rescoreJobId: null as string | null,
+      autoTermsReason: null as string | null,
     };
     if (!data.terms?.length) {
       autoTermsResult = await refreshTopicTermsAuto({

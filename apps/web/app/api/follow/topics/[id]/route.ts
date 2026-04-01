@@ -62,6 +62,16 @@ export async function PATCH(
     }
 
     const data = parsed.data;
+    const payloadObject =
+      payload && typeof payload === "object" && !Array.isArray(payload)
+        ? (payload as Record<string, unknown>)
+        : {};
+    const hasTermsInPayload = Object.prototype.hasOwnProperty.call(
+      payloadObject,
+      "terms"
+    );
+    const inputTerms = data.terms ?? [];
+    const shouldAutoRefreshTerms = !hasTermsInPayload || inputTerms.length === 0;
 
     const updated = await prismaAny.$transaction(async (tx: any) => {
       const topic = await tx.topic.update({
@@ -73,15 +83,15 @@ export async function PATCH(
         },
       });
 
-      if (data.terms !== undefined) {
+      if (hasTermsInPayload) {
         await tx.topicTerm.deleteMany({
           where: {
             topicId: params.id,
           },
         });
-        if (data.terms.length > 0) {
+        if (inputTerms.length > 0) {
           await tx.topicTerm.createMany({
-            data: data.terms.map((term) => ({
+            data: inputTerms.map((term) => ({
               topicId: params.id,
               type: term.type,
               value: term.value.trim().toLowerCase(),
@@ -139,8 +149,9 @@ export async function PATCH(
       vectorRefreshed: false,
       rescoreScheduled: false,
       rescoreJobId: null as string | null,
+      autoTermsReason: null as string | null,
     };
-    if (data.terms === undefined) {
+    if (shouldAutoRefreshTerms) {
       autoTermsResult = await refreshTopicTermsAuto({
         prismaAny,
         topicId: params.id,
@@ -166,6 +177,7 @@ export async function PATCH(
       rescoreJobId: finalRescoreJobId,
       autoTermsUpdated: autoTermsResult.autoTermsUpdated,
       autoTermsCount: autoTermsResult.autoTermsCount,
+      autoTermsReason: autoTermsResult.autoTermsReason,
       autoTermsVectorRefreshed: autoTermsResult.vectorRefreshed,
       autoTermsRescoreScheduled: autoTermsResult.rescoreScheduled,
       autoTermsRescoreJobId: autoTermsResult.rescoreJobId,
