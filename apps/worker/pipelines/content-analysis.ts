@@ -3771,6 +3771,8 @@ async function fetchSocialSource(
   const gatherMatchMode = mapQueryFilterModeToGatherMatchMode(
     sourcePolicy?.contentFilterMode
   );
+  const gatherSetupHint =
+    "cd apps/gather && uv sync && uv run playwright install chromium";
 
   try {
     for (const recallQuery of normalizedBatchedQueries) {
@@ -3823,9 +3825,25 @@ async function fetchSocialSource(
     }
     return deduplicateItemsByUrlAndFingerprint(normalizedItems);
   } catch (error) {
-    console.error(`[collector] fetchSocialSource error:`, error);
+    const message = error instanceof Error ? error.message : String(error);
+    const isPlaywrightMissing =
+      /Playwright driver binary is missing/i.test(message) ||
+      /uv run playwright install chromium/i.test(message);
+    if (isPlaywrightMissing) {
+      logger.error("gather playwright runtime missing", {
+        sourceId: source.id,
+        sourceName: source.name,
+        gatherUrl,
+        hint: gatherSetupHint,
+        error: message,
+      });
+    } else {
+      console.error(`[collector] fetchSocialSource error:`, error);
+    }
     throw new Error(
-      `Social gather failed for ${source.name}: ${(error as Error).message}`
+      `Social gather failed for ${source.name}: ${message}${
+        isPlaywrightMissing ? `; fix: ${gatherSetupHint}` : ""
+      }`
     );
   }
 }

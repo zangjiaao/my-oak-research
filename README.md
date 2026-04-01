@@ -32,6 +32,15 @@ Oak Research is a monorepo for research collection and knowledge processing:
 npm install
 ```
 
+`npm install` will also try to bootstrap `apps/gather` (`uv sync` + Playwright Chromium install).
+If your machine does not have `uv` or browser download is blocked, run this manually later:
+
+```bash
+cd apps/gather
+uv sync
+uv run playwright install chromium
+```
+
 2) Start local infra:
 
 ```bash

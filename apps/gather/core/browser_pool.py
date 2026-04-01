@@ -44,6 +44,26 @@ _RUNTIME_LOCK = asyncio.Lock()
 _SWEEP_TASK: asyncio.Task[Any] | None = None
 
 
+def resolve_playwright_driver_node_path() -> Path:
+    import playwright
+
+    driver_dir = Path(playwright.__file__).resolve().parent / "driver"
+    node_name = "node.exe" if os.name == "nt" else "node"
+    return driver_dir / node_name
+
+
+def ensure_playwright_driver_binary() -> Path:
+    driver_node_path = resolve_playwright_driver_node_path()
+    if not driver_node_path.exists():
+        raise RuntimeError(
+            "Playwright driver binary is missing "
+            f"({driver_node_path}). "
+            "Please reinstall dependencies and Playwright browsers: "
+            "`cd apps/gather && uv sync && uv run playwright install chromium`"
+        )
+    return driver_node_path
+
+
 # ---------------------------------------------------------------------------
 # Hashing helpers
 # ---------------------------------------------------------------------------
@@ -192,25 +212,11 @@ async def get_playwright_runtime() -> Any:
     if _RUNTIME is not None:
         return _RUNTIME
 
-    def _resolve_playwright_driver_node() -> Path:
-        import playwright
-
-        driver_dir = Path(playwright.__file__).resolve().parent / "driver"
-        node_name = "node.exe" if os.name == "nt" else "node"
-        return driver_dir / node_name
-
     from playwright.async_api import async_playwright
 
     async with _RUNTIME_LOCK:
         if _RUNTIME is None:
-            driver_node_path = _resolve_playwright_driver_node()
-            if not driver_node_path.exists():
-                raise RuntimeError(
-                    "Playwright driver binary is missing "
-                    f"({driver_node_path}). "
-                    "Please reinstall dependencies and Playwright browsers: "
-                    "`cd apps/gather && uv sync && uv run playwright install chromium`"
-                )
+            ensure_playwright_driver_binary()
             try:
                 _RUNTIME = await async_playwright().start()
             except FileNotFoundError as error:
@@ -231,6 +237,9 @@ async def app_lifespan(_app: FastAPI):
 
     if API_IO_LOG_ENABLED:
         logger.info("api io log dir=%s", API_IO_LOG_DIR)
+    if os.getenv("GATHER_PREFLIGHT_PLAYWRIGHT", "true").lower() != "false":
+        ensure_playwright_driver_binary()
+        logger.info("playwright preflight passed")
 
     if _SWEEP_TASK is None or _SWEEP_TASK.done():
         _SWEEP_TASK = asyncio.create_task(_sweep_loop())

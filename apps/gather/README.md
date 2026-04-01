@@ -26,6 +26,9 @@ uv sync
 playwright install chromium
 ```
 
+也可以在仓库根目录执行 `npm install`，会自动尝试执行 gather 的 bootstrap（`uv sync` + `uv run playwright install chromium`）。
+若自动步骤失败，可按上面的命令手动重试。
+
 ### 2. 导出浏览器认证数据
 
 ```bash
