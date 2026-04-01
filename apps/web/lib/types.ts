@@ -61,6 +61,7 @@ export interface TopicWithAggregations {
   id: string;
   name: string;
   description?: string | null;
+  recallLanguages?: ("zh" | "en" | "ja")[];
   terms?: TopicTerm[];
   termsCount?: number;
 }

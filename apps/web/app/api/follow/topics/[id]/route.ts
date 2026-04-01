@@ -5,6 +5,10 @@ import { logger } from "@/lib/logger";
 import { z } from "zod";
 import { refreshTopicVector } from "@/lib/topic-vector";
 import { scheduleTopicRescore } from "@/lib/queue";
+import {
+  extractTopicRecallLanguages,
+  mergeTopicProfileRecallLanguages,
+} from "@/lib/topic-recall-languages";
 
 const prismaAny = prisma as any;
 
@@ -31,6 +35,7 @@ export async function GET(
 
   return NextResponse.json({
     ...topic,
+    recallLanguages: extractTopicRecallLanguages(topic.profile),
     termsCount: topic?._count?.terms ?? 0,
   });
 }
@@ -69,14 +74,34 @@ export async function PATCH(
       payloadObject,
       "terms"
     );
+    const hasProfileInPayload = Object.prototype.hasOwnProperty.call(
+      payloadObject,
+      "profile"
+    );
+    const hasRecallLanguagesInPayload = Object.prototype.hasOwnProperty.call(
+      payloadObject,
+      "recallLanguages"
+    );
     const inputTerms = data.terms ?? [];
+    let nextProfile: unknown = existing.profile ?? null;
+    if (hasProfileInPayload) {
+      nextProfile = data.profile ?? null;
+    }
+    if (hasRecallLanguagesInPayload) {
+      nextProfile = mergeTopicProfileRecallLanguages(
+        nextProfile,
+        data.recallLanguages
+      );
+    }
     const updated = await prismaAny.$transaction(async (tx: any) => {
       const topic = await tx.topic.update({
         where: { id: params.id },
         data: {
           ...(data.name !== undefined ? { name: data.name } : {}),
           ...(data.description !== undefined ? { description: data.description ?? null } : {}),
-          ...(data.profile !== undefined ? { profile: data.profile ?? null } : {}),
+          ...(hasProfileInPayload || hasRecallLanguagesInPayload
+            ? { profile: nextProfile }
+            : {}),
         },
       });
 
@@ -142,6 +167,7 @@ export async function PATCH(
 
     return NextResponse.json({
       ...updated,
+      recallLanguages: extractTopicRecallLanguages(updated.profile),
       termsCount: updated?._count?.terms ?? 0,
       vectorRefreshed,
       rescoreScheduled,

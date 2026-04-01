@@ -183,8 +183,17 @@ const ContentAnalyzeSchema = z.object({
     )
     .default([]),
 });
+const RecallLanguageSchema = z.enum(["zh", "en", "ja"]);
 const TopicRecallQueriesSchema = z.object({
-  queries: z.array(z.string().min(1).max(180)).min(1).max(16),
+  queries: z
+    .array(
+      z.object({
+        text: z.string().min(1).max(180),
+        lang: RecallLanguageSchema,
+      })
+    )
+    .min(1)
+    .max(16),
 });
 const TopicRerankSchema = z.object({
   scores: z
@@ -260,12 +269,14 @@ type TopicTermLite = {
   value: string;
   weight?: number | null;
 };
+type RecallLanguage = z.infer<typeof RecallLanguageSchema>;
 
 type JobCollectorTopic = {
   id: string;
   name: string;
   enabled?: boolean;
   description?: string | null;
+  recallLanguages: RecallLanguage[];
   terms: TopicTermLite[];
 };
 
@@ -301,6 +312,7 @@ type SourceRecallQueryBundle = {
   origin: RecallQueryOrigin;
   generatedCount: number;
 };
+type TopicRecallQueryItem = z.infer<typeof TopicRecallQueriesSchema>["queries"][number];
 type PreLlmFilterReason =
   | "placeholder"
   | "error_page"
@@ -1806,6 +1818,28 @@ function buildRecallQueries(keywords: QueryKeyword[]): string[] {
   return Array.from(new Set(queries.map((query) => query.trim()).filter(Boolean)));
 }
 
+const RECALL_LANGUAGE_ORDER: RecallLanguage[] = ["zh", "en", "ja"];
+
+function normalizeRecallLanguages(input: unknown): RecallLanguage[] {
+  const raw = Array.isArray(input) ? input : [];
+  const normalized = Array.from(
+    new Set(
+      raw
+        .map((item) => String(item).trim().toLowerCase())
+        .filter(
+          (item): item is RecallLanguage =>
+            item === "zh" || item === "en" || item === "ja"
+        )
+    )
+  );
+  return normalized.length > 0 ? normalized : [...RECALL_LANGUAGE_ORDER];
+}
+
+function resolveRecallLanguages(topics: JobCollectorTopic[]): RecallLanguage[] {
+  const merged = normalizeRecallLanguages(topics.flatMap((topic) => topic.recallLanguages));
+  return RECALL_LANGUAGE_ORDER.filter((lang) => merged.includes(lang));
+}
+
 function resolveTopicRecallLimit(): number {
   if (!Number.isFinite(TOPIC_RECALL_QUERY_LIMIT) || TOPIC_RECALL_QUERY_LIMIT < 1) {
     return 8;
@@ -1825,6 +1859,47 @@ function normalizeRecallQueries(queries: string[], limit: number): string[] {
     0,
     Math.max(1, Math.min(limit, 64))
   );
+}
+
+function normalizeRecallQueryItems(params: {
+  queries: TopicRecallQueryItem[];
+  limit: number;
+  allowedLanguages: RecallLanguage[];
+}): string[] {
+  const normalizedLanguages = normalizeRecallLanguages(params.allowedLanguages);
+  const allowed = new Set(normalizedLanguages);
+  const byLang = new Map<RecallLanguage, string[]>(
+    RECALL_LANGUAGE_ORDER.map((lang) => [lang, []])
+  );
+  const dedup = new Set<string>();
+
+  for (const item of params.queries) {
+    if (!allowed.has(item.lang)) {
+      continue;
+    }
+    const text = item.text.trim();
+    if (!text) continue;
+    const dedupKey = `${item.lang}:${text.toLowerCase()}`;
+    if (dedup.has(dedupKey)) {
+      continue;
+    }
+    dedup.add(dedupKey);
+    byLang.get(item.lang)?.push(text);
+  }
+
+  const flattened: string[] = [];
+  for (const lang of RECALL_LANGUAGE_ORDER) {
+    if (!allowed.has(lang)) continue;
+    const items = byLang.get(lang) ?? [];
+    for (const item of items) {
+      flattened.push(item);
+      if (flattened.length >= Math.max(1, Math.min(params.limit, 64))) {
+        return flattened;
+      }
+    }
+  }
+
+  return flattened;
 }
 
 function isTopicRecallSource(source: SourceWithRelations): boolean {
@@ -1868,6 +1943,7 @@ function buildTopicRecallPrompt(params: {
   topics: JobCollectorTopic[];
   source: SourceWithRelations;
   limit: number;
+  recallLanguages: RecallLanguage[];
 }): string {
   const topicPayload = params.topics.map((topic) => {
     const coreTerms = topic.terms
@@ -1892,12 +1968,12 @@ function buildTopicRecallPrompt(params: {
     };
   });
   return stripPromptLike(
-    `你是检索 query 生成器。请输出 JSON：{"queries":["..."]}。
+    `你是检索 query 生成器。请输出 JSON：{"queries":[{"text":"...","lang":"zh|en|ja"}]}。
 要求：
-1) 仅输出搜索 query 文本数组，数量 3-${params.limit}；
-2) query 需要覆盖主题核心词与扩展词，避免重复；
-3) 保持短句可检索，允许中英混合；
-4) 如存在排除词，请在 query 中尽量体现负向约束（如 -term）；
+1) 仅输出搜索 query 对象数组，数量 3-${params.limit}；
+2) 每个 query 的 lang 必须属于：${params.recallLanguages.join(", ")}；
+3) query 需要覆盖主题核心词与扩展词，避免重复；
+4) 保持短句可检索；如存在排除词，请在 query 中尽量体现负向约束（如 -term）；
 5) 不要输出解释、不要输出 markdown。
 
 Source:
@@ -1949,6 +2025,7 @@ async function buildTopicRecallQueryBundles(params: {
   );
   const recallLimit = resolveTopicRecallLimit();
   const timeoutMs = resolveTopicRecallTimeoutMs();
+  const recallLanguages = resolveRecallLanguages(params.topics);
 
   for (const source of recallSources) {
     await publishTaskEvent(params.runId, {
@@ -1976,6 +2053,7 @@ async function buildTopicRecallQueryBundles(params: {
         topics: params.topics,
         source,
         limit: recallLimit,
+        recallLanguages,
       });
       const response = await withTimeout(
         llmGateway.json<z.infer<typeof TopicRecallQueriesSchema>>(
@@ -1996,7 +2074,11 @@ async function buildTopicRecallQueryBundles(params: {
         timeoutMs,
         `topic recall generation timeout after ${timeoutMs}ms`
       );
-      const queries = normalizeRecallQueries(response.queries ?? [], recallLimit);
+      const queries = normalizeRecallQueryItems({
+        queries: response.queries ?? [],
+        limit: recallLimit,
+        allowedLanguages: recallLanguages,
+      });
       const effectiveQueries = queries.length > 0 ? queries : fallbackQueries;
       const origin: RecallQueryOrigin =
         queries.length > 0 ? "llm_recall" : "static_fallback";

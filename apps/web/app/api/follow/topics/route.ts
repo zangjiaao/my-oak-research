@@ -4,6 +4,10 @@ import { TopicCreateSchema } from "@/app/api/_utils/zod";
 import { logger } from "@/lib/logger";
 import { z } from "zod";
 import { refreshTopicVector } from "@/lib/topic-vector";
+import {
+  extractTopicRecallLanguages,
+  mergeTopicProfileRecallLanguages,
+} from "@/lib/topic-recall-languages";
 
 const prismaAny = prisma as any;
 
@@ -31,6 +35,7 @@ export async function GET(request: Request) {
     return NextResponse.json(
       topics.map((topic: any) => ({
         ...topic,
+        recallLanguages: extractTopicRecallLanguages(topic.profile),
         termsCount: topic?._count?.terms ?? 0,
       }))
     );
@@ -60,7 +65,10 @@ export async function POST(req: Request) {
         data: {
           name: data.name,
           description: data.description ?? null,
-          profile: data.profile ?? null,
+          profile: mergeTopicProfileRecallLanguages(
+            data.profile ?? null,
+            data.recallLanguages
+          ),
         },
       });
 
@@ -104,6 +112,7 @@ export async function POST(req: Request) {
     return NextResponse.json(
       {
         ...created,
+        recallLanguages: extractTopicRecallLanguages(created.profile),
         termsCount: created?._count?.terms ?? 0,
         initialVectorRefreshed,
       },

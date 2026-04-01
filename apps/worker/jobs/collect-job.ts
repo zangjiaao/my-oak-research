@@ -7,6 +7,32 @@ import type { SourceWithRelations } from "@/lib/types";
 import { unscheduleCollectJob } from "@/lib/queue";
 
 const prismaAny = prisma as any;
+const DEFAULT_RECALL_LANGUAGES = ["zh", "en", "ja"] as const;
+type RecallLanguage = (typeof DEFAULT_RECALL_LANGUAGES)[number];
+
+function normalizeRecallLanguages(input: unknown): RecallLanguage[] {
+  const raw = Array.isArray(input) ? input : [];
+  const normalized = Array.from(
+    new Set(
+      raw
+        .map((item) => String(item).trim().toLowerCase())
+        .filter(
+          (item): item is RecallLanguage =>
+            item === "zh" || item === "en" || item === "ja"
+        )
+    )
+  );
+  return normalized.length > 0 ? normalized : [...DEFAULT_RECALL_LANGUAGES];
+}
+
+function extractRecallLanguagesFromProfile(profile: unknown): RecallLanguage[] {
+  if (!profile || typeof profile !== "object" || Array.isArray(profile)) {
+    return [...DEFAULT_RECALL_LANGUAGES];
+  }
+  return normalizeRecallLanguages(
+    (profile as Record<string, unknown>).recallLanguages
+  );
+}
 
 export const collectJobWorker = createCollectJobWorker(async (job) => {
   const { runId: inputRunId, jobId, trigger } = job.data;
@@ -81,6 +107,7 @@ export const collectJobWorker = createCollectJobWorker(async (job) => {
         id: topic.id,
         name: topic.name,
         description: topic.description ?? null,
+        recallLanguages: extractRecallLanguagesFromProfile(topic.profile),
         terms: (topic.terms ?? []).map((term: any) => ({
           type: term.type,
           value: term.value,
