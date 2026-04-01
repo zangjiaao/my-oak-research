@@ -104,6 +104,18 @@ const CONTENT_FORMATTER_READERLM_MODEL =
   process.env.CONTENT_FORMATTER_READERLM_MODEL ?? "readerlm-v2";
 const CONTENT_FORMATTER_READERLM_API_KEY =
   process.env.CONTENT_FORMATTER_READERLM_API_KEY?.trim() ?? "";
+const SEARCH_QUERY_CONCURRENCY = Math.max(
+  1,
+  Math.min(8, Number(process.env.SEARCH_QUERY_CONCURRENCY ?? 2))
+);
+const SEARCH_QUERY_RETRY_LIMIT = Math.max(
+  0,
+  Math.min(3, Number(process.env.SEARCH_QUERY_RETRY_LIMIT ?? 1))
+);
+const SEARCH_QUERY_RETRY_BACKOFF_MS = Math.max(
+  0,
+  Number(process.env.SEARCH_QUERY_RETRY_BACKOFF_MS ?? 300)
+);
 
 const ContentAnalyzeSchema = z.object({
   summary: z.string().min(30).max(400),
@@ -2544,6 +2556,22 @@ function resolveValidSourceUrls(source: WebSource | DarknetSource): string[] {
     });
 }
 
+function isRetryableSearchError(error: unknown): boolean {
+  if (error instanceof HttpStatusError) {
+    return error.statusCode >= 500;
+  }
+  if (error instanceof Error) {
+    return error.name === "AbortError";
+  }
+  return false;
+}
+
+async function waitForSearchRetry(attempt: number): Promise<void> {
+  if (SEARCH_QUERY_RETRY_BACKOFF_MS <= 0) return;
+  const delayMs = SEARCH_QUERY_RETRY_BACKOFF_MS * Math.max(1, attempt);
+  await new Promise((resolve) => setTimeout(resolve, delayMs));
+}
+
 async function fetchSearchSource(
   source: SearchEngineSource,
   context?: {
@@ -2609,259 +2637,325 @@ async function fetchSearchSource(
     recallQueryCount: searchQueries.length,
     dedupByQueryRun: enableSearchSuccessDedup,
   });
-  for (const [index, recallQuery] of searchQueries.entries()) {
-    const normalizedRecallQuery = recallQuery.trim();
-    if (!normalizedRecallQuery) continue;
-    const signature = buildSearchSuccessSignature({
-      sourceId: source.id,
-      provider,
-      recallQuery: normalizedRecallQuery,
-    });
-    if (searchSuccessSignatures.has(signature)) {
-      if (context?.runId) {
-        await publishTaskEvent(context.runId, {
-          type: "fetch-search-skip-retry-dup",
-          sourceId: source.id,
-          message: `跳过重复检索：${normalizedRecallQuery}`,
-        });
-      }
-      writeWorkerApiIoLog({
-        event: "search-request-response",
-        runId: context?.runId,
-        queryId: context?.queryId,
-        sourceId: source.id,
-        sourceName: source.name,
-        platform:
-          (
-            (source.search as unknown as { platform?: string | null })?.platform ??
-            "unknown"
-          ).toString(),
-        provider,
-        recallQuery: normalizedRecallQuery,
-        recallQueryCount: searchQueries.length,
-        queryOrigin:
-          context?.recallQueries && context.recallQueries.length > 0
-            ? recallOrigin
-            : "objective_fallback",
-        rawRecallQueryCount: context?.recallQueries?.length ?? 0,
-        effectiveRecallQueryCount: searchQueries.length,
-        skippedByRetryDedup: true,
-        url: source.search?.apiEndpoint ?? "",
-        method: "SKIP",
-        statusCode: 0,
-        request: {
-          headers: {},
-          body: null,
-        },
-        response: {
-          body: "",
-        },
-        parsedCount: 0,
-      });
-      continue;
-    }
-    const request = buildSearchRequest(source, provider, normalizedRecallQuery);
-    if (!request.url) {
-      return [
-        {
-          text: `搜索引擎 ${source.name} 未配置 API Endpoint，当前 objective: ${objective}`,
-          markdown: `搜索引擎 ${source.name} 结果占位`,
-          platform: source.name,
-          time: new Date(),
-          sourceId: source.id,
-          sourceType: source.category,
-          sourceIsDarknet: source.isDarknet,
-        },
-      ];
-    }
-    const queryIndex = index + 1;
-    const queryStartedAt = Date.now();
-    logger.info("search request start", {
-      sourceId: source.id,
-      sourceName: source.name,
-      runId: context?.runId,
-      queryId: context?.queryId,
-      provider,
-      recallQuery: normalizedRecallQuery,
-      queryIndex,
+  const queryTasks = searchQueries
+    .map((recallQuery, index) => ({
+      recallQuery: recallQuery.trim(),
+      queryIndex: index + 1,
       totalQueries: searchQueries.length,
-      timeoutMs: request.timeoutMs ?? 12_000,
-      url: request.url,
-      method: request.method,
-    });
-    if (context?.runId) {
-      await publishTaskEvent(context.runId, {
-        type: "fetch-search-query-start",
+    }))
+    .filter((task) => task.recallQuery.length > 0);
+  const queryTaskResults = await mapWithConcurrency(
+    queryTasks,
+    SEARCH_QUERY_CONCURRENCY,
+    async (task) => {
+      const signature = buildSearchSuccessSignature({
         sourceId: source.id,
-        message: `检索中 (${queryIndex}/${searchQueries.length})：${normalizedRecallQuery}`,
         provider,
-        queryIndex,
-        totalQueries: searchQueries.length,
-        timeoutMs: request.timeoutMs ?? 12_000,
+        recallQuery: task.recallQuery,
       });
-    }
-
-    try {
-      const response = await fetchWithTimeoutDetailed(request.url, {
-        method: request.method,
-        headers: request.headers,
-        body: request.body,
-      }, request.timeoutMs);
-      const parsedResult = parseSearchResult(response.text);
-      writeWorkerApiIoLog({
-        event: "search-request-response",
-        runId: context?.runId,
-        queryId: context?.queryId,
-        sourceId: source.id,
-        sourceName: source.name,
-        platform:
-          (
-            (source.search as unknown as { platform?: string | null })?.platform ??
-            "unknown"
-          ).toString(),
-        provider,
-        recallQuery: normalizedRecallQuery,
-        recallQueryCount: searchQueries.length,
-        queryOrigin:
-          context?.recallQueries && context.recallQueries.length > 0
-            ? recallOrigin
-            : "objective_fallback",
-        rawRecallQueryCount: context?.recallQueries?.length ?? 0,
-        effectiveRecallQueryCount: searchQueries.length,
-        skippedByRetryDedup: false,
-        timeoutMs: request.timeoutMs ?? 12_000,
-        url: request.url,
-        method: request.method,
-        statusCode: response.statusCode,
-        request: {
-          headers: request.headers,
-          body: request.body ?? null,
-        },
-        response: {
-          body: response.text,
-        },
-        parsedCount: parsedResult.items.length,
-        requestId: parsedResult.requestId,
-      });
-      searchSuccessSignatures.add(signature);
-      if (enableSearchSuccessDedup && context?.runId) {
-        await persistRunSearchSuccessSignatures(context.runId, searchSuccessSignatures);
+      if (searchSuccessSignatures.has(signature)) {
+        if (context?.runId) {
+          await publishTaskEvent(context.runId, {
+            type: "fetch-search-skip-retry-dup",
+            sourceId: source.id,
+            message: `跳过重复检索：${task.recallQuery}`,
+          });
+        }
+        writeWorkerApiIoLog({
+          event: "search-request-response",
+          runId: context?.runId,
+          queryId: context?.queryId,
+          sourceId: source.id,
+          sourceName: source.name,
+          platform:
+            (
+              (source.search as unknown as { platform?: string | null })?.platform ??
+              "unknown"
+            ).toString(),
+          provider,
+          recallQuery: task.recallQuery,
+          recallQueryCount: searchQueries.length,
+          queryOrigin:
+            context?.recallQueries && context.recallQueries.length > 0
+              ? recallOrigin
+              : "objective_fallback",
+          rawRecallQueryCount: context?.recallQueries?.length ?? 0,
+          effectiveRecallQueryCount: searchQueries.length,
+          skippedByRetryDedup: true,
+          url: source.search?.apiEndpoint ?? "",
+          method: "SKIP",
+          statusCode: 0,
+          request: {
+            headers: {},
+            body: null,
+          },
+          response: {
+            body: "",
+          },
+          parsedCount: 0,
+        });
+        return { success: false, failed: false, items: [] as CleanItem[] };
       }
+
+      const request = buildSearchRequest(source, provider, task.recallQuery);
+      if (!request.url) {
+        logger.error("search source missing api endpoint", {
+          sourceId: source.id,
+          sourceName: source.name,
+          runId: context?.runId,
+          queryId: context?.queryId,
+          provider,
+          recallQuery: task.recallQuery,
+          queryIndex: task.queryIndex,
+          totalQueries: task.totalQueries,
+        });
+        return { success: false, failed: true, items: [] as CleanItem[] };
+      }
+
+      for (let attempt = 1; attempt <= SEARCH_QUERY_RETRY_LIMIT + 1; attempt++) {
+        const queryStartedAt = Date.now();
+        logger.info("search request start", {
+          sourceId: source.id,
+          sourceName: source.name,
+          runId: context?.runId,
+          queryId: context?.queryId,
+          provider,
+          recallQuery: task.recallQuery,
+          queryIndex: task.queryIndex,
+          totalQueries: task.totalQueries,
+          attempt,
+          maxAttempts: SEARCH_QUERY_RETRY_LIMIT + 1,
+          timeoutMs: request.timeoutMs ?? 12_000,
+          url: request.url,
+          method: request.method,
+        });
+        if (context?.runId) {
+          await publishTaskEvent(context.runId, {
+            type: "fetch-search-query-start",
+            sourceId: source.id,
+            message: `检索中 (${task.queryIndex}/${task.totalQueries})：${task.recallQuery}`,
+            provider,
+            queryIndex: task.queryIndex,
+            totalQueries: task.totalQueries,
+            timeoutMs: request.timeoutMs ?? 12_000,
+          });
+        }
+
+        try {
+          const response = await fetchWithTimeoutDetailed(
+            request.url,
+            {
+              method: request.method,
+              headers: request.headers,
+              body: request.body,
+            },
+            request.timeoutMs
+          );
+          const parsedResult = parseSearchResult(response.text);
+          writeWorkerApiIoLog({
+            event: "search-request-response",
+            runId: context?.runId,
+            queryId: context?.queryId,
+            sourceId: source.id,
+            sourceName: source.name,
+            platform:
+              (
+                (source.search as unknown as { platform?: string | null })?.platform ??
+                "unknown"
+              ).toString(),
+            provider,
+            recallQuery: task.recallQuery,
+            recallQueryCount: searchQueries.length,
+            queryOrigin:
+              context?.recallQueries && context.recallQueries.length > 0
+                ? recallOrigin
+                : "objective_fallback",
+            rawRecallQueryCount: context?.recallQueries?.length ?? 0,
+            effectiveRecallQueryCount: searchQueries.length,
+            skippedByRetryDedup: false,
+            timeoutMs: request.timeoutMs ?? 12_000,
+            url: request.url,
+            method: request.method,
+            statusCode: response.statusCode,
+            request: {
+              headers: request.headers,
+              body: request.body ?? null,
+            },
+            response: {
+              body: response.text,
+            },
+            parsedCount: parsedResult.items.length,
+            requestId: parsedResult.requestId,
+          });
+          if (response.statusCode === 200 && parsedResult.items.length === 0) {
+            logger.warn("search response parsed empty", {
+              sourceId: source.id,
+              sourceName: source.name,
+              runId: context?.runId,
+              queryId: context?.queryId,
+              provider,
+              recallQuery: task.recallQuery,
+              queryIndex: task.queryIndex,
+              totalQueries: task.totalQueries,
+              rootKeys: parsedResult.rootKeys,
+            });
+          }
+          searchSuccessSignatures.add(signature);
+          if (enableSearchSuccessDedup && context?.runId) {
+            await persistRunSearchSuccessSignatures(
+              context.runId,
+              searchSuccessSignatures
+            );
+          }
+          const elapsedMs = Date.now() - queryStartedAt;
+          logger.info("search request done", {
+            sourceId: source.id,
+            sourceName: source.name,
+            runId: context?.runId,
+            queryId: context?.queryId,
+            provider,
+            recallQuery: task.recallQuery,
+            queryIndex: task.queryIndex,
+            totalQueries: task.totalQueries,
+            statusCode: response.statusCode,
+            parsedCount: parsedResult.items.length,
+            elapsedMs,
+            attempt,
+          });
+          if (context?.runId) {
+            await publishTaskEvent(context.runId, {
+              type: "fetch-search-query-done",
+              sourceId: source.id,
+              message: `检索完成 (${task.queryIndex}/${task.totalQueries})：${task.recallQuery}`,
+              provider,
+              queryIndex: task.queryIndex,
+              totalQueries: task.totalQueries,
+              parsedCount: parsedResult.items.length,
+              elapsedMs,
+            });
+          }
+          return {
+            success: true,
+            failed: false,
+            items: parsedResult.items.map((item) => ({
+              title: item.title,
+              text: item.text,
+              markdown: item.markdown,
+              platform: source.name,
+              url: item.url,
+              time: item.time ? new Date(item.time) : new Date(),
+              sourceId: source.id,
+              sourceType: source.category,
+              sourceIsDarknet: source.isDarknet,
+              sourceRequestId: parsedResult.requestId,
+            })),
+          };
+        } catch (error) {
+          const elapsedMs = Date.now() - queryStartedAt;
+          const retryable = isRetryableSearchError(error);
+          const canRetry = retryable && attempt <= SEARCH_QUERY_RETRY_LIMIT;
+          if (canRetry) {
+            logger.warn("search request retrying", {
+              sourceId: source.id,
+              sourceName: source.name,
+              runId: context?.runId,
+              queryId: context?.queryId,
+              provider,
+              recallQuery: task.recallQuery,
+              queryIndex: task.queryIndex,
+              totalQueries: task.totalQueries,
+              elapsedMs,
+              attempt,
+              nextAttempt: attempt + 1,
+              error: logger.normalizeError(error),
+            });
+            await waitForSearchRetry(attempt);
+            continue;
+          }
+          writeWorkerApiIoLog({
+            event: "search-request-response",
+            runId: context?.runId,
+            queryId: context?.queryId,
+            sourceId: source.id,
+            sourceName: source.name,
+            platform:
+              (
+                (source.search as unknown as { platform?: string | null })?.platform ??
+                "unknown"
+              ).toString(),
+            provider,
+            recallQuery: task.recallQuery,
+            recallQueryCount: searchQueries.length,
+            queryOrigin:
+              context?.recallQueries && context.recallQueries.length > 0
+                ? recallOrigin
+                : "objective_fallback",
+            rawRecallQueryCount: context?.recallQueries?.length ?? 0,
+            effectiveRecallQueryCount: searchQueries.length,
+            skippedByRetryDedup: false,
+            timeoutMs: request.timeoutMs ?? 12_000,
+            url: request.url,
+            method: request.method,
+            statusCode: -1,
+            request: {
+              headers: request.headers,
+              body: request.body ?? null,
+            },
+            response: {
+              body: "",
+            },
+            parsedCount: 0,
+            error:
+              error instanceof Error
+                ? error.name === "AbortError"
+                  ? `Request timeout after ${request.timeoutMs ?? 12_000}ms`
+                  : error.message
+                : "unknown search request error",
+          });
+          logger.error("search request failed", {
+            sourceId: source.id,
+            sourceName: source.name,
+            runId: context?.runId,
+            queryId: context?.queryId,
+            provider,
+            url: request.url,
+            queryIndex: task.queryIndex,
+            totalQueries: task.totalQueries,
+            elapsedMs,
+            attempt,
+            error: logger.normalizeError(error),
+          });
+          if (context?.runId) {
+            await publishTaskEvent(context.runId, {
+              type: "fetch-search-query-fail",
+              sourceId: source.id,
+              message: `检索失败 (${task.queryIndex}/${task.totalQueries})：${task.recallQuery}`,
+              provider,
+              queryIndex: task.queryIndex,
+              totalQueries: task.totalQueries,
+              elapsedMs,
+              error:
+                error instanceof Error
+                  ? error.name === "AbortError"
+                    ? `Request timeout after ${request.timeoutMs ?? 12_000}ms`
+                    : error.message
+                  : "unknown search request error",
+            });
+          }
+          return { success: false, failed: true, items: [] as CleanItem[] };
+        }
+      }
+      return { success: false, failed: true, items: [] as CleanItem[] };
+    }
+  );
+  for (const result of queryTaskResults) {
+    if (result.success) {
       successCount += 1;
-      const elapsedMs = Date.now() - queryStartedAt;
-      logger.info("search request done", {
-        sourceId: source.id,
-        sourceName: source.name,
-        runId: context?.runId,
-        queryId: context?.queryId,
-        provider,
-        recallQuery: normalizedRecallQuery,
-        queryIndex,
-        totalQueries: searchQueries.length,
-        statusCode: response.statusCode,
-        parsedCount: parsedResult.items.length,
-        elapsedMs,
-      });
-      if (context?.runId) {
-        await publishTaskEvent(context.runId, {
-          type: "fetch-search-query-done",
-          sourceId: source.id,
-          message: `检索完成 (${queryIndex}/${searchQueries.length})：${normalizedRecallQuery}`,
-          provider,
-          queryIndex,
-          totalQueries: searchQueries.length,
-          parsedCount: parsedResult.items.length,
-          elapsedMs,
-        });
-      }
-
-      allItems.push(
-        ...parsedResult.items.map((item) => ({
-          title: item.title,
-          text: item.text,
-          markdown: item.markdown,
-          platform: source.name,
-          url: item.url,
-          time: item.time ? new Date(item.time) : new Date(),
-          sourceId: source.id,
-          sourceType: source.category,
-          sourceIsDarknet: source.isDarknet,
-          sourceRequestId: parsedResult.requestId,
-        }))
-      );
-    } catch (error) {
-      failedCount += 1;
-      const elapsedMs = Date.now() - queryStartedAt;
-      writeWorkerApiIoLog({
-        event: "search-request-response",
-        runId: context?.runId,
-        queryId: context?.queryId,
-        sourceId: source.id,
-        sourceName: source.name,
-        platform:
-          (
-            (source.search as unknown as { platform?: string | null })?.platform ??
-            "unknown"
-          ).toString(),
-        provider,
-        recallQuery: normalizedRecallQuery,
-        recallQueryCount: searchQueries.length,
-        queryOrigin:
-          context?.recallQueries && context.recallQueries.length > 0
-            ? recallOrigin
-            : "objective_fallback",
-        rawRecallQueryCount: context?.recallQueries?.length ?? 0,
-        effectiveRecallQueryCount: searchQueries.length,
-        skippedByRetryDedup: false,
-        timeoutMs: request.timeoutMs ?? 12_000,
-        url: request.url,
-        method: request.method,
-        statusCode: -1,
-        request: {
-          headers: request.headers,
-          body: request.body ?? null,
-        },
-        response: {
-          body: "",
-        },
-        parsedCount: 0,
-        error:
-          error instanceof Error
-            ? error.name === "AbortError"
-              ? `Request timeout after ${request.timeoutMs ?? 12_000}ms`
-              : error.message
-            : "unknown search request error",
-      });
-      logger.error("search request failed", {
-        sourceId: source.id,
-        sourceName: source.name,
-        runId: context?.runId,
-        queryId: context?.queryId,
-        provider,
-        url: request.url,
-        queryIndex,
-        totalQueries: searchQueries.length,
-        elapsedMs,
-        error: logger.normalizeError(error),
-      });
-      if (context?.runId) {
-        await publishTaskEvent(context.runId, {
-          type: "fetch-search-query-fail",
-          sourceId: source.id,
-          message: `检索失败 (${queryIndex}/${searchQueries.length})：${normalizedRecallQuery}`,
-          provider,
-          queryIndex,
-          totalQueries: searchQueries.length,
-          elapsedMs,
-          error:
-            error instanceof Error
-              ? error.name === "AbortError"
-                ? `Request timeout after ${request.timeoutMs ?? 12_000}ms`
-                : error.message
-              : "unknown search request error",
-        });
-      }
     }
+    if (result.failed) {
+      failedCount += 1;
+    }
+    allItems.push(...result.items);
   }
   logger.info("search source fetch summary", {
     sourceId: source.id,
@@ -4423,15 +4517,28 @@ function toMarkdown(html: string) {
 
 type SearchResultItem = {
   title?: string;
+  name?: string;
+  headline?: string;
   snippet?: string;
   summary?: string;
+  description?: string;
+  body?: string;
+  text?: string;
   content?: string;
+  content_text?: string;
+  markdown?: string;
   link?: string;
   url?: string;
+  href?: string;
+  source_url?: string;
+  sourceUrl?: string;
   excerpts?: string[] | Array<{ text?: string; content?: string }>;
   publish_date?: string;
   date?: string;
   publishedAt?: string;
+  timestamp?: string;
+  created_at?: string;
+  createdAt?: string;
 };
 
 type SearchProvider = "parallel" | "tavily" | "anspire" | "generic";
@@ -4649,45 +4756,92 @@ function parseSearchResult(payload: string): {
     time?: string;
   }>;
   requestId?: string;
+  rootKeys?: string[];
 } {
   try {
     const json = JSON.parse(payload);
     const root = asObject(json);
     const requestId = pickString(root.Uuid, root.uuid, root.requestId);
-    const candidates = [
-      root.items,
-      root.results,
-      root.data,
-      root.output,
-    ];
-    const rows = candidates.find((candidate) => Array.isArray(candidate));
+    const rows = resolveSearchResultRows(root);
     if (Array.isArray(rows)) {
       const items = (rows as SearchResultItem[])
         .map((item) => normalizeSearchResultItem(item))
         .filter((item) => Boolean(item.text));
-      return { items, requestId };
+      return { items, requestId, rootKeys: Object.keys(root).slice(0, 30) };
     }
+    return { items: [], requestId, rootKeys: Object.keys(root).slice(0, 30) };
   } catch {
     // ignore
   }
   return { items: [] };
 }
 
+function resolveSearchResultRows(root: Record<string, unknown>): unknown[] | null {
+  const candidates: unknown[] = [
+    root.items,
+    root.results,
+    root.data,
+    root.output,
+    root.sources,
+    pickNestedArray(root, ["data", "items"]),
+    pickNestedArray(root, ["data", "results"]),
+    pickNestedArray(root, ["data", "output"]),
+    pickNestedArray(root, ["data", "sources"]),
+    pickNestedArray(root, ["result", "items"]),
+    pickNestedArray(root, ["result", "results"]),
+    pickNestedArray(root, ["result", "sources"]),
+    pickNestedArray(root, ["response", "items"]),
+    pickNestedArray(root, ["response", "results"]),
+    pickNestedArray(root, ["response", "sources"]),
+    pickNestedArray(root, ["output", "items"]),
+    pickNestedArray(root, ["output", "results"]),
+  ];
+  const rows = candidates.find((candidate) => Array.isArray(candidate));
+  return Array.isArray(rows) ? rows : null;
+}
+
+function pickNestedArray(
+  root: Record<string, unknown>,
+  path: string[]
+): unknown[] | null {
+  let current: unknown = root;
+  for (const key of path) {
+    if (!current || typeof current !== "object" || Array.isArray(current)) {
+      return null;
+    }
+    current = (current as Record<string, unknown>)[key];
+  }
+  return Array.isArray(current) ? current : null;
+}
+
 function normalizeSearchResultItem(item: SearchResultItem) {
+  const title = pickString(item.title, item.name, item.headline);
   const excerpts = normalizeExcerpts(item.excerpts);
-  const text =
-    item.snippet ||
-    item.summary ||
-    item.content ||
-    excerpts ||
-    "";
+  const text = pickString(
+    item.snippet,
+    item.summary,
+    item.description,
+    item.body,
+    item.text,
+    item.content,
+    item.content_text,
+    item.markdown,
+    excerpts
+  ) ?? "";
 
   return {
-    title: item.title,
+    title,
     text,
-    markdown: text,
-    url: item.link || item.url,
-    time: item.publishedAt || item.publish_date || item.date,
+    markdown: pickString(item.markdown) ?? text,
+    url: pickString(item.link, item.url, item.href, item.source_url, item.sourceUrl),
+    time: pickString(
+      item.publishedAt,
+      item.publish_date,
+      item.date,
+      item.timestamp,
+      item.createdAt,
+      item.created_at
+    ),
   };
 }
 
