@@ -102,6 +102,8 @@ const CONTENT_FORMATTER_READERLM_BASE_URL =
   process.env.CONTENT_FORMATTER_READERLM_BASE_URL ?? "https://r.jina.ai/";
 const CONTENT_FORMATTER_READERLM_MODEL =
   process.env.CONTENT_FORMATTER_READERLM_MODEL ?? "readerlm-v2";
+const CONTENT_FORMATTER_READERLM_API_KEY =
+  process.env.CONTENT_FORMATTER_READERLM_API_KEY?.trim() ?? "";
 
 const ContentAnalyzeSchema = z.object({
   summary: z.string().min(30).max(400),
@@ -246,6 +248,7 @@ const gatherOutputFieldRuleCache = new Map<string, GatherOutputField>();
 const gatherPlatformIntentCache = new Map<string, string[]>();
 let gatherOutputFieldRuleCacheExpireAt = 0;
 const runSearchSignatureCache = new Map<string, Set<string>>();
+const readerLmDisabledRunKeys = new Set<string>();
 
 function isWebSource(source: SourceWithRelations): source is WebSource {
   return source.category === "STREAM";
@@ -295,6 +298,42 @@ function extractTopicAnchorsFromDescription(value?: string | null): string[] {
 function stripNullBytesNullable(value: string | null | undefined): string | null {
   if (typeof value !== "string") return null;
   return stripNullBytes(value);
+}
+
+type SummaryPrepareContext = {
+  runId?: string;
+  jobId?: string;
+};
+
+class HttpStatusError extends Error {
+  statusCode: number;
+
+  constructor(message: string, statusCode: number) {
+    super(message);
+    this.name = "HttpStatusError";
+    this.statusCode = statusCode;
+  }
+}
+
+function getSummaryPrepareRunKey(context?: SummaryPrepareContext): string | null {
+  if (context?.runId) return context.runId;
+  if (context?.jobId) return `job:${context.jobId}`;
+  return null;
+}
+
+function getErrorStatusCode(error: unknown): number | null {
+  if (error instanceof HttpStatusError) {
+    return error.statusCode;
+  }
+  if (
+    error &&
+    typeof error === "object" &&
+    "statusCode" in error &&
+    typeof (error as { statusCode?: unknown }).statusCode === "number"
+  ) {
+    return (error as { statusCode: number }).statusCode;
+  }
+  return null;
 }
 
 function sanitizeObjectiveFallback(keywords: QueryKeyword[]): string {
@@ -505,7 +544,9 @@ export async function runFocusCollector(runId: string, queryId: string) {
   const keywordsStr = expandedKeywords.join("; ") || "无关键词";
   for (let i = 0; i < cleaned.length; i++) {
     const item = cleaned[i];
-    const preparedSummaryContent = await prepareContentForSummary(item);
+    const preparedSummaryContent = await prepareContentForSummary(item, {
+      runId,
+    });
     const existingContent = await findExistingContentBySourceRecord(item);
     if (existingContent) {
       const stats = sourceStats.get(item.sourceId);
@@ -872,7 +913,10 @@ export async function runJobCollector(params: {
 
   for (let i = 0; i < cleaned.length; i++) {
     const item = cleaned[i];
-    const preparedSummaryContent = await prepareContentForSummary(item);
+    const preparedSummaryContent = await prepareContentForSummary(item, {
+      runId,
+      jobId,
+    });
     const existingContent = await findExistingContentBySourceRecord(item);
     if (existingContent) {
       const stats = sourceStats.get(item.sourceId);
@@ -4062,13 +4106,17 @@ function isHttpUrl(url: string): boolean {
 
 async function formatMarkdownWithReaderLm(url: string): Promise<string> {
   const requestUrl = buildReaderLmRequestUrl(url);
+  const headers: Record<string, string> = {
+    Accept: "text/plain",
+    "x-engine": CONTENT_FORMATTER_READERLM_MODEL,
+  };
+  if (CONTENT_FORMATTER_READERLM_API_KEY) {
+    headers.Authorization = `Bearer ${CONTENT_FORMATTER_READERLM_API_KEY}`;
+  }
   const response = await fetchWithTimeoutDetailed(
     requestUrl,
     {
-      headers: {
-        Accept: "text/plain",
-        "x-engine": CONTENT_FORMATTER_READERLM_MODEL,
-      },
+      headers,
     },
     CONTENT_FORMATTER_TIMEOUT_MS
   );
@@ -4110,7 +4158,10 @@ function buildPreparedSummaryContent(input: {
   };
 }
 
-async function prepareContentForSummary(item: CleanItem): Promise<PreparedSummaryContent> {
+async function prepareContentForSummary(
+  item: CleanItem,
+  context?: SummaryPrepareContext
+): Promise<PreparedSummaryContent> {
   const markdownSource = (item.markdown ?? "").trim();
   const textSource = (item.text ?? "").trim();
   const extractorUsed: PreparedSummaryContent["extractorUsed"] = markdownSource
@@ -4124,9 +4175,13 @@ async function prepareContentForSummary(item: CleanItem): Promise<PreparedSummar
   );
   const requestedProvider = resolveContentFormatterProvider();
   const url = (item.url ?? "").trim();
+  const runKey = getSummaryPrepareRunKey(context);
+  const readerLmDisabledForRun =
+    Boolean(runKey) && readerLmDisabledRunKeys.has(runKey as string);
 
   if (
     requestedProvider === "readerlm" &&
+    !readerLmDisabledForRun &&
     url &&
     isHttpUrl(url)
   ) {
@@ -4163,9 +4218,22 @@ async function prepareContentForSummary(item: CleanItem): Promise<PreparedSummar
         formatterFallbackReason: "readerlm_low_quality",
       };
     } catch (error) {
+      const statusCode = getErrorStatusCode(error);
+      if (statusCode === 401 && runKey) {
+        readerLmDisabledRunKeys.add(runKey);
+        logger.warn("content formatter readerlm unauthorized, disable for run", {
+          runId: context?.runId ?? null,
+          jobId: context?.jobId ?? null,
+          sourceId: item.sourceId,
+          url,
+        });
+      }
       logger.warn("content formatter readerlm failed", {
+        runId: context?.runId ?? null,
+        jobId: context?.jobId ?? null,
         sourceId: item.sourceId,
         url,
+        statusCode,
         error: logger.normalizeError(error),
       });
       if (fallbackSource) {
@@ -4175,7 +4243,8 @@ async function prepareContentForSummary(item: CleanItem): Promise<PreparedSummar
           source: fallbackSource,
           formatterProvider: "legacy",
           formatterFallback: true,
-          formatterFallbackReason: "readerlm_request_failed",
+          formatterFallbackReason:
+            statusCode === 401 ? "readerlm_unauthorized" : "readerlm_request_failed",
         });
       }
       return {
@@ -4186,9 +4255,21 @@ async function prepareContentForSummary(item: CleanItem): Promise<PreparedSummar
         qualityScore: 0,
         formatterProvider: "legacy",
         formatterFallback: true,
-        formatterFallbackReason: "readerlm_request_failed",
+        formatterFallbackReason:
+          statusCode === 401 ? "readerlm_unauthorized" : "readerlm_request_failed",
       };
     }
+  }
+
+  if (requestedProvider === "readerlm" && readerLmDisabledForRun && fallbackSource) {
+    return buildPreparedSummaryContent({
+      itemTitle: item.title,
+      extractorUsed,
+      source: fallbackSource,
+      formatterProvider: "legacy",
+      formatterFallback: true,
+      formatterFallbackReason: "readerlm_disabled_for_run",
+    });
   }
 
   if (!fallbackSource) {
@@ -4201,7 +4282,11 @@ async function prepareContentForSummary(item: CleanItem): Promise<PreparedSummar
       formatterProvider: "legacy",
       formatterFallback: requestedProvider === "readerlm",
       formatterFallbackReason:
-        requestedProvider === "readerlm" ? "readerlm_missing_url" : null,
+        requestedProvider === "readerlm"
+          ? readerLmDisabledForRun
+            ? "readerlm_disabled_for_run"
+            : "readerlm_missing_url"
+          : null,
     };
   }
 
@@ -4212,7 +4297,11 @@ async function prepareContentForSummary(item: CleanItem): Promise<PreparedSummar
     formatterProvider: "legacy",
     formatterFallback: requestedProvider === "readerlm",
     formatterFallbackReason:
-      requestedProvider === "readerlm" ? "readerlm_missing_url" : null,
+      requestedProvider === "readerlm"
+        ? readerLmDisabledForRun
+          ? "readerlm_disabled_for_run"
+          : "readerlm_missing_url"
+        : null,
   });
 }
 
@@ -4237,7 +4326,7 @@ async function fetchWithTimeoutDetailed(
   try {
     const response = await fetch(url, { ...options, signal: controller.signal });
     if (!response.ok) {
-      throw new Error(`请求 ${url} 失败 (${response.status})`);
+      throw new HttpStatusError(`请求 ${url} 失败 (${response.status})`, response.status);
     }
     const text = await response.text();
     return {
