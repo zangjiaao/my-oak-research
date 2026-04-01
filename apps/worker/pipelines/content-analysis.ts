@@ -81,6 +81,8 @@ const TOPIC_RECALL_QUERY_LIMIT = Number(
 const TOPIC_RECALL_TIMEOUT_MS = Number(
   process.env.TOPIC_RECALL_TIMEOUT_MS ?? 8000
 );
+const DYNAMIC_TOPIC_SCORING_ENABLED =
+  process.env.DYNAMIC_TOPIC_SCORING_ENABLED !== "false";
 
 const ContentAnalyzeSchema = z.object({
   summary: z.string().min(30).max(400),
@@ -1011,7 +1013,7 @@ export async function runJobCollector(params: {
       await saveContentVector(content.id, contentVector);
     }
 
-    if (topicMatches.length > 0) {
+    if (!DYNAMIC_TOPIC_SCORING_ENABLED && topicMatches.length > 0) {
       await upsertContentTopicScores({
         contentId: content.id,
         contentText: `${content.title}\n${content.summary}\n${content.markdown}`,
