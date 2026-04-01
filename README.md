@@ -38,7 +38,16 @@ If your machine does not have `uv` or browser download is blocked, run this manu
 ```bash
 cd apps/gather
 uv sync
-uv run playwright install chromium
+uv run python -m playwright install chromium
+```
+
+If you see `No module named 'playwright.__main__'` or missing Playwright driver files,
+the mirror wheel may be broken. Reinstall Playwright from official PyPI:
+
+```bash
+cd apps/gather
+uv pip install --python .venv/bin/python --index-url https://pypi.org/simple --force-reinstall playwright
+uv run python -m playwright install chromium
 ```
 
 2) Start local infra:

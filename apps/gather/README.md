@@ -23,11 +23,18 @@ Oak Gather 是一个基于 FastAPI 的平台数据采集服务，统一通过 `/
 ```bash
 cd apps/gather
 uv sync
-playwright install chromium
+uv run python -m playwright install chromium
 ```
 
-也可以在仓库根目录执行 `npm install`，会自动尝试执行 gather 的 bootstrap（`uv sync` + `uv run playwright install chromium`）。
+也可以在仓库根目录执行 `npm install`，会自动尝试执行 gather 的 bootstrap（`uv sync` + `uv run python -m playwright install chromium`）。
 若自动步骤失败，可按上面的命令手动重试。
+
+若出现 `No module named 'playwright.__main__'` 或 Playwright driver 缺失，通常是镜像包损坏，可执行：
+
+```bash
+uv pip install --python .venv/bin/python --index-url https://pypi.org/simple --force-reinstall playwright
+uv run python -m playwright install chromium
+```
 
 ### 2. 导出浏览器认证数据
 
@@ -415,5 +422,5 @@ apps/gather/
 
 ### Playwright 错误
 
-1. 确认已安装浏览器：`playwright install chromium`
+1. 确认已安装浏览器：`uv run python -m playwright install chromium`
 2. 必要时安装系统依赖：`playwright install-deps`

@@ -3772,7 +3772,7 @@ async function fetchSocialSource(
     sourcePolicy?.contentFilterMode
   );
   const gatherSetupHint =
-    "cd apps/gather && uv sync && uv run playwright install chromium";
+    "cd apps/gather && uv pip install --python .venv/bin/python --index-url https://pypi.org/simple --force-reinstall playwright && uv run python -m playwright install chromium";
 
   try {
     for (const recallQuery of normalizedBatchedQueries) {
@@ -3828,7 +3828,8 @@ async function fetchSocialSource(
     const message = error instanceof Error ? error.message : String(error);
     const isPlaywrightMissing =
       /Playwright driver binary is missing/i.test(message) ||
-      /uv run playwright install chromium/i.test(message);
+      /uv run (python -m )?playwright install chromium/i.test(message) ||
+      /No module named 'playwright\.__main__'/i.test(message);
     if (isPlaywrightMissing) {
       logger.error("gather playwright runtime missing", {
         sourceId: source.id,

@@ -58,8 +58,9 @@ def ensure_playwright_driver_binary() -> Path:
         raise RuntimeError(
             "Playwright driver binary is missing "
             f"({driver_node_path}). "
-            "Please reinstall dependencies and Playwright browsers: "
-            "`cd apps/gather && uv sync && uv run playwright install chromium`"
+            "This can be caused by a broken mirror wheel. "
+            "Please reinstall Playwright from official PyPI and browsers: "
+            "`cd apps/gather && uv pip install --python .venv/bin/python --index-url https://pypi.org/simple --force-reinstall playwright && uv run python -m playwright install chromium`"
         )
     return driver_node_path
 
@@ -222,7 +223,7 @@ async def get_playwright_runtime() -> Any:
             except FileNotFoundError as error:
                 raise RuntimeError(
                     "Playwright runtime failed to start because its driver binary is missing. "
-                    "Run: `cd apps/gather && uv sync && uv run playwright install chromium`"
+                    "Run: `cd apps/gather && uv pip install --python .venv/bin/python --index-url https://pypi.org/simple --force-reinstall playwright && uv run python -m playwright install chromium`"
                 ) from error
     return _RUNTIME
 
