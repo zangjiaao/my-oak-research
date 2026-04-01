@@ -349,13 +349,14 @@ const FollowContent = () => {
               <NewsDetailCard
                 title={content.detailView?.title ?? content.title}
                 summary={content.aiSummary ?? undefined}
-                markdown={
-                  content.detailView?.markdown ||
-                  content.markdown ||
+                cleanMarkdown={content.detailView?.markdown || content.markdown}
+                rawText={
                   content.detailView?.content ||
                   content.summary ||
-                  "No content details"
+                  content.markdown ||
+                  ""
                 }
+                metaData={content.rawRecordContent}
                 author={content.detailView?.author}
                 source={content.summaryView?.source ?? content.platform}
                 publishedAt={content.detailView?.publishedAt ?? content.time}

@@ -1,13 +1,10 @@
 import React from "react";
-import Image from "next/image";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import {
-  AudioLines,
   Bookmark,
   Building2,
   Cpu,
   FileText,
-  Image as ImageIcon,
   Link as LinkIcon,
   MapPin,
   MessageSquarePlus,
@@ -27,7 +24,9 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 const NewsDetailCard = ({
   title,
   summary,
-  markdown,
+  cleanMarkdown,
+  rawText,
+  metaData,
   author,
   source,
   publishedAt,
@@ -51,7 +50,9 @@ const NewsDetailCard = ({
 }: {
   title?: string;
   summary?: string;
-  markdown: string;
+  cleanMarkdown?: string;
+  rawText?: string;
+  metaData?: Record<string, unknown>;
   author?: string | null;
   source?: string;
   publishedAt?: string;
@@ -302,86 +303,19 @@ const NewsDetailCard = ({
           <div className="mx-auto flex h-full w-full max-w-4xl flex-col">
             <TabsList className="w-full justify-start bg-muted/70 p-1">
               <TabsTrigger value="content">正文</TabsTrigger>
-              <TabsTrigger value="media">媒体</TabsTrigger>
+              <TabsTrigger value="raw">原文</TabsTrigger>
               <TabsTrigger value="links">链接</TabsTrigger>
-              <TabsTrigger value="raw">原始</TabsTrigger>
+              <TabsTrigger value="meta">Meta Data</TabsTrigger>
             </TabsList>
             <TabsContent value="content" className="mt-3">
               <article className="prose prose-slate max-w-none text-[15px] leading-7 text-foreground/90 prose-p:my-0 prose-p:leading-7 prose-p:text-foreground/90 prose-headings:mb-3 prose-headings:mt-5 prose-headings:font-semibold prose-headings:text-foreground prose-li:my-1 prose-li:text-foreground/90 prose-strong:text-foreground prose-a:text-primary prose-a:no-underline hover:prose-a:underline">
-                <ReactMarkdown>{markdown}</ReactMarkdown>
+                <ReactMarkdown>{cleanMarkdown || "暂无可用正文"}</ReactMarkdown>
               </article>
             </TabsContent>
-            <TabsContent value="media" className="mt-3">
-            {images && images.length > 0 ? (
-              <div className="mb-6 rounded-xl border border-border/70 bg-muted/20 p-4">
-                <div className="mb-3 flex items-center gap-2 text-sm font-medium">
-                  <ImageIcon className="size-4 text-muted-foreground" />
-                  图片
-                </div>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                {images.slice(0, 4).map((src, index) => (
-                  <div
-                    key={`${src}-${index}`}
-                    className="relative aspect-video overflow-hidden rounded-lg border bg-muted"
-                  >
-                    <Image
-                      src={src}
-                      alt={title ? `${title}-image-${index + 1}` : `image-${index + 1}`}
-                      fill
-                      className="object-cover"
-                      unoptimized
-                    />
-                  </div>
-                ))}
-              </div>
-              </div>
-            ) : null}
-            {audios && audios.length > 0 ? (
-              <div className="mb-6 rounded-xl border border-border/70 bg-muted/20 p-4">
-                <div className="mb-3 flex items-center gap-2 text-sm font-medium">
-                  <AudioLines className="size-4 text-muted-foreground" />
-                  音频
-                </div>
-                <div className="flex flex-col gap-3">
-                {audios.slice(0, 4).map((audioUrl, index) => (
-                  <Tooltip key={`${audioUrl}-${index}`}>
-                    <TooltipTrigger asChild>
-                      <audio controls src={audioUrl} className="w-full rounded-md" />
-                    </TooltipTrigger>
-                    <TooltipContent>{audioUrl}</TooltipContent>
-                  </Tooltip>
-                ))}
-              </div>
-              </div>
-            ) : null}
-            {files && files.length > 0 ? (
-              <div className="mb-6 rounded-xl border border-border/70 bg-muted/20 p-4">
-                <div className="mb-3 flex items-center gap-2 text-sm font-medium">
-                  <FileText className="size-4 text-muted-foreground" />
-                  附件
-                </div>
-                <div className="flex flex-col gap-2 text-sm">
-                {files.slice(0, 6).map((fileUrl, index) => (
-                  <Tooltip key={`${fileUrl}-${index}`}>
-                    <TooltipTrigger asChild>
-                      <a
-                        href={fileUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="truncate text-blue-600 hover:underline"
-                      >
-                        {fileUrl}
-                      </a>
-                    </TooltipTrigger>
-                    <TooltipContent>{fileUrl}</TooltipContent>
-                  </Tooltip>
-                ))}
-              </div>
-              </div>
-            ) : null}
-            {!images?.length && !audios?.length && !files?.length ? (
-              <p className="text-sm text-muted-foreground">暂无媒体内容</p>
-            ) : null}
+            <TabsContent value="raw" className="mt-3">
+              <pre className="max-h-[22rem] overflow-auto whitespace-pre-wrap break-words rounded-lg border border-border/70 bg-muted/20 p-4 text-xs leading-5">
+                {rawText?.trim() || "暂无原文"}
+              </pre>
             </TabsContent>
             <TabsContent value="links" className="mt-3">
             {links && links.length > 0 ? (
@@ -412,9 +346,9 @@ const NewsDetailCard = ({
               <p className="text-sm text-muted-foreground">暂无链接</p>
             )}
             </TabsContent>
-            <TabsContent value="raw" className="mt-3">
+            <TabsContent value="meta" className="mt-3">
               <pre className="max-h-[22rem] overflow-auto rounded-lg border border-border/70 bg-muted/20 p-4 text-xs leading-5">
-                {JSON.stringify(rawContent ?? {}, null, 2)}
+                {JSON.stringify(metaData ?? rawContent ?? {}, null, 2)}
               </pre>
             </TabsContent>
           </div>

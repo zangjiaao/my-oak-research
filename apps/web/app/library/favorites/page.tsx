@@ -149,7 +149,8 @@ const FavoritesPage = () => {
           <NewsDetailCard
             title={selectedNews.title}
             summary={selectedNews.summary}
-            markdown={selectedNews.markdown}
+            cleanMarkdown={selectedNews.markdown}
+            rawText={selectedNews.summary}
             bookmarked={true}
             onBookmarkToggle={() => handleBookmarkToggle(selectedNews)}
           />
