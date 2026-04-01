@@ -4,6 +4,7 @@ import { JobCreateSchema } from "@/app/api/_utils/zod";
 import { logger } from "@/lib/logger";
 import { scheduleCollectJob } from "@/lib/queue";
 import { z } from "zod";
+import { Prisma } from "@/app/generated/prisma";
 
 const prismaAny = prisma as any;
 
@@ -134,6 +135,23 @@ export async function POST(req: Request) {
 
     return NextResponse.json(created, { status: 201 });
   } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
+      const target = Array.isArray(error.meta?.target)
+        ? error.meta.target.map((item) => String(item))
+        : [];
+      if (target.includes("name")) {
+        return NextResponse.json(
+          {
+            error: "Job name already exists",
+            field: "name",
+          },
+          { status: 409 }
+        );
+      }
+    }
     logger.error("failed to create job", {
       error: logger.normalizeError(error),
     });
