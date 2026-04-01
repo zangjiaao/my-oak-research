@@ -117,6 +117,14 @@ type ContentAnalyzeResult = {
   subjectsByKeyword: Map<string, { score: number | null; reason: string | null }>;
 };
 
+type PreparedSummaryContent = {
+  markdown: string;
+  text: string;
+  promptText: string;
+  extractorUsed: "markdown" | "text" | "empty";
+  qualityScore: number;
+};
+
 type CleanItem = {
   title?: string;
   text: string;
@@ -475,6 +483,7 @@ export async function runFocusCollector(runId: string, queryId: string) {
   const keywordsStr = expandedKeywords.join("; ") || "无关键词";
   for (let i = 0; i < cleaned.length; i++) {
     const item = cleaned[i];
+    const preparedSummaryContent = prepareContentForSummary(item);
     const existingContent = await findExistingContentBySourceRecord(item);
     if (existingContent) {
       const stats = sourceStats.get(item.sourceId);
@@ -510,7 +519,8 @@ export async function runFocusCollector(runId: string, queryId: string) {
         query.keywords,
         keywordsStr,
         queryId,
-        runId
+        runId,
+        preparedSummaryContent
       );
     }
 
@@ -521,7 +531,8 @@ export async function runFocusCollector(runId: string, queryId: string) {
         message: `第 ${i + 1} 条内容跳过 AI 摘要，直接入库`,
       });
       summary = {
-        summary: buildFallbackSummary(item),
+        summary:
+          preparedSummaryContent.text.slice(0, 180) || buildFallbackSummary(item),
         relevance: true,
       };
     } else if (contentAnalyzeResult) {
@@ -531,7 +542,8 @@ export async function runFocusCollector(runId: string, queryId: string) {
       };
     } else {
       summary = {
-        summary: buildFallbackSummary(item),
+        summary:
+          preparedSummaryContent.text.slice(0, 180) || buildFallbackSummary(item),
         relevance: true,
       };
     }
@@ -547,7 +559,7 @@ export async function runFocusCollector(runId: string, queryId: string) {
       sourceId: item.sourceId,
       fallbackTitle: contentTitle,
       fallbackSummary: summary.summary,
-      fallbackMarkdown: item.markdown,
+      fallbackMarkdown: preparedSummaryContent.markdown || item.markdown,
       fallbackUrl: item.url,
       fallbackTimeIso: contentTime.toISOString(),
       recordId: item.recordId,
@@ -558,7 +570,9 @@ export async function runFocusCollector(runId: string, queryId: string) {
 
     const sanitizedTitle = stripNullBytes(contentTitle);
     const sanitizedSummary = stripNullBytes(summary.summary);
-    const sanitizedMarkdown = stripNullBytes(item.markdown);
+    const sanitizedMarkdown = stripNullBytes(
+      preparedSummaryContent.markdown || item.markdown
+    );
     const sanitizedPlatform = stripNullBytes(item.platform);
     const sanitizedUrl = item.url ? stripNullBytes(item.url) : undefined;
     const sanitizedRecordContent = sanitizeJsonForDb(
@@ -594,6 +608,9 @@ export async function runFocusCollector(runId: string, queryId: string) {
         !SKIP_AI_SUMMARY && contentAnalyzeResult
           ? process.env.LLM_DEFAULT_MODEL ?? "unknown"
           : "fallback",
+      summaryInput: preparedSummaryContent.promptText.slice(0, 1500),
+      summaryInputExtractor: preparedSummaryContent.extractorUsed,
+      summaryInputQuality: preparedSummaryContent.qualityScore,
       sourceId: stripNullBytes(item.sourceId),
       sourceType: item.sourceType,
       intent: item.intent ? stripNullBytes(item.intent) : null,
@@ -830,6 +847,7 @@ export async function runJobCollector(params: {
 
   for (let i = 0; i < cleaned.length; i++) {
     const item = cleaned[i];
+    const preparedSummaryContent = prepareContentForSummary(item);
     const existingContent = await findExistingContentBySourceRecord(item);
     if (existingContent) {
       const stats = sourceStats.get(item.sourceId);
@@ -920,7 +938,8 @@ export async function runJobCollector(params: {
         llmKeywords,
         llmKeywordsSummary,
         pseudoQueryId,
-        runId
+        runId,
+        preparedSummaryContent
       );
     } else {
       await send({
@@ -935,10 +954,18 @@ export async function runJobCollector(params: {
     }
 
     const summary = SKIP_AI_SUMMARY
-      ? { summary: fallbackSummary, relevance: true }
+      ? {
+          summary:
+            preparedSummaryContent.text.slice(0, 180) || fallbackSummary,
+          relevance: true,
+        }
       : contentAnalyzeResult
         ? { summary: contentAnalyzeResult.summary, relevance: contentAnalyzeResult.relevance }
-        : { summary: fallbackSummary, relevance: llmGate !== "low" };
+        : {
+            summary:
+              preparedSummaryContent.text.slice(0, 180) || fallbackSummary,
+            relevance: llmGate !== "low",
+          };
 
     const contentTitle =
       item.title ??
@@ -951,7 +978,7 @@ export async function runJobCollector(params: {
       sourceId: item.sourceId,
       fallbackTitle: contentTitle,
       fallbackSummary: summary.summary,
-      fallbackMarkdown: item.markdown,
+      fallbackMarkdown: preparedSummaryContent.markdown || item.markdown,
       fallbackUrl: item.url,
       fallbackTimeIso: contentTime.toISOString(),
       recordId: item.recordId,
@@ -961,7 +988,9 @@ export async function runJobCollector(params: {
     });
     const sanitizedTitle = stripNullBytes(contentTitle);
     const sanitizedSummary = stripNullBytes(summary.summary);
-    const sanitizedMarkdown = stripNullBytes(item.markdown);
+    const sanitizedMarkdown = stripNullBytes(
+      preparedSummaryContent.markdown || item.markdown
+    );
     const sanitizedPlatform = stripNullBytes(item.platform);
     const sanitizedUrl = item.url ? stripNullBytes(item.url) : undefined;
     const sanitizedRecordContent = sanitizeJsonForDb(
@@ -995,6 +1024,9 @@ export async function runJobCollector(params: {
         !SKIP_AI_SUMMARY && contentAnalyzeResult
           ? process.env.LLM_DEFAULT_MODEL ?? "unknown"
           : "fallback",
+      summaryInput: preparedSummaryContent.promptText.slice(0, 1500),
+      summaryInputExtractor: preparedSummaryContent.extractorUsed,
+      summaryInputQuality: preparedSummaryContent.qualityScore,
       sourceId: stripNullBytes(item.sourceId),
       sourceType: item.sourceType,
       intent: item.intent ? stripNullBytes(item.intent) : null,
@@ -3731,7 +3763,8 @@ async function analyzeContentWithRetry(
   keywords: QueryKeyword[],
   keywordsSummary: string,
   queryId: string,
-  runId: string
+  runId: string,
+  summaryInput: PreparedSummaryContent
 ): Promise<ContentAnalyzeResult> {
   const subjectInput = keywords.map((keyword) => ({
     keywordId: keyword.id,
@@ -3765,7 +3798,7 @@ async function analyzeContentWithRetry(
 查询关键词概览: ${keywordsSummary}
 主题明细(JSON): ${JSON.stringify(subjectInput)}
 内容:
-${item.text.slice(0, 8000)}`
+${summaryInput.promptText}`
   );
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
@@ -3775,7 +3808,12 @@ ${item.text.slice(0, 8000)}`
         prompt: redact(prompt),
         schema: ContentAnalyzeSchema,
         temperature: 0.3,
-        metadata: { queryId, source: item.platform },
+        metadata: {
+          queryId,
+          source: item.platform,
+          extractorUsed: summaryInput.extractorUsed,
+          qualityScore: summaryInput.qualityScore,
+        },
         }
       );
       const subjectsByKeyword = new Map<
@@ -3906,6 +3944,98 @@ function buildFallbackSummary(item: CleanItem): string {
   if (!source) return "采集成功，暂无可用正文。";
   const normalized = source.replace(/\s+/g, " ");
   return normalized.slice(0, 180);
+}
+
+function toCleanLines(source: string): string[] {
+  const seen = new Set<string>();
+  return source
+    .split(/\r?\n/)
+    .map((line) => line.replace(/\s+/g, " ").trim())
+    .filter(Boolean)
+    .filter((line) => {
+      const lower = line.toLowerCase();
+      if (
+        /^(home|login|sign in|sign up|register|subscribe|newsletter|share|menu|copyright|all rights reserved)$/.test(
+          lower
+        )
+      ) {
+        return false;
+      }
+      if (
+        /^(首页|登录|注册|订阅|分享|菜单|版权所有|免责声明|上一篇|下一篇)$/.test(
+          line
+        )
+      ) {
+        return false;
+      }
+      if (line.length < 2) return false;
+      if (seen.has(lower)) return false;
+      seen.add(lower);
+      return true;
+    });
+}
+
+function markdownToText(markdown: string): string {
+  return markdown
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/!\[[^\]]*\]\([^)]+\)/g, " ")
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+    .replace(/^#{1,6}\s+/gm, "")
+    .replace(/^>\s+/gm, "")
+    .replace(/^\s*[-*+]\s+/gm, "")
+    .replace(/^\s*\d+\.\s+/gm, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function prepareContentForSummary(item: CleanItem): PreparedSummaryContent {
+  const markdownSource = (item.markdown ?? "").trim();
+  const textSource = (item.text ?? "").trim();
+  const extractorUsed: PreparedSummaryContent["extractorUsed"] = markdownSource
+    ? "markdown"
+    : textSource
+      ? "text"
+      : "empty";
+  const source = markdownSource || textSource;
+  if (!source) {
+    return {
+      markdown: "",
+      text: "",
+      promptText: "",
+      extractorUsed,
+      qualityScore: 0,
+    };
+  }
+
+  const cleanLines = toCleanLines(source);
+  const cleanMarkdown = cleanLines.join("\n\n").slice(0, 16000);
+  const cleanText = markdownToText(cleanMarkdown).slice(0, 12000);
+  const punctuationCount = (cleanText.match(/[。！？.!?]/g) ?? []).length;
+  const baseQuality =
+    Math.min(0.6, cleanText.length / 3000) +
+    Math.min(0.2, cleanLines.length / 24) +
+    Math.min(0.2, punctuationCount / 16);
+  const qualityScore = roundScore(Math.max(0, Math.min(1, baseQuality)));
+
+  const promptText = [
+    item.title ? `标题: ${item.title}` : "",
+    "正文(Markdown):",
+    cleanMarkdown.slice(0, 7000),
+    "",
+    "正文(PlainText):",
+    cleanText.slice(0, 2500),
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  return {
+    markdown: cleanMarkdown || source,
+    text: cleanText || source.replace(/\s+/g, " ").trim(),
+    promptText: promptText.slice(0, 9500),
+    extractorUsed,
+    qualityScore,
+  };
 }
 
 async function fetchWithTimeout(
