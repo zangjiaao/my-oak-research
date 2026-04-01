@@ -42,8 +42,6 @@ const FollowContent = () => {
   const [noteContentId, setNoteContentId] = useState<string | null>(null);
   const [noteText, setNoteText] = useState("");
   const [savingFeedback, setSavingFeedback] = useState(false);
-  const [summarizingContentId, setSummarizingContentId] = useState<string | null>(null);
-  const [rerankingContentId, setRerankingContentId] = useState<string | null>(null);
   const detailRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   // 获取所有收藏的内容 ID，用于判断是否已收藏
@@ -283,56 +281,6 @@ const FollowContent = () => {
     }
   };
 
-  const generateSummary = async (contentId: string, force = false) => {
-    if (!contentId || summarizingContentId) return;
-    setSummarizingContentId(contentId);
-    try {
-      const response = await fetch(`/api/focus-bulletin/content/${contentId}/summary`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ force }),
-      });
-      const payload = await response.json().catch(() => null);
-      if (!response.ok) {
-        throw new Error(payload?.error || "摘要生成失败");
-      }
-      toast.success(force ? "摘要已重新生成" : "摘要生成完成");
-      await queryClient.invalidateQueries({ queryKey: ["follow-content"] });
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "摘要生成失败");
-    } finally {
-      setSummarizingContentId(null);
-    }
-  };
-
-  const forceRerank = async (contentId: string) => {
-    if (!selectedTopicId) {
-      toast.error("请先选择一个 Topic 再重排");
-      return;
-    }
-    if (!contentId || rerankingContentId) {
-      return;
-    }
-    setRerankingContentId(contentId);
-    try {
-      const response = await fetch(`/api/focus-bulletin/content/${contentId}/rerank`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ topicId: selectedTopicId }),
-      });
-      const payload = await response.json().catch(() => null);
-      if (!response.ok) {
-        throw new Error(payload?.error || "重排失败");
-      }
-      toast.success("AI重排完成");
-      await queryClient.invalidateQueries({ queryKey: ["follow-content"] });
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "重排失败");
-    } finally {
-      setRerankingContentId(null);
-    }
-  };
-
   if (error) {
     return (
       <div className="h-[calc(100vh-7rem)] flex items-center justify-center text-sm text-destructive">
@@ -389,9 +337,6 @@ const FollowContent = () => {
       <ScrollArea className="h-full">
         <div className="flex flex-col gap-3 overflow-visible pb-6 pr-2 pl-1">
           {sortedContents.map((content) => {
-            const selectedScore = hasTopicSelection
-              ? getSelectedTopicScore(content)
-              : null;
             return (
             <div
               key={content.id}
@@ -423,14 +368,6 @@ const FollowContent = () => {
                 relevanceScore={
                   hasTopicSelection ? getRelevanceScore(content) : null
                 }
-                relevanceReranked={Boolean(selectedScore?.llmReranked)}
-                relevanceBaseScore={selectedScore?.baseFinalScore ?? null}
-                relevanceRerankScore={selectedScore?.llmRerankScore ?? null}
-                relevanceRerankWeight={selectedScore?.llmRerankWeight ?? null}
-                onForceRerank={
-                  hasTopicSelection ? () => void forceRerank(content.id) : undefined
-                }
-                reranking={rerankingContentId === content.id}
                 expandableKeywords={
                   hasTopicSelection ? buildExpandableKeywords(content) : []
                 }
@@ -469,11 +406,6 @@ const FollowContent = () => {
                       }
                     : undefined
                 }
-                onGenerateSummary={() =>
-                  void generateSummary(content.id, Boolean(content.aiSummary))
-                }
-                summaryGenerating={summarizingContentId === content.id}
-                summaryUpdatedAt={content.aiSummaryUpdatedAt}
                 className={
                   selectedContent?.id === content.id
                     ? "border-primary/35 bg-card shadow-[0_0_0_1px_hsl(var(--primary)/0.12)]"

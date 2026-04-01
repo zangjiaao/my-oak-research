@@ -16,7 +16,6 @@ import {
   ThumbsUp,
   Trash2,
   User,
-  Sparkles,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { cn } from "@/lib/utils";
@@ -49,15 +48,6 @@ const NewsDetailCard = ({
   onAddKeyword,
   onFeedbackVote,
   onFeedbackNote,
-  onGenerateSummary,
-  summaryGenerating,
-  summaryUpdatedAt,
-  relevanceReranked,
-  relevanceBaseScore,
-  relevanceRerankScore,
-  relevanceRerankWeight,
-  onForceRerank,
-  reranking,
 }: {
   title?: string;
   summary?: string;
@@ -101,15 +91,6 @@ const NewsDetailCard = ({
   }) => void;
   onFeedbackVote?: (vote: "UP" | "DOWN") => void;
   onFeedbackNote?: () => void;
-  onGenerateSummary?: () => void;
-  summaryGenerating?: boolean;
-  summaryUpdatedAt?: string | null;
-  relevanceReranked?: boolean;
-  relevanceBaseScore?: number | null;
-  relevanceRerankScore?: number | null;
-  relevanceRerankWeight?: number | null;
-  onForceRerank?: () => void;
-  reranking?: boolean;
 }) => {
   const keywordTagMeta: Record<
     "PERSON" | "ORG" | "TECH" | "LOCATION" | "PRODUCT" | "EVENT" | "CONCEPT",
@@ -180,62 +161,9 @@ const NewsDetailCard = ({
               </div>
             ) : null}
             {typeof relevanceScore === "number" ? (
-              <div className="flex items-center gap-2">
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Badge
-                      variant="secondary"
-                      className={cn(
-                        relevanceReranked
-                          ? "border-violet-200 bg-violet-100 text-violet-800 dark:border-violet-500/40 dark:bg-violet-500/20 dark:text-violet-200"
-                          : ""
-                      )}
-                    >
-                      匹配度: {Math.max(0, Math.min(100, Math.round(relevanceScore * 100)))}%
-                    </Badge>
-                  </TooltipTrigger>
-                  {relevanceReranked ? (
-                    <TooltipContent side="top" className="text-xs">
-                      base:{" "}
-                      {typeof relevanceBaseScore === "number"
-                        ? `${Math.round(relevanceBaseScore * 100)}%`
-                        : "N/A"}
-                      {" · "}
-                      llm:{" "}
-                      {typeof relevanceRerankScore === "number"
-                        ? `${Math.round(relevanceRerankScore * 100)}%`
-                        : "N/A"}
-                      {" · "}
-                      weight:{" "}
-                      {typeof relevanceRerankWeight === "number"
-                        ? relevanceRerankWeight.toFixed(2)
-                        : "N/A"}
-                    </TooltipContent>
-                  ) : null}
-                </Tooltip>
-                {relevanceReranked ? (
-                  <Badge
-                    variant="outline"
-                    className="border-violet-200 text-violet-700 dark:border-violet-500/40 dark:text-violet-200"
-                  >
-                    AI重排
-                  </Badge>
-                ) : null}
-                {onForceRerank ? (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={Boolean(reranking)}
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      onForceRerank();
-                    }}
-                  >
-                    <Sparkles className="size-3.5" />
-                    {reranking ? "重排中..." : "强制重排"}
-                  </Button>
-                ) : null}
-              </div>
+              <Badge variant="secondary">
+                匹配度: {Math.max(0, Math.min(100, Math.round(relevanceScore * 100)))}%
+              </Badge>
             ) : null}
           </div>
           <div className="flex shrink-0 items-center gap-1 self-start">
@@ -280,40 +208,13 @@ const NewsDetailCard = ({
             </Badge>
           </div>
         ) : null}
-        {onGenerateSummary ? (
-          <div className="space-y-2 pt-1">
-            <div className="flex items-center gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={Boolean(summaryGenerating)}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onGenerateSummary();
-                }}
-              >
-                <Sparkles className="size-3.5" />
-                {summary ? "重新总结" : "AI总结"}
-              </Button>
-              {summaryUpdatedAt ? (
-                <span className="text-xs text-muted-foreground">
-                  更新时间: {new Date(summaryUpdatedAt).toLocaleString()}
-                </span>
-              ) : null}
-            </div>
-            {summary ? (
-              <p className="max-w-3xl text-sm leading-6 text-muted-foreground/90">
-                {summary}
-              </p>
-            ) : (
-              <p className="text-xs text-muted-foreground">
-                暂无摘要，点击 AI总结 生成长文摘要
-              </p>
-            )}
-          </div>
+        {summary ? (
+          <p className="max-w-3xl text-sm leading-6 text-muted-foreground/90">
+            {summary}
+          </p>
         ) : (
-          <p className="max-w-3xl text-sm leading-6 text-muted-foreground/90 line-clamp-2">
-            {summary || title || "News Summary"}
+          <p className="text-xs text-muted-foreground">
+            暂无摘要
           </p>
         )}
         {expandableKeywords?.length ? (
