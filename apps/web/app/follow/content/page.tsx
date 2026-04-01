@@ -48,6 +48,9 @@ const FollowContent = () => {
   const [savingMaterialContentId, setSavingMaterialContentId] = useState<string | null>(
     null
   );
+  const [refreshingContentId, setRefreshingContentId] = useState<string | null>(
+    null
+  );
   const detailRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   // 获取所有收藏的内容 ID，用于判断是否已收藏
@@ -302,6 +305,57 @@ const FollowContent = () => {
     }
   };
 
+  const refreshContent = async (contentId: string) => {
+    setRefreshingContentId(contentId);
+    let summaryUpdated = false;
+    let rerankUpdated = false;
+    try {
+      const summaryResponse = await fetch(
+        `/api/focus-bulletin/content/${contentId}/summary`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ force: true }),
+        }
+      );
+      const summaryPayload = await summaryResponse.json().catch(() => null);
+      if (!summaryResponse.ok) {
+        throw new Error(summaryPayload?.error ?? "摘要刷新失败");
+      }
+      summaryUpdated = true;
+
+      if (selectedTopicId) {
+        const rerankResponse = await fetch(
+          `/api/focus-bulletin/content/${contentId}/rerank`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ topicId: selectedTopicId }),
+          }
+        );
+        const rerankPayload = await rerankResponse.json().catch(() => null);
+        if (!rerankResponse.ok) {
+          throw new Error(rerankPayload?.error ?? "拓展词刷新失败");
+        }
+        rerankUpdated = true;
+      }
+
+      await queryClient.invalidateQueries({ queryKey: ["follow-content"] });
+      if (summaryUpdated && rerankUpdated) {
+        toast.success("摘要和拓展词已刷新");
+      } else if (summaryUpdated) {
+        toast.success("摘要已刷新（未选择Topic，已跳过拓展词刷新）");
+      }
+    } catch (error) {
+      if (summaryUpdated) {
+        await queryClient.invalidateQueries({ queryKey: ["follow-content"] });
+      }
+      toast.error(error instanceof Error ? error.message : "刷新失败");
+    } finally {
+      setRefreshingContentId(null);
+    }
+  };
+
   const sortedContents = contents;
 
   useEffect(() => {
@@ -486,6 +540,10 @@ const FollowContent = () => {
                   saveMaterialContent(content.id, materialContent)
                 }
                 savingMaterial={savingMaterialContentId === content.id}
+                onRefresh={() => {
+                  void refreshContent(content.id);
+                }}
+                refreshing={refreshingContentId === content.id}
                 className={
                   selectedContent?.id === content.id
                     ? "border-primary/35 bg-card shadow-[0_0_0_1px_hsl(var(--primary)/0.12)]"

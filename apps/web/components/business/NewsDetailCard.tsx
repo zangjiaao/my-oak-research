@@ -9,6 +9,7 @@ import {
   MapPin,
   MessageSquarePlus,
   Plus,
+  RefreshCw,
   ThumbsDown,
   ThumbsUp,
   Trash2,
@@ -52,6 +53,8 @@ const NewsDetailCard = ({
   rewriting,
   onSaveMaterial,
   savingMaterial,
+  onRefresh,
+  refreshing,
 }: {
   title?: string;
   summary?: string;
@@ -102,6 +105,8 @@ const NewsDetailCard = ({
   rewriting?: boolean;
   onSaveMaterial?: (content: string) => Promise<void> | void;
   savingMaterial?: boolean;
+  onRefresh?: () => void;
+  refreshing?: boolean;
 }) => {
   const keywordTagMeta: Record<
     "PERSON" | "ORG" | "TECH" | "LOCATION" | "PRODUCT" | "EVENT" | "CONCEPT",
@@ -206,6 +211,22 @@ const NewsDetailCard = ({
             ) : null}
           </div>
           <div className="flex shrink-0 items-center gap-1 self-start">
+            {onRefresh ? (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 rounded-full"
+                disabled={Boolean(refreshing)}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onRefresh();
+                }}
+                aria-label={refreshing ? "刷新中" : "刷新"}
+                title={refreshing ? "刷新中..." : "刷新摘要与拓展词"}
+              >
+                <RefreshCw className={cn("size-4", refreshing ? "animate-spin" : "")} />
+              </Button>
+            ) : null}
             <Button
               variant="ghost"
               size="icon"
