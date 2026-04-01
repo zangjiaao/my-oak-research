@@ -85,6 +85,8 @@ const DYNAMIC_TOPIC_SCORING_ENABLED =
   process.env.DYNAMIC_TOPIC_SCORING_ENABLED !== "false";
 const CONTENT_CLEAN_LLM_ENABLED =
   process.env.CONTENT_CLEAN_LLM_ENABLED !== "false";
+const CONTENT_AUTO_REWRITE_ENABLED =
+  process.env.CONTENT_AUTO_REWRITE_ENABLED === "true";
 const CONTENT_FORMATTER_MAX_INPUT_CHARS = Math.max(
   1000,
   Number(process.env.CONTENT_FORMATTER_MAX_INPUT_CHARS ?? 16000)
@@ -136,10 +138,24 @@ const SEARCH_QUERY_RETRY_BACKOFF_MS = Math.max(
   Number(process.env.SEARCH_QUERY_RETRY_BACKOFF_MS ?? 300)
 );
 
-const ContentAnalyzeSchema = z.object({
+const ContentAnalyzeSchemaWithRewrite = z.object({
   title: z.string().min(4).max(120),
   summary: z.string().min(30).max(400),
   cleanedMarkdown: z.string().min(40).max(5000),
+  relevance: z.boolean(),
+  subjects: z
+    .array(
+      z.object({
+        keywordId: z.string().min(1),
+        score: z.number().min(0).max(1).nullable().optional(),
+        reason: z.string().max(200).nullable().optional(),
+      })
+    )
+    .default([]),
+});
+const ContentAnalyzeSchema = z.object({
+  title: z.string().min(4).max(120),
+  summary: z.string().min(30).max(400),
   relevance: z.boolean(),
   subjects: z
     .array(
@@ -168,7 +184,7 @@ const TopicRerankSchema = z.object({
 type ContentAnalyzeResult = {
   title: string;
   summary: string;
-  cleanedMarkdown: string;
+  cleanedMarkdown: string | null;
   relevance: boolean;
   subjectsByKeyword: Map<string, { score: number | null; reason: string | null }>;
 };
@@ -708,23 +724,23 @@ export async function runFocusCollector(runId: string, queryId: string) {
         contentAnalyzeResult
           ? process.env.LLM_DEFAULT_MODEL ?? "unknown"
           : "fallback",
-      cleanedMarkdown: sanitizedCleanedMarkdown || null,
-      cleanedMarkdownUpdatedAt: sanitizedCleanedMarkdown
-        ? contentTime.toISOString()
-        : null,
-      cleanedMarkdownModel: sanitizedCleanedMarkdown
-        ? process.env.LLM_DEFAULT_MODEL ?? "unknown"
-        : null,
       summaryInput: preparedSummaryContent.promptText.slice(0, 1500),
       summaryInputExtractor: preparedSummaryContent.extractorUsed,
       summaryInputQuality: preparedSummaryContent.qualityScore,
       contentCleanProvider: contentAnalyzeResult ? "llm" : "legacy",
       contentCleanedMarkdownChars: sanitizedCleanedMarkdown.length,
       contentCleanLlmEnabled: CONTENT_CLEAN_LLM_ENABLED,
+      contentAutoRewriteEnabled: CONTENT_AUTO_REWRITE_ENABLED,
       sourceId: stripNullBytes(item.sourceId),
       sourceType: item.sourceType,
       intent: item.intent ? stripNullBytes(item.intent) : null,
     };
+    if (sanitizedCleanedMarkdown) {
+      contentMeta.cleanedMarkdown = sanitizedCleanedMarkdown;
+      contentMeta.cleanedMarkdownUpdatedAt = contentTime.toISOString();
+      contentMeta.cleanedMarkdownModel =
+        process.env.LLM_DEFAULT_MODEL ?? "unknown";
+    }
 
     const content = await prisma.content.create({
       data: {
@@ -1144,19 +1160,13 @@ export async function runJobCollector(params: {
         contentAnalyzeResult
           ? process.env.LLM_DEFAULT_MODEL ?? "unknown"
           : "fallback",
-      cleanedMarkdown: sanitizedCleanedMarkdown || null,
-      cleanedMarkdownUpdatedAt: sanitizedCleanedMarkdown
-        ? contentTime.toISOString()
-        : null,
-      cleanedMarkdownModel: sanitizedCleanedMarkdown
-        ? process.env.LLM_DEFAULT_MODEL ?? "unknown"
-        : null,
       summaryInput: preparedSummaryContent.promptText.slice(0, 1500),
       summaryInputExtractor: preparedSummaryContent.extractorUsed,
       summaryInputQuality: preparedSummaryContent.qualityScore,
       contentCleanProvider: contentAnalyzeResult ? "llm" : "legacy",
       contentCleanedMarkdownChars: sanitizedCleanedMarkdown.length,
       contentCleanLlmEnabled: CONTENT_CLEAN_LLM_ENABLED,
+      contentAutoRewriteEnabled: CONTENT_AUTO_REWRITE_ENABLED,
       sourceId: stripNullBytes(item.sourceId),
       sourceType: item.sourceType,
       intent: item.intent ? stripNullBytes(item.intent) : null,
@@ -1170,6 +1180,12 @@ export async function runJobCollector(params: {
         bm25TopN: RETRIEVAL_BM25_TOP_N,
       },
     };
+    if (sanitizedCleanedMarkdown) {
+      contentMeta.cleanedMarkdown = sanitizedCleanedMarkdown;
+      contentMeta.cleanedMarkdownUpdatedAt = contentTime.toISOString();
+      contentMeta.cleanedMarkdownModel =
+        process.env.LLM_DEFAULT_MODEL ?? "unknown";
+    }
 
     const content = await prisma.content.create({
       data: {
@@ -4277,7 +4293,11 @@ async function analyzeContentWithRetry(
 {
   "title": "简洁、准确的中文标题（4-120字）",
   "summary": "2-3句中文摘要（30-400字）",
-  "cleanedMarkdown": "清洗后的 Markdown 正文（800-1200字，保留关键信息）",
+  ${
+    CONTENT_AUTO_REWRITE_ENABLED
+      ? '"cleanedMarkdown": "清洗后的 Markdown 正文（800-1200字，保留关键信息，禁止新增事实）",'
+      : ""
+  }
   "relevance": true/false,
   "subjects": [
     {
@@ -4291,12 +4311,15 @@ async function analyzeContentWithRetry(
 要求：
 1) title 必须忠于原文，不夸张、不加结论；
 2) summary 基于内容核心信息，不要编造；
-3) cleanedMarkdown 要去除导航、版权、广告、重复段落，保留结构化小标题和要点；
-4) cleanedMarkdown 目标 800-1200 字，若原文不足则尽量完整输出；
-5) relevance 表示内容是否与查询主题整体相关；
-6) subjects 必须覆盖每个 keywordId；
-7) score 以主题语义为主，不能因为单词子串命中就高分；
-8) 只出现词形但语义无关时，给低分（接近 0）。
+3) relevance 表示内容是否与查询主题整体相关；
+4) subjects 必须覆盖每个 keywordId；
+5) score 以主题语义为主，不能因为单词子串命中就高分；
+6) 只出现词形但语义无关时，给低分（接近 0）;
+${
+  CONTENT_AUTO_REWRITE_ENABLED
+    ? "7) cleanedMarkdown 仅可忠实转述原文，不得引入新事实、外部背景或推断。"
+    : ""
+}
 
 查询关键词概览: ${keywordsSummary}
 主题明细(JSON): ${JSON.stringify(subjectInput)}
@@ -4305,11 +4328,16 @@ ${summaryInput.promptText}`
   );
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
-      const result = await llmGateway.json<z.infer<typeof ContentAnalyzeSchema>>(
+      const schema = CONTENT_AUTO_REWRITE_ENABLED
+        ? ContentAnalyzeSchemaWithRewrite
+        : ContentAnalyzeSchema;
+      const result = await llmGateway.json<
+        z.infer<typeof ContentAnalyzeSchema> | z.infer<typeof ContentAnalyzeSchemaWithRewrite>
+      >(
         "content-analyze",
         {
         prompt: redact(prompt),
-        schema: ContentAnalyzeSchema,
+        schema,
         temperature: 0.3,
         metadata: {
           queryId,
@@ -4346,7 +4374,8 @@ ${summaryInput.promptText}`
       return {
         title: result.title,
         summary: result.summary,
-        cleanedMarkdown: result.cleanedMarkdown,
+        cleanedMarkdown:
+          "cleanedMarkdown" in result ? result.cleanedMarkdown : null,
         relevance: result.relevance,
         subjectsByKeyword,
       };

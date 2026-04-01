@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import {
   Bookmark,
@@ -117,11 +117,7 @@ const NewsDetailCard = ({
   ).length;
   const rewrittenMarkdown = (cleanMarkdown ?? "").trim();
   const originalText = (rawText ?? "").trim();
-  const defaultTab = rewrittenMarkdown ? "rewrite" : "raw";
-  const [activeTab, setActiveTab] = useState(defaultTab);
-  useEffect(() => {
-    setActiveTab(defaultTab);
-  }, [defaultTab]);
+  const [activeTab, setActiveTab] = useState("raw");
   const sourceData = useMemo(
     () =>
       JSON.stringify(
