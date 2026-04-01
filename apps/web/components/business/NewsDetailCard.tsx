@@ -51,6 +51,7 @@ const NewsDetailCard = ({
   onFeedbackNote,
   onRewrite,
   rewriting,
+  jinaOptimized,
   onSaveMaterial,
   savingMaterial,
   onRefresh,
@@ -103,6 +104,7 @@ const NewsDetailCard = ({
   onFeedbackNote?: () => void;
   onRewrite?: () => void;
   rewriting?: boolean;
+  jinaOptimized?: boolean;
   onSaveMaterial?: (content: string) => Promise<void> | void;
   savingMaterial?: boolean;
   onRefresh?: () => void;
@@ -379,9 +381,13 @@ const NewsDetailCard = ({
                       event.stopPropagation();
                       onRewrite();
                     }}
-                    disabled={Boolean(rewriting) || Boolean(savingMaterial)}
+                    disabled={
+                      Boolean(rewriting) ||
+                      Boolean(savingMaterial) ||
+                      Boolean(jinaOptimized)
+                    }
                   >
-                    {rewriting ? "获取中..." : "Jina丰富化"}
+                    {rewriting ? "获取中..." : jinaOptimized ? "已优化" : "Jina丰富化"}
                   </Button>
                 ) : null}
                 {editingContent ? (

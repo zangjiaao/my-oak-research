@@ -449,6 +449,13 @@ const FollowContent = () => {
       <ScrollArea className="h-full">
         <div className="flex flex-col gap-3 overflow-visible pb-6 pr-2 pl-1">
           {sortedContents.map((content) => {
+            const meta = (content.meta ?? {}) as Record<string, unknown>;
+            const hasJinaContent =
+              typeof meta.jinaContent === "string" && meta.jinaContent.trim().length > 0;
+            const hasJinaUpdatedAt =
+              typeof meta.jinaUpdatedAt === "string" &&
+              meta.jinaUpdatedAt.trim().length > 0;
+            const jinaOptimized = hasJinaContent || hasJinaUpdatedAt;
             return (
             <div
               key={content.id}
@@ -536,6 +543,7 @@ const FollowContent = () => {
                   void rewriteContent(content.id);
                 }}
                 rewriting={rewritingContentId === content.id}
+                jinaOptimized={jinaOptimized}
                 onSaveMaterial={(materialContent) =>
                   saveMaterialContent(content.id, materialContent)
                 }
