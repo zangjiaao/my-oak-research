@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import prisma from "@/lib/prisma";
+import { llmGateway } from "@oak/agents/llm-gateway";
 import type {
   Prisma,
   Content,
@@ -41,6 +42,35 @@ const RETRIEVAL_EXCLUSION_WEIGHT = Math.max(
   0,
   Number(process.env.RETRIEVAL_EXCLUSION_WEIGHT ?? 0.03)
 );
+const DYNAMIC_TOPIC_SCORING_LLM_ENABLED =
+  process.env.DYNAMIC_TOPIC_SCORING_LLM_ENABLED !== "false";
+const DYNAMIC_TOPIC_SCORING_LLM_TOP_N = Math.max(
+  1,
+  Math.min(20, Number(process.env.DYNAMIC_TOPIC_SCORING_LLM_TOP_N ?? 8))
+);
+const DYNAMIC_TOPIC_SCORING_LLM_WEIGHT = Math.max(
+  0,
+  Math.min(1, Number(process.env.DYNAMIC_TOPIC_SCORING_LLM_WEIGHT ?? 0.6))
+);
+const DYNAMIC_TOPIC_SCORING_LLM_MIN_BASE = Math.max(
+  0,
+  Math.min(1, Number(process.env.DYNAMIC_TOPIC_SCORING_LLM_MIN_BASE ?? 0.25))
+);
+const DYNAMIC_TOPIC_SCORING_LLM_MODEL =
+  process.env.DYNAMIC_TOPIC_SCORING_LLM_MODEL ||
+  process.env.LLM_DEFAULT_MODEL ||
+  "gpt-5-mini";
+
+const TopicDynamicRerankSchema = z.object({
+  scores: z
+    .array(
+      z.object({
+        contentId: z.string().min(1),
+        score: z.number().min(0).max(1),
+      })
+    )
+    .default([]),
+});
 
 const contentTypeSchema = z.enum(["Web", "Client", "Darknet"]);
 const sortSchema = z.enum(["time", "relevance", "topicScore"]);
@@ -227,84 +257,159 @@ async function scoreTopicForContentBatch(
   const coreTerms = topic.terms.filter((term) => term.type === "CORE");
   const expansionTerms = topic.terms.filter((term) => term.type === "EXPANSION");
   const exclusionTerms = topic.terms.filter((term) => term.type === "EXCLUSION");
+  const scoreDrafts = contents.map((content) => {
+    const normalizedText = `${content.title}\n${content.summary}`.toLowerCase();
+    const vectorScore = vectorByContentId.get(content.id) ?? 0;
+    const bm25Score = sparseByContentId.get(content.id) ?? 0;
+    const fusionScore = roundScore(
+      vectorScore * RETRIEVAL_FUSION_ALPHA + bm25Score * (1 - RETRIEVAL_FUSION_ALPHA)
+    );
+    const coreScore = countTermMatches(normalizedText, coreTerms);
+    const expansionScore = countTermMatches(normalizedText, expansionTerms);
+    const exclusionPenalty = countTermMatches(normalizedText, exclusionTerms);
+    const keywordScore = roundScore(bm25Score * 10 + coreScore + expansionScore);
+    const coreBoost = Math.max(
+      0,
+      Math.min(1, normalizeTermScore(coreScore) * RETRIEVAL_CORE_WEIGHT)
+    );
+    const expansionBoost = Math.max(
+      0,
+      Math.min(1, normalizeTermScore(expansionScore) * RETRIEVAL_EXPANSION_WEIGHT)
+    );
+    const exclusionCost = exclusionPenalty * RETRIEVAL_EXCLUSION_WEIGHT;
+    const baseFinalScore = roundScore(
+      Math.max(0, Math.min(1, fusionScore + coreBoost + expansionBoost - exclusionCost))
+    );
+    return {
+      contentId: content.id,
+      title: content.title,
+      summary: content.summary,
+      vectorScore,
+      bm25Score,
+      fusionScore,
+      coreScore,
+      expansionScore,
+      exclusionPenalty,
+      keywordScore,
+      baseFinalScore,
+    };
+  });
+
+  const llmRerankByContentId = new Map<string, number>();
+  if (DYNAMIC_TOPIC_SCORING_LLM_ENABLED && DYNAMIC_TOPIC_SCORING_LLM_WEIGHT > 0) {
+    const llmCandidates = scoreDrafts
+      .filter((draft) => draft.baseFinalScore >= DYNAMIC_TOPIC_SCORING_LLM_MIN_BASE)
+      .sort((left, right) => right.baseFinalScore - left.baseFinalScore)
+      .slice(0, DYNAMIC_TOPIC_SCORING_LLM_TOP_N);
+    if (llmCandidates.length > 0) {
+      try {
+        const payload = await llmGateway.json("topic-dynamic-rerank", {
+          model: DYNAMIC_TOPIC_SCORING_LLM_MODEL,
+          temperature: 0,
+          metadata: {
+            topicId: topic.id,
+            mode: "memory-first-dynamic-rerank",
+          },
+          prompt: [
+            "你是主题内容相关度评估助手。",
+            "请基于 topic 与 content 的 title+summary 评估相关度，返回 0~1 分数。",
+            "仅返回 JSON：{\"scores\":[{\"contentId\":\"...\",\"score\":0.0}]}",
+            "",
+            `topicId=${topic.id}`,
+            `topicName=${topic.name}`,
+            `coreTerms=${coreTerms.map((term) => term.value).join(",") || "-"}`,
+            `expansionTerms=${expansionTerms.map((term) => term.value).join(",") || "-"}`,
+            "",
+            ...llmCandidates.map(
+              (candidate) =>
+                `contentId=${candidate.contentId}\ntitle=${candidate.title}\nsummary=${candidate.summary.slice(0, 600)}`
+            ),
+          ].join("\n"),
+        });
+        const checked = TopicDynamicRerankSchema.safeParse(payload);
+        if (checked.success) {
+          for (const item of checked.data.scores) {
+            llmRerankByContentId.set(item.contentId, roundScore(item.score));
+          }
+        }
+      } catch {
+        // Dynamic rerank failure should not block base scoring.
+      }
+    }
+  }
 
   const upserted = await Promise.all(
-    contents.map(async (content) => {
-      const normalizedText = `${content.title}\n${content.summary}`.toLowerCase();
-      const vectorScore = vectorByContentId.get(content.id) ?? 0;
-      const bm25Score = sparseByContentId.get(content.id) ?? 0;
-      const fusionScore = roundScore(
-        vectorScore * RETRIEVAL_FUSION_ALPHA +
-          bm25Score * (1 - RETRIEVAL_FUSION_ALPHA)
-      );
-      const coreScore = countTermMatches(normalizedText, coreTerms);
-      const expansionScore = countTermMatches(normalizedText, expansionTerms);
-      const exclusionPenalty = countTermMatches(normalizedText, exclusionTerms);
-      const keywordScore = roundScore(bm25Score * 10 + coreScore + expansionScore);
-      const coreBoost = Math.max(
-        0,
-        Math.min(1, normalizeTermScore(coreScore) * RETRIEVAL_CORE_WEIGHT)
-      );
-      const expansionBoost = Math.max(
-        0,
-        Math.min(1, normalizeTermScore(expansionScore) * RETRIEVAL_EXPANSION_WEIGHT)
-      );
-      const exclusionCost = exclusionPenalty * RETRIEVAL_EXCLUSION_WEIGHT;
-      const finalScore = roundScore(
-        Math.max(0, Math.min(1, fusionScore + coreBoost + expansionBoost - exclusionCost))
-      );
-      const reason = `vector:${vectorScore.toFixed(3)} core:${coreScore.toFixed(
+    scoreDrafts.map(async (draft) => {
+      const llmScore = llmRerankByContentId.get(draft.contentId);
+      const finalScore =
+        typeof llmScore === "number"
+          ? roundScore(
+              Math.max(
+                0,
+                Math.min(
+                  1,
+                  draft.baseFinalScore * (1 - DYNAMIC_TOPIC_SCORING_LLM_WEIGHT) +
+                    llmScore * DYNAMIC_TOPIC_SCORING_LLM_WEIGHT
+                )
+              )
+            )
+          : draft.baseFinalScore;
+      const reasonCore = `vector:${draft.vectorScore.toFixed(3)} core:${draft.coreScore.toFixed(
         2
-      )} expansion:${expansionScore.toFixed(2)} exclusion:${exclusionPenalty.toFixed(2)}`;
+      )} expansion:${draft.expansionScore.toFixed(2)} exclusion:${draft.exclusionPenalty.toFixed(2)}`;
+      const reason =
+        typeof llmScore === "number" ? `${reasonCore} llm:${llmScore.toFixed(3)}` : reasonCore;
 
       const score = await prisma.contentTopicScore.upsert({
         where: {
           contentId_topicId: {
-            contentId: content.id,
+            contentId: draft.contentId,
             topicId: topic.id,
           },
         },
         create: {
-          contentId: content.id,
+          contentId: draft.contentId,
           topicId: topic.id,
-          vectorScore,
-          keywordScore,
-          exclusionPenalty,
+          vectorScore: draft.vectorScore,
+          keywordScore: draft.keywordScore,
+          exclusionPenalty: draft.exclusionPenalty,
           finalScore,
           reason,
           explain: {
-            bm25Score,
-            fusionScore,
-            vectorScore,
-            coreScore,
-            expansionScore,
-            exclusionPenalty,
-            keywordScore,
-            baseFinalScore: finalScore,
-            llmRerankScore: null,
-            llmRerankWeight: 0,
+            bm25Score: draft.bm25Score,
+            fusionScore: draft.fusionScore,
+            vectorScore: draft.vectorScore,
+            coreScore: draft.coreScore,
+            expansionScore: draft.expansionScore,
+            exclusionPenalty: draft.exclusionPenalty,
+            keywordScore: draft.keywordScore,
+            baseFinalScore: draft.baseFinalScore,
+            llmRerankScore: llmScore ?? null,
+            llmRerankWeight:
+              typeof llmScore === "number" ? DYNAMIC_TOPIC_SCORING_LLM_WEIGHT : 0,
             scoreMode: "memory-first",
             scoredAt: now.toISOString(),
             expiresAt: expiresAt.toISOString(),
           } as Prisma.InputJsonValue,
         },
         update: {
-          vectorScore,
-          keywordScore,
-          exclusionPenalty,
+          vectorScore: draft.vectorScore,
+          keywordScore: draft.keywordScore,
+          exclusionPenalty: draft.exclusionPenalty,
           finalScore,
           reason,
           explain: {
-            bm25Score,
-            fusionScore,
-            vectorScore,
-            coreScore,
-            expansionScore,
-            exclusionPenalty,
-            keywordScore,
-            baseFinalScore: finalScore,
-            llmRerankScore: null,
-            llmRerankWeight: 0,
+            bm25Score: draft.bm25Score,
+            fusionScore: draft.fusionScore,
+            vectorScore: draft.vectorScore,
+            coreScore: draft.coreScore,
+            expansionScore: draft.expansionScore,
+            exclusionPenalty: draft.exclusionPenalty,
+            keywordScore: draft.keywordScore,
+            baseFinalScore: draft.baseFinalScore,
+            llmRerankScore: llmScore ?? null,
+            llmRerankWeight:
+              typeof llmScore === "number" ? DYNAMIC_TOPIC_SCORING_LLM_WEIGHT : 0,
             scoreMode: "memory-first",
             scoredAt: now.toISOString(),
             expiresAt: expiresAt.toISOString(),

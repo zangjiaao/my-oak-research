@@ -5,6 +5,7 @@ import { logger } from "@/lib/logger";
 import { z } from "zod";
 import { refreshTopicVector } from "@/lib/topic-vector";
 import { scheduleTopicRescore } from "@/lib/queue";
+import { refreshTopicTermsAuto } from "@/lib/topic-terms-auto";
 
 const prismaAny = prisma as any;
 
@@ -132,12 +133,42 @@ export async function PATCH(
       });
     }
 
+    let autoTermsResult = {
+      autoTermsUpdated: false,
+      autoTermsCount: 0,
+      vectorRefreshed: false,
+      rescoreScheduled: false,
+      rescoreJobId: null as string | null,
+    };
+    if (data.terms === undefined) {
+      autoTermsResult = await refreshTopicTermsAuto({
+        prismaAny,
+        topicId: params.id,
+        trigger: "topic-update",
+      });
+    }
+
+    const finalVectorRefreshed = autoTermsResult.autoTermsUpdated
+      ? autoTermsResult.vectorRefreshed
+      : vectorRefreshed;
+    const finalRescoreScheduled = autoTermsResult.autoTermsUpdated
+      ? autoTermsResult.rescoreScheduled
+      : rescoreScheduled;
+    const finalRescoreJobId = autoTermsResult.autoTermsUpdated
+      ? autoTermsResult.rescoreJobId
+      : rescoreJobId;
+
     return NextResponse.json({
       ...updated,
       termsCount: updated?._count?.terms ?? 0,
-      vectorRefreshed,
-      rescoreScheduled,
-      rescoreJobId,
+      vectorRefreshed: finalVectorRefreshed,
+      rescoreScheduled: finalRescoreScheduled,
+      rescoreJobId: finalRescoreJobId,
+      autoTermsUpdated: autoTermsResult.autoTermsUpdated,
+      autoTermsCount: autoTermsResult.autoTermsCount,
+      autoTermsVectorRefreshed: autoTermsResult.vectorRefreshed,
+      autoTermsRescoreScheduled: autoTermsResult.rescoreScheduled,
+      autoTermsRescoreJobId: autoTermsResult.rescoreJobId,
     });
   } catch (error) {
     logger.error("failed to update topic", {
