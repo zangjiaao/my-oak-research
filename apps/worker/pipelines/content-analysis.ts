@@ -83,6 +83,25 @@ const TOPIC_RECALL_TIMEOUT_MS = Number(
 );
 const DYNAMIC_TOPIC_SCORING_ENABLED =
   process.env.DYNAMIC_TOPIC_SCORING_ENABLED !== "false";
+const CONTENT_FORMATTER_PROVIDER = (
+  process.env.CONTENT_FORMATTER_PROVIDER ?? "legacy"
+).toLowerCase();
+const CONTENT_FORMATTER_TIMEOUT_MS = Math.max(
+  1500,
+  Number(process.env.CONTENT_FORMATTER_TIMEOUT_MS ?? 8000)
+);
+const CONTENT_FORMATTER_MAX_INPUT_CHARS = Math.max(
+  1000,
+  Number(process.env.CONTENT_FORMATTER_MAX_INPUT_CHARS ?? 16000)
+);
+const CONTENT_FORMATTER_MIN_MARKDOWN_CHARS = Math.max(
+  30,
+  Number(process.env.CONTENT_FORMATTER_MIN_MARKDOWN_CHARS ?? 180)
+);
+const CONTENT_FORMATTER_READERLM_BASE_URL =
+  process.env.CONTENT_FORMATTER_READERLM_BASE_URL ?? "https://r.jina.ai/";
+const CONTENT_FORMATTER_READERLM_MODEL =
+  process.env.CONTENT_FORMATTER_READERLM_MODEL ?? "readerlm-v2";
 
 const ContentAnalyzeSchema = z.object({
   summary: z.string().min(30).max(400),
@@ -123,6 +142,9 @@ type PreparedSummaryContent = {
   promptText: string;
   extractorUsed: "markdown" | "text" | "empty";
   qualityScore: number;
+  formatterProvider: "legacy" | "readerlm";
+  formatterFallback: boolean;
+  formatterFallbackReason: string | null;
 };
 
 type CleanItem = {
@@ -483,7 +505,7 @@ export async function runFocusCollector(runId: string, queryId: string) {
   const keywordsStr = expandedKeywords.join("; ") || "无关键词";
   for (let i = 0; i < cleaned.length; i++) {
     const item = cleaned[i];
-    const preparedSummaryContent = prepareContentForSummary(item);
+    const preparedSummaryContent = await prepareContentForSummary(item);
     const existingContent = await findExistingContentBySourceRecord(item);
     if (existingContent) {
       const stats = sourceStats.get(item.sourceId);
@@ -611,6 +633,9 @@ export async function runFocusCollector(runId: string, queryId: string) {
       summaryInput: preparedSummaryContent.promptText.slice(0, 1500),
       summaryInputExtractor: preparedSummaryContent.extractorUsed,
       summaryInputQuality: preparedSummaryContent.qualityScore,
+      formatterProvider: preparedSummaryContent.formatterProvider,
+      formatterFallback: preparedSummaryContent.formatterFallback,
+      formatterFallbackReason: preparedSummaryContent.formatterFallbackReason,
       sourceId: stripNullBytes(item.sourceId),
       sourceType: item.sourceType,
       intent: item.intent ? stripNullBytes(item.intent) : null,
@@ -847,7 +872,7 @@ export async function runJobCollector(params: {
 
   for (let i = 0; i < cleaned.length; i++) {
     const item = cleaned[i];
-    const preparedSummaryContent = prepareContentForSummary(item);
+    const preparedSummaryContent = await prepareContentForSummary(item);
     const existingContent = await findExistingContentBySourceRecord(item);
     if (existingContent) {
       const stats = sourceStats.get(item.sourceId);
@@ -1027,6 +1052,9 @@ export async function runJobCollector(params: {
       summaryInput: preparedSummaryContent.promptText.slice(0, 1500),
       summaryInputExtractor: preparedSummaryContent.extractorUsed,
       summaryInputQuality: preparedSummaryContent.qualityScore,
+      formatterProvider: preparedSummaryContent.formatterProvider,
+      formatterFallback: preparedSummaryContent.formatterFallback,
+      formatterFallbackReason: preparedSummaryContent.formatterFallbackReason,
       sourceId: stripNullBytes(item.sourceId),
       sourceType: item.sourceType,
       intent: item.intent ? stripNullBytes(item.intent) : null,
@@ -3989,37 +4017,78 @@ function markdownToText(markdown: string): string {
     .trim();
 }
 
-function prepareContentForSummary(item: CleanItem): PreparedSummaryContent {
-  const markdownSource = (item.markdown ?? "").trim();
-  const textSource = (item.text ?? "").trim();
-  const extractorUsed: PreparedSummaryContent["extractorUsed"] = markdownSource
-    ? "markdown"
-    : textSource
-      ? "text"
-      : "empty";
-  const source = markdownSource || textSource;
-  if (!source) {
-    return {
-      markdown: "",
-      text: "",
-      promptText: "",
-      extractorUsed,
-      qualityScore: 0,
-    };
+function resolveContentFormatterProvider(): "legacy" | "readerlm" {
+  if (CONTENT_FORMATTER_PROVIDER === "readerlm") {
+    return "readerlm";
   }
+  return "legacy";
+}
 
-  const cleanLines = toCleanLines(source);
-  const cleanMarkdown = cleanLines.join("\n\n").slice(0, 16000);
-  const cleanText = markdownToText(cleanMarkdown).slice(0, 12000);
+function calculateSummaryQuality(cleanLines: string[], cleanText: string): number {
   const punctuationCount = (cleanText.match(/[。！？.!?]/g) ?? []).length;
   const baseQuality =
     Math.min(0.6, cleanText.length / 3000) +
     Math.min(0.2, cleanLines.length / 24) +
     Math.min(0.2, punctuationCount / 16);
-  const qualityScore = roundScore(Math.max(0, Math.min(1, baseQuality)));
+  return roundScore(Math.max(0, Math.min(1, baseQuality)));
+}
 
+function normalizeReaderLmMarkdown(raw: string): string {
+  return raw
+    .replace(/```markdown\n?/gi, "")
+    .replace(/```/g, "")
+    .split(/\r?\n/)
+    .filter((line) => {
+      const trimmed = line.trim();
+      if (!trimmed) return true;
+      return !/^(title|url source|markdown content|published time|warning):/i.test(
+        trimmed
+      );
+    })
+    .join("\n")
+    .trim();
+}
+
+function buildReaderLmRequestUrl(url: string): string {
+  if (CONTENT_FORMATTER_READERLM_BASE_URL.includes("{url}")) {
+    return CONTENT_FORMATTER_READERLM_BASE_URL.replace("{url}", encodeURI(url));
+  }
+  return `${CONTENT_FORMATTER_READERLM_BASE_URL.replace(/\/?$/, "/")}${encodeURI(url)}`;
+}
+
+function isHttpUrl(url: string): boolean {
+  return /^https?:\/\//i.test(url.trim());
+}
+
+async function formatMarkdownWithReaderLm(url: string): Promise<string> {
+  const requestUrl = buildReaderLmRequestUrl(url);
+  const response = await fetchWithTimeoutDetailed(
+    requestUrl,
+    {
+      headers: {
+        Accept: "text/plain",
+        "x-engine": CONTENT_FORMATTER_READERLM_MODEL,
+      },
+    },
+    CONTENT_FORMATTER_TIMEOUT_MS
+  );
+  return normalizeReaderLmMarkdown(response.text);
+}
+
+function buildPreparedSummaryContent(input: {
+  itemTitle?: string;
+  extractorUsed: PreparedSummaryContent["extractorUsed"];
+  source: string;
+  formatterProvider: PreparedSummaryContent["formatterProvider"];
+  formatterFallback: boolean;
+  formatterFallbackReason: string | null;
+}): PreparedSummaryContent {
+  const cleanLines = toCleanLines(input.source);
+  const cleanMarkdown = cleanLines.join("\n\n").slice(0, CONTENT_FORMATTER_MAX_INPUT_CHARS);
+  const cleanText = markdownToText(cleanMarkdown).slice(0, 12000);
+  const qualityScore = calculateSummaryQuality(cleanLines, cleanText);
   const promptText = [
-    item.title ? `标题: ${item.title}` : "",
+    input.itemTitle ? `标题: ${input.itemTitle}` : "",
     "正文(Markdown):",
     cleanMarkdown.slice(0, 7000),
     "",
@@ -4030,12 +4099,121 @@ function prepareContentForSummary(item: CleanItem): PreparedSummaryContent {
     .join("\n");
 
   return {
-    markdown: cleanMarkdown || source,
-    text: cleanText || source.replace(/\s+/g, " ").trim(),
+    markdown: cleanMarkdown || input.source,
+    text: cleanText || input.source.replace(/\s+/g, " ").trim(),
     promptText: promptText.slice(0, 9500),
-    extractorUsed,
+    extractorUsed: input.extractorUsed,
     qualityScore,
+    formatterProvider: input.formatterProvider,
+    formatterFallback: input.formatterFallback,
+    formatterFallbackReason: input.formatterFallbackReason,
   };
+}
+
+async function prepareContentForSummary(item: CleanItem): Promise<PreparedSummaryContent> {
+  const markdownSource = (item.markdown ?? "").trim();
+  const textSource = (item.text ?? "").trim();
+  const extractorUsed: PreparedSummaryContent["extractorUsed"] = markdownSource
+    ? "markdown"
+    : textSource
+      ? "text"
+      : "empty";
+  const fallbackSource = (markdownSource || textSource).slice(
+    0,
+    CONTENT_FORMATTER_MAX_INPUT_CHARS
+  );
+  const requestedProvider = resolveContentFormatterProvider();
+  const url = (item.url ?? "").trim();
+
+  if (
+    requestedProvider === "readerlm" &&
+    url &&
+    isHttpUrl(url)
+  ) {
+    try {
+      const readerMarkdown = await formatMarkdownWithReaderLm(url);
+      if (readerMarkdown.length >= CONTENT_FORMATTER_MIN_MARKDOWN_CHARS) {
+        return buildPreparedSummaryContent({
+          itemTitle: item.title,
+          extractorUsed,
+          source: readerMarkdown.slice(0, CONTENT_FORMATTER_MAX_INPUT_CHARS),
+          formatterProvider: "readerlm",
+          formatterFallback: false,
+          formatterFallbackReason: null,
+        });
+      }
+      if (fallbackSource) {
+        return buildPreparedSummaryContent({
+          itemTitle: item.title,
+          extractorUsed,
+          source: fallbackSource,
+          formatterProvider: "legacy",
+          formatterFallback: true,
+          formatterFallbackReason: "readerlm_low_quality",
+        });
+      }
+      return {
+        markdown: "",
+        text: "",
+        promptText: "",
+        extractorUsed,
+        qualityScore: 0,
+        formatterProvider: "legacy",
+        formatterFallback: true,
+        formatterFallbackReason: "readerlm_low_quality",
+      };
+    } catch (error) {
+      logger.warn("content formatter readerlm failed", {
+        sourceId: item.sourceId,
+        url,
+        error: logger.normalizeError(error),
+      });
+      if (fallbackSource) {
+        return buildPreparedSummaryContent({
+          itemTitle: item.title,
+          extractorUsed,
+          source: fallbackSource,
+          formatterProvider: "legacy",
+          formatterFallback: true,
+          formatterFallbackReason: "readerlm_request_failed",
+        });
+      }
+      return {
+        markdown: "",
+        text: "",
+        promptText: "",
+        extractorUsed,
+        qualityScore: 0,
+        formatterProvider: "legacy",
+        formatterFallback: true,
+        formatterFallbackReason: "readerlm_request_failed",
+      };
+    }
+  }
+
+  if (!fallbackSource) {
+    return {
+      markdown: "",
+      text: "",
+      promptText: "",
+      extractorUsed,
+      qualityScore: 0,
+      formatterProvider: "legacy",
+      formatterFallback: requestedProvider === "readerlm",
+      formatterFallbackReason:
+        requestedProvider === "readerlm" ? "readerlm_missing_url" : null,
+    };
+  }
+
+  return buildPreparedSummaryContent({
+    itemTitle: item.title,
+    extractorUsed,
+    source: fallbackSource,
+    formatterProvider: "legacy",
+    formatterFallback: requestedProvider === "readerlm",
+    formatterFallbackReason:
+      requestedProvider === "readerlm" ? "readerlm_missing_url" : null,
+  });
 }
 
 async function fetchWithTimeout(
