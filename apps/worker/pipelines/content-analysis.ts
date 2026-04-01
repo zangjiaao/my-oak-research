@@ -249,6 +249,7 @@ const gatherPlatformIntentCache = new Map<string, string[]>();
 let gatherOutputFieldRuleCacheExpireAt = 0;
 const runSearchSignatureCache = new Map<string, Set<string>>();
 const readerLmDisabledRunKeys = new Set<string>();
+const DEFAULT_SOURCE_FILTER_MIN_CHARS = 8;
 
 function isWebSource(source: SourceWithRelations): source is WebSource {
   return source.category === "STREAM";
@@ -256,6 +257,14 @@ function isWebSource(source: SourceWithRelations): source is WebSource {
 
 function isDarknetSource(source: SourceWithRelations): source is DarknetSource {
   return source.category === "RETRIEVAL" && source.isDarknet;
+}
+
+function isSocialSource(source: SourceWithRelations): source is SocialMediaSource {
+  return source.category === "INTERACTIVE";
+}
+
+function isSearchSource(source: SourceWithRelations): source is SearchEngineSource {
+  return source.category === "RETRIEVAL" && !source.isDarknet;
 }
 
 function stripNullBytes(value: string): string {
@@ -2041,17 +2050,28 @@ async function fetchBySources(
         console.log(
           `[collector] fetched ${fetched.length} items from ${source.name}`
         );
-        fetched.forEach((item) => {
+        const filtered = applySourceMinCharsFilter(fetched, source);
+        if (filtered.length !== fetched.length) {
+          await publishTaskEvent(runId, {
+            type: "fetch-filtered",
+            message: `来源 ${source.name} 过滤掉 ${fetched.length - filtered.length} 条低质量内容`,
+            sourceId: source.id,
+            driver,
+            filteredCount: fetched.length - filtered.length,
+            minChars: resolveSourceFilterMinChars(source),
+          });
+        }
+        filtered.forEach((item) => {
           item.driver = driver;
         });
         await publishTaskEvent(runId, {
           type: "fetch-success",
           message: `抓取 ${source.name} 完成`,
-          count: fetched.length,
+          count: filtered.length,
           sourceId: source.id,
           driver,
         });
-        return fetched;
+        return filtered;
       } catch (error) {
         await publishTaskEvent(runId, {
           type: "error",
@@ -2387,6 +2407,65 @@ async function fetchAICrawlerSource(
     sourcePolicy,
     recallQueryOrigin
   );
+}
+
+function resolveSourceFilterMinChars(source: SourceWithRelations): number {
+  if (isSocialSource(source) && source.social?.config) {
+    const socialConfig = asObject(source.social.config);
+    const filter = resolveGatherDriverFilter(socialConfig);
+    const minChars = Number(filter.minChars);
+    if (Number.isFinite(minChars) && minChars >= 0) {
+      return Math.floor(minChars);
+    }
+  }
+  if (isSearchSource(source) && source.search) {
+    const options = asObject(source.search.options);
+    const candidates = [
+      asObject(options.filter).minChars,
+      asObject(asObject(options.driver).filter).minChars,
+      asObject(asObject(options.playwright).filter).minChars,
+    ];
+    for (const candidate of candidates) {
+      const value = Number(candidate);
+      if (Number.isFinite(value) && value >= 0) {
+        return Math.floor(value);
+      }
+    }
+  }
+  return DEFAULT_SOURCE_FILTER_MIN_CHARS;
+}
+
+function isPlaceholderContent(item: CleanItem): boolean {
+  const combined = [
+    item.title ?? "",
+    item.text ?? "",
+    item.markdown ?? "",
+  ]
+    .join(" ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+  if (!combined) return true;
+  if (combined === "空数据") return true;
+  if (combined.includes("返回空数据")) return true;
+  return false;
+}
+
+function applySourceMinCharsFilter(
+  items: CleanItem[],
+  source: SourceWithRelations
+): CleanItem[] {
+  const minChars = resolveSourceFilterMinChars(source);
+  return items.filter((item) => {
+    if (isPlaceholderContent(item)) {
+      return false;
+    }
+    const baseText = (item.markdown || item.text || "").trim();
+    if (!baseText) return false;
+    if (minChars <= 0) return true;
+    const plainText = markdownToText(baseText);
+    return plainText.length >= minChars;
+  });
 }
 
 function normalizeCleanItem(item: CleanItem): CleanItem {
@@ -2799,19 +2878,6 @@ async function fetchSearchSource(
   });
 
   const dedupedItems = deduplicateItemsByUrlAndFingerprint(allItems);
-  if (!dedupedItems.length) {
-    return [
-      {
-        text: `搜索引擎 ${source.name} 返回空数据`,
-        markdown: `空数据`,
-        platform: source.name,
-        time: new Date(),
-        sourceId: source.id,
-        sourceType: source.category,
-        sourceIsDarknet: source.isDarknet,
-      },
-    ];
-  }
   return dedupedItems;
 }
 
