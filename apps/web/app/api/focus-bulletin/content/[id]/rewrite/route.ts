@@ -2,15 +2,44 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import prisma from "@/lib/prisma";
 import { logger } from "@/lib/logger";
-import { llmGateway } from "@oak/agents/llm-gateway";
 import type { Prisma } from "@/app/generated/prisma";
 
 const RequestSchema = z.object({
   force: z.boolean().optional().default(false),
+  provider: z.literal("jina").optional().default("jina"),
 });
 
-const RewriteResultSchema = z.object({
-  cleanedMarkdown: z.string().min(40).max(6000),
+const JinaResponseSchema = z.object({
+  code: z.number().optional(),
+  status: z.number().optional(),
+  data: z
+    .object({
+      title: z.string().optional().nullable(),
+      description: z.string().optional().nullable(),
+      url: z.string().optional().nullable(),
+      content: z.string().optional().nullable(),
+      publishedTime: z.string().optional().nullable(),
+      metadata: z.record(z.string(), z.unknown()).optional().nullable(),
+      usage: z
+        .object({
+          tokens: z.number().optional().nullable(),
+        })
+        .optional()
+        .nullable(),
+    })
+    .optional()
+    .nullable(),
+  meta: z
+    .object({
+      usage: z
+        .object({
+          tokens: z.number().optional().nullable(),
+        })
+        .optional()
+        .nullable(),
+    })
+    .optional()
+    .nullable(),
 });
 
 function asObject(value: unknown): Record<string, unknown> {
@@ -28,6 +57,34 @@ function stripLeadingMarkdownHeading(value: string): string {
   return value
     .replace(/^\s*#{1,6}\s+[^\n]+\n+/u, "")
     .trim();
+}
+
+function asString(value: unknown): string {
+  return typeof value === "string" ? stripNullBytes(value) : "";
+}
+
+async function fetchJinaByUrl(url: string) {
+  const jinaBaseUrl = process.env.JINA_BASE_URL ?? "https://r.jina.ai";
+  const jinaApiKey = process.env.JINA_API_KEY ?? "";
+  const timeoutMs = Math.max(3000, Number(process.env.JINA_TIMEOUT_MS ?? 15000));
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(jinaBaseUrl, {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        ...(jinaApiKey ? { Authorization: `Bearer ${jinaApiKey}` } : {}),
+      },
+      body: JSON.stringify({ url }),
+      signal: controller.signal,
+    });
+    const bodyText = await response.text();
+    return { ok: response.ok, status: response.status, bodyText };
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 export async function POST(
@@ -67,88 +124,115 @@ export async function POST(
   }
 
   const meta = asObject(content.meta);
-  const existingCleanedMarkdown =
-    typeof meta.cleanedMarkdown === "string" ? stripNullBytes(meta.cleanedMarkdown) : "";
+  const existingCleanedMarkdown = asString(meta.jinaContent || meta.cleanedMarkdown);
+  const existingTitle = asString(meta.jinaTitle || meta.cleanedTitle || content.title);
+  const existingDescription = asString(meta.jinaDescription || meta.cleanedSummary || content.summary);
   if (existingCleanedMarkdown && !parsed.data.force) {
     return NextResponse.json({
       success: true,
       data: {
         contentId,
+        provider: "jina",
+        title: existingTitle || null,
+        description: existingDescription || null,
         cleanedMarkdown: existingCleanedMarkdown,
         updatedAt:
-          typeof meta.cleanedMarkdownUpdatedAt === "string"
-            ? meta.cleanedMarkdownUpdatedAt
+          typeof meta.jinaUpdatedAt === "string"
+            ? meta.jinaUpdatedAt
+            : typeof meta.cleanedMarkdownUpdatedAt === "string"
+              ? meta.cleanedMarkdownUpdatedAt
             : null,
         reused: true,
       },
     });
   }
 
-  const rawText = [content.markdown, content.summary].filter(Boolean).join("\n\n").trim();
-  if (!rawText) {
-    return NextResponse.json({ error: "No content to rewrite" }, { status: 400 });
+  if (!content.url?.trim()) {
+    return NextResponse.json({ error: "No source url for Jina enrich" }, { status: 400 });
   }
 
-  const model = process.env.LLM_DEFAULT_MODEL ?? "gpt-5-mini";
-  let llmOutput: unknown;
+  let jinaResult: Awaited<ReturnType<typeof fetchJinaByUrl>>;
   try {
-    llmOutput = await llmGateway.json("follow-content-rewrite", {
-      model,
-      temperature: 0.2,
-      prompt: [
-        "你是内容重写助手。",
-        "请把输入正文重写为结构化、易读的 Markdown。",
-        "要求：",
-        "1) 必须严格忠于原文，不得新增原文未出现的事实、背景、观点、推断或结论；",
-        "2) 不要补充外部知识；信息缺失处保持留白，不要脑补；",
-        "3) 不要输出标题行（不要以 # 开头）；",
-        "4) 直接从正文内容开始，可用小标题和列表组织；",
-        "5) 长度控制在 800~1600 字，若原文过短则尽量完整但不要扩写；",
-        "",
-        `平台: ${content.platform}`,
-        `时间: ${content.time.toISOString()}`,
-        content.url ? `链接: ${content.url}` : null,
-        "",
-        "原文：",
-        rawText.slice(0, 14000),
-        "",
-        '只返回 JSON: {"cleanedMarkdown":"..."}',
-      ]
-        .filter(Boolean)
-        .join("\n"),
-      metadata: {
-        contentId,
-        mode: "manual-rewrite",
-      },
-    });
+    jinaResult = await fetchJinaByUrl(content.url);
   } catch (error) {
-    logger.error("failed to rewrite content markdown", {
+    logger.error("failed to enrich content with jina", {
       contentId,
-      model,
+      url: content.url,
       error: logger.normalizeError(error),
     });
-    return NextResponse.json({ error: "AI rewrite failed" }, { status: 502 });
+    return NextResponse.json({ error: "Jina enrich failed" }, { status: 502 });
   }
 
-  const checked = RewriteResultSchema.safeParse(llmOutput);
-  if (!checked.success) {
-    logger.error("invalid content rewrite output", {
+  if (!jinaResult.ok) {
+    logger.error("jina enrich returned non-200", {
       contentId,
-      model,
+      url: content.url,
+      statusCode: jinaResult.status,
+      bodyPreview: jinaResult.bodyText.slice(0, 400),
+    });
+    return NextResponse.json(
+      { error: `Jina enrich failed (${jinaResult.status})` },
+      { status: 502 }
+    );
+  }
+
+  let parsedJinaBody: unknown = {};
+  try {
+    parsedJinaBody = JSON.parse(jinaResult.bodyText || "{}");
+  } catch (error) {
+    logger.error("failed to parse jina response body", {
+      contentId,
+      url: content.url,
+      error: logger.normalizeError(error),
+      bodyPreview: jinaResult.bodyText.slice(0, 400),
+    });
+    return NextResponse.json({ error: "Invalid Jina response body" }, { status: 502 });
+  }
+  const checked = JinaResponseSchema.safeParse(parsedJinaBody);
+  if (!checked.success) {
+    logger.error("invalid jina enrich output", {
+      contentId,
       details: checked.error.flatten(),
     });
-    return NextResponse.json({ error: "Invalid AI rewrite result" }, { status: 502 });
+    return NextResponse.json({ error: "Invalid Jina result" }, { status: 502 });
+  }
+
+  const jinaData = checked.data.data ?? {};
+  const jinaContent = stripLeadingMarkdownHeading(asString(jinaData.content));
+  const jinaTitle = asString(jinaData.title);
+  const jinaDescription = asString(jinaData.description);
+  const usageTokens =
+    (typeof jinaData.usage?.tokens === "number" ? jinaData.usage.tokens : null) ??
+    (typeof checked.data.meta?.usage?.tokens === "number"
+      ? checked.data.meta.usage.tokens
+      : null);
+
+  if (!jinaContent) {
+    return NextResponse.json(
+      { error: "Jina returned empty content" },
+      { status: 422 }
+    );
   }
 
   const cleanedMarkdown = stripLeadingMarkdownHeading(
-    stripNullBytes(checked.data.cleanedMarkdown)
+    jinaContent
   );
   const cleanedMarkdownUpdatedAt = new Date().toISOString();
   const updatedMeta: Record<string, unknown> = {
     ...meta,
+    jinaTitle: jinaTitle || null,
+    jinaDescription: jinaDescription || null,
+    jinaContent: cleanedMarkdown,
+    jinaMetadata: jinaData.metadata ?? null,
+    jinaSourceUrl: asString(jinaData.url) || content.url,
+    jinaPublishedTime: asString(jinaData.publishedTime) || null,
+    jinaUsageTokens: usageTokens,
+    jinaUpdatedAt: cleanedMarkdownUpdatedAt,
     cleanedMarkdown,
+    cleanedTitle: jinaTitle || content.title,
+    cleanedSummary: jinaDescription || content.summary,
     cleanedMarkdownUpdatedAt,
-    cleanedMarkdownModel: model,
+    cleanedMarkdownModel: "jina.ai",
   };
 
   await prisma.content.update({
@@ -162,6 +246,9 @@ export async function POST(
     success: true,
     data: {
       contentId,
+      provider: "jina",
+      title: jinaTitle || null,
+      description: jinaDescription || null,
       cleanedMarkdown,
       updatedAt: cleanedMarkdownUpdatedAt,
       reused: false,

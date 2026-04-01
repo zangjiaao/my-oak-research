@@ -263,12 +263,12 @@ const FollowContent = () => {
       );
       const payload = await response.json().catch(() => null);
       if (!response.ok) {
-        throw new Error(payload?.error ?? "AI 重写失败");
+        throw new Error(payload?.error ?? "Jina 丰富化失败");
       }
-      toast.success("AI 重写已更新");
+      toast.success("Jina 内容已更新");
       await queryClient.invalidateQueries({ queryKey: ["follow-content"] });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "AI 重写失败");
+      toast.error(error instanceof Error ? error.message : "Jina 丰富化失败");
     } finally {
       setRewritingContentId(null);
     }

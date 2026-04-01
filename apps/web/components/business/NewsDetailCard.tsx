@@ -332,7 +332,7 @@ const NewsDetailCard = ({
         >
           <div className="mx-auto flex h-full w-full max-w-4xl flex-col">
             <TabsList className="w-full justify-start bg-muted/70 p-1">
-              <TabsTrigger value="rewrite">AI重写</TabsTrigger>
+              <TabsTrigger value="rewrite">Jina丰富化</TabsTrigger>
               <TabsTrigger value="raw">原文</TabsTrigger>
               <TabsTrigger value="source">源数据</TabsTrigger>
             </TabsList>
@@ -344,7 +344,7 @@ const NewsDetailCard = ({
               ) : (
                 <div className="space-y-3 rounded-lg border border-border/70 bg-muted/20 p-4">
                   <p className="text-sm text-muted-foreground">
-                    暂无 AI 重写内容
+                    暂无 Jina 丰富化内容
                   </p>
                   {onRewrite ? (
                     <Button
@@ -356,7 +356,7 @@ const NewsDetailCard = ({
                       }}
                       disabled={Boolean(rewriting)}
                     >
-                      {rewriting ? "重试中..." : "重试 AI 重写"}
+                      {rewriting ? "获取中..." : "使用 Jina 获取"}
                     </Button>
                   ) : null}
                 </div>

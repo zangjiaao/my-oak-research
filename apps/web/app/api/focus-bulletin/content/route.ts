@@ -441,18 +441,33 @@ const mapContent = (
     typeof meta.aiSummary === "string" && meta.aiSummary.trim()
       ? meta.aiSummary.trim()
       : null;
+  const jinaTitle =
+    typeof meta.jinaTitle === "string" && meta.jinaTitle.trim()
+      ? meta.jinaTitle.trim()
+      : null;
+  const jinaDescription =
+    typeof meta.jinaDescription === "string" && meta.jinaDescription.trim()
+      ? meta.jinaDescription.trim()
+      : null;
+  const jinaContent =
+    typeof meta.jinaContent === "string" && meta.jinaContent.trim()
+      ? meta.jinaContent.trim()
+      : null;
   const cleanedMarkdown =
-    typeof meta.cleanedMarkdown === "string" && meta.cleanedMarkdown.trim()
+    jinaContent ??
+    (typeof meta.cleanedMarkdown === "string" && meta.cleanedMarkdown.trim()
       ? meta.cleanedMarkdown.trim()
-      : null;
+      : null);
   const cleanedTitle =
-    typeof meta.cleanedTitle === "string" && meta.cleanedTitle.trim()
+    jinaTitle ??
+    (typeof meta.cleanedTitle === "string" && meta.cleanedTitle.trim()
       ? meta.cleanedTitle.trim()
-      : null;
+      : null);
   const cleanedSummary =
-    typeof meta.cleanedSummary === "string" && meta.cleanedSummary.trim()
+    jinaDescription ??
+    (typeof meta.cleanedSummary === "string" && meta.cleanedSummary.trim()
       ? meta.cleanedSummary.trim()
-      : null;
+      : null);
   const aiSummaryUpdatedAt =
     typeof meta.aiSummaryUpdatedAt === "string" ? meta.aiSummaryUpdatedAt : null;
   return {
