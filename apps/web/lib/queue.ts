@@ -127,24 +127,26 @@ export async function scheduleTopicRescore(options: TopicRescorePayload): Promis
 }> {
   const { topicId, trigger, requestedBy } = options;
   const jobId = `topic:${topicId}:rescore`;
-  try {
-    await topicRescoreQueue.add(
-      "topic-rescore",
-      { topicId, trigger, requestedBy },
-      {
-        ...defaultJobOpts,
-        jobId,
-        removeOnComplete: true,
-      }
-    );
-    return { scheduled: true, jobId };
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    if (message.toLowerCase().includes("jobid")) {
+  const existing = await topicRescoreQueue.getJob(jobId);
+  if (existing) {
+    const state = await existing.getState();
+    if (state === "active" || state === "waiting" || state === "delayed") {
       return { scheduled: false, jobId };
     }
-    throw error;
+    await existing.remove();
   }
+
+  await topicRescoreQueue.add(
+    "topic-rescore",
+    { topicId, trigger, requestedBy },
+    {
+      ...defaultJobOpts,
+      jobId,
+      removeOnComplete: true,
+      removeOnFail: true,
+    }
+  );
+  return { scheduled: true, jobId };
 }
 
 export async function publishTaskEvent(runId: string, payload: unknown) {
