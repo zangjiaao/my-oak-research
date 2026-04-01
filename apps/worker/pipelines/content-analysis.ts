@@ -81,6 +81,14 @@ const TOPIC_RECALL_QUERY_LIMIT = Number(
 const TOPIC_RECALL_TIMEOUT_MS = Number(
   process.env.TOPIC_RECALL_TIMEOUT_MS ?? 8000
 );
+const TOPIC_RECALL_MIN_PER_LANGUAGE = Number(
+  process.env.TOPIC_RECALL_MIN_PER_LANGUAGE ?? 1
+);
+const TOPIC_RECALL_COVERAGE_RETRY_LIMIT = Number(
+  process.env.TOPIC_RECALL_COVERAGE_RETRY_LIMIT ?? 1
+);
+const TOPIC_RECALL_COVERAGE_PATCH_ENABLED =
+  process.env.TOPIC_RECALL_COVERAGE_PATCH_ENABLED !== "false";
 const DYNAMIC_TOPIC_SCORING_ENABLED =
   process.env.DYNAMIC_TOPIC_SCORING_ENABLED !== "false";
 const CONTENT_CLEAN_LLM_ENABLED =
@@ -306,7 +314,7 @@ type SourceRuntimePolicy = {
   recallBindingOverride?: unknown;
 };
 
-type RecallQueryOrigin = "llm_recall" | "static_fallback";
+type RecallQueryOrigin = "llm_recall" | "coverage_patch" | "static_fallback";
 type SourceRecallQueryBundle = {
   queries: string[];
   origin: RecallQueryOrigin;
@@ -1854,6 +1862,20 @@ function resolveTopicRecallTimeoutMs(): number {
   return Math.max(500, Math.min(Math.floor(TOPIC_RECALL_TIMEOUT_MS), 30_000));
 }
 
+function resolveTopicRecallMinPerLanguage(): number {
+  if (!Number.isFinite(TOPIC_RECALL_MIN_PER_LANGUAGE)) {
+    return 1;
+  }
+  return Math.max(1, Math.min(Math.floor(TOPIC_RECALL_MIN_PER_LANGUAGE), 3));
+}
+
+function resolveTopicRecallCoverageRetryLimit(): number {
+  if (!Number.isFinite(TOPIC_RECALL_COVERAGE_RETRY_LIMIT)) {
+    return 1;
+  }
+  return Math.max(0, Math.min(Math.floor(TOPIC_RECALL_COVERAGE_RETRY_LIMIT), 3));
+}
+
 function normalizeRecallQueries(queries: string[], limit: number): string[] {
   return Array.from(new Set(queries.map((query) => query.trim()).filter(Boolean))).slice(
     0,
@@ -1900,6 +1922,54 @@ function normalizeRecallQueryItems(params: {
   }
 
   return flattened;
+}
+
+function buildRecallCoverage(params: {
+  queries: TopicRecallQueryItem[];
+  allowedLanguages: RecallLanguage[];
+}): Record<RecallLanguage, number> {
+  const allowed = new Set(normalizeRecallLanguages(params.allowedLanguages));
+  const coverage: Record<RecallLanguage, number> = { zh: 0, en: 0, ja: 0 };
+  for (const item of params.queries) {
+    if (!allowed.has(item.lang)) continue;
+    const text = item.text.trim();
+    if (!text) continue;
+    coverage[item.lang] += 1;
+  }
+  return coverage;
+}
+
+function findRecallCoverageMissingLanguages(params: {
+  queries: TopicRecallQueryItem[];
+  allowedLanguages: RecallLanguage[];
+  minPerLanguage: number;
+}): RecallLanguage[] {
+  const coverage = buildRecallCoverage({
+    queries: params.queries,
+    allowedLanguages: params.allowedLanguages,
+  });
+  return normalizeRecallLanguages(params.allowedLanguages).filter(
+    (lang) => coverage[lang] < params.minPerLanguage
+  );
+}
+
+function dedupeRecallQueryItems(
+  queries: TopicRecallQueryItem[]
+): TopicRecallQueryItem[] {
+  const dedup = new Set<string>();
+  const output: TopicRecallQueryItem[] = [];
+  for (const item of queries) {
+    const text = item.text.trim();
+    if (!text) continue;
+    const dedupKey = `${item.lang}:${text.toLowerCase()}`;
+    if (dedup.has(dedupKey)) continue;
+    dedup.add(dedupKey);
+    output.push({
+      text,
+      lang: item.lang,
+    });
+  }
+  return output;
 }
 
 function isTopicRecallSource(source: SourceWithRelations): boolean {
@@ -1985,6 +2055,109 @@ ${JSON.stringify(topicPayload)}`
   );
 }
 
+function buildTopicRecallCoveragePatchPrompt(params: {
+  topics: JobCollectorTopic[];
+  source: SourceWithRelations;
+  missingLanguages: RecallLanguage[];
+  limit: number;
+  seedQueries: TopicRecallQueryItem[];
+}): string {
+  const topicPayload = params.topics.map((topic) => ({
+    topicId: topic.id,
+    name: topic.name,
+    description: topic.description ?? "",
+    coreTerms: topic.terms
+      .filter((term) => term.type === "CORE")
+      .map((term) => term.value.trim())
+      .filter(Boolean),
+    expansionTerms: topic.terms
+      .filter((term) => term.type === "EXPANSION")
+      .map((term) => term.value.trim())
+      .filter(Boolean),
+    exclusionTerms: topic.terms
+      .filter((term) => term.type === "EXCLUSION")
+      .map((term) => term.value.trim())
+      .filter(Boolean),
+  }));
+  return stripPromptLike(
+    `你是检索 query 语言补齐器。请只为缺失语言补齐搜索 query。
+输出 JSON：{"queries":[{"text":"...","lang":"zh|en|ja"}]}
+要求：
+1) 只输出语言：${params.missingLanguages.join(", ")}；
+2) 每个缺失语言至少补 1 条，最多补 ${params.limit} 条；
+3) 不要解释，不要 markdown，不要输出非 JSON。
+
+Source:
+name: ${params.source.name}
+${buildSourceRecallContext(params.source)}
+
+Topics(JSON):
+${JSON.stringify(topicPayload)}
+
+已有查询(JSON):
+${JSON.stringify(params.seedQueries)}`
+  );
+}
+
+async function generateTopicRecallCoveragePatch(params: {
+  runId: string;
+  jobId: string;
+  source: SourceWithRelations;
+  topics: JobCollectorTopic[];
+  missingLanguages: RecallLanguage[];
+  limit: number;
+  timeoutMs: number;
+  seedQueries: TopicRecallQueryItem[];
+}): Promise<TopicRecallQueryItem[]> {
+  if (!TOPIC_RECALL_LLM_ENABLED || params.missingLanguages.length === 0) {
+    return [];
+  }
+  try {
+    const prompt = buildTopicRecallCoveragePatchPrompt({
+      topics: params.topics,
+      source: params.source,
+      missingLanguages: params.missingLanguages,
+      limit: params.limit,
+      seedQueries: params.seedQueries,
+    });
+    const response = await withTimeout(
+      llmGateway.json<z.infer<typeof TopicRecallQueriesSchema>>(
+        "topic-recall-query",
+        {
+          prompt: redact(prompt),
+          schema: TopicRecallQueriesSchema,
+          temperature: 0.2,
+          maxOutputTokens: 320,
+          metadata: {
+            runId: params.runId,
+            jobId: params.jobId,
+            sourceId: params.source.id,
+            sourceName: params.source.name,
+            patch: true,
+          },
+        }
+      ),
+      params.timeoutMs,
+      `topic recall coverage patch timeout after ${params.timeoutMs}ms`
+    );
+    return dedupeRecallQueryItems(
+      (response.queries ?? []).filter((item) =>
+        params.missingLanguages.includes(item.lang)
+      )
+    );
+  } catch (error) {
+    logger.warn("topic recall coverage patch failed", {
+      runId: params.runId,
+      jobId: params.jobId,
+      sourceId: params.source.id,
+      sourceName: params.source.name,
+      missingLanguages: params.missingLanguages,
+      error: logger.normalizeError(error),
+    });
+    return [];
+  }
+}
+
 async function withTimeout<T>(
   promise: Promise<T>,
   timeoutMs: number,
@@ -2026,6 +2199,9 @@ async function buildTopicRecallQueryBundles(params: {
   const recallLimit = resolveTopicRecallLimit();
   const timeoutMs = resolveTopicRecallTimeoutMs();
   const recallLanguages = resolveRecallLanguages(params.topics);
+  const minPerLanguage = resolveTopicRecallMinPerLanguage();
+  const coverageRetryLimit = resolveTopicRecallCoverageRetryLimit();
+  const coverageFeasible = recallLimit >= recallLanguages.length * minPerLanguage;
 
   for (const source of recallSources) {
     await publishTaskEvent(params.runId, {
@@ -2034,6 +2210,10 @@ async function buildTopicRecallQueryBundles(params: {
       message: `为 ${source.name} 生成动态召回词`,
     });
     if (!TOPIC_RECALL_LLM_ENABLED) {
+      const fallbackCoverage = buildRecallCoverage({
+        queries: [],
+        allowedLanguages: recallLanguages,
+      });
       bundles.set(source.id, {
         queries: fallbackQueries,
         origin: "static_fallback",
@@ -2043,6 +2223,9 @@ async function buildTopicRecallQueryBundles(params: {
         type: "recall-generate-fallback",
         sourceId: source.id,
         message: "动态召回词已关闭，使用静态词项",
+        requestedLanguages: recallLanguages,
+        coverageByLanguage: fallbackCoverage,
+        coverageComplete: false,
         generatedCount: fallbackQueries.length,
       });
       continue;
@@ -2074,14 +2257,69 @@ async function buildTopicRecallQueryBundles(params: {
         timeoutMs,
         `topic recall generation timeout after ${timeoutMs}ms`
       );
+      let generatedItems = dedupeRecallQueryItems(response.queries ?? []);
+      let missingLanguages = coverageFeasible
+        ? findRecallCoverageMissingLanguages({
+            queries: generatedItems,
+            allowedLanguages: recallLanguages,
+            minPerLanguage,
+          })
+        : [];
+
+      if (
+        TOPIC_RECALL_COVERAGE_PATCH_ENABLED &&
+        coverageFeasible &&
+        missingLanguages.length > 0
+      ) {
+        for (let retry = 0; retry < coverageRetryLimit; retry += 1) {
+          const patchedItems = await generateTopicRecallCoveragePatch({
+            runId: params.runId,
+            jobId: params.jobId,
+            source,
+            topics: params.topics,
+            missingLanguages,
+            limit: recallLimit,
+            timeoutMs,
+            seedQueries: generatedItems,
+          });
+          if (patchedItems.length > 0) {
+            generatedItems = dedupeRecallQueryItems([
+              ...generatedItems,
+              ...patchedItems,
+            ]);
+          }
+          missingLanguages = findRecallCoverageMissingLanguages({
+            queries: generatedItems,
+            allowedLanguages: recallLanguages,
+            minPerLanguage,
+          });
+          if (missingLanguages.length === 0) {
+            break;
+          }
+        }
+      }
+
       const queries = normalizeRecallQueryItems({
-        queries: response.queries ?? [],
+        queries: generatedItems,
         limit: recallLimit,
         allowedLanguages: recallLanguages,
       });
       const effectiveQueries = queries.length > 0 ? queries : fallbackQueries;
+      const coverageByLanguage = buildRecallCoverage({
+        queries: generatedItems,
+        allowedLanguages: recallLanguages,
+      });
+      const coverageComplete = coverageFeasible
+        ? recallLanguages.every(
+            (lang) => (coverageByLanguage[lang] ?? 0) >= minPerLanguage
+          )
+        : false;
       const origin: RecallQueryOrigin =
-        queries.length > 0 ? "llm_recall" : "static_fallback";
+        queries.length > 0
+          ? coverageComplete
+            ? "llm_recall"
+            : "coverage_patch"
+          : "static_fallback";
       bundles.set(source.id, {
         queries: effectiveQueries,
         origin,
@@ -2093,7 +2331,14 @@ async function buildTopicRecallQueryBundles(params: {
         message:
           origin === "llm_recall"
             ? `动态召回词生成成功（${effectiveQueries.length}条）`
+            : origin === "coverage_patch"
+              ? `动态召回词补齐后生成（${effectiveQueries.length}条）`
             : `动态召回词为空，降级静态词项（${effectiveQueries.length}条）`,
+        requestedLanguages: recallLanguages,
+        coverageByLanguage,
+        coverageComplete,
+        minPerLanguage,
+        coverageFeasible,
         origin,
         generatedCount: effectiveQueries.length,
       });
@@ -2114,6 +2359,11 @@ async function buildTopicRecallQueryBundles(params: {
         type: "recall-generate-error",
         sourceId: source.id,
         message: "动态召回词生成失败，已降级静态词项",
+        requestedLanguages: recallLanguages,
+        coverageByLanguage: { zh: 0, en: 0, ja: 0 },
+        coverageComplete: false,
+        minPerLanguage,
+        coverageFeasible,
         generatedCount: fallbackQueries.length,
       });
     }

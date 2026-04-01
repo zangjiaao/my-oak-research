@@ -22,6 +22,7 @@ type WorkerApiIoEntry = {
   recallQueryCount?: number;
   queryOrigin?:
     | "llm_recall"
+    | "coverage_patch"
     | "static_fallback"
     | "objective_fallback"
     | "recall";
