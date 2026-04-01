@@ -97,6 +97,32 @@ const CONTENT_CLEAN_MARKDOWN_MAX_CHARS = Math.max(
   CONTENT_CLEAN_MARKDOWN_MIN_CHARS,
   Number(process.env.CONTENT_CLEAN_MARKDOWN_MAX_CHARS ?? 1200)
 );
+const PRE_LLM_FILTER_LEVEL = (
+  process.env.PRE_LLM_FILTER_LEVEL ?? "standard"
+).toLowerCase();
+const PRE_LLM_FILTER_ERROR_KEYWORD_HITS = Math.max(
+  1,
+  Number(process.env.PRE_LLM_FILTER_ERROR_KEYWORD_HITS ?? 2)
+);
+const PRE_LLM_FILTER_GARBLED_RATIO_THRESHOLD = Math.max(
+  0.05,
+  Math.min(0.9, Number(process.env.PRE_LLM_FILTER_GARBLED_RATIO_THRESHOLD ?? 0.35))
+);
+const PRE_LLM_FILTER_REPLACEMENT_RATIO_THRESHOLD = Math.max(
+  0.005,
+  Math.min(
+    0.5,
+    Number(process.env.PRE_LLM_FILTER_REPLACEMENT_RATIO_THRESHOLD ?? 0.02)
+  )
+);
+const PRE_LLM_FILTER_TEMPLATE_LINE_RATIO = Math.max(
+  0.2,
+  Math.min(0.95, Number(process.env.PRE_LLM_FILTER_TEMPLATE_LINE_RATIO ?? 0.6))
+);
+const PRE_LLM_FILTER_REPEAT_LINE_RATIO = Math.max(
+  0.2,
+  Math.min(0.95, Number(process.env.PRE_LLM_FILTER_REPEAT_LINE_RATIO ?? 0.55))
+);
 const SEARCH_QUERY_CONCURRENCY = Math.max(
   1,
   Math.min(8, Number(process.env.SEARCH_QUERY_CONCURRENCY ?? 2))
@@ -234,6 +260,24 @@ type SourceRecallQueryBundle = {
   queries: string[];
   origin: RecallQueryOrigin;
   generatedCount: number;
+};
+type PreLlmFilterReason =
+  | "placeholder"
+  | "error_page"
+  | "garbled_content"
+  | "template_noise"
+  | "repeated_noise";
+
+type PreLlmFilterReject = {
+  item: CleanItem;
+  reason: PreLlmFilterReason;
+  metrics: Record<string, number>;
+  sampleHash: string;
+};
+
+type PreLlmFilterResult = {
+  passed: CleanItem[];
+  rejected: PreLlmFilterReject[];
 };
 type GatherDriverPayload = {
   name: GatherSocialDriver;
@@ -2050,17 +2094,48 @@ async function fetchBySources(
             minChars: resolveSourceFilterMinChars(source),
           });
         }
-        filtered.forEach((item) => {
+        const preLlmFilterResult = applyPreLlmQualityGate(filtered);
+        if (preLlmFilterResult.rejected.length > 0) {
+          const reasonCount = preLlmFilterResult.rejected.reduce<
+            Record<string, number>
+          >((acc, entry) => {
+            acc[entry.reason] = (acc[entry.reason] ?? 0) + 1;
+            return acc;
+          }, {});
+          await publishTaskEvent(runId, {
+            type: "pre-llm-filtered",
+            message: `来源 ${source.name} 在LLM前过滤 ${preLlmFilterResult.rejected.length} 条噪音内容`,
+            sourceId: source.id,
+            driver,
+            filteredCount: preLlmFilterResult.rejected.length,
+            filterLevel: resolvePreLlmFilterLevel(),
+            reasonCount,
+          });
+          for (const rejected of preLlmFilterResult.rejected) {
+            logger.info("pre-llm quality gate dropped content", {
+              runId,
+              queryId,
+              sourceId: source.id,
+              sourceName: source.name,
+              driver,
+              reason: rejected.reason,
+              url: rejected.item.url ?? null,
+              sampleHash: rejected.sampleHash,
+              metrics: rejected.metrics,
+            });
+          }
+        }
+        preLlmFilterResult.passed.forEach((item) => {
           item.driver = driver;
         });
         await publishTaskEvent(runId, {
           type: "fetch-success",
           message: `抓取 ${source.name} 完成`,
-          count: filtered.length,
+          count: preLlmFilterResult.passed.length,
           sourceId: source.id,
           driver,
         });
-        return filtered;
+        return preLlmFilterResult.passed;
       } catch (error) {
         await publishTaskEvent(runId, {
           type: "error",
@@ -2437,7 +2512,205 @@ function isPlaceholderContent(item: CleanItem): boolean {
   if (!combined) return true;
   if (combined === "空数据") return true;
   if (combined.includes("返回空数据")) return true;
+  if (/^(null|undefined|n\/a|no data|empty)$/i.test(combined)) return true;
+  if (/暂无(内容|数据|正文)/.test(combined)) return true;
+  if (/内容获取失败|抓取失败|加载失败/.test(combined)) return true;
   return false;
+}
+
+function resolvePreLlmFilterLevel(): "strict" | "standard" | "loose" {
+  if (PRE_LLM_FILTER_LEVEL === "strict") return "strict";
+  if (PRE_LLM_FILTER_LEVEL === "loose") return "loose";
+  return "standard";
+}
+
+function resolvePreLlmThreshold(base: number): number {
+  const level = resolvePreLlmFilterLevel();
+  if (level === "strict") {
+    return base * 0.8;
+  }
+  if (level === "loose") {
+    return Math.min(0.98, base * 1.25);
+  }
+  return base;
+}
+
+function buildContentInspectionText(item: CleanItem): {
+  text: string;
+  plainText: string;
+  lines: string[];
+} {
+  const merged = [item.title ?? "", item.markdown ?? "", item.text ?? ""]
+    .join("\n")
+    .replace(/\u0000/g, " ")
+    .trim();
+  const plainText = markdownToText(merged).replace(/\s+/g, " ").trim();
+  const lines = merged
+    .split(/\r?\n/)
+    .map((line) => line.replace(/\s+/g, " ").trim())
+    .filter(Boolean);
+  return { text: merged, plainText, lines };
+}
+
+function computeRepeatLineRatio(lines: string[]): number {
+  if (lines.length === 0) return 0;
+  const normalized = lines.map((line) => line.toLowerCase());
+  const uniqueCount = new Set(normalized).size;
+  return 1 - uniqueCount / normalized.length;
+}
+
+function computeTemplateLineRatio(lines: string[]): number {
+  if (lines.length === 0) return 0;
+  const templatePattern =
+    /(home|login|sign in|sign up|subscribe|newsletter|menu|copyright|all rights reserved|about us|privacy|terms|cookie|share|上一篇|下一篇|返回首页|登录|注册|订阅|版权|免责声明|相关阅读|热门推荐)/i;
+  const templateLineCount = lines.reduce((count, line) => {
+    if (line.length <= 60 && templatePattern.test(line)) {
+      return count + 1;
+    }
+    return count;
+  }, 0);
+  return templateLineCount / lines.length;
+}
+
+function computeErrorKeywordHits(text: string): number {
+  if (!text) return 0;
+  const lower = text.toLowerCase();
+  const keywords = [
+    "access denied",
+    "permission denied",
+    "forbidden",
+    "captcha",
+    "robot check",
+    "http error",
+    "error 403",
+    "error 404",
+    "error 500",
+    "request blocked",
+    "stack trace",
+    "service unavailable",
+    "bad gateway",
+    "gateway timeout",
+  ];
+  return keywords.reduce((count, keyword) => {
+    return lower.includes(keyword) ? count + 1 : count;
+  }, 0);
+}
+
+function computeGarbledRatio(text: string): {
+  garbledRatio: number;
+  replacementRatio: number;
+  hasLongNoiseRun: boolean;
+} {
+  if (!text) {
+    return { garbledRatio: 0, replacementRatio: 0, hasLongNoiseRun: false };
+  }
+  const totalChars = text.length;
+  const replacementCount = (text.match(/�/g) ?? []).length;
+  const controlCount = (text.match(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g) ?? [])
+    .length;
+  const mojibakeCount = (text.match(/[ÃÂÐÑØåæœ]/g) ?? []).length;
+  const weirdSymbolCount = (
+    text.match(/[^\u4e00-\u9fffA-Za-z0-9\s.,!?;:()'"“”‘’\-_/[\]{}<>@#$%^&*+=|\\]/g) ?? []
+  ).length;
+  const garbledCount = replacementCount + controlCount + mojibakeCount + weirdSymbolCount;
+  const longNoiseRunPattern =
+    /[^\u4e00-\u9fffA-Za-z0-9\s.,!?;:()'"“”‘’\-_/[\]{}<>@#$%^&*+=|\\]{20,}/;
+  return {
+    garbledRatio: totalChars > 0 ? garbledCount / totalChars : 0,
+    replacementRatio: totalChars > 0 ? replacementCount / totalChars : 0,
+    hasLongNoiseRun: longNoiseRunPattern.test(text),
+  };
+}
+
+function evaluatePreLlmQuality(item: CleanItem): {
+  pass: boolean;
+  reason?: PreLlmFilterReason;
+  metrics: Record<string, number>;
+} {
+  if (isPlaceholderContent(item)) {
+    return { pass: false, reason: "placeholder", metrics: { placeholder: 1 } };
+  }
+  const { text, plainText, lines } = buildContentInspectionText(item);
+  if (!plainText) {
+    return { pass: false, reason: "placeholder", metrics: { placeholder: 1 } };
+  }
+
+  const errorKeywordHits = computeErrorKeywordHits(text);
+  const templateLineRatio = computeTemplateLineRatio(lines);
+  const repeatLineRatio = computeRepeatLineRatio(lines);
+  const { garbledRatio, replacementRatio, hasLongNoiseRun } =
+    computeGarbledRatio(text);
+  const sentenceCount = (plainText.match(/[。！？.!?]/g) ?? []).length;
+
+  const metrics = {
+    errorKeywordHits,
+    templateLineRatio: roundScore(templateLineRatio),
+    repeatLineRatio: roundScore(repeatLineRatio),
+    garbledRatio: roundScore(garbledRatio),
+    replacementRatio: roundScore(replacementRatio),
+    sentenceCount,
+    plainTextLength: plainText.length,
+  };
+
+  const errorHitsThreshold = Math.max(
+    1,
+    Math.floor(resolvePreLlmThreshold(PRE_LLM_FILTER_ERROR_KEYWORD_HITS))
+  );
+  if (errorKeywordHits >= errorHitsThreshold && sentenceCount <= 3) {
+    return { pass: false, reason: "error_page", metrics };
+  }
+
+  const garbledRatioThreshold = resolvePreLlmThreshold(
+    PRE_LLM_FILTER_GARBLED_RATIO_THRESHOLD
+  );
+  const replacementRatioThreshold = resolvePreLlmThreshold(
+    PRE_LLM_FILTER_REPLACEMENT_RATIO_THRESHOLD
+  );
+  if (
+    garbledRatio >= garbledRatioThreshold ||
+    replacementRatio >= replacementRatioThreshold ||
+    hasLongNoiseRun
+  ) {
+    return { pass: false, reason: "garbled_content", metrics };
+  }
+
+  const templateRatioThreshold = resolvePreLlmThreshold(
+    PRE_LLM_FILTER_TEMPLATE_LINE_RATIO
+  );
+  if (templateLineRatio >= templateRatioThreshold && sentenceCount <= 4) {
+    return { pass: false, reason: "template_noise", metrics };
+  }
+
+  const repeatRatioThreshold = resolvePreLlmThreshold(
+    PRE_LLM_FILTER_REPEAT_LINE_RATIO
+  );
+  if (repeatLineRatio >= repeatRatioThreshold) {
+    return { pass: false, reason: "repeated_noise", metrics };
+  }
+
+  return { pass: true, metrics };
+}
+
+function applyPreLlmQualityGate(items: CleanItem[]): PreLlmFilterResult {
+  const passed: CleanItem[] = [];
+  const rejected: PreLlmFilterReject[] = [];
+
+  for (const item of items) {
+    const evaluated = evaluatePreLlmQuality(item);
+    if (evaluated.pass) {
+      passed.push(item);
+      continue;
+    }
+    rejected.push({
+      item,
+      reason: evaluated.reason ?? "placeholder",
+      metrics: evaluated.metrics,
+      sampleHash: hashString(
+        `${item.sourceId}:${(item.url ?? "").trim()}:${(item.text ?? "").slice(0, 120)}`
+      ),
+    });
+  }
+  return { passed, rejected };
 }
 
 function applySourceMinCharsFilter(
