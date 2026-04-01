@@ -453,10 +453,18 @@ const mapContent = (
     typeof meta.jinaContent === "string" && meta.jinaContent.trim()
       ? meta.jinaContent.trim()
       : null;
+  const finalMaterialContent =
+    typeof meta.finalMaterialContent === "string" && meta.finalMaterialContent.trim()
+      ? meta.finalMaterialContent.trim()
+      : null;
   const cleanedMarkdown =
+    finalMaterialContent ??
     jinaContent ??
     (typeof meta.cleanedMarkdown === "string" && meta.cleanedMarkdown.trim()
       ? meta.cleanedMarkdown.trim()
+      : null) ??
+    (typeof views.detailView.content === "string" && views.detailView.content.trim()
+      ? views.detailView.content.trim()
       : null);
   const cleanedTitle =
     jinaTitle ??

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import {
   Bookmark,
@@ -14,12 +14,12 @@ import {
   Trash2,
   User,
 } from "lucide-react";
-import ReactMarkdown from "react-markdown";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Textarea } from "@/components/ui/textarea";
 
 const NewsDetailCard = ({
   title,
@@ -50,6 +50,8 @@ const NewsDetailCard = ({
   onFeedbackNote,
   onRewrite,
   rewriting,
+  onSaveMaterial,
+  savingMaterial,
 }: {
   title?: string;
   summary?: string;
@@ -98,6 +100,8 @@ const NewsDetailCard = ({
   onFeedbackNote?: () => void;
   onRewrite?: () => void;
   rewriting?: boolean;
+  onSaveMaterial?: (content: string) => Promise<void> | void;
+  savingMaterial?: boolean;
 }) => {
   const keywordTagMeta: Record<
     "PERSON" | "ORG" | "TECH" | "LOCATION" | "PRODUCT" | "EVENT" | "CONCEPT",
@@ -117,7 +121,15 @@ const NewsDetailCard = ({
   ).length;
   const rewrittenMarkdown = (cleanMarkdown ?? "").trim();
   const originalText = (rawText ?? "").trim();
-  const [activeTab, setActiveTab] = useState("raw");
+  const contentText = rewrittenMarkdown || originalText;
+  const [activeTab, setActiveTab] = useState("content");
+  const [editingContent, setEditingContent] = useState(false);
+  const [draftContent, setDraftContent] = useState(contentText);
+  useEffect(() => {
+    if (!editingContent) {
+      setDraftContent(contentText);
+    }
+  }, [contentText, editingContent]);
   const sourceData = useMemo(
     () =>
       JSON.stringify(
@@ -332,34 +344,82 @@ const NewsDetailCard = ({
         >
           <div className="mx-auto flex h-full w-full max-w-4xl flex-col">
             <TabsList className="w-full justify-start bg-muted/70 p-1">
-              <TabsTrigger value="rewrite">Jina丰富化</TabsTrigger>
+              <TabsTrigger value="content">内容</TabsTrigger>
               <TabsTrigger value="raw">原文</TabsTrigger>
               <TabsTrigger value="source">源数据</TabsTrigger>
             </TabsList>
-            <TabsContent value="rewrite" className="mt-3">
-              {rewrittenMarkdown ? (
-                <article className="prose prose-slate max-w-none text-[15px] leading-7 text-foreground/90 prose-p:my-0 prose-p:leading-7 prose-p:text-foreground/90 prose-headings:mb-3 prose-headings:mt-5 prose-headings:font-semibold prose-headings:text-foreground prose-li:my-1 prose-li:text-foreground/90 prose-strong:text-foreground prose-a:text-primary prose-a:no-underline hover:prose-a:underline">
-                  <ReactMarkdown>{rewrittenMarkdown}</ReactMarkdown>
-                </article>
-              ) : (
-                <div className="space-y-3 rounded-lg border border-border/70 bg-muted/20 p-4">
-                  <p className="text-sm text-muted-foreground">
-                    暂无 Jina 丰富化内容
-                  </p>
-                  {onRewrite ? (
+            <TabsContent value="content" className="mt-3 space-y-3">
+              <div className="flex flex-wrap items-center gap-2">
+                {onRewrite ? (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onRewrite();
+                    }}
+                    disabled={Boolean(rewriting) || Boolean(savingMaterial)}
+                  >
+                    {rewriting ? "获取中..." : "Jina丰富化"}
+                  </Button>
+                ) : null}
+                {editingContent ? (
+                  <>
+                    <Button
+                      size="sm"
+                      onClick={async (event) => {
+                        event.stopPropagation();
+                        if (!onSaveMaterial) return;
+                        try {
+                          await onSaveMaterial(draftContent);
+                          setEditingContent(false);
+                        } catch {
+                          // errors are handled by caller
+                        }
+                      }}
+                      disabled={Boolean(savingMaterial)}
+                    >
+                      {savingMaterial ? "保存中..." : "保存"}
+                    </Button>
                     <Button
                       size="sm"
                       variant="outline"
                       onClick={(event) => {
                         event.stopPropagation();
-                        onRewrite();
+                        setEditingContent(false);
+                        setDraftContent(contentText);
                       }}
-                      disabled={Boolean(rewriting)}
+                      disabled={Boolean(savingMaterial)}
                     >
-                      {rewriting ? "获取中..." : "使用 Jina 获取"}
+                      取消
                     </Button>
-                  ) : null}
-                </div>
+                  </>
+                ) : (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      setEditingContent(true);
+                    }}
+                    disabled={Boolean(savingMaterial)}
+                  >
+                    编辑
+                  </Button>
+                )}
+              </div>
+              {editingContent ? (
+                <Textarea
+                  value={draftContent}
+                  onChange={(event) => setDraftContent(event.target.value)}
+                  rows={16}
+                  className="min-h-[22rem] text-sm leading-6"
+                  placeholder="可编辑内容为空，可点击 Jina丰富化 或手动粘贴内容后保存"
+                />
+              ) : (
+                <pre className="max-h-[22rem] overflow-auto whitespace-pre-wrap break-words rounded-lg border border-border/70 bg-muted/20 p-4 text-sm leading-6">
+                  {contentText || "暂无内容，可点击 Jina丰富化 或切换到原文查看"}
+                </pre>
               )}
             </TabsContent>
             <TabsContent value="raw" className="mt-3">

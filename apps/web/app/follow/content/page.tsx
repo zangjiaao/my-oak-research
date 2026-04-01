@@ -45,6 +45,9 @@ const FollowContent = () => {
   const [rewritingContentId, setRewritingContentId] = useState<string | null>(
     null
   );
+  const [savingMaterialContentId, setSavingMaterialContentId] = useState<string | null>(
+    null
+  );
   const detailRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   // 获取所有收藏的内容 ID，用于判断是否已收藏
@@ -274,6 +277,31 @@ const FollowContent = () => {
     }
   };
 
+  const saveMaterialContent = async (contentId: string, materialContent: string) => {
+    setSavingMaterialContentId(contentId);
+    try {
+      const response = await fetch(
+        `/api/focus-bulletin/content/${contentId}/material`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ content: materialContent }),
+        }
+      );
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(payload?.error ?? "内容保存失败");
+      }
+      toast.success("内容已保存");
+      await queryClient.invalidateQueries({ queryKey: ["follow-content"] });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "内容保存失败");
+      throw error;
+    } finally {
+      setSavingMaterialContentId(null);
+    }
+  };
+
   const sortedContents = contents;
 
   useEffect(() => {
@@ -454,6 +482,10 @@ const FollowContent = () => {
                   void rewriteContent(content.id);
                 }}
                 rewriting={rewritingContentId === content.id}
+                onSaveMaterial={(materialContent) =>
+                  saveMaterialContent(content.id, materialContent)
+                }
+                savingMaterial={savingMaterialContentId === content.id}
                 className={
                   selectedContent?.id === content.id
                     ? "border-primary/35 bg-card shadow-[0_0_0_1px_hsl(var(--primary)/0.12)]"
