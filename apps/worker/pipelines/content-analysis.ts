@@ -104,6 +104,20 @@ const CONTENT_FORMATTER_READERLM_MODEL =
   process.env.CONTENT_FORMATTER_READERLM_MODEL ?? "readerlm-v2";
 const CONTENT_FORMATTER_READERLM_API_KEY =
   process.env.CONTENT_FORMATTER_READERLM_API_KEY?.trim() ?? "";
+const CONTENT_FORMATTER_CLOUDFLARE_TIMEOUT_MS = Math.max(
+  1500,
+  Number(process.env.CONTENT_FORMATTER_CLOUDFLARE_TIMEOUT_MS ?? CONTENT_FORMATTER_TIMEOUT_MS)
+);
+const CONTENT_FORMATTER_CLOUDFLARE_RETRY_LIMIT = Math.max(
+  0,
+  Math.min(3, Number(process.env.CONTENT_FORMATTER_CLOUDFLARE_RETRY_LIMIT ?? 1))
+);
+const CONTENT_FORMATTER_CLOUDFLARE_RETRY_BACKOFF_MS = Math.max(
+  0,
+  Number(process.env.CONTENT_FORMATTER_CLOUDFLARE_RETRY_BACKOFF_MS ?? 300)
+);
+const CONTENT_FORMATTER_CLOUDFLARE_FALLBACK_TO_READERLM =
+  process.env.CONTENT_FORMATTER_CLOUDFLARE_FALLBACK_TO_READERLM !== "false";
 const SEARCH_QUERY_CONCURRENCY = Math.max(
   1,
   Math.min(8, Number(process.env.SEARCH_QUERY_CONCURRENCY ?? 2))
@@ -156,7 +170,7 @@ type PreparedSummaryContent = {
   promptText: string;
   extractorUsed: "markdown" | "text" | "empty";
   qualityScore: number;
-  formatterProvider: "legacy" | "readerlm";
+  formatterProvider: "legacy" | "readerlm" | "cloudflare";
   formatterFallback: boolean;
   formatterFallbackReason: string | null;
 };
@@ -4221,7 +4235,10 @@ function markdownToText(markdown: string): string {
     .trim();
 }
 
-function resolveContentFormatterProvider(): "legacy" | "readerlm" {
+function resolveContentFormatterProvider(): "legacy" | "readerlm" | "cloudflare" {
+  if (CONTENT_FORMATTER_PROVIDER === "cloudflare") {
+    return "cloudflare";
+  }
   if (CONTENT_FORMATTER_PROVIDER === "readerlm") {
     return "readerlm";
   }
@@ -4283,6 +4300,34 @@ async function formatMarkdownWithReaderLm(url: string): Promise<string> {
   return normalizeReaderLmMarkdown(response.text);
 }
 
+function isRetryableFormatterError(error: unknown): boolean {
+  if (error instanceof HttpStatusError) {
+    return error.statusCode >= 500;
+  }
+  if (error instanceof Error) {
+    return error.name === "AbortError";
+  }
+  return false;
+}
+
+async function waitForFormatterRetry(delayMs: number, attempt: number): Promise<void> {
+  if (delayMs <= 0) return;
+  await new Promise((resolve) => setTimeout(resolve, delayMs * Math.max(1, attempt)));
+}
+
+async function formatMarkdownWithCloudflare(url: string): Promise<string> {
+  const response = await fetchWithTimeoutDetailed(
+    url,
+    {
+      headers: {
+        Accept: "text/markdown, text/plain;q=0.9, text/html;q=0.1",
+      },
+    },
+    CONTENT_FORMATTER_CLOUDFLARE_TIMEOUT_MS
+  );
+  return normalizeReaderLmMarkdown(response.text);
+}
+
 function buildPreparedSummaryContent(input: {
   itemTitle?: string;
   extractorUsed: PreparedSummaryContent["extractorUsed"];
@@ -4338,12 +4383,81 @@ async function prepareContentForSummary(
   const runKey = getSummaryPrepareRunKey(context);
   const readerLmDisabledForRun =
     Boolean(runKey) && readerLmDisabledRunKeys.has(runKey as string);
+  const canUseUrlProvider = url && isHttpUrl(url);
+  let formatterFallback = false;
+  let formatterFallbackReason: string | null = null;
+  let shouldTryReaderLm =
+    requestedProvider === "readerlm" ||
+    (requestedProvider === "cloudflare" &&
+      CONTENT_FORMATTER_CLOUDFLARE_FALLBACK_TO_READERLM);
+
+  if (requestedProvider === "cloudflare" && canUseUrlProvider) {
+    for (
+      let attempt = 1;
+      attempt <= CONTENT_FORMATTER_CLOUDFLARE_RETRY_LIMIT + 1;
+      attempt++
+    ) {
+      try {
+        const cloudflareMarkdown = await formatMarkdownWithCloudflare(url);
+        if (cloudflareMarkdown.length >= CONTENT_FORMATTER_MIN_MARKDOWN_CHARS) {
+          return buildPreparedSummaryContent({
+            itemTitle: item.title,
+            extractorUsed,
+            source: cloudflareMarkdown.slice(0, CONTENT_FORMATTER_MAX_INPUT_CHARS),
+            formatterProvider: "cloudflare",
+            formatterFallback: false,
+            formatterFallbackReason: null,
+          });
+        }
+        formatterFallback = true;
+        formatterFallbackReason = "cloudflare_low_quality";
+        break;
+      } catch (error) {
+        const statusCode = getErrorStatusCode(error);
+        const retryable = isRetryableFormatterError(error);
+        const canRetry =
+          retryable && attempt <= CONTENT_FORMATTER_CLOUDFLARE_RETRY_LIMIT;
+        if (canRetry) {
+          await waitForFormatterRetry(
+            CONTENT_FORMATTER_CLOUDFLARE_RETRY_BACKOFF_MS,
+            attempt
+          );
+          continue;
+        }
+        formatterFallback = true;
+        formatterFallbackReason = "cloudflare_request_failed";
+        logger.warn("content formatter cloudflare failed", {
+          runId: context?.runId ?? null,
+          jobId: context?.jobId ?? null,
+          sourceId: item.sourceId,
+          url,
+          statusCode,
+          attempt,
+          error: logger.normalizeError(error),
+        });
+        break;
+      }
+    }
+    if (!CONTENT_FORMATTER_CLOUDFLARE_FALLBACK_TO_READERLM) {
+      shouldTryReaderLm = false;
+    }
+  }
+
+  if (!canUseUrlProvider) {
+    if (requestedProvider === "cloudflare") {
+      formatterFallback = true;
+      formatterFallbackReason = "cloudflare_missing_url";
+      shouldTryReaderLm = CONTENT_FORMATTER_CLOUDFLARE_FALLBACK_TO_READERLM;
+    } else if (requestedProvider === "readerlm") {
+      formatterFallback = true;
+      formatterFallbackReason = "readerlm_missing_url";
+    }
+  }
 
   if (
-    requestedProvider === "readerlm" &&
+    shouldTryReaderLm &&
     !readerLmDisabledForRun &&
-    url &&
-    isHttpUrl(url)
+    canUseUrlProvider
   ) {
     try {
       const readerMarkdown = await formatMarkdownWithReaderLm(url);
@@ -4353,30 +4467,16 @@ async function prepareContentForSummary(
           extractorUsed,
           source: readerMarkdown.slice(0, CONTENT_FORMATTER_MAX_INPUT_CHARS),
           formatterProvider: "readerlm",
-          formatterFallback: false,
-          formatterFallbackReason: null,
+          formatterFallback: formatterFallback || requestedProvider === "cloudflare",
+          formatterFallbackReason:
+            formatterFallbackReason ?? (requestedProvider === "cloudflare" ? "cloudflare_request_failed" : null),
         });
       }
-      if (fallbackSource) {
-        return buildPreparedSummaryContent({
-          itemTitle: item.title,
-          extractorUsed,
-          source: fallbackSource,
-          formatterProvider: "legacy",
-          formatterFallback: true,
-          formatterFallbackReason: "readerlm_low_quality",
-        });
-      }
-      return {
-        markdown: "",
-        text: "",
-        promptText: "",
-        extractorUsed,
-        qualityScore: 0,
-        formatterProvider: "legacy",
-        formatterFallback: true,
-        formatterFallbackReason: "readerlm_low_quality",
-      };
+      formatterFallback = true;
+      formatterFallbackReason =
+        requestedProvider === "cloudflare"
+          ? "cloudflare_then_readerlm_low_quality"
+          : "readerlm_low_quality";
     } catch (error) {
       const statusCode = getErrorStatusCode(error);
       if (statusCode === 401 && runKey) {
@@ -4396,40 +4496,17 @@ async function prepareContentForSummary(
         statusCode,
         error: logger.normalizeError(error),
       });
-      if (fallbackSource) {
-        return buildPreparedSummaryContent({
-          itemTitle: item.title,
-          extractorUsed,
-          source: fallbackSource,
-          formatterProvider: "legacy",
-          formatterFallback: true,
-          formatterFallbackReason:
-            statusCode === 401 ? "readerlm_unauthorized" : "readerlm_request_failed",
-        });
-      }
-      return {
-        markdown: "",
-        text: "",
-        promptText: "",
-        extractorUsed,
-        qualityScore: 0,
-        formatterProvider: "legacy",
-        formatterFallback: true,
-        formatterFallbackReason:
-          statusCode === 401 ? "readerlm_unauthorized" : "readerlm_request_failed",
-      };
+      formatterFallback = true;
+      formatterFallbackReason =
+        requestedProvider === "cloudflare"
+          ? "cloudflare_then_readerlm_failed"
+          : statusCode === 401
+            ? "readerlm_unauthorized"
+            : "readerlm_request_failed";
     }
-  }
-
-  if (requestedProvider === "readerlm" && readerLmDisabledForRun && fallbackSource) {
-    return buildPreparedSummaryContent({
-      itemTitle: item.title,
-      extractorUsed,
-      source: fallbackSource,
-      formatterProvider: "legacy",
-      formatterFallback: true,
-      formatterFallbackReason: "readerlm_disabled_for_run",
-    });
+  } else if (shouldTryReaderLm && readerLmDisabledForRun) {
+    formatterFallback = true;
+    formatterFallbackReason = "readerlm_disabled_for_run";
   }
 
   if (!fallbackSource) {
@@ -4440,13 +4517,19 @@ async function prepareContentForSummary(
       extractorUsed,
       qualityScore: 0,
       formatterProvider: "legacy",
-      formatterFallback: requestedProvider === "readerlm",
+      formatterFallback:
+        formatterFallback ||
+        requestedProvider === "readerlm" ||
+        requestedProvider === "cloudflare",
       formatterFallbackReason:
-        requestedProvider === "readerlm"
-          ? readerLmDisabledForRun
-            ? "readerlm_disabled_for_run"
-            : "readerlm_missing_url"
-          : null,
+        formatterFallbackReason ??
+        (requestedProvider === "cloudflare"
+          ? "cloudflare_missing_url"
+          : requestedProvider === "readerlm"
+            ? readerLmDisabledForRun
+              ? "readerlm_disabled_for_run"
+              : "readerlm_missing_url"
+            : null),
     };
   }
 
@@ -4455,13 +4538,19 @@ async function prepareContentForSummary(
     extractorUsed,
     source: fallbackSource,
     formatterProvider: "legacy",
-    formatterFallback: requestedProvider === "readerlm",
+    formatterFallback:
+      formatterFallback ||
+      requestedProvider === "readerlm" ||
+      requestedProvider === "cloudflare",
     formatterFallbackReason:
-      requestedProvider === "readerlm"
-        ? readerLmDisabledForRun
-          ? "readerlm_disabled_for_run"
-          : "readerlm_missing_url"
-        : null,
+      formatterFallbackReason ??
+      (requestedProvider === "cloudflare"
+        ? "cloudflare_request_failed"
+        : requestedProvider === "readerlm"
+          ? readerLmDisabledForRun
+            ? "readerlm_disabled_for_run"
+            : "readerlm_missing_url"
+          : null),
   });
 }
 
