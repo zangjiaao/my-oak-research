@@ -119,6 +119,9 @@ const NewsDetailCard = ({
       <CardHeader className="flex-shrink-0 space-y-2 px-6 pt-4 pb-1 lg:px-8 lg:pt-5 lg:pb-2">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1 space-y-2">
+            <h3 className="line-clamp-2 text-base font-semibold leading-6 text-foreground">
+              {title?.trim() || "未命名内容"}
+            </h3>
             <div className="flex flex-wrap items-center gap-2">
               {source ? <Badge variant="secondary">{source}</Badge> : null}
               {author ? <Badge variant="outline">作者: {author}</Badge> : null}
