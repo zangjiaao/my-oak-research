@@ -658,7 +658,7 @@ export async function runFocusCollector(runId: string, queryId: string) {
       sourceId: item.sourceId,
       fallbackTitle: contentTitle,
       fallbackSummary: summary.summary,
-      fallbackMarkdown: generatedMarkdown || preparedSummaryContent.markdown || item.markdown,
+      fallbackMarkdown: preparedSummaryContent.markdown || item.markdown,
       fallbackUrl: item.url,
       fallbackTimeIso: contentTime.toISOString(),
       recordId: item.recordId,
@@ -669,9 +669,10 @@ export async function runFocusCollector(runId: string, queryId: string) {
 
     const sanitizedTitle = stripNullBytes(contentTitle);
     const sanitizedSummary = stripNullBytes(summary.summary);
-    const sanitizedMarkdown = stripNullBytes(
-      generatedMarkdown || preparedSummaryContent.markdown || item.markdown
-    );
+    const sanitizedMarkdown = stripNullBytes(preparedSummaryContent.markdown || item.markdown);
+    const sanitizedCleanedMarkdown = generatedMarkdown
+      ? stripNullBytes(generatedMarkdown)
+      : "";
     const sanitizedPlatform = stripNullBytes(item.platform);
     const sanitizedUrl = item.url ? stripNullBytes(item.url) : undefined;
     const sanitizedRecordContent = sanitizeJsonForDb(
@@ -707,11 +708,18 @@ export async function runFocusCollector(runId: string, queryId: string) {
         contentAnalyzeResult
           ? process.env.LLM_DEFAULT_MODEL ?? "unknown"
           : "fallback",
+      cleanedMarkdown: sanitizedCleanedMarkdown || null,
+      cleanedMarkdownUpdatedAt: sanitizedCleanedMarkdown
+        ? contentTime.toISOString()
+        : null,
+      cleanedMarkdownModel: sanitizedCleanedMarkdown
+        ? process.env.LLM_DEFAULT_MODEL ?? "unknown"
+        : null,
       summaryInput: preparedSummaryContent.promptText.slice(0, 1500),
       summaryInputExtractor: preparedSummaryContent.extractorUsed,
       summaryInputQuality: preparedSummaryContent.qualityScore,
       contentCleanProvider: contentAnalyzeResult ? "llm" : "legacy",
-      contentCleanedMarkdownChars: sanitizedMarkdown.length,
+      contentCleanedMarkdownChars: sanitizedCleanedMarkdown.length,
       contentCleanLlmEnabled: CONTENT_CLEAN_LLM_ENABLED,
       sourceId: stripNullBytes(item.sourceId),
       sourceType: item.sourceType,
@@ -1089,7 +1097,7 @@ export async function runJobCollector(params: {
       sourceId: item.sourceId,
       fallbackTitle: contentTitle,
       fallbackSummary: summary.summary,
-      fallbackMarkdown: generatedMarkdown || preparedSummaryContent.markdown || item.markdown,
+      fallbackMarkdown: preparedSummaryContent.markdown || item.markdown,
       fallbackUrl: item.url,
       fallbackTimeIso: contentTime.toISOString(),
       recordId: item.recordId,
@@ -1099,9 +1107,10 @@ export async function runJobCollector(params: {
     });
     const sanitizedTitle = stripNullBytes(contentTitle);
     const sanitizedSummary = stripNullBytes(summary.summary);
-    const sanitizedMarkdown = stripNullBytes(
-      generatedMarkdown || preparedSummaryContent.markdown || item.markdown
-    );
+    const sanitizedMarkdown = stripNullBytes(preparedSummaryContent.markdown || item.markdown);
+    const sanitizedCleanedMarkdown = generatedMarkdown
+      ? stripNullBytes(generatedMarkdown)
+      : "";
     const sanitizedPlatform = stripNullBytes(item.platform);
     const sanitizedUrl = item.url ? stripNullBytes(item.url) : undefined;
     const sanitizedRecordContent = sanitizeJsonForDb(
@@ -1135,11 +1144,18 @@ export async function runJobCollector(params: {
         contentAnalyzeResult
           ? process.env.LLM_DEFAULT_MODEL ?? "unknown"
           : "fallback",
+      cleanedMarkdown: sanitizedCleanedMarkdown || null,
+      cleanedMarkdownUpdatedAt: sanitizedCleanedMarkdown
+        ? contentTime.toISOString()
+        : null,
+      cleanedMarkdownModel: sanitizedCleanedMarkdown
+        ? process.env.LLM_DEFAULT_MODEL ?? "unknown"
+        : null,
       summaryInput: preparedSummaryContent.promptText.slice(0, 1500),
       summaryInputExtractor: preparedSummaryContent.extractorUsed,
       summaryInputQuality: preparedSummaryContent.qualityScore,
       contentCleanProvider: contentAnalyzeResult ? "llm" : "legacy",
-      contentCleanedMarkdownChars: sanitizedMarkdown.length,
+      contentCleanedMarkdownChars: sanitizedCleanedMarkdown.length,
       contentCleanLlmEnabled: CONTENT_CLEAN_LLM_ENABLED,
       sourceId: stripNullBytes(item.sourceId),
       sourceType: item.sourceType,

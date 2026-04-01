@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import {
   Bookmark,
@@ -26,6 +26,7 @@ const NewsDetailCard = ({
   summary,
   cleanMarkdown,
   rawText,
+  url,
   metaData,
   author,
   source,
@@ -47,11 +48,14 @@ const NewsDetailCard = ({
   onAddKeyword,
   onFeedbackVote,
   onFeedbackNote,
+  onRewrite,
+  rewriting,
 }: {
   title?: string;
   summary?: string;
   cleanMarkdown?: string;
   rawText?: string;
+  url?: string | null;
   metaData?: Record<string, unknown>;
   author?: string | null;
   source?: string;
@@ -92,6 +96,8 @@ const NewsDetailCard = ({
   }) => void;
   onFeedbackVote?: (vote: "UP" | "DOWN") => void;
   onFeedbackNote?: () => void;
+  onRewrite?: () => void;
+  rewriting?: boolean;
 }) => {
   const keywordTagMeta: Record<
     "PERSON" | "ORG" | "TECH" | "LOCATION" | "PRODUCT" | "EVENT" | "CONCEPT",
@@ -109,6 +115,27 @@ const NewsDetailCard = ({
   const aiKeywordCount = (expandableKeywords ?? []).filter(
     (keyword) => keyword.source === "AI"
   ).length;
+  const rewrittenMarkdown = (cleanMarkdown ?? "").trim();
+  const originalText = (rawText ?? "").trim();
+  const defaultTab = rewrittenMarkdown ? "rewrite" : "raw";
+  const [activeTab, setActiveTab] = useState(defaultTab);
+  useEffect(() => {
+    setActiveTab(defaultTab);
+  }, [defaultTab]);
+  const sourceData = useMemo(
+    () =>
+      JSON.stringify(
+        {
+          url: url ?? null,
+          links: links ?? [],
+          meta: metaData ?? null,
+          raw: rawContent ?? null,
+        },
+        null,
+        2
+      ),
+    [url, links, metaData, rawContent]
+  );
   return (
     <Card
       className={cn(
@@ -302,56 +329,64 @@ const NewsDetailCard = ({
         ) : null}
       </CardHeader>
       <CardContent className="flex-1 min-h-0 overflow-y-auto scrollbar-hide px-6 pb-4 pt-2 lg:px-8">
-        <Tabs defaultValue="content" className="h-full gap-2">
+        <Tabs
+          value={activeTab}
+          onValueChange={setActiveTab}
+          className="h-full gap-2"
+        >
           <div className="mx-auto flex h-full w-full max-w-4xl flex-col">
             <TabsList className="w-full justify-start bg-muted/70 p-1">
-              <TabsTrigger value="content">正文</TabsTrigger>
+              <TabsTrigger value="rewrite">AI重写</TabsTrigger>
               <TabsTrigger value="raw">原文</TabsTrigger>
-              <TabsTrigger value="links">链接</TabsTrigger>
-              <TabsTrigger value="meta">Meta Data</TabsTrigger>
+              <TabsTrigger value="source">源数据</TabsTrigger>
             </TabsList>
-            <TabsContent value="content" className="mt-3">
-              <article className="prose prose-slate max-w-none text-[15px] leading-7 text-foreground/90 prose-p:my-0 prose-p:leading-7 prose-p:text-foreground/90 prose-headings:mb-3 prose-headings:mt-5 prose-headings:font-semibold prose-headings:text-foreground prose-li:my-1 prose-li:text-foreground/90 prose-strong:text-foreground prose-a:text-primary prose-a:no-underline hover:prose-a:underline">
-                <ReactMarkdown>{cleanMarkdown || "暂无可用正文"}</ReactMarkdown>
-              </article>
+            <TabsContent value="rewrite" className="mt-3">
+              {rewrittenMarkdown ? (
+                <article className="prose prose-slate max-w-none text-[15px] leading-7 text-foreground/90 prose-p:my-0 prose-p:leading-7 prose-p:text-foreground/90 prose-headings:mb-3 prose-headings:mt-5 prose-headings:font-semibold prose-headings:text-foreground prose-li:my-1 prose-li:text-foreground/90 prose-strong:text-foreground prose-a:text-primary prose-a:no-underline hover:prose-a:underline">
+                  <ReactMarkdown>{rewrittenMarkdown}</ReactMarkdown>
+                </article>
+              ) : (
+                <div className="space-y-3 rounded-lg border border-border/70 bg-muted/20 p-4">
+                  <p className="text-sm text-muted-foreground">
+                    暂无 AI 重写内容
+                  </p>
+                  {onRewrite ? (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        onRewrite();
+                      }}
+                      disabled={Boolean(rewriting)}
+                    >
+                      {rewriting ? "重试中..." : "重试 AI 重写"}
+                    </Button>
+                  ) : null}
+                </div>
+              )}
             </TabsContent>
             <TabsContent value="raw" className="mt-3">
               <pre className="max-h-[22rem] overflow-auto whitespace-pre-wrap break-words rounded-lg border border-border/70 bg-muted/20 p-4 text-xs leading-5">
-                {rawText?.trim() || "暂无原文"}
+                {originalText || "暂无原文"}
               </pre>
             </TabsContent>
-            <TabsContent value="links" className="mt-3">
-            {links && links.length > 0 ? (
-              <div className="mb-6 rounded-xl border border-border/70 bg-muted/20 p-4">
-                <div className="mb-3 flex items-center gap-2 text-sm font-medium">
-                  <LinkIcon className="size-4 text-muted-foreground" />
-                  参考链接
-                </div>
-                <div className="flex flex-col gap-2 text-sm">
-                {links.map((link, index) => (
-                  <Tooltip key={`${link}-${index}`}>
-                    <TooltipTrigger asChild>
-                      <a
-                        href={link}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="truncate text-blue-600 hover:underline"
-                      >
-                        {link}
-                      </a>
-                    </TooltipTrigger>
-                    <TooltipContent>{link}</TooltipContent>
-                  </Tooltip>
-                ))}
-              </div>
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">暂无链接</p>
-            )}
-            </TabsContent>
-            <TabsContent value="meta" className="mt-3">
+            <TabsContent value="source" className="mt-3 space-y-3">
+              {url ? (
+                <a
+                  href={url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-2 text-sm text-blue-600 hover:underline"
+                >
+                  <LinkIcon className="size-4" />
+                  {url}
+                </a>
+              ) : (
+                <p className="text-sm text-muted-foreground">暂无链接</p>
+              )}
               <pre className="max-h-[22rem] overflow-auto rounded-lg border border-border/70 bg-muted/20 p-4 text-xs leading-5">
-                {JSON.stringify(metaData ?? rawContent ?? {}, null, 2)}
+                {sourceData}
               </pre>
             </TabsContent>
           </div>

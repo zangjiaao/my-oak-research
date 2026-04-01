@@ -63,6 +63,7 @@ export type ContentItem = {
     recordIndex: number | null;
     relatedKey: string;
   };
+  meta?: Record<string, unknown>;
   rawRecordContent?: Record<string, unknown>;
   subjectMatches?: Array<{
     subjectId: string;
@@ -114,6 +115,7 @@ export type ContentItem = {
   } | null;
   aiSummary?: string | null;
   aiSummaryUpdatedAt?: string | null;
+  cleanedMarkdown?: string | null;
 };
 
 type FollowContentFilters = {

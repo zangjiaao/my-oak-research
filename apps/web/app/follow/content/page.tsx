@@ -42,6 +42,9 @@ const FollowContent = () => {
   const [noteContentId, setNoteContentId] = useState<string | null>(null);
   const [noteText, setNoteText] = useState("");
   const [savingFeedback, setSavingFeedback] = useState(false);
+  const [rewritingContentId, setRewritingContentId] = useState<string | null>(
+    null
+  );
   const detailRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   // 获取所有收藏的内容 ID，用于判断是否已收藏
@@ -244,6 +247,33 @@ const FollowContent = () => {
     }
   };
 
+  const stripLeadingMarkdownHeading = (value: string) =>
+    value.replace(/^\s*#{1,6}\s+[^\n]+\n+/u, "").trim();
+
+  const rewriteContent = async (contentId: string) => {
+    setRewritingContentId(contentId);
+    try {
+      const response = await fetch(
+        `/api/focus-bulletin/content/${contentId}/rewrite`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ force: true }),
+        }
+      );
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(payload?.error ?? "AI 重写失败");
+      }
+      toast.success("AI 重写已更新");
+      await queryClient.invalidateQueries({ queryKey: ["follow-content"] });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "AI 重写失败");
+    } finally {
+      setRewritingContentId(null);
+    }
+  };
+
   const sortedContents = contents;
 
   useEffect(() => {
@@ -349,14 +379,19 @@ const FollowContent = () => {
               <NewsDetailCard
                 title={content.detailView?.title ?? content.title}
                 summary={content.aiSummary ?? undefined}
-                cleanMarkdown={content.detailView?.markdown || content.markdown}
+                cleanMarkdown={
+                  content.cleanedMarkdown
+                    ? stripLeadingMarkdownHeading(content.cleanedMarkdown)
+                    : ""
+                }
                 rawText={
                   content.detailView?.content ||
-                  content.summary ||
+                  content.detailView?.markdown ||
                   content.markdown ||
                   ""
                 }
-                metaData={content.rawRecordContent}
+                url={content.url}
+                metaData={content.meta}
                 author={content.detailView?.author}
                 source={content.summaryView?.source ?? content.platform}
                 publishedAt={content.detailView?.publishedAt ?? content.time}
@@ -407,6 +442,10 @@ const FollowContent = () => {
                       }
                     : undefined
                 }
+                onRewrite={() => {
+                  void rewriteContent(content.id);
+                }}
+                rewriting={rewritingContentId === content.id}
                 className={
                   selectedContent?.id === content.id
                     ? "border-primary/35 bg-card shadow-[0_0_0_1px_hsl(var(--primary)/0.12)]"

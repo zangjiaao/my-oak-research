@@ -441,6 +441,10 @@ const mapContent = (
     typeof meta.aiSummary === "string" && meta.aiSummary.trim()
       ? meta.aiSummary.trim()
       : null;
+  const cleanedMarkdown =
+    typeof meta.cleanedMarkdown === "string" && meta.cleanedMarkdown.trim()
+      ? meta.cleanedMarkdown.trim()
+      : null;
   const aiSummaryUpdatedAt =
     typeof meta.aiSummaryUpdatedAt === "string" ? meta.aiSummaryUpdatedAt : null;
   return {
@@ -456,6 +460,7 @@ const mapContent = (
     summaryView: views.summaryView,
     detailView: views.detailView,
     relation: views.relation,
+    meta,
     rawRecordContent: views.rawRecordContent,
     media: views.media ?? [],
     topicScores: (item.topicScores ?? []).map((score) => ({
@@ -549,6 +554,7 @@ const mapContent = (
       : null,
     aiSummary,
     aiSummaryUpdatedAt,
+    cleanedMarkdown,
   };
 };
 
