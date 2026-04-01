@@ -92,6 +92,12 @@ export type ContentItem = {
         | "CONCEPT";
       label: string;
     }>;
+    aiInterpretation?: {
+      analysis: string;
+      keyPoints: string[];
+      updatedAt?: string | null;
+      model?: string | null;
+    } | null;
     topicId: string;
     vectorScore: number | null;
     keywordScore: number | null;

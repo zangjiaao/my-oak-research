@@ -56,6 +56,10 @@ const NewsDetailCard = ({
   savingMaterial,
   onRefresh,
   refreshing,
+  topicSelected,
+  aiInterpretation,
+  onGenerateInterpretation,
+  interpreting,
 }: {
   title?: string;
   summary?: string;
@@ -109,6 +113,15 @@ const NewsDetailCard = ({
   savingMaterial?: boolean;
   onRefresh?: () => void;
   refreshing?: boolean;
+  topicSelected?: boolean;
+  aiInterpretation?: {
+    analysis: string;
+    keyPoints: string[];
+    updatedAt?: string | null;
+    model?: string | null;
+  } | null;
+  onGenerateInterpretation?: (force?: boolean) => void;
+  interpreting?: boolean;
 }) => {
   const keywordTagMeta: Record<
     "PERSON" | "ORG" | "TECH" | "LOCATION" | "PRODUCT" | "EVENT" | "CONCEPT",
@@ -137,6 +150,11 @@ const NewsDetailCard = ({
       setDraftContent(contentText);
     }
   }, [contentText, editingContent]);
+  useEffect(() => {
+    if (!topicSelected && activeTab === "interpret") {
+      setActiveTab("content");
+    }
+  }, [topicSelected, activeTab]);
   const sourceData = useMemo(
     () =>
       JSON.stringify(
@@ -368,6 +386,9 @@ const NewsDetailCard = ({
           <div className="mx-auto flex h-full w-full max-w-4xl flex-col">
             <TabsList className="w-full justify-start bg-muted/70 p-1">
               <TabsTrigger value="content">内容</TabsTrigger>
+              <TabsTrigger value="interpret" disabled={!topicSelected}>
+                AI解读
+              </TabsTrigger>
               <TabsTrigger value="raw">原文</TabsTrigger>
               <TabsTrigger value="source">源数据</TabsTrigger>
             </TabsList>
@@ -447,6 +468,53 @@ const NewsDetailCard = ({
                 <pre className="max-h-[22rem] overflow-auto whitespace-pre-wrap break-words rounded-lg border border-border/70 bg-muted/20 p-4 text-sm leading-6">
                   {contentText || "暂无内容，可点击 Jina丰富化 或切换到原文查看"}
                 </pre>
+              )}
+            </TabsContent>
+            <TabsContent value="interpret" className="mt-3 space-y-3">
+              {!topicSelected ? (
+                <div className="rounded-lg border border-border/70 bg-muted/20 p-4 text-sm text-muted-foreground">
+                  请选择 Topic 后查看 AI解读
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-center gap-2">
+                    {onGenerateInterpretation ? (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          onGenerateInterpretation(Boolean(aiInterpretation));
+                        }}
+                        disabled={Boolean(interpreting)}
+                      >
+                        {interpreting
+                          ? "生成中..."
+                          : aiInterpretation
+                            ? "重新生成"
+                            : "生成AI解读"}
+                      </Button>
+                    ) : null}
+                  </div>
+                  {aiInterpretation ? (
+                    <div className="space-y-3 rounded-lg border border-border/70 bg-muted/20 p-4">
+                      <p className="whitespace-pre-wrap text-sm leading-6 text-foreground/90">
+                        {aiInterpretation.analysis}
+                      </p>
+                      {aiInterpretation.keyPoints.length > 0 ? (
+                        <ul className="list-disc space-y-1 pl-5 text-sm text-foreground/90">
+                          {aiInterpretation.keyPoints.map((point, index) => (
+                            <li key={`${point}-${index}`}>{point}</li>
+                          ))}
+                        </ul>
+                      ) : null}
+                    </div>
+                  ) : (
+                    <div className="rounded-lg border border-border/70 bg-muted/20 p-4 text-sm text-muted-foreground">
+                      暂无AI解读，点击上方按钮生成
+                    </div>
+                  )}
+                </>
               )}
             </TabsContent>
             <TabsContent value="raw" className="mt-3">

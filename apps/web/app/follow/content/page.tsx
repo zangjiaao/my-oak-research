@@ -51,6 +51,9 @@ const FollowContent = () => {
   const [refreshingContentId, setRefreshingContentId] = useState<string | null>(
     null
   );
+  const [interpretingContentId, setInterpretingContentId] = useState<string | null>(
+    null
+  );
   const detailRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   // 获取所有收藏的内容 ID，用于判断是否已收藏
@@ -356,6 +359,34 @@ const FollowContent = () => {
     }
   };
 
+  const generateInterpretation = async (contentId: string, force = false) => {
+    if (!selectedTopicId) {
+      toast.error("请先选择 Topic 再生成 AI解读");
+      return;
+    }
+    setInterpretingContentId(contentId);
+    try {
+      const response = await fetch(
+        `/api/focus-bulletin/content/${contentId}/interpret`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ topicId: selectedTopicId, force }),
+        }
+      );
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(payload?.error ?? "AI解读生成失败");
+      }
+      await queryClient.invalidateQueries({ queryKey: ["follow-content"] });
+      toast.success(force ? "AI解读已更新" : "AI解读已生成");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "AI解读生成失败");
+    } finally {
+      setInterpretingContentId(null);
+    }
+  };
+
   const sortedContents = contents;
 
   useEffect(() => {
@@ -456,6 +487,7 @@ const FollowContent = () => {
               typeof meta.jinaUpdatedAt === "string" &&
               meta.jinaUpdatedAt.trim().length > 0;
             const jinaOptimized = hasJinaContent || hasJinaUpdatedAt;
+            const selectedScore = getSelectedTopicScore(content);
             return (
             <div
               key={content.id}
@@ -552,6 +584,12 @@ const FollowContent = () => {
                   void refreshContent(content.id);
                 }}
                 refreshing={refreshingContentId === content.id}
+                topicSelected={Boolean(selectedTopicId)}
+                aiInterpretation={selectedScore?.aiInterpretation ?? null}
+                onGenerateInterpretation={(force) => {
+                  void generateInterpretation(content.id, Boolean(force));
+                }}
+                interpreting={interpretingContentId === content.id}
                 className={
                   selectedContent?.id === content.id
                     ? "border-primary/35 bg-card shadow-[0_0_0_1px_hsl(var(--primary)/0.12)]"

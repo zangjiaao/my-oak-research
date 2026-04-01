@@ -508,6 +508,12 @@ const mapContent = (
           typeof explain.expiresAt === "string" ? explain.expiresAt : null;
         const scoreMode =
           typeof explain.scoreMode === "string" ? explain.scoreMode : null;
+        const aiInterpretationRaw =
+          explain.aiInterpretation &&
+          typeof explain.aiInterpretation === "object" &&
+          !Array.isArray(explain.aiInterpretation)
+            ? (explain.aiInterpretation as Record<string, unknown>)
+            : null;
         const llmReranked =
           typeof llmRerankScoreRaw === "number" &&
           Number.isFinite(llmRerankScoreRaw);
@@ -552,6 +558,28 @@ const mapContent = (
           llmRerankForcedAt:
             typeof llmRerankForcedAtRaw === "string" ? llmRerankForcedAtRaw : null,
           llmRerankKeywords,
+          aiInterpretation: aiInterpretationRaw
+            ? {
+                analysis:
+                  typeof aiInterpretationRaw.analysis === "string"
+                    ? aiInterpretationRaw.analysis
+                    : "",
+                keyPoints: Array.isArray(aiInterpretationRaw.keyPoints)
+                  ? aiInterpretationRaw.keyPoints
+                      .filter((item) => typeof item === "string")
+                      .map((item) => item.trim())
+                      .filter(Boolean)
+                  : [],
+                updatedAt:
+                  typeof aiInterpretationRaw.updatedAt === "string"
+                    ? aiInterpretationRaw.updatedAt
+                    : null,
+                model:
+                  typeof aiInterpretationRaw.model === "string"
+                    ? aiInterpretationRaw.model
+                    : null,
+              }
+            : null,
           expiresAt: expiresAtRaw,
           scoreMode,
         };
