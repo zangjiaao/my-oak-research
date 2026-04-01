@@ -32,6 +32,12 @@ export type TopicRescorePayload = {
   requestedBy?: string;
 };
 
+export type TopicTermLearnPayload = {
+  topicId: string;
+  trigger?: "feedback-up";
+  requestedBy?: string;
+};
+
 export const defaultJobOpts: JobsOptions = {
   attempts: 3,
   backoff: { type: "exponential", delay: 2000 },
@@ -57,6 +63,16 @@ export const topicRescoreQueue = new Queue<TopicRescorePayload>("topic-rescore",
   defaultJobOptions: defaultJobOpts,
 });
 export const topicRescoreQueueEvents = new QueueEvents("topic-rescore", {
+  connection: bullConnection,
+});
+export const topicTermLearnQueue = new Queue<TopicTermLearnPayload>(
+  "topic-term-learn",
+  {
+    connection: bullConnection,
+    defaultJobOptions: defaultJobOpts,
+  }
+);
+export const topicTermLearnQueueEvents = new QueueEvents("topic-term-learn", {
   connection: bullConnection,
 });
 const SCHEDULED_COLLECT_FLOW_JOB_NAME = "collect-job-scheduled";
@@ -149,6 +165,36 @@ export async function scheduleTopicRescore(options: TopicRescorePayload): Promis
   return { scheduled: true, jobId };
 }
 
+export async function scheduleTopicTermLearn(
+  options: TopicTermLearnPayload
+): Promise<{
+  scheduled: boolean;
+  jobId: string;
+}> {
+  const { topicId, trigger, requestedBy } = options;
+  const jobId = `topic:${topicId}:term-learn`;
+  const existing = await topicTermLearnQueue.getJob(jobId);
+  if (existing) {
+    const state = await existing.getState();
+    if (state === "active" || state === "waiting" || state === "delayed") {
+      return { scheduled: false, jobId };
+    }
+    await existing.remove();
+  }
+
+  await topicTermLearnQueue.add(
+    "topic-term-learn",
+    { topicId, trigger, requestedBy },
+    {
+      ...defaultJobOpts,
+      jobId,
+      removeOnComplete: true,
+      removeOnFail: true,
+    }
+  );
+  return { scheduled: true, jobId };
+}
+
 export async function publishTaskEvent(runId: string, payload: unknown) {
   const pub = createClient({
     socket: { host: REDIS_HOST, port: REDIS_PORT },
@@ -201,6 +247,16 @@ export function createTopicRescoreWorker(
   concurrency = 1
 ) {
   return new Worker<TopicRescorePayload>("topic-rescore", processor, {
+    connection: bullConnection,
+    concurrency,
+  });
+}
+
+export function createTopicTermLearnWorker(
+  processor: (job: { data: TopicTermLearnPayload }) => Promise<unknown>,
+  concurrency = 1
+) {
+  return new Worker<TopicTermLearnPayload>("topic-term-learn", processor, {
     connection: bullConnection,
     concurrency,
   });

@@ -10,6 +10,18 @@ const AUTO_TOPIC_TERMS_MODEL =
   process.env.TOPIC_TERMS_REFRESH_MODEL ||
   process.env.LLM_DEFAULT_MODEL ||
   "gpt-5-mini";
+const AUTO_TOPIC_TERMS_CORE_MAX = Math.max(
+  2,
+  Math.min(8, Number(process.env.TOPIC_TERMS_AUTO_CORE_MAX ?? 5))
+);
+const AUTO_TOPIC_TERMS_EXPANSION_MAX = Math.max(
+  0,
+  Math.min(8, Number(process.env.TOPIC_TERMS_AUTO_EXPANSION_MAX ?? 3))
+);
+const AUTO_TOPIC_TERMS_EXCLUSION_MAX = Math.max(
+  0,
+  Math.min(5, Number(process.env.TOPIC_TERMS_AUTO_EXCLUSION_MAX ?? 2))
+);
 
 const TopicTermsRefreshSchema = z.object({
   terms: z
@@ -97,13 +109,14 @@ export async function refreshTopicTermsAuto(params: {
       },
       prompt: [
         "你是主题检索词生成器。",
-        "请根据 topic 名称与描述，输出用于内容检索的三类词：CORE、EXPANSION、EXCLUSION。",
+        "请根据 topic 名称与描述，输出用于内容检索的少量高质量词：CORE、EXPANSION、EXCLUSION。",
         "规则：",
-        "1) CORE: 最核心语义锚点，建议 4-8 个；",
-        "2) EXPANSION: 同义词、英文表达、上下位词、常见实体，建议 6-16 个；",
-        "3) EXCLUSION: 易混淆但不相关项，建议 0-8 个；",
-        "4) value 2-64 字，不重复，不带解释；",
-        "5) weight 0.1-3，默认 1。",
+        `1) CORE: 最核心语义锚点，最多 ${AUTO_TOPIC_TERMS_CORE_MAX} 个；`,
+        `2) EXPANSION: 高质量同义/实体扩展，最多 ${AUTO_TOPIC_TERMS_EXPANSION_MAX} 个；`,
+        `3) EXCLUSION: 易混淆但不相关项，最多 ${AUTO_TOPIC_TERMS_EXCLUSION_MAX} 个；`,
+        "4) 优先人物、组织、地点、技术、产品名词，禁止口语碎片、时间词、空泛词；",
+        "5) value 2-64 字，不重复，不带解释；",
+        "6) weight 0.1-3，默认 1。",
         '只输出 JSON: {"terms":[{"type":"CORE","value":"...","weight":1}]}',
         "",
         `Topic Name: ${topic.name}`,
@@ -150,7 +163,7 @@ export async function refreshTopicTermsAuto(params: {
     };
   }
 
-  const terms = Array.from(
+  const rawTerms = Array.from(
     new Map(
       parsed.data.terms
         .map((term) => {
@@ -166,6 +179,21 @@ export async function refreshTopicTermsAuto(params: {
         .map((term) => [`${term!.type}:${term!.value}`, term!])
     ).values()
   );
+  const limits = {
+    CORE: AUTO_TOPIC_TERMS_CORE_MAX,
+    EXPANSION: AUTO_TOPIC_TERMS_EXPANSION_MAX,
+    EXCLUSION: AUTO_TOPIC_TERMS_EXCLUSION_MAX,
+  };
+  const counters = {
+    CORE: 0,
+    EXPANSION: 0,
+    EXCLUSION: 0,
+  };
+  const terms = rawTerms.filter((term) => {
+    if (counters[term.type] >= limits[term.type]) return false;
+    counters[term.type] += 1;
+    return true;
+  });
   if (!terms.length) {
     return {
       autoTermsUpdated: false,

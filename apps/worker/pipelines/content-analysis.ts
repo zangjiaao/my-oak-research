@@ -588,6 +588,12 @@ export async function runFocusCollector(runId: string, queryId: string) {
         stripNullBytes(keywordValue)
       ),
       summaryRelevance: summary.relevance,
+      aiSummary: sanitizedSummary,
+      aiSummaryUpdatedAt: contentTime.toISOString(),
+      aiSummaryModel:
+        !SKIP_AI_SUMMARY && contentAnalyzeResult
+          ? process.env.LLM_DEFAULT_MODEL ?? "unknown"
+          : "fallback",
       sourceId: stripNullBytes(item.sourceId),
       sourceType: item.sourceType,
       intent: item.intent ? stripNullBytes(item.intent) : null,
@@ -983,6 +989,12 @@ export async function runJobCollector(params: {
       recordIndex: normalizedRecordContent.relation.recordIndex,
       keywords: expandedKeywords.map((keywordValue) => stripNullBytes(keywordValue)),
       summaryRelevance: summary.relevance,
+      aiSummary: sanitizedSummary,
+      aiSummaryUpdatedAt: contentTime.toISOString(),
+      aiSummaryModel:
+        !SKIP_AI_SUMMARY && contentAnalyzeResult
+          ? process.env.LLM_DEFAULT_MODEL ?? "unknown"
+          : "fallback",
       sourceId: stripNullBytes(item.sourceId),
       sourceType: item.sourceType,
       intent: item.intent ? stripNullBytes(item.intent) : null,
