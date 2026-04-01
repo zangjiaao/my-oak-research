@@ -26,6 +26,12 @@ export type CollectFlowJobPayload = {
   trigger?: "manual" | "scheduled" | "event";
 };
 
+export type TopicRescorePayload = {
+  topicId: string;
+  trigger?: "topic-update" | "topic-term-add";
+  requestedBy?: string;
+};
+
 export const defaultJobOpts: JobsOptions = {
   attempts: 3,
   backoff: { type: "exponential", delay: 2000 },
@@ -44,6 +50,13 @@ export const collectFlowQueue = new Queue<CollectFlowJobPayload>("collect-job", 
   connection: bullConnection,
 });
 export const collectFlowQueueEvents = new QueueEvents("collect-job", {
+  connection: bullConnection,
+});
+export const topicRescoreQueue = new Queue<TopicRescorePayload>("topic-rescore", {
+  connection: bullConnection,
+  defaultJobOptions: defaultJobOpts,
+});
+export const topicRescoreQueueEvents = new QueueEvents("topic-rescore", {
   connection: bullConnection,
 });
 const SCHEDULED_COLLECT_FLOW_JOB_NAME = "collect-job-scheduled";
@@ -108,6 +121,32 @@ export async function scheduleCollectJob(options: {
   );
 }
 
+export async function scheduleTopicRescore(options: TopicRescorePayload): Promise<{
+  scheduled: boolean;
+  jobId: string;
+}> {
+  const { topicId, trigger, requestedBy } = options;
+  const jobId = `topic:${topicId}:rescore`;
+  try {
+    await topicRescoreQueue.add(
+      "topic-rescore",
+      { topicId, trigger, requestedBy },
+      {
+        ...defaultJobOpts,
+        jobId,
+        removeOnComplete: true,
+      }
+    );
+    return { scheduled: true, jobId };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (message.toLowerCase().includes("jobid")) {
+      return { scheduled: false, jobId };
+    }
+    throw error;
+  }
+}
+
 export async function publishTaskEvent(runId: string, payload: unknown) {
   const pub = createClient({
     socket: { host: REDIS_HOST, port: REDIS_PORT },
@@ -150,6 +189,16 @@ export function createCollectJobWorker(
   concurrency = 3
 ) {
   return new Worker<CollectFlowJobPayload>("collect-job", processor, {
+    connection: bullConnection,
+    concurrency,
+  });
+}
+
+export function createTopicRescoreWorker(
+  processor: (job: { data: TopicRescorePayload }) => Promise<unknown>,
+  concurrency = 1
+) {
+  return new Worker<TopicRescorePayload>("topic-rescore", processor, {
     connection: bullConnection,
     concurrency,
   });

@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { logger } from "@/lib/logger";
 import { refreshTopicVector } from "@/lib/topic-vector";
+import { scheduleTopicRescore } from "@/lib/queue";
 
 const prismaAny = prisma as any;
 
@@ -58,8 +59,10 @@ export async function POST(
       },
     });
 
+    let vectorRefreshed = false;
     try {
       await refreshTopicVector(prismaAny, params.id);
+      vectorRefreshed = true;
     } catch (error) {
       logger.warn("topic vector refresh failed", {
         topicId: params.id,
@@ -67,7 +70,31 @@ export async function POST(
       });
     }
 
-    return NextResponse.json(created, { status: 201 });
+    let rescoreScheduled = false;
+    let rescoreJobId: string | null = null;
+    try {
+      const scheduled = await scheduleTopicRescore({
+        topicId: params.id,
+        trigger: "topic-term-add",
+      });
+      rescoreScheduled = scheduled.scheduled;
+      rescoreJobId = scheduled.jobId;
+    } catch (error) {
+      logger.warn("topic rescore schedule failed", {
+        topicId: params.id,
+        error: logger.normalizeError(error),
+      });
+    }
+
+    return NextResponse.json(
+      {
+        ...created,
+        vectorRefreshed,
+        rescoreScheduled,
+        rescoreJobId,
+      },
+      { status: 201 }
+    );
   } catch (error) {
     logger.error("failed to add topic term", {
       topicId: params.id,

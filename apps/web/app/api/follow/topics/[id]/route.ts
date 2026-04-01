@@ -4,6 +4,7 @@ import { TopicUpdateSchema } from "@/app/api/_utils/zod";
 import { logger } from "@/lib/logger";
 import { z } from "zod";
 import { refreshTopicVector } from "@/lib/topic-vector";
+import { scheduleTopicRescore } from "@/lib/queue";
 
 const prismaAny = prisma as any;
 
@@ -104,10 +105,28 @@ export async function PATCH(
       });
     });
 
+    let vectorRefreshed = false;
     try {
       await refreshTopicVector(prismaAny, params.id);
+      vectorRefreshed = true;
     } catch (error) {
       logger.warn("topic vector refresh failed", {
+        topicId: params.id,
+        error: logger.normalizeError(error),
+      });
+    }
+
+    let rescoreScheduled = false;
+    let rescoreJobId: string | null = null;
+    try {
+      const scheduled = await scheduleTopicRescore({
+        topicId: params.id,
+        trigger: "topic-update",
+      });
+      rescoreScheduled = scheduled.scheduled;
+      rescoreJobId = scheduled.jobId;
+    } catch (error) {
+      logger.warn("topic rescore schedule failed", {
         topicId: params.id,
         error: logger.normalizeError(error),
       });
@@ -116,6 +135,9 @@ export async function PATCH(
     return NextResponse.json({
       ...updated,
       termsCount: updated?._count?.terms ?? 0,
+      vectorRefreshed,
+      rescoreScheduled,
+      rescoreJobId,
     });
   } catch (error) {
     logger.error("failed to update topic", {
