@@ -179,6 +179,13 @@ const FollowContent = () => {
   };
 
   const getRelevanceScore = (content: (typeof contents)[number]) => {
+    if (
+      selectedTopicId &&
+      content.feedback?.topicId === selectedTopicId &&
+      content.feedback.vote === "DOWN"
+    ) {
+      return 0;
+    }
     const selectedScore = getSelectedTopicScore(content);
     if (selectedScore) {
       return selectedScore.finalScore ?? null;

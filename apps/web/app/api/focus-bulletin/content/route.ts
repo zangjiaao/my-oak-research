@@ -716,6 +716,25 @@ export async function GET(request: Request) {
     };
   }
 
+  if (effectiveTopicIds.length > 0) {
+    const downvoteExclusion: Prisma.ContentWhereInput = {
+      topicFeedbacks: {
+        some: {
+          topicId: { in: effectiveTopicIds },
+          userId,
+          vote: "DOWN",
+        },
+      },
+    };
+    if (Array.isArray(where.NOT)) {
+      where.NOT = [...where.NOT, downvoteExclusion];
+    } else if (where.NOT) {
+      where.NOT = [where.NOT, downvoteExclusion];
+    } else {
+      where.NOT = downvoteExclusion;
+    }
+  }
+
   const includeTopicScoreRelation =
     includeTopicScores || effectiveTopicIds.length > 0 || resolvedMinTopicScore != null
       ? {
