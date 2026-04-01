@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma";
 import { llmGateway } from "@oak/agents/llm-gateway";
 import { logger } from "@/lib/logger";
 import type { Prisma, TopicTermType } from "@/app/generated/prisma";
+import { resolveActiveContentState } from "@/lib/follow-content/active-content-state";
 
 const RerankSchema = z.object({
   topicId: z.string().cuid(),
@@ -138,6 +139,7 @@ export async function POST(
         markdown: true,
         platform: true,
         time: true,
+        meta: true,
       },
     }),
     prisma.topic.findUnique({
@@ -187,11 +189,13 @@ export async function POST(
   const coreTerms = collectTerms(topic.terms, "CORE");
   const expansionTerms = collectTerms(topic.terms, "EXPANSION");
   const exclusionTerms = collectTerms(topic.terms, "EXCLUSION");
-  const contentText = [content.title, content.summary, content.markdown]
-    .map((item) => item.trim())
-    .filter(Boolean)
-    .join("\n\n")
-    .slice(0, 5000);
+  const activeState = resolveActiveContentState({
+    title: content.title,
+    summary: content.summary,
+    markdown: content.markdown,
+    meta: content.meta,
+  });
+  const contentText = activeState.activeText.slice(0, 5000);
   if (!contentText) {
     return NextResponse.json({ error: "No content text to rerank" }, { status: 400 });
   }
@@ -226,6 +230,10 @@ export async function POST(
         "",
         `Content platform: ${content.platform}`,
         `Content time: ${content.time.toISOString()}`,
+        `Content title: ${activeState.activeTitle}`,
+        activeState.activeSummaryHint
+          ? `Content summary hint: ${activeState.activeSummaryHint}`
+          : null,
         "Content:",
         contentText,
       ]

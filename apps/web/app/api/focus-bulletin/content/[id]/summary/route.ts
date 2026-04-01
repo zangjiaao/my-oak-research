@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma";
 import { logger } from "@/lib/logger";
 import { llmGateway } from "@oak/agents/llm-gateway";
 import type { Prisma } from "@/app/generated/prisma";
+import { resolveActiveContentState } from "@/lib/follow-content/active-content-state";
 
 const RequestSchema = z.object({
   force: z.boolean().optional().default(false),
@@ -78,10 +79,13 @@ export async function POST(
     });
   }
 
-  const contentText = [content.title, content.summary, content.markdown]
-    .map((value) => (value || "").trim())
-    .filter(Boolean)
-    .join("\n\n");
+  const activeState = resolveActiveContentState({
+    title: content.title,
+    summary: content.summary,
+    markdown: content.markdown,
+    meta: content.meta,
+  });
+  const contentText = activeState.activeText;
   if (!contentText) {
     return NextResponse.json({ error: "No content to summarize" }, { status: 400 });
   }
@@ -104,6 +108,11 @@ export async function POST(
         `平台: ${content.platform}`,
         `时间: ${content.time.toISOString()}`,
         content.url ? `链接: ${content.url}` : null,
+        "",
+        `当前标题: ${activeState.activeTitle}`,
+        activeState.activeSummaryHint
+          ? `当前摘要线索: ${activeState.activeSummaryHint}`
+          : null,
         "",
         "原始内容：",
         contentText.slice(0, 12000),
