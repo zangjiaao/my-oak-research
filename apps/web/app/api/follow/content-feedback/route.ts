@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { logger } from "@/lib/logger";
 import { randomUUID } from "node:crypto";
+import { scheduleTopicTermLearn } from "@/lib/queue";
 
 const prismaAny = prisma as any;
 
@@ -12,6 +13,11 @@ const FeedbackPayloadSchema = z.object({
   vote: z.enum(["UP", "DOWN", "NONE"]).optional().default("NONE"),
   note: z.string().max(1000).optional().nullable(),
 });
+
+const TOPIC_TERM_LEARN_MIN_UP_FEEDBACKS = Math.max(
+  1,
+  Number(process.env.TOPIC_TERM_LEARN_MIN_UP_FEEDBACKS ?? 3)
+);
 
 function getUserId(request: Request): string {
   const headerUserId = request.headers.get("x-user-id");
@@ -72,6 +78,16 @@ export async function POST(request: Request) {
     const userId = getUserId(request);
     const data = parsed.data;
     const now = new Date();
+    const previous = await prismaAny.contentTopicFeedback.findUnique({
+      where: {
+        contentId_topicId_userId: {
+          contentId: data.contentId,
+          topicId: data.topicId,
+          userId,
+        },
+      },
+      select: { vote: true },
+    });
 
     await prismaAny.$executeRaw`
       INSERT INTO "ContentTopicFeedback"
@@ -92,6 +108,34 @@ export async function POST(request: Request) {
         AND "userId" = ${userId}
       LIMIT 1
     `;
+
+    if (data.vote === "UP" && previous?.vote !== "UP") {
+      const upCount = await prismaAny.contentTopicFeedback.count({
+        where: {
+          topicId: data.topicId,
+          vote: "UP",
+        },
+      });
+      if (
+        upCount >= TOPIC_TERM_LEARN_MIN_UP_FEEDBACKS &&
+        upCount % TOPIC_TERM_LEARN_MIN_UP_FEEDBACKS === 0
+      ) {
+        try {
+          await scheduleTopicTermLearn({
+            topicId: data.topicId,
+            trigger: "feedback-up",
+            requestedBy: userId,
+          });
+        } catch (error) {
+          logger.warn("failed to schedule topic term learn", {
+            topicId: data.topicId,
+            contentId: data.contentId,
+            upCount,
+            error: logger.normalizeError(error),
+          });
+        }
+      }
+    }
 
     return NextResponse.json(row ?? null);
   } catch (error) {

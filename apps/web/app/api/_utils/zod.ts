@@ -568,6 +568,7 @@ export const QueryUpdateSchema = QueryCreateSchema.partial().superRefine((data, 
 });
 
 export const TopicTermTypeEnum = z.enum(["CORE", "EXPANSION", "EXCLUSION"]);
+export const TopicRecallLanguageEnum = z.enum(["zh", "en", "ja"]);
 
 export const TopicTermInputSchema = z.object({
   type: TopicTermTypeEnum,
@@ -585,6 +586,7 @@ export const TopicCreateSchema = z
       .optional()
       .nullable(),
     profile: z.preprocess((val) => parseJson(val), z.any().optional().nullable()),
+    recallLanguages: z.array(TopicRecallLanguageEnum).optional(),
     terms: z.array(TopicTermInputSchema).optional().default([]),
   });
 

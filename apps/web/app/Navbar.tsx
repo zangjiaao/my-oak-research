@@ -33,7 +33,6 @@ import {
   Heart,
   ScrollText,
   Globe,
-  PencilLine,
   Workflow,
   Tags,
 } from "lucide-react";
@@ -66,11 +65,6 @@ const menuItems = [
       //   url: "/follow/settings/keyword",
       //   icon: Settings,
       // },
-      {
-        title: "Keywords",
-        url: "/follow/keywords",
-        icon: PencilLine,
-      },
       {
         title: "Sources",
         url: "/follow/sources",

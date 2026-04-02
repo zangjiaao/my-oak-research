@@ -24,22 +24,8 @@ const prisma = new PrismaClient({
 });
 
 async function main() {
-  const categories = [
-    { name: "Person", description: "Default category for person" },
-    { name: "Event", description: "Default category for event" },
-    { name: "Organization", description: "Default category for organization" },
-    { name: "Location", description: "Default category for location" },
-  ];
-
-  for (const c of categories) {
-    await prisma.category.upsert({
-      where: { name: c.name },
-      update: {},
-      create: c,
-    });
-  }
-
-  console.log("Categories seeded");
+  await prisma.$queryRaw`SELECT 1`;
+  console.log("Seed completed");
 }
 
 main()

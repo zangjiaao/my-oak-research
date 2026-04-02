@@ -1,6 +1,4 @@
 import {
-  Query,
-  Keyword,
   Source,
   WebSourceConfig,
   DarknetSourceConfig,
@@ -9,23 +7,7 @@ import {
   SourceIdentity,
   Proxy,
   Credential,
-  QueryRun,
-  QuerySourcePolicy,
 } from "@/app/generated/prisma";
-
-type QueryRunSummary = Pick<
-  QueryRun,
-  "id" | "status" | "progress" | "startedAt" | "finishedAt" | "error"
->;
-
-export type QueryWithAggregations = Query & {
-  keywords: Keyword[];
-  sources: Source[];
-  sourcePolicies: QuerySourcePolicy[];
-  keywordsCount: number;
-  sourcesCount: number;
-  latestRun?: QueryRunSummary;
-};
 
 type SourceBaseWithRelations = Source & {
   proxy?: Proxy | null;
@@ -79,6 +61,7 @@ export interface TopicWithAggregations {
   id: string;
   name: string;
   description?: string | null;
+  recallLanguages?: ("zh" | "en" | "ja")[];
   terms?: TopicTerm[];
   termsCount?: number;
 }

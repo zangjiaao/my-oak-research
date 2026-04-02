@@ -94,20 +94,18 @@ async function attachSubjectMatchSnapshot<
   );
   if (contentIds.length === 0) return materials;
 
-  const matches = await prisma.contentSubjectMatch.findMany({
+  const matches = await prisma.contentTopicScore.findMany({
     where: { contentId: { in: contentIds } },
     select: {
       contentId: true,
-      keywordId: true,
-      ruleScore: true,
-      aiScore: true,
-      matchScore: true,
-      matchedIncludes: true,
-      matchedExcludes: true,
-      matchSource: true,
+      topicId: true,
+      vectorScore: true,
+      keywordScore: true,
+      exclusionPenalty: true,
+      finalScore: true,
       reason: true,
     },
-    orderBy: { matchScore: "desc" },
+    orderBy: { finalScore: "desc" },
   });
 
   const grouped = new Map<string, typeof matches>();
@@ -126,7 +124,7 @@ async function attachSubjectMatchSnapshot<
         ...(material.metadata && typeof material.metadata === "object"
           ? (material.metadata as Record<string, unknown>)
           : {}),
-        subjectMatchesSnapshot: snapshot,
+        topicScoresSnapshot: snapshot,
       },
     };
   });

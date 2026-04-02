@@ -1,0 +1,23 @@
+-- Backup legacy tables before retiring keyword/query flow
+CREATE TABLE IF NOT EXISTS "_backup_20260331_Category" AS TABLE "Category";
+CREATE TABLE IF NOT EXISTS "_backup_20260331_Keyword" AS TABLE "Keyword";
+CREATE TABLE IF NOT EXISTS "_backup_20260331_Query" AS TABLE "Query";
+CREATE TABLE IF NOT EXISTS "_backup_20260331_QuerySourcePolicy" AS TABLE "QuerySourcePolicy";
+CREATE TABLE IF NOT EXISTS "_backup_20260331_QueryRun" AS TABLE "QueryRun";
+CREATE TABLE IF NOT EXISTS "_backup_20260331_TaskEvent" AS TABLE "TaskEvent";
+CREATE TABLE IF NOT EXISTS "_backup_20260331_ContentKeyword" AS TABLE "ContentKeyword";
+CREATE TABLE IF NOT EXISTS "_backup_20260331_ContentSubjectMatch" AS TABLE "ContentSubjectMatch";
+
+CREATE TABLE IF NOT EXISTS "_backup_20260331__KeywordToQuery" AS TABLE "_KeywordToQuery";
+CREATE TABLE IF NOT EXISTS "_backup_20260331__QueryToSource" AS TABLE "_QueryToSource";
+
+DROP TABLE IF EXISTS "TaskEvent" CASCADE;
+DROP TABLE IF EXISTS "QueryRun" CASCADE;
+DROP TABLE IF EXISTS "QuerySourcePolicy" CASCADE;
+DROP TABLE IF EXISTS "ContentSubjectMatch" CASCADE;
+DROP TABLE IF EXISTS "ContentKeyword" CASCADE;
+DROP TABLE IF EXISTS "_KeywordToQuery" CASCADE;
+DROP TABLE IF EXISTS "_QueryToSource" CASCADE;
+DROP TABLE IF EXISTS "Query" CASCADE;
+DROP TABLE IF EXISTS "Keyword" CASCADE;
+DROP TABLE IF EXISTS "Category" CASCADE;

@@ -1463,7 +1463,7 @@ const SourceDialog = ({
     if (boundArgKeys.length > 0) {
       for (const argKey of boundArgKeys) {
         if (Object.prototype.hasOwnProperty.call(previewIntentArgs, argKey)) {
-          previewIntentArgs[argKey] = "<由 Generated Query 注入>";
+          previewIntentArgs[argKey] = "<由 Job 运行时注入>";
         }
       }
     }
@@ -1495,7 +1495,7 @@ const SourceDialog = ({
       sourceId: sourceIdPreview,
       platform: normalizedPlatform.toLowerCase(),
       userId: effectiveUserId,
-      keywords: ["<由 Generated Query 注入>"],
+      keywords: ["<由 Job 运行时注入>"],
       driver: {
         name: capabilityDriver,
         ...driverPreview,

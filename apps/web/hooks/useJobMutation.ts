@@ -1,6 +1,11 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
+export type JobMutationError = Error & {
+  status?: number;
+  field?: string;
+};
+
 interface UseJobMutationOptions {
   jobId?: string;
   onSuccess?: () => void;
@@ -23,14 +28,23 @@ export function useJobMutation({ jobId, onSuccess }: UseJobMutationOptions = {})
 
       if (!response.ok) {
         let message = "";
+        let field: string | undefined;
         const contentType = response.headers.get("content-type") ?? "";
         if (contentType.includes("application/json")) {
-          const payload = (await response.json()) as { error?: string; message?: string };
+          const payload = (await response.json()) as {
+            error?: string;
+            message?: string;
+            field?: string;
+          };
           message = payload.error || payload.message || "";
+          field = payload.field;
         } else {
           message = (await response.text()).trim();
         }
-        throw new Error(message || "Failed to submit job");
+        const error = new Error(message || "Failed to submit job") as JobMutationError;
+        error.status = response.status;
+        error.field = field;
+        throw error;
       }
 
       return response.json();
@@ -40,7 +54,7 @@ export function useJobMutation({ jobId, onSuccess }: UseJobMutationOptions = {})
       onSuccess?.();
       queryClient.invalidateQueries({ queryKey: ["jobs"] });
     },
-    onError: (error: Error) => {
+    onError: (error: JobMutationError) => {
       toast.error(error.message || (isUpdate ? "Failed to update job" : "Failed to add job"));
     },
   });

@@ -5,7 +5,7 @@ export const QUICK_RUN_LOCKED_ARG_MESSAGE =
   "该来源存在锁定 arg（recall binding），不支持快速执行";
 
 type QuickRunResponse = {
-  queryId: string;
+  jobId: string;
   runId: string;
   created: boolean;
 };

@@ -12,13 +12,6 @@ export const bullConnection = {
   password: REDIS_PASSWORD,
 };
 
-// Job payload
-export type CollectJobPayload = {
-  runId?: string;
-  queryId: string;
-  trigger?: "manual" | "scheduled";
-};
-
 export type KnowledgeProcessPayload = {
   knowledgeId: string;
   fileId: string;
@@ -33,6 +26,18 @@ export type CollectFlowJobPayload = {
   trigger?: "manual" | "scheduled" | "event";
 };
 
+export type TopicRescorePayload = {
+  topicId: string;
+  trigger?: "topic-update" | "topic-term-add";
+  requestedBy?: string;
+};
+
+export type TopicTermLearnPayload = {
+  topicId: string;
+  trigger?: "feedback-up";
+  requestedBy?: string;
+};
+
 export const defaultJobOpts: JobsOptions = {
   attempts: 3,
   backoff: { type: "exponential", delay: 2000 },
@@ -40,13 +45,6 @@ export const defaultJobOpts: JobsOptions = {
   removeOnFail: { count: 100 },
 };
 
-// Queues
-export const collectQueue = new Queue<CollectJobPayload>("collect-query", {
-  connection: bullConnection,
-});
-export const collectQueueEvents = new QueueEvents("collect-query", {
-  connection: bullConnection,
-});
 export const knowledgeQueue = new Queue<KnowledgeProcessPayload>("knowledge-process", {
   connection: bullConnection,
   defaultJobOptions: defaultJobOpts,
@@ -60,13 +58,25 @@ export const collectFlowQueue = new Queue<CollectFlowJobPayload>("collect-job", 
 export const collectFlowQueueEvents = new QueueEvents("collect-job", {
   connection: bullConnection,
 });
-const SCHEDULED_COLLECT_JOB_NAME = "collect-scheduled";
+export const topicRescoreQueue = new Queue<TopicRescorePayload>("topic-rescore", {
+  connection: bullConnection,
+  defaultJobOptions: defaultJobOpts,
+});
+export const topicRescoreQueueEvents = new QueueEvents("topic-rescore", {
+  connection: bullConnection,
+});
+export const topicTermLearnQueue = new Queue<TopicTermLearnPayload>(
+  "topic-term-learn",
+  {
+    connection: bullConnection,
+    defaultJobOptions: defaultJobOpts,
+  }
+);
+export const topicTermLearnQueueEvents = new QueueEvents("topic-term-learn", {
+  connection: bullConnection,
+});
 const SCHEDULED_COLLECT_FLOW_JOB_NAME = "collect-job-scheduled";
 const SCHEDULED_COLLECT_TZ = process.env.QUERY_SCHEDULE_TZ || "UTC";
-
-function getQueryCollectJobId(queryId: string) {
-  return `query:${queryId}:collect`;
-}
 
 function getFlowCollectJobId(jobId: string) {
   return `job:${jobId}:collect`;
@@ -90,41 +100,6 @@ export function resolveQueryCron(
     default:
       return null;
   }
-}
-
-export async function unscheduleQueryCollect(queryId: string) {
-  const scheduledJobId = getQueryCollectJobId(queryId);
-  const repeatables = await collectQueue.getRepeatableJobs();
-  const targets = repeatables.filter(
-    (job) => job.name === SCHEDULED_COLLECT_JOB_NAME && job.id === scheduledJobId
-  );
-  await Promise.all(
-    targets.map((job) => collectQueue.removeRepeatableByKey(job.key))
-  );
-}
-
-export async function scheduleQueryCollect(options: {
-  queryId: string;
-  frequency: QueryFrequency;
-  cronSchedule?: string | null;
-  enabled: boolean;
-}) {
-  const { queryId, frequency, cronSchedule, enabled } = options;
-  await unscheduleQueryCollect(queryId);
-  if (!enabled) return;
-
-  const cron = resolveQueryCron(frequency, cronSchedule);
-  if (!cron) return;
-
-  await collectQueue.add(
-    SCHEDULED_COLLECT_JOB_NAME,
-    { queryId, trigger: "scheduled" },
-    {
-      ...defaultJobOpts,
-      jobId: getQueryCollectJobId(queryId),
-      repeat: { pattern: cron, tz: SCHEDULED_COLLECT_TZ },
-    }
-  );
 }
 
 export async function unscheduleCollectJob(jobId: string) {
@@ -162,7 +137,64 @@ export async function scheduleCollectJob(options: {
   );
 }
 
-// Pub/Sub for task events (SSE/WebSocket can subscribe to `task:<runId>`)
+export async function scheduleTopicRescore(options: TopicRescorePayload): Promise<{
+  scheduled: boolean;
+  jobId: string;
+}> {
+  const { topicId, trigger, requestedBy } = options;
+  const jobId = `topic:${topicId}:rescore`;
+  const existing = await topicRescoreQueue.getJob(jobId);
+  if (existing) {
+    const state = await existing.getState();
+    if (state === "active" || state === "waiting" || state === "delayed") {
+      return { scheduled: false, jobId };
+    }
+    await existing.remove();
+  }
+
+  await topicRescoreQueue.add(
+    "topic-rescore",
+    { topicId, trigger, requestedBy },
+    {
+      ...defaultJobOpts,
+      jobId,
+      removeOnComplete: true,
+      removeOnFail: true,
+    }
+  );
+  return { scheduled: true, jobId };
+}
+
+export async function scheduleTopicTermLearn(
+  options: TopicTermLearnPayload
+): Promise<{
+  scheduled: boolean;
+  jobId: string;
+}> {
+  const { topicId, trigger, requestedBy } = options;
+  const jobId = `topic:${topicId}:term-learn`;
+  const existing = await topicTermLearnQueue.getJob(jobId);
+  if (existing) {
+    const state = await existing.getState();
+    if (state === "active" || state === "waiting" || state === "delayed") {
+      return { scheduled: false, jobId };
+    }
+    await existing.remove();
+  }
+
+  await topicTermLearnQueue.add(
+    "topic-term-learn",
+    { topicId, trigger, requestedBy },
+    {
+      ...defaultJobOpts,
+      jobId,
+      removeOnComplete: true,
+      removeOnFail: true,
+    }
+  );
+  return { scheduled: true, jobId };
+}
+
 export async function publishTaskEvent(runId: string, payload: unknown) {
   const pub = createClient({
     socket: { host: REDIS_HOST, port: REDIS_PORT },
@@ -189,17 +221,6 @@ export async function publishContentEvent(payload: unknown) {
   }
 }
 
-// Optional helper to create a Worker in-process (app/worker should define its own files)
-export function createCollectWorker(
-  processor: (job: { data: CollectJobPayload }) => Promise<unknown>,
-  concurrency = 3
-) {
-  return new Worker<CollectJobPayload>("collect-query", processor, {
-    connection: bullConnection,
-    concurrency,
-  });
-}
-
 export function createKnowledgeWorker(
   processor: (job: { data: KnowledgeProcessPayload }) => Promise<unknown>,
   concurrency = 2
@@ -207,7 +228,7 @@ export function createKnowledgeWorker(
   return new Worker<KnowledgeProcessPayload>("knowledge-process", processor, {
     connection: bullConnection,
     concurrency,
-    lockDuration: 1800000, // 30 minutes for massive files
+    lockDuration: 1800000,
   });
 }
 
@@ -216,6 +237,26 @@ export function createCollectJobWorker(
   concurrency = 3
 ) {
   return new Worker<CollectFlowJobPayload>("collect-job", processor, {
+    connection: bullConnection,
+    concurrency,
+  });
+}
+
+export function createTopicRescoreWorker(
+  processor: (job: { data: TopicRescorePayload }) => Promise<unknown>,
+  concurrency = 1
+) {
+  return new Worker<TopicRescorePayload>("topic-rescore", processor, {
+    connection: bullConnection,
+    concurrency,
+  });
+}
+
+export function createTopicTermLearnWorker(
+  processor: (job: { data: TopicTermLearnPayload }) => Promise<unknown>,
+  concurrency = 1
+) {
+  return new Worker<TopicTermLearnPayload>("topic-term-learn", processor, {
     connection: bullConnection,
     concurrency,
   });

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { createHash } from "crypto";
 
 import prisma from "@/lib/prisma";
+const prismaAny = prisma as any;
 import {
   Prisma,
   SourceCategory,
@@ -40,22 +41,144 @@ const RETRIEVAL_FUSION_ALPHA = Math.min(
   1,
   Math.max(0, Number(process.env.RETRIEVAL_FUSION_ALPHA ?? 0.65))
 );
+const RETRIEVAL_CORE_WEIGHT = Math.max(
+  0,
+  Number(process.env.RETRIEVAL_CORE_WEIGHT ?? 0.1)
+);
+const RETRIEVAL_EXPANSION_WEIGHT = Math.max(
+  0,
+  Number(process.env.RETRIEVAL_EXPANSION_WEIGHT ?? 0.05)
+);
+const RETRIEVAL_EXCLUSION_WEIGHT = Math.max(
+  0,
+  Number(process.env.RETRIEVAL_EXCLUSION_WEIGHT ?? 0.03)
+);
 const RETRIEVAL_HIGH_THRESHOLD = Number(
   process.env.RETRIEVAL_HIGH_THRESHOLD ?? 0.7
 );
 const RETRIEVAL_LOW_THRESHOLD = Number(
   process.env.RETRIEVAL_LOW_THRESHOLD ?? 0.5
 );
+const RETRIEVAL_LLM_RERANK_ENABLED =
+  process.env.RETRIEVAL_LLM_RERANK_ENABLED === "true";
+const RETRIEVAL_LLM_RERANK_TOP_N = Math.max(
+  1,
+  Math.min(20, Number(process.env.RETRIEVAL_LLM_RERANK_TOP_N ?? 8))
+);
+const RETRIEVAL_LLM_RERANK_WEIGHT = Math.max(
+  0,
+  Math.min(1, Number(process.env.RETRIEVAL_LLM_RERANK_WEIGHT ?? 0.2))
+);
+const RETRIEVAL_LLM_RERANK_MIN_SCORE = Math.max(
+  0,
+  Math.min(1, Number(process.env.RETRIEVAL_LLM_RERANK_MIN_SCORE ?? 0.55))
+);
 const TOPIC_RECALL_LLM_ENABLED =
   process.env.TOPIC_RECALL_LLM_ENABLED !== "false";
 const TOPIC_RECALL_QUERY_LIMIT = Number(
-  process.env.TOPIC_RECALL_QUERY_LIMIT ?? 8
+  process.env.TOPIC_RECALL_QUERY_LIMIT ?? 4
 );
 const TOPIC_RECALL_TIMEOUT_MS = Number(
   process.env.TOPIC_RECALL_TIMEOUT_MS ?? 8000
 );
+const TOPIC_RECALL_MIN_PER_LANGUAGE = Number(
+  process.env.TOPIC_RECALL_MIN_PER_LANGUAGE ?? 1
+);
+const TOPIC_RECALL_COVERAGE_RETRY_LIMIT = Number(
+  process.env.TOPIC_RECALL_COVERAGE_RETRY_LIMIT ?? 1
+);
+const TOPIC_RECALL_COVERAGE_PATCH_ENABLED =
+  process.env.TOPIC_RECALL_COVERAGE_PATCH_ENABLED !== "false";
+const DYNAMIC_TOPIC_SCORING_ENABLED =
+  process.env.DYNAMIC_TOPIC_SCORING_ENABLED !== "false";
+const CONTENT_CLEAN_LLM_ENABLED =
+  process.env.CONTENT_CLEAN_LLM_ENABLED !== "false";
+const CONTENT_AUTO_CLEAN_ENABLED =
+  process.env.CONTENT_AUTO_CLEAN_ENABLED !== "false" &&
+  process.env.CONTENT_AUTO_REWRITE_ENABLED !== "false";
+const CONTENT_MEANING_GATE_ENABLED =
+  process.env.CONTENT_MEANING_GATE_ENABLED !== "false";
+const CONTENT_MEANING_GATE_PREVIEW_CHARS = Math.max(
+  80,
+  Number(process.env.CONTENT_MEANING_GATE_PREVIEW_CHARS ?? 200)
+);
+const CONTENT_MEANING_GATE_MIN_SCORE = Math.max(
+  0,
+  Math.min(1, Number(process.env.CONTENT_MEANING_GATE_MIN_SCORE ?? 0.45))
+);
+const CONTENT_FORMATTER_MAX_INPUT_CHARS = Math.max(
+  1000,
+  Number(process.env.CONTENT_FORMATTER_MAX_INPUT_CHARS ?? 16000)
+);
+const CONTENT_CLEAN_MARKDOWN_MIN_CHARS = Math.max(
+  200,
+  Number(process.env.CONTENT_CLEAN_MARKDOWN_MIN_CHARS ?? 800)
+);
+const CONTENT_CLEAN_MARKDOWN_MAX_CHARS = Math.max(
+  CONTENT_CLEAN_MARKDOWN_MIN_CHARS,
+  Number(process.env.CONTENT_CLEAN_MARKDOWN_MAX_CHARS ?? 1200)
+);
+const PRE_LLM_FILTER_LEVEL = (
+  process.env.PRE_LLM_FILTER_LEVEL ?? "standard"
+).toLowerCase();
+const PRE_LLM_FILTER_ERROR_KEYWORD_HITS = Math.max(
+  1,
+  Number(process.env.PRE_LLM_FILTER_ERROR_KEYWORD_HITS ?? 2)
+);
+const PRE_LLM_FILTER_GARBLED_RATIO_THRESHOLD = Math.max(
+  0.05,
+  Math.min(0.9, Number(process.env.PRE_LLM_FILTER_GARBLED_RATIO_THRESHOLD ?? 0.35))
+);
+const PRE_LLM_FILTER_REPLACEMENT_RATIO_THRESHOLD = Math.max(
+  0.005,
+  Math.min(
+    0.5,
+    Number(process.env.PRE_LLM_FILTER_REPLACEMENT_RATIO_THRESHOLD ?? 0.02)
+  )
+);
+const PRE_LLM_FILTER_TEMPLATE_LINE_RATIO = Math.max(
+  0.2,
+  Math.min(0.95, Number(process.env.PRE_LLM_FILTER_TEMPLATE_LINE_RATIO ?? 0.6))
+);
+const PRE_LLM_FILTER_REPEAT_LINE_RATIO = Math.max(
+  0.2,
+  Math.min(0.95, Number(process.env.PRE_LLM_FILTER_REPEAT_LINE_RATIO ?? 0.55))
+);
+const SEARCH_QUERY_CONCURRENCY = Math.max(
+  1,
+  Math.min(8, Number(process.env.SEARCH_QUERY_CONCURRENCY ?? 2))
+);
+const SEARCH_QUERY_RETRY_LIMIT = Math.max(
+  0,
+  Math.min(3, Number(process.env.SEARCH_QUERY_RETRY_LIMIT ?? 1))
+);
+const SEARCH_QUERY_RETRY_BACKOFF_MS = Math.max(
+  0,
+  Number(process.env.SEARCH_QUERY_RETRY_BACKOFF_MS ?? 300)
+);
 
+const ContentAnalyzeSchemaWithRewrite = z.object({
+  title: z.string().min(4).max(120),
+  summary: z.string().min(30).max(400),
+  cleanedMarkdown: z.string().min(40).max(5000),
+  relevance: z.boolean(),
+  subjects: z
+    .array(
+      z.object({
+        keywordId: z.string().min(1),
+        score: z.number().min(0).max(1).nullable().optional(),
+        reason: z.string().max(200).nullable().optional(),
+      })
+    )
+    .default([]),
+});
+const ContentMeaningSchema = z.object({
+  meaningful: z.boolean(),
+  score: z.number().min(0).max(1),
+  reason: z.string().min(1).max(240),
+});
 const ContentAnalyzeSchema = z.object({
+  title: z.string().min(4).max(120),
   summary: z.string().min(30).max(400),
   relevance: z.boolean(),
   subjects: z
@@ -68,14 +191,49 @@ const ContentAnalyzeSchema = z.object({
     )
     .default([]),
 });
+const RecallLanguageSchema = z.enum(["zh", "en", "ja"]);
 const TopicRecallQueriesSchema = z.object({
-  queries: z.array(z.string().min(1).max(180)).min(1).max(16),
+  queries: z
+    .array(
+      z.object({
+        text: z.string().min(1).max(180),
+        lang: RecallLanguageSchema,
+      })
+    )
+    .min(1)
+    .max(16),
+});
+const TopicRerankSchema = z.object({
+  scores: z
+    .array(
+      z.object({
+        topicId: z.string().min(1),
+        score: z.number().min(0).max(1),
+      })
+    )
+    .default([]),
 });
 
 type ContentAnalyzeResult = {
+  title: string;
   summary: string;
+  cleanedMarkdown: string | null;
   relevance: boolean;
   subjectsByKeyword: Map<string, { score: number | null; reason: string | null }>;
+};
+
+type ContentMeaningResult = {
+  meaningful: boolean;
+  score: number;
+  reason: string;
+};
+
+type PreparedSummaryContent = {
+  markdown: string;
+  text: string;
+  promptText: string;
+  extractorUsed: "markdown" | "text" | "empty";
+  qualityScore: number;
 };
 
 type CleanItem = {
@@ -101,6 +259,8 @@ type CleanItem = {
   recordIndex?: number;
   intent?: string;
   sourceRequestId?: string;
+  meaningScore?: number;
+  meaningReason?: string;
 };
 
 type QueryKeyword = {
@@ -117,12 +277,14 @@ type TopicTermLite = {
   value: string;
   weight?: number | null;
 };
+type RecallLanguage = z.infer<typeof RecallLanguageSchema>;
 
 type JobCollectorTopic = {
   id: string;
   name: string;
   enabled?: boolean;
   description?: string | null;
+  recallLanguages: RecallLanguage[];
   terms: TopicTermLite[];
 };
 
@@ -152,11 +314,30 @@ type SourceRuntimePolicy = {
   recallBindingOverride?: unknown;
 };
 
-type RecallQueryOrigin = "llm_recall" | "static_fallback";
+type RecallQueryOrigin = "llm_recall" | "coverage_patch" | "static_fallback";
 type SourceRecallQueryBundle = {
   queries: string[];
   origin: RecallQueryOrigin;
   generatedCount: number;
+};
+type TopicRecallQueryItem = z.infer<typeof TopicRecallQueriesSchema>["queries"][number];
+type PreLlmFilterReason =
+  | "placeholder"
+  | "error_page"
+  | "garbled_content"
+  | "template_noise"
+  | "repeated_noise";
+
+type PreLlmFilterReject = {
+  item: CleanItem;
+  reason: PreLlmFilterReason;
+  metrics: Record<string, number>;
+  sampleHash: string;
+};
+
+type PreLlmFilterResult = {
+  passed: CleanItem[];
+  rejected: PreLlmFilterReject[];
 };
 type GatherDriverPayload = {
   name: GatherSocialDriver;
@@ -177,6 +358,7 @@ const gatherOutputFieldRuleCache = new Map<string, GatherOutputField>();
 const gatherPlatformIntentCache = new Map<string, string[]>();
 let gatherOutputFieldRuleCacheExpireAt = 0;
 const runSearchSignatureCache = new Map<string, Set<string>>();
+const DEFAULT_SOURCE_FILTER_MIN_CHARS = 8;
 
 function isWebSource(source: SourceWithRelations): source is WebSource {
   return source.category === "STREAM";
@@ -184,6 +366,14 @@ function isWebSource(source: SourceWithRelations): source is WebSource {
 
 function isDarknetSource(source: SourceWithRelations): source is DarknetSource {
   return source.category === "RETRIEVAL" && source.isDarknet;
+}
+
+function isSocialSource(source: SourceWithRelations): source is SocialMediaSource {
+  return source.category === "INTERACTIVE";
+}
+
+function isSearchSource(source: SourceWithRelations): source is SearchEngineSource {
+  return source.category === "RETRIEVAL" && !source.isDarknet;
 }
 
 function stripNullBytes(value: string): string {
@@ -228,6 +418,16 @@ function stripNullBytesNullable(value: string | null | undefined): string | null
   return stripNullBytes(value);
 }
 
+class HttpStatusError extends Error {
+  statusCode: number;
+
+  constructor(message: string, statusCode: number) {
+    super(message);
+    this.name = "HttpStatusError";
+    this.statusCode = statusCode;
+  }
+}
+
 function sanitizeObjectiveFallback(keywords: QueryKeyword[]): string {
   const parts = keywords
     .map((keyword) => {
@@ -262,7 +462,7 @@ async function loadRunSearchSuccessSignatures(runId?: string): Promise<Set<strin
   if (!runId) return new Set<string>();
   const cached = runSearchSignatureCache.get(runId);
   if (cached) return cached;
-  const row = await prisma.queryRun.findUnique({
+  const row = await prismaAny.queryRun.findUnique({
     where: { id: runId },
     select: { meta: true },
   });
@@ -273,11 +473,20 @@ async function loadRunSearchSuccessSignatures(runId?: string): Promise<Set<strin
   return set;
 }
 
+function shouldPersistSearchSuccessSignatures(context?: {
+  runId?: string;
+  queryId?: string;
+}): boolean {
+  if (!context?.runId) return false;
+  if (!context.queryId) return false;
+  return !context.queryId.startsWith("job:");
+}
+
 async function persistRunSearchSuccessSignatures(
   runId: string,
   signatures: Set<string>
 ): Promise<void> {
-  const row = await prisma.queryRun.findUnique({
+  const row = await prismaAny.queryRun.findUnique({
     where: { id: runId },
     select: { meta: true },
   });
@@ -289,7 +498,7 @@ async function persistRunSearchSuccessSignatures(
       ...Array.from(signatures),
     ])
   );
-  await prisma.queryRun.update({
+  await prismaAny.queryRun.update({
     where: { id: runId },
     data: {
       meta: {
@@ -303,13 +512,13 @@ async function persistRunSearchSuccessSignatures(
 export async function runFocusCollector(runId: string, queryId: string) {
   const send = async (event: unknown) => publishTaskEvent(runId, event);
 
-  await prisma.queryRun.update({
+  await prismaAny.queryRun.update({
     where: { id: runId },
     data: { status: "RUNNING", startedAt: new Date(), progress: 0 },
   });
   await send({ type: "start", message: "任务开始" });
 
-  const query = await prisma.query.findUnique({
+  const query = await prismaAny.query.findUnique({
     where: { id: queryId },
     include: {
       keywords: true,
@@ -342,7 +551,7 @@ export async function runFocusCollector(runId: string, queryId: string) {
 
   await send({ type: "fetch", message: "拉取数据中" });
   const normalizedSources: SourceWithRelations[] = [];
-  query.sources.forEach((source) => {
+  query.sources.forEach((source: any) => {
     if (source.category === "STREAM" && source.web) {
       normalizedSources.push(source as WebSource);
       return;
@@ -365,7 +574,7 @@ export async function runFocusCollector(runId: string, queryId: string) {
     queryId,
     query.keywords,
     new Map(
-      query.sourcePolicies.map((item) => [
+      query.sourcePolicies.map((item: any) => [
         item.sourceId,
         {
           contentFilterEnabled: item.contentFilterEnabled,
@@ -409,14 +618,14 @@ export async function runFocusCollector(runId: string, queryId: string) {
 
   if (!cleaned.length) {
     await send({ type: "done", message: "未抓取到内容", progress: 100 });
-    await prisma.queryRun.update({
+    await prismaAny.queryRun.update({
       where: { id: runId },
       data: { status: "SUCCEEDED", progress: 100, finishedAt: new Date() },
     });
     return;
   }
 
-  const expandedKeywords = query.keywords.map((kw) => {
+  const expandedKeywords = query.keywords.map((kw: any) => {
     const parts = [kw.name, ...kw.includes];
     if (kw.enableAiExpand && kw.synonyms.length > 0) {
       parts.push(...kw.synonyms);
@@ -427,6 +636,7 @@ export async function runFocusCollector(runId: string, queryId: string) {
   const keywordsStr = expandedKeywords.join("; ") || "无关键词";
   for (let i = 0; i < cleaned.length; i++) {
     const item = cleaned[i];
+    const preparedSummaryContent = await prepareContentForSummary(item);
     const existingContent = await findExistingContentBySourceRecord(item);
     if (existingContent) {
       const stats = sourceStats.get(item.sourceId);
@@ -437,7 +647,7 @@ export async function runFocusCollector(runId: string, queryId: string) {
         100,
         Math.floor(((i + 1) / cleaned.length) * 100)
       );
-      await prisma.queryRun.update({
+      await prismaAny.queryRun.update({
         where: { id: runId },
         data: { progress },
       });
@@ -453,7 +663,11 @@ export async function runFocusCollector(runId: string, queryId: string) {
       continue;
     }
 
-    const shouldRunContentAnalyze = !SKIP_AI_SUMMARY || ENABLE_SUBJECT_AI_SCORE;
+    const shouldRunContentAnalyze =
+      CONTENT_AUTO_CLEAN_ENABLED ||
+      CONTENT_CLEAN_LLM_ENABLED ||
+      !SKIP_AI_SUMMARY ||
+      ENABLE_SUBJECT_AI_SCORE;
     let contentAnalyzeResult: ContentAnalyzeResult | null = null;
     if (shouldRunContentAnalyze) {
       await send({ type: "summary", message: `第 ${i + 1} 条内容AI分析` });
@@ -462,35 +676,42 @@ export async function runFocusCollector(runId: string, queryId: string) {
         query.keywords,
         keywordsStr,
         queryId,
-        runId
+        runId,
+        preparedSummaryContent
       );
     }
 
-    let summary: { summary: string; relevance: boolean };
-    if (SKIP_AI_SUMMARY) {
+    const fallbackSummary =
+      preparedSummaryContent.text.slice(0, 180) || buildFallbackSummary(item);
+    const generatedSummary = normalizeGeneratedSummary(contentAnalyzeResult?.summary);
+    const generatedTitle = normalizeGeneratedTitle(contentAnalyzeResult?.title);
+    const generatedMarkdown = normalizeGeneratedMarkdown(
+      contentAnalyzeResult?.cleanedMarkdown
+    );
+    const summary: { summary: string; relevance: boolean } = SKIP_AI_SUMMARY
+      ? {
+          summary: generatedSummary || fallbackSummary,
+          relevance: true,
+        }
+      : contentAnalyzeResult
+        ? {
+            summary: generatedSummary || fallbackSummary,
+            relevance: contentAnalyzeResult.relevance,
+          }
+        : {
+            summary: fallbackSummary,
+            relevance: true,
+          };
+    if (!shouldRunContentAnalyze) {
       await send({
         type: "summary-skip",
         message: `第 ${i + 1} 条内容跳过 AI 摘要，直接入库`,
       });
-      summary = {
-        summary: buildFallbackSummary(item),
-        relevance: true,
-      };
-    } else if (contentAnalyzeResult) {
-      summary = {
-        summary: contentAnalyzeResult.summary,
-        relevance: contentAnalyzeResult.relevance,
-      };
-    } else {
-      summary = {
-        summary: buildFallbackSummary(item),
-        relevance: true,
-      };
     }
 
     const contentTitle =
-      item.title ??
-      (summary.summary.slice(0, 40).replace(/\s+/g, " ").trim() ||
+      item.title ||
+      (preparedSummaryContent.text.slice(0, 40).replace(/\s+/g, " ").trim() ||
         `来源 ${item.platform}`);
     const contentTime = item.recordTime ?? item.time ?? new Date();
     const normalizedRecordContent = buildNormalizedRecordContent({
@@ -499,7 +720,7 @@ export async function runFocusCollector(runId: string, queryId: string) {
       sourceId: item.sourceId,
       fallbackTitle: contentTitle,
       fallbackSummary: summary.summary,
-      fallbackMarkdown: item.markdown,
+      fallbackMarkdown: preparedSummaryContent.markdown || item.markdown,
       fallbackUrl: item.url,
       fallbackTimeIso: contentTime.toISOString(),
       recordId: item.recordId,
@@ -510,7 +731,10 @@ export async function runFocusCollector(runId: string, queryId: string) {
 
     const sanitizedTitle = stripNullBytes(contentTitle);
     const sanitizedSummary = stripNullBytes(summary.summary);
-    const sanitizedMarkdown = stripNullBytes(item.markdown);
+    const sanitizedMarkdown = stripNullBytes(preparedSummaryContent.markdown || item.markdown);
+    const sanitizedCleanedMarkdown = generatedMarkdown
+      ? stripNullBytes(generatedMarkdown)
+      : "";
     const sanitizedPlatform = stripNullBytes(item.platform);
     const sanitizedUrl = item.url ? stripNullBytes(item.url) : undefined;
     const sanitizedRecordContent = sanitizeJsonForDb(
@@ -536,14 +760,38 @@ export async function runFocusCollector(runId: string, queryId: string) {
       recordContent: sanitizedRecordContent,
       schemaVersion: stripNullBytesNullable(normalizedRecordContent.schemaVersion),
       recordIndex: normalizedRecordContent.relation.recordIndex,
-      keywords: expandedKeywords.map((keywordValue) =>
+      keywords: expandedKeywords.map((keywordValue: string) =>
         stripNullBytes(keywordValue)
       ),
       summaryRelevance: summary.relevance,
+      aiSummary: generatedSummary || sanitizedSummary,
+      aiSummaryUpdatedAt: contentTime.toISOString(),
+      aiSummaryModel:
+        contentAnalyzeResult
+          ? process.env.LLM_DEFAULT_MODEL ?? "unknown"
+          : "fallback",
+      summaryInput: preparedSummaryContent.promptText.slice(0, 1500),
+      summaryInputExtractor: preparedSummaryContent.extractorUsed,
+      summaryInputQuality: preparedSummaryContent.qualityScore,
+      contentCleanProvider: contentAnalyzeResult ? "llm" : "legacy",
+      contentCleanedMarkdownChars: sanitizedCleanedMarkdown.length,
+      contentCleanLlmEnabled: CONTENT_CLEAN_LLM_ENABLED,
+      contentAutoCleanEnabled: CONTENT_AUTO_CLEAN_ENABLED,
+      meaningScore:
+        typeof item.meaningScore === "number" ? roundScore(item.meaningScore) : null,
+      meaningReason: item.meaningReason ? stripNullBytes(item.meaningReason) : null,
       sourceId: stripNullBytes(item.sourceId),
       sourceType: item.sourceType,
       intent: item.intent ? stripNullBytes(item.intent) : null,
     };
+    if (sanitizedCleanedMarkdown) {
+      contentMeta.cleanedTitle = generatedTitle || null;
+      contentMeta.cleanedSummary = generatedSummary || null;
+      contentMeta.cleanedMarkdown = sanitizedCleanedMarkdown;
+      contentMeta.cleanedMarkdownUpdatedAt = contentTime.toISOString();
+      contentMeta.cleanedMarkdownModel =
+        process.env.LLM_DEFAULT_MODEL ?? "unknown";
+    }
 
     const content = await prisma.content.create({
       data: {
@@ -559,8 +807,8 @@ export async function runFocusCollector(runId: string, queryId: string) {
     });
 
     if (query.keywords.length) {
-      await prisma.contentKeyword.createMany({
-        data: query.keywords.map((keyword) => ({
+      await prismaAny.contentKeyword.createMany({
+        data: query.keywords.map((keyword: any) => ({
           contentId: content.id,
           keywordId: keyword.id,
         })),
@@ -618,14 +866,14 @@ export async function runFocusCollector(runId: string, queryId: string) {
     if (stats) {
       stats.inserted += 1;
     }
-    await prisma.queryRun.update({
+    await prismaAny.queryRun.update({
       where: { id: runId },
       data: { progress },
     });
     await send({ type: "progress", message: "入库完成", progress });
   }
 
-  await prisma.queryRun.update({
+  await prismaAny.queryRun.update({
     where: { id: runId },
     data: {
       status: "SUCCEEDED",
@@ -776,6 +1024,7 @@ export async function runJobCollector(params: {
 
   for (let i = 0; i < cleaned.length; i++) {
     const item = cleaned[i];
+    const preparedSummaryContent = await prepareContentForSummary(item);
     const existingContent = await findExistingContentBySourceRecord(item);
     if (existingContent) {
       const stats = sourceStats.get(item.sourceId);
@@ -857,7 +1106,9 @@ export async function runJobCollector(params: {
     const llmKeywordsSummary =
       llmKeywords.map((kw) => [kw.name, ...kw.includes].join(", ")).join("; ") || "无关键词";
     const shouldRunContentAnalyze =
-      (!SKIP_AI_SUMMARY || ENABLE_SUBJECT_AI_SCORE) && llmGate === "high";
+      CONTENT_AUTO_CLEAN_ENABLED ||
+      CONTENT_CLEAN_LLM_ENABLED ||
+      ((!SKIP_AI_SUMMARY || ENABLE_SUBJECT_AI_SCORE) && llmGate === "high");
     let contentAnalyzeResult: ContentAnalyzeResult | null = null;
     if (shouldRunContentAnalyze) {
       await send({ type: "summary", message: `第 ${i + 1} 条内容AI分析` });
@@ -866,7 +1117,8 @@ export async function runJobCollector(params: {
         llmKeywords,
         llmKeywordsSummary,
         pseudoQueryId,
-        runId
+        runId,
+        preparedSummaryContent
       );
     } else {
       await send({
@@ -881,14 +1133,30 @@ export async function runJobCollector(params: {
     }
 
     const summary = SKIP_AI_SUMMARY
-      ? { summary: fallbackSummary, relevance: true }
+      ? {
+          summary:
+            normalizeGeneratedSummary(contentAnalyzeResult?.summary) || fallbackSummary,
+          relevance: true,
+        }
       : contentAnalyzeResult
-        ? { summary: contentAnalyzeResult.summary, relevance: contentAnalyzeResult.relevance }
-        : { summary: fallbackSummary, relevance: llmGate !== "low" };
+        ? {
+            summary:
+              normalizeGeneratedSummary(contentAnalyzeResult.summary) || fallbackSummary,
+            relevance: contentAnalyzeResult.relevance,
+          }
+        : {
+            summary: fallbackSummary,
+            relevance: llmGate !== "low",
+          };
+    const generatedSummary = normalizeGeneratedSummary(contentAnalyzeResult?.summary);
+    const generatedTitle = normalizeGeneratedTitle(contentAnalyzeResult?.title);
+    const generatedMarkdown = normalizeGeneratedMarkdown(
+      contentAnalyzeResult?.cleanedMarkdown
+    );
 
     const contentTitle =
-      item.title ??
-      (summary.summary.slice(0, 40).replace(/\s+/g, " ").trim() ||
+      item.title ||
+      (preparedSummaryContent.text.slice(0, 40).replace(/\s+/g, " ").trim() ||
         `来源 ${item.platform}`);
     const contentTime = item.recordTime ?? item.time ?? new Date();
     const normalizedRecordContent = buildNormalizedRecordContent({
@@ -897,7 +1165,7 @@ export async function runJobCollector(params: {
       sourceId: item.sourceId,
       fallbackTitle: contentTitle,
       fallbackSummary: summary.summary,
-      fallbackMarkdown: item.markdown,
+      fallbackMarkdown: preparedSummaryContent.markdown || item.markdown,
       fallbackUrl: item.url,
       fallbackTimeIso: contentTime.toISOString(),
       recordId: item.recordId,
@@ -907,7 +1175,10 @@ export async function runJobCollector(params: {
     });
     const sanitizedTitle = stripNullBytes(contentTitle);
     const sanitizedSummary = stripNullBytes(summary.summary);
-    const sanitizedMarkdown = stripNullBytes(item.markdown);
+    const sanitizedMarkdown = stripNullBytes(preparedSummaryContent.markdown || item.markdown);
+    const sanitizedCleanedMarkdown = generatedMarkdown
+      ? stripNullBytes(generatedMarkdown)
+      : "";
     const sanitizedPlatform = stripNullBytes(item.platform);
     const sanitizedUrl = item.url ? stripNullBytes(item.url) : undefined;
     const sanitizedRecordContent = sanitizeJsonForDb(
@@ -935,6 +1206,22 @@ export async function runJobCollector(params: {
       recordIndex: normalizedRecordContent.relation.recordIndex,
       keywords: expandedKeywords.map((keywordValue) => stripNullBytes(keywordValue)),
       summaryRelevance: summary.relevance,
+      aiSummary: generatedSummary || sanitizedSummary,
+      aiSummaryUpdatedAt: contentTime.toISOString(),
+      aiSummaryModel:
+        contentAnalyzeResult
+          ? process.env.LLM_DEFAULT_MODEL ?? "unknown"
+          : "fallback",
+      summaryInput: preparedSummaryContent.promptText.slice(0, 1500),
+      summaryInputExtractor: preparedSummaryContent.extractorUsed,
+      summaryInputQuality: preparedSummaryContent.qualityScore,
+      contentCleanProvider: contentAnalyzeResult ? "llm" : "legacy",
+      contentCleanedMarkdownChars: sanitizedCleanedMarkdown.length,
+      contentCleanLlmEnabled: CONTENT_CLEAN_LLM_ENABLED,
+      contentAutoCleanEnabled: CONTENT_AUTO_CLEAN_ENABLED,
+      meaningScore:
+        typeof item.meaningScore === "number" ? roundScore(item.meaningScore) : null,
+      meaningReason: item.meaningReason ? stripNullBytes(item.meaningReason) : null,
       sourceId: stripNullBytes(item.sourceId),
       sourceType: item.sourceType,
       intent: item.intent ? stripNullBytes(item.intent) : null,
@@ -948,6 +1235,14 @@ export async function runJobCollector(params: {
         bm25TopN: RETRIEVAL_BM25_TOP_N,
       },
     };
+    if (sanitizedCleanedMarkdown) {
+      contentMeta.cleanedTitle = generatedTitle || null;
+      contentMeta.cleanedSummary = generatedSummary || null;
+      contentMeta.cleanedMarkdown = sanitizedCleanedMarkdown;
+      contentMeta.cleanedMarkdownUpdatedAt = contentTime.toISOString();
+      contentMeta.cleanedMarkdownModel =
+        process.env.LLM_DEFAULT_MODEL ?? "unknown";
+    }
 
     const content = await prisma.content.create({
       data: {
@@ -965,7 +1260,7 @@ export async function runJobCollector(params: {
       await saveContentVector(content.id, contentVector);
     }
 
-    if (topicMatches.length > 0) {
+    if (!DYNAMIC_TOPIC_SCORING_ENABLED && topicMatches.length > 0) {
       await upsertContentTopicScores({
         contentId: content.id,
         contentText: `${content.title}\n${content.summary}\n${content.markdown}`,
@@ -1253,6 +1548,18 @@ async function upsertContentTopicScores(params: {
   topicMatches: TopicHybridMatch[];
 }) {
   const normalizedText = params.contentText.toLowerCase();
+  const scoreDrafts: Array<{
+    topicId: string;
+    vectorScore: number;
+    keywordScore: number;
+    exclusionPenalty: number;
+    coreScore: number;
+    expansionScore: number;
+    bm25Score: number;
+    fusionScore: number;
+    finalScore: number;
+  }> = [];
+
   for (const match of params.topicMatches) {
     const topic = params.topicsById.get(match.topicId);
     if (!topic) {
@@ -1267,57 +1574,205 @@ async function upsertContentTopicScores(params: {
     const exclusionPenalty = countTermMatches(normalizedText, exclusionTerms);
     const keywordScore = roundScore(match.bm25Score * 10 + coreScore + expansionScore);
     const vectorScore = roundScore(Math.max(0, Math.min(1, match.vectorScore)));
+    const coreBoost = Math.max(
+      0,
+      Math.min(1, normalizeTermScore(coreScore) * RETRIEVAL_CORE_WEIGHT)
+    );
+    const expansionBoost = Math.max(
+      0,
+      Math.min(1, normalizeTermScore(expansionScore) * RETRIEVAL_EXPANSION_WEIGHT)
+    );
+    const exclusionCost = exclusionPenalty * RETRIEVAL_EXCLUSION_WEIGHT;
     const finalScore = roundScore(
-      Math.max(0, match.fusionScore - exclusionPenalty * 0.03)
+      Math.max(0, Math.min(1, match.fusionScore + coreBoost + expansionBoost - exclusionCost))
     );
 
     if (finalScore < RETRIEVAL_LOW_THRESHOLD && exclusionPenalty > 0) {
       continue;
     }
 
+    scoreDrafts.push({
+      topicId: topic.id,
+      vectorScore,
+      keywordScore,
+      exclusionPenalty,
+      coreScore,
+      expansionScore,
+      bm25Score: match.bm25Score,
+      fusionScore: match.fusionScore,
+      finalScore,
+    });
+  }
+
+  const llmRerankScores = await rerankTopicScoresWithLlm({
+    contentId: params.contentId,
+    contentText: params.contentText,
+    topicsById: params.topicsById,
+    scoreDrafts,
+  });
+
+  for (const draft of scoreDrafts) {
+    const llmScore = llmRerankScores.get(draft.topicId);
+    const finalScore =
+      typeof llmScore === "number"
+        ? roundScore(
+            Math.max(
+              0,
+              Math.min(
+                1,
+                draft.finalScore * (1 - RETRIEVAL_LLM_RERANK_WEIGHT) +
+                  llmScore * RETRIEVAL_LLM_RERANK_WEIGHT
+              )
+            )
+          )
+        : draft.finalScore;
+    const reasonCore = `vector:${draft.vectorScore.toFixed(3)} core:${draft.coreScore.toFixed(2)} expansion:${draft.expansionScore.toFixed(2)} exclusion:${draft.exclusionPenalty.toFixed(2)}`;
+    const reason = typeof llmScore === "number" ? `${reasonCore} llm:${llmScore.toFixed(3)}` : reasonCore;
+
     await prisma.contentTopicScore.upsert({
       where: {
         contentId_topicId: {
           contentId: params.contentId,
-          topicId: topic.id,
+          topicId: draft.topicId,
         },
       },
       create: {
         contentId: params.contentId,
-        topicId: topic.id,
-        vectorScore,
-        keywordScore,
-        exclusionPenalty,
+        topicId: draft.topicId,
+        vectorScore: draft.vectorScore,
+        keywordScore: draft.keywordScore,
+        exclusionPenalty: draft.exclusionPenalty,
         finalScore,
-        reason: `vector:${vectorScore.toFixed(3)} core:${coreScore.toFixed(2)} expansion:${expansionScore.toFixed(2)} exclusion:${exclusionPenalty.toFixed(2)}`,
+        reason,
         explain: {
-          bm25Score: match.bm25Score,
-          fusionScore: match.fusionScore,
-          vectorScore,
-          coreScore,
-          expansionScore,
-          exclusionPenalty,
-          keywordScore,
+          bm25Score: draft.bm25Score,
+          fusionScore: draft.fusionScore,
+          vectorScore: draft.vectorScore,
+          coreScore: draft.coreScore,
+          expansionScore: draft.expansionScore,
+          exclusionPenalty: draft.exclusionPenalty,
+          keywordScore: draft.keywordScore,
+          baseFinalScore: draft.finalScore,
+          llmRerankScore: llmScore ?? null,
+          llmRerankWeight:
+            typeof llmScore === "number" ? RETRIEVAL_LLM_RERANK_WEIGHT : 0,
         } as Prisma.InputJsonValue,
       },
       update: {
-        vectorScore,
-        keywordScore,
-        exclusionPenalty,
+        vectorScore: draft.vectorScore,
+        keywordScore: draft.keywordScore,
+        exclusionPenalty: draft.exclusionPenalty,
         finalScore,
-        reason: `vector:${vectorScore.toFixed(3)} core:${coreScore.toFixed(2)} expansion:${expansionScore.toFixed(2)} exclusion:${exclusionPenalty.toFixed(2)}`,
+        reason,
         explain: {
-          bm25Score: match.bm25Score,
-          fusionScore: match.fusionScore,
-          vectorScore,
-          coreScore,
-          expansionScore,
-          exclusionPenalty,
-          keywordScore,
+          bm25Score: draft.bm25Score,
+          fusionScore: draft.fusionScore,
+          vectorScore: draft.vectorScore,
+          coreScore: draft.coreScore,
+          expansionScore: draft.expansionScore,
+          exclusionPenalty: draft.exclusionPenalty,
+          keywordScore: draft.keywordScore,
+          baseFinalScore: draft.finalScore,
+          llmRerankScore: llmScore ?? null,
+          llmRerankWeight:
+            typeof llmScore === "number" ? RETRIEVAL_LLM_RERANK_WEIGHT : 0,
         } as Prisma.InputJsonValue,
       },
     });
   }
+}
+
+function normalizeTermScore(score: number): number {
+  if (!Number.isFinite(score) || score <= 0) {
+    return 0;
+  }
+  return roundScore(Math.min(1, score / 3));
+}
+
+async function rerankTopicScoresWithLlm(params: {
+  contentId: string;
+  contentText: string;
+  topicsById: Map<string, JobCollectorTopic>;
+  scoreDrafts: Array<{
+    topicId: string;
+    finalScore: number;
+  }>;
+}) {
+  const result = new Map<string, number>();
+  if (!RETRIEVAL_LLM_RERANK_ENABLED || RETRIEVAL_LLM_RERANK_WEIGHT <= 0) {
+    return result;
+  }
+  const candidates = [...params.scoreDrafts]
+    .filter((item) => item.finalScore >= RETRIEVAL_LLM_RERANK_MIN_SCORE)
+    .sort((left, right) => right.finalScore - left.finalScore)
+    .slice(0, RETRIEVAL_LLM_RERANK_TOP_N);
+  if (!candidates.length) {
+    return result;
+  }
+
+  const topics = candidates
+    .map((item) => params.topicsById.get(item.topicId))
+    .filter(Boolean) as JobCollectorTopic[];
+  const topicText = topics
+    .map((topic) => {
+      const coreTerms = topic.terms
+        .filter((term) => term.type === "CORE")
+        .map((term) => term.value.trim())
+        .filter(Boolean)
+        .slice(0, 8)
+        .join(", ");
+      const expansionTerms = topic.terms
+        .filter((term) => term.type === "EXPANSION")
+        .map((term) => term.value.trim())
+        .filter(Boolean)
+        .slice(0, 10)
+        .join(", ");
+      return `topicId=${topic.id}\nname=${topic.name}\ncore=${coreTerms}\nexpansion=${expansionTerms}`;
+    })
+    .join("\n\n");
+
+  try {
+    const payload = await llmGateway.json("topic-rerank", {
+      model: process.env.LLM_DEFAULT_MODEL ?? "gpt-5-mini",
+      temperature: 0,
+      metadata: {
+        contentId: params.contentId,
+        topN: candidates.length,
+      },
+      prompt: [
+        "你是内容与主题匹配度评估助手。",
+        "请根据内容与主题定义，为每个 topic 输出 0~1 的匹配度评分。",
+        "评分标准：0=无关，0.5=部分相关，1=高度相关。",
+        "仅输出 JSON，格式：{\"scores\":[{\"topicId\":\"...\",\"score\":0.0}]}。",
+        "",
+        "候选主题：",
+        topicText,
+        "",
+        "内容：",
+        params.contentText.slice(0, 4000),
+      ].join("\n"),
+    });
+    const checked = TopicRerankSchema.safeParse(payload);
+    if (!checked.success) {
+      logger.warn("topic rerank invalid payload", {
+        contentId: params.contentId,
+        details: checked.error.flatten(),
+      });
+      return result;
+    }
+    for (const item of checked.data.scores) {
+      if (!candidates.some((candidate) => candidate.topicId === item.topicId)) {
+        continue;
+      }
+      result.set(item.topicId, roundScore(item.score));
+    }
+  } catch (error) {
+    logger.warn("topic rerank failed", {
+      contentId: params.contentId,
+      error: logger.normalizeError(error),
+    });
+  }
+  return result;
 }
 
 function buildKeywordFilterTerms(
@@ -1371,6 +1826,28 @@ function buildRecallQueries(keywords: QueryKeyword[]): string[] {
   return Array.from(new Set(queries.map((query) => query.trim()).filter(Boolean)));
 }
 
+const RECALL_LANGUAGE_ORDER: RecallLanguage[] = ["zh", "en", "ja"];
+
+function normalizeRecallLanguages(input: unknown): RecallLanguage[] {
+  const raw = Array.isArray(input) ? input : [];
+  const normalized = Array.from(
+    new Set(
+      raw
+        .map((item) => String(item).trim().toLowerCase())
+        .filter(
+          (item): item is RecallLanguage =>
+            item === "zh" || item === "en" || item === "ja"
+        )
+    )
+  );
+  return normalized.length > 0 ? normalized : [...RECALL_LANGUAGE_ORDER];
+}
+
+function resolveRecallLanguages(topics: JobCollectorTopic[]): RecallLanguage[] {
+  const merged = normalizeRecallLanguages(topics.flatMap((topic) => topic.recallLanguages));
+  return RECALL_LANGUAGE_ORDER.filter((lang) => merged.includes(lang));
+}
+
 function resolveTopicRecallLimit(): number {
   if (!Number.isFinite(TOPIC_RECALL_QUERY_LIMIT) || TOPIC_RECALL_QUERY_LIMIT < 1) {
     return 8;
@@ -1385,11 +1862,114 @@ function resolveTopicRecallTimeoutMs(): number {
   return Math.max(500, Math.min(Math.floor(TOPIC_RECALL_TIMEOUT_MS), 30_000));
 }
 
+function resolveTopicRecallMinPerLanguage(): number {
+  if (!Number.isFinite(TOPIC_RECALL_MIN_PER_LANGUAGE)) {
+    return 1;
+  }
+  return Math.max(1, Math.min(Math.floor(TOPIC_RECALL_MIN_PER_LANGUAGE), 3));
+}
+
+function resolveTopicRecallCoverageRetryLimit(): number {
+  if (!Number.isFinite(TOPIC_RECALL_COVERAGE_RETRY_LIMIT)) {
+    return 1;
+  }
+  return Math.max(0, Math.min(Math.floor(TOPIC_RECALL_COVERAGE_RETRY_LIMIT), 3));
+}
+
 function normalizeRecallQueries(queries: string[], limit: number): string[] {
   return Array.from(new Set(queries.map((query) => query.trim()).filter(Boolean))).slice(
     0,
     Math.max(1, Math.min(limit, 64))
   );
+}
+
+function normalizeRecallQueryItems(params: {
+  queries: TopicRecallQueryItem[];
+  limit: number;
+  allowedLanguages: RecallLanguage[];
+}): string[] {
+  const normalizedLanguages = normalizeRecallLanguages(params.allowedLanguages);
+  const allowed = new Set(normalizedLanguages);
+  const byLang = new Map<RecallLanguage, string[]>(
+    RECALL_LANGUAGE_ORDER.map((lang) => [lang, []])
+  );
+  const dedup = new Set<string>();
+
+  for (const item of params.queries) {
+    if (!allowed.has(item.lang)) {
+      continue;
+    }
+    const text = item.text.trim();
+    if (!text) continue;
+    const dedupKey = `${item.lang}:${text.toLowerCase()}`;
+    if (dedup.has(dedupKey)) {
+      continue;
+    }
+    dedup.add(dedupKey);
+    byLang.get(item.lang)?.push(text);
+  }
+
+  const flattened: string[] = [];
+  for (const lang of RECALL_LANGUAGE_ORDER) {
+    if (!allowed.has(lang)) continue;
+    const items = byLang.get(lang) ?? [];
+    for (const item of items) {
+      flattened.push(item);
+      if (flattened.length >= Math.max(1, Math.min(params.limit, 64))) {
+        return flattened;
+      }
+    }
+  }
+
+  return flattened;
+}
+
+function buildRecallCoverage(params: {
+  queries: TopicRecallQueryItem[];
+  allowedLanguages: RecallLanguage[];
+}): Record<RecallLanguage, number> {
+  const allowed = new Set(normalizeRecallLanguages(params.allowedLanguages));
+  const coverage: Record<RecallLanguage, number> = { zh: 0, en: 0, ja: 0 };
+  for (const item of params.queries) {
+    if (!allowed.has(item.lang)) continue;
+    const text = item.text.trim();
+    if (!text) continue;
+    coverage[item.lang] += 1;
+  }
+  return coverage;
+}
+
+function findRecallCoverageMissingLanguages(params: {
+  queries: TopicRecallQueryItem[];
+  allowedLanguages: RecallLanguage[];
+  minPerLanguage: number;
+}): RecallLanguage[] {
+  const coverage = buildRecallCoverage({
+    queries: params.queries,
+    allowedLanguages: params.allowedLanguages,
+  });
+  return normalizeRecallLanguages(params.allowedLanguages).filter(
+    (lang) => coverage[lang] < params.minPerLanguage
+  );
+}
+
+function dedupeRecallQueryItems(
+  queries: TopicRecallQueryItem[]
+): TopicRecallQueryItem[] {
+  const dedup = new Set<string>();
+  const output: TopicRecallQueryItem[] = [];
+  for (const item of queries) {
+    const text = item.text.trim();
+    if (!text) continue;
+    const dedupKey = `${item.lang}:${text.toLowerCase()}`;
+    if (dedup.has(dedupKey)) continue;
+    dedup.add(dedupKey);
+    output.push({
+      text,
+      lang: item.lang,
+    });
+  }
+  return output;
 }
 
 function isTopicRecallSource(source: SourceWithRelations): boolean {
@@ -1433,6 +2013,7 @@ function buildTopicRecallPrompt(params: {
   topics: JobCollectorTopic[];
   source: SourceWithRelations;
   limit: number;
+  recallLanguages: RecallLanguage[];
 }): string {
   const topicPayload = params.topics.map((topic) => {
     const coreTerms = topic.terms
@@ -1457,12 +2038,12 @@ function buildTopicRecallPrompt(params: {
     };
   });
   return stripPromptLike(
-    `你是检索 query 生成器。请输出 JSON：{"queries":["..."]}。
+    `你是检索 query 生成器。请输出 JSON：{"queries":[{"text":"...","lang":"zh|en|ja"}]}。
 要求：
-1) 仅输出搜索 query 文本数组，数量 3-${params.limit}；
-2) query 需要覆盖主题核心词与扩展词，避免重复；
-3) 保持短句可检索，允许中英混合；
-4) 如存在排除词，请在 query 中尽量体现负向约束（如 -term）；
+1) 仅输出搜索 query 对象数组，数量 3-${params.limit}；
+2) 每个 query 的 lang 必须属于：${params.recallLanguages.join(", ")}；
+3) query 需要覆盖主题核心词与扩展词，避免重复；
+4) 保持短句可检索；如存在排除词，请在 query 中尽量体现负向约束（如 -term）；
 5) 不要输出解释、不要输出 markdown。
 
 Source:
@@ -1472,6 +2053,109 @@ ${buildSourceRecallContext(params.source)}
 Topics(JSON):
 ${JSON.stringify(topicPayload)}`
   );
+}
+
+function buildTopicRecallCoveragePatchPrompt(params: {
+  topics: JobCollectorTopic[];
+  source: SourceWithRelations;
+  missingLanguages: RecallLanguage[];
+  limit: number;
+  seedQueries: TopicRecallQueryItem[];
+}): string {
+  const topicPayload = params.topics.map((topic) => ({
+    topicId: topic.id,
+    name: topic.name,
+    description: topic.description ?? "",
+    coreTerms: topic.terms
+      .filter((term) => term.type === "CORE")
+      .map((term) => term.value.trim())
+      .filter(Boolean),
+    expansionTerms: topic.terms
+      .filter((term) => term.type === "EXPANSION")
+      .map((term) => term.value.trim())
+      .filter(Boolean),
+    exclusionTerms: topic.terms
+      .filter((term) => term.type === "EXCLUSION")
+      .map((term) => term.value.trim())
+      .filter(Boolean),
+  }));
+  return stripPromptLike(
+    `你是检索 query 语言补齐器。请只为缺失语言补齐搜索 query。
+输出 JSON：{"queries":[{"text":"...","lang":"zh|en|ja"}]}
+要求：
+1) 只输出语言：${params.missingLanguages.join(", ")}；
+2) 每个缺失语言至少补 1 条，最多补 ${params.limit} 条；
+3) 不要解释，不要 markdown，不要输出非 JSON。
+
+Source:
+name: ${params.source.name}
+${buildSourceRecallContext(params.source)}
+
+Topics(JSON):
+${JSON.stringify(topicPayload)}
+
+已有查询(JSON):
+${JSON.stringify(params.seedQueries)}`
+  );
+}
+
+async function generateTopicRecallCoveragePatch(params: {
+  runId: string;
+  jobId: string;
+  source: SourceWithRelations;
+  topics: JobCollectorTopic[];
+  missingLanguages: RecallLanguage[];
+  limit: number;
+  timeoutMs: number;
+  seedQueries: TopicRecallQueryItem[];
+}): Promise<TopicRecallQueryItem[]> {
+  if (!TOPIC_RECALL_LLM_ENABLED || params.missingLanguages.length === 0) {
+    return [];
+  }
+  try {
+    const prompt = buildTopicRecallCoveragePatchPrompt({
+      topics: params.topics,
+      source: params.source,
+      missingLanguages: params.missingLanguages,
+      limit: params.limit,
+      seedQueries: params.seedQueries,
+    });
+    const response = await withTimeout(
+      llmGateway.json<z.infer<typeof TopicRecallQueriesSchema>>(
+        "topic-recall-query",
+        {
+          prompt: redact(prompt),
+          schema: TopicRecallQueriesSchema,
+          temperature: 0.2,
+          maxOutputTokens: 320,
+          metadata: {
+            runId: params.runId,
+            jobId: params.jobId,
+            sourceId: params.source.id,
+            sourceName: params.source.name,
+            patch: true,
+          },
+        }
+      ),
+      params.timeoutMs,
+      `topic recall coverage patch timeout after ${params.timeoutMs}ms`
+    );
+    return dedupeRecallQueryItems(
+      (response.queries ?? []).filter((item) =>
+        params.missingLanguages.includes(item.lang)
+      )
+    );
+  } catch (error) {
+    logger.warn("topic recall coverage patch failed", {
+      runId: params.runId,
+      jobId: params.jobId,
+      sourceId: params.source.id,
+      sourceName: params.source.name,
+      missingLanguages: params.missingLanguages,
+      error: logger.normalizeError(error),
+    });
+    return [];
+  }
 }
 
 async function withTimeout<T>(
@@ -1514,6 +2198,10 @@ async function buildTopicRecallQueryBundles(params: {
   );
   const recallLimit = resolveTopicRecallLimit();
   const timeoutMs = resolveTopicRecallTimeoutMs();
+  const recallLanguages = resolveRecallLanguages(params.topics);
+  const minPerLanguage = resolveTopicRecallMinPerLanguage();
+  const coverageRetryLimit = resolveTopicRecallCoverageRetryLimit();
+  const coverageFeasible = recallLimit >= recallLanguages.length * minPerLanguage;
 
   for (const source of recallSources) {
     await publishTaskEvent(params.runId, {
@@ -1522,6 +2210,10 @@ async function buildTopicRecallQueryBundles(params: {
       message: `为 ${source.name} 生成动态召回词`,
     });
     if (!TOPIC_RECALL_LLM_ENABLED) {
+      const fallbackCoverage = buildRecallCoverage({
+        queries: [],
+        allowedLanguages: recallLanguages,
+      });
       bundles.set(source.id, {
         queries: fallbackQueries,
         origin: "static_fallback",
@@ -1531,6 +2223,9 @@ async function buildTopicRecallQueryBundles(params: {
         type: "recall-generate-fallback",
         sourceId: source.id,
         message: "动态召回词已关闭，使用静态词项",
+        requestedLanguages: recallLanguages,
+        coverageByLanguage: fallbackCoverage,
+        coverageComplete: false,
         generatedCount: fallbackQueries.length,
       });
       continue;
@@ -1541,6 +2236,7 @@ async function buildTopicRecallQueryBundles(params: {
         topics: params.topics,
         source,
         limit: recallLimit,
+        recallLanguages,
       });
       const response = await withTimeout(
         llmGateway.json<z.infer<typeof TopicRecallQueriesSchema>>(
@@ -1561,10 +2257,69 @@ async function buildTopicRecallQueryBundles(params: {
         timeoutMs,
         `topic recall generation timeout after ${timeoutMs}ms`
       );
-      const queries = normalizeRecallQueries(response.queries ?? [], recallLimit);
+      let generatedItems = dedupeRecallQueryItems(response.queries ?? []);
+      let missingLanguages = coverageFeasible
+        ? findRecallCoverageMissingLanguages({
+            queries: generatedItems,
+            allowedLanguages: recallLanguages,
+            minPerLanguage,
+          })
+        : [];
+
+      if (
+        TOPIC_RECALL_COVERAGE_PATCH_ENABLED &&
+        coverageFeasible &&
+        missingLanguages.length > 0
+      ) {
+        for (let retry = 0; retry < coverageRetryLimit; retry += 1) {
+          const patchedItems = await generateTopicRecallCoveragePatch({
+            runId: params.runId,
+            jobId: params.jobId,
+            source,
+            topics: params.topics,
+            missingLanguages,
+            limit: recallLimit,
+            timeoutMs,
+            seedQueries: generatedItems,
+          });
+          if (patchedItems.length > 0) {
+            generatedItems = dedupeRecallQueryItems([
+              ...generatedItems,
+              ...patchedItems,
+            ]);
+          }
+          missingLanguages = findRecallCoverageMissingLanguages({
+            queries: generatedItems,
+            allowedLanguages: recallLanguages,
+            minPerLanguage,
+          });
+          if (missingLanguages.length === 0) {
+            break;
+          }
+        }
+      }
+
+      const queries = normalizeRecallQueryItems({
+        queries: generatedItems,
+        limit: recallLimit,
+        allowedLanguages: recallLanguages,
+      });
       const effectiveQueries = queries.length > 0 ? queries : fallbackQueries;
+      const coverageByLanguage = buildRecallCoverage({
+        queries: generatedItems,
+        allowedLanguages: recallLanguages,
+      });
+      const coverageComplete = coverageFeasible
+        ? recallLanguages.every(
+            (lang) => (coverageByLanguage[lang] ?? 0) >= minPerLanguage
+          )
+        : false;
       const origin: RecallQueryOrigin =
-        queries.length > 0 ? "llm_recall" : "static_fallback";
+        queries.length > 0
+          ? coverageComplete
+            ? "llm_recall"
+            : "coverage_patch"
+          : "static_fallback";
       bundles.set(source.id, {
         queries: effectiveQueries,
         origin,
@@ -1576,7 +2331,14 @@ async function buildTopicRecallQueryBundles(params: {
         message:
           origin === "llm_recall"
             ? `动态召回词生成成功（${effectiveQueries.length}条）`
+            : origin === "coverage_patch"
+              ? `动态召回词补齐后生成（${effectiveQueries.length}条）`
             : `动态召回词为空，降级静态词项（${effectiveQueries.length}条）`,
+        requestedLanguages: recallLanguages,
+        coverageByLanguage,
+        coverageComplete,
+        minPerLanguage,
+        coverageFeasible,
         origin,
         generatedCount: effectiveQueries.length,
       });
@@ -1597,6 +2359,11 @@ async function buildTopicRecallQueryBundles(params: {
         type: "recall-generate-error",
         sourceId: source.id,
         message: "动态召回词生成失败，已降级静态词项",
+        requestedLanguages: recallLanguages,
+        coverageByLanguage: { zh: 0, en: 0, ja: 0 },
+        coverageComplete: false,
+        minPerLanguage,
+        coverageFeasible,
         generatedCount: fallbackQueries.length,
       });
     }
@@ -1717,17 +2484,116 @@ async function fetchBySources(
         console.log(
           `[collector] fetched ${fetched.length} items from ${source.name}`
         );
-        fetched.forEach((item) => {
+        const filtered = applySourceMinCharsFilter(fetched, source);
+        if (filtered.length !== fetched.length) {
+          await publishTaskEvent(runId, {
+            type: "fetch-filtered",
+            message: `来源 ${source.name} 过滤掉 ${fetched.length - filtered.length} 条低质量内容`,
+            sourceId: source.id,
+            driver,
+            filteredCount: fetched.length - filtered.length,
+            minChars: resolveSourceFilterMinChars(source),
+          });
+        }
+        const preLlmFilterResult = applyPreLlmQualityGate(filtered);
+        if (preLlmFilterResult.rejected.length > 0) {
+          const reasonCount = preLlmFilterResult.rejected.reduce<
+            Record<string, number>
+          >((acc, entry) => {
+            acc[entry.reason] = (acc[entry.reason] ?? 0) + 1;
+            return acc;
+          }, {});
+          await publishTaskEvent(runId, {
+            type: "pre-llm-filtered",
+            message: `来源 ${source.name} 在LLM前过滤 ${preLlmFilterResult.rejected.length} 条噪音内容`,
+            sourceId: source.id,
+            driver,
+            filteredCount: preLlmFilterResult.rejected.length,
+            filterLevel: resolvePreLlmFilterLevel(),
+            reasonCount,
+          });
+          for (const rejected of preLlmFilterResult.rejected) {
+            logger.info("pre-llm quality gate dropped content", {
+              runId,
+              queryId,
+              sourceId: source.id,
+              sourceName: source.name,
+              driver,
+              reason: rejected.reason,
+              url: rejected.item.url ?? null,
+              sampleHash: rejected.sampleHash,
+              metrics: rejected.metrics,
+            });
+          }
+        }
+        let passedItems = preLlmFilterResult.passed;
+        if (CONTENT_MEANING_GATE_ENABLED && passedItems.length > 0) {
+          const meaningPassed: CleanItem[] = [];
+          const meaningSkipped: Array<{
+            item: CleanItem;
+            score: number;
+            reason: string;
+          }> = [];
+          for (const candidate of passedItems) {
+            const meaning = await analyzeContentMeaningWithRetry(
+              candidate,
+              runId,
+              queryId
+            );
+            if (meaning.meaningful) {
+              candidate.meaningScore = meaning.score;
+              candidate.meaningReason = meaning.reason;
+              meaningPassed.push(candidate);
+              await publishTaskEvent(runId, {
+                type: "meaning-gate-passed",
+                sourceId: source.id,
+                score: meaning.score,
+                reason: meaning.reason,
+              });
+            } else {
+              meaningSkipped.push({
+                item: candidate,
+                score: meaning.score,
+                reason: meaning.reason,
+              });
+            }
+          }
+          if (meaningSkipped.length > 0) {
+            await publishTaskEvent(runId, {
+              type: "meaning-gate-skipped",
+              message: `来源 ${source.name} 跳过 ${meaningSkipped.length} 条无意义内容`,
+              sourceId: source.id,
+              driver,
+              skippedCount: meaningSkipped.length,
+              minScore: CONTENT_MEANING_GATE_MIN_SCORE,
+            });
+            for (const skipped of meaningSkipped) {
+              logger.info("content meaning gate skipped item", {
+                runId,
+                queryId,
+                sourceId: source.id,
+                sourceName: source.name,
+                driver,
+                url: skipped.item.url ?? null,
+                score: skipped.score,
+                reason: skipped.reason,
+              });
+            }
+          }
+          passedItems = meaningPassed;
+        }
+
+        passedItems.forEach((item) => {
           item.driver = driver;
         });
         await publishTaskEvent(runId, {
           type: "fetch-success",
           message: `抓取 ${source.name} 完成`,
-          count: fetched.length,
+          count: passedItems.length,
           sourceId: source.id,
           driver,
         });
-        return fetched;
+        return passedItems;
       } catch (error) {
         await publishTaskEvent(runId, {
           type: "error",
@@ -1754,10 +2620,10 @@ function resolveSourceFetchConcurrency(): number {
 
 function resolveRecallQueryLimit(): number {
   const raw = process.env.COLLECT_RECALL_QUERY_LIMIT;
-  if (!raw) return 64;
+  if (!raw) return 16;
   const parsed = Number(raw);
   if (!Number.isFinite(parsed) || parsed < 1) {
-    return 64;
+    return 16;
   }
   return Math.floor(parsed);
 }
@@ -2065,6 +2931,263 @@ async function fetchAICrawlerSource(
   );
 }
 
+function resolveSourceFilterMinChars(source: SourceWithRelations): number {
+  if (isSocialSource(source) && source.social?.config) {
+    const socialConfig = asObject(source.social.config);
+    const filter = resolveGatherDriverFilter(socialConfig);
+    const minChars = Number(filter.minChars);
+    if (Number.isFinite(minChars) && minChars >= 0) {
+      return Math.floor(minChars);
+    }
+  }
+  if (isSearchSource(source) && source.search) {
+    const options = asObject(source.search.options);
+    const candidates = [
+      asObject(options.filter).minChars,
+      asObject(asObject(options.driver).filter).minChars,
+      asObject(asObject(options.playwright).filter).minChars,
+    ];
+    for (const candidate of candidates) {
+      const value = Number(candidate);
+      if (Number.isFinite(value) && value >= 0) {
+        return Math.floor(value);
+      }
+    }
+  }
+  return DEFAULT_SOURCE_FILTER_MIN_CHARS;
+}
+
+function isPlaceholderContent(item: CleanItem): boolean {
+  const combined = [
+    item.title ?? "",
+    item.text ?? "",
+    item.markdown ?? "",
+  ]
+    .join(" ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+  if (!combined) return true;
+  if (combined === "空数据") return true;
+  if (combined.includes("返回空数据")) return true;
+  if (/^(null|undefined|n\/a|no data|empty)$/i.test(combined)) return true;
+  if (/暂无(内容|数据|正文)/.test(combined)) return true;
+  if (/内容获取失败|抓取失败|加载失败/.test(combined)) return true;
+  return false;
+}
+
+function resolvePreLlmFilterLevel(): "strict" | "standard" | "loose" {
+  if (PRE_LLM_FILTER_LEVEL === "strict") return "strict";
+  if (PRE_LLM_FILTER_LEVEL === "loose") return "loose";
+  return "standard";
+}
+
+function resolvePreLlmThreshold(base: number): number {
+  const level = resolvePreLlmFilterLevel();
+  if (level === "strict") {
+    return base * 0.8;
+  }
+  if (level === "loose") {
+    return Math.min(0.98, base * 1.25);
+  }
+  return base;
+}
+
+function buildContentInspectionText(item: CleanItem): {
+  text: string;
+  plainText: string;
+  lines: string[];
+} {
+  const merged = [item.title ?? "", item.markdown ?? "", item.text ?? ""]
+    .join("\n")
+    .replace(/\u0000/g, " ")
+    .trim();
+  const plainText = markdownToText(merged).replace(/\s+/g, " ").trim();
+  const lines = merged
+    .split(/\r?\n/)
+    .map((line) => line.replace(/\s+/g, " ").trim())
+    .filter(Boolean);
+  return { text: merged, plainText, lines };
+}
+
+function computeRepeatLineRatio(lines: string[]): number {
+  if (lines.length === 0) return 0;
+  const normalized = lines.map((line) => line.toLowerCase());
+  const uniqueCount = new Set(normalized).size;
+  return 1 - uniqueCount / normalized.length;
+}
+
+function computeTemplateLineRatio(lines: string[]): number {
+  if (lines.length === 0) return 0;
+  const templatePattern =
+    /(home|login|sign in|sign up|subscribe|newsletter|menu|copyright|all rights reserved|about us|privacy|terms|cookie|share|上一篇|下一篇|返回首页|登录|注册|订阅|版权|免责声明|相关阅读|热门推荐)/i;
+  const templateLineCount = lines.reduce((count, line) => {
+    if (line.length <= 60 && templatePattern.test(line)) {
+      return count + 1;
+    }
+    return count;
+  }, 0);
+  return templateLineCount / lines.length;
+}
+
+function computeErrorKeywordHits(text: string): number {
+  if (!text) return 0;
+  const lower = text.toLowerCase();
+  const keywords = [
+    "access denied",
+    "permission denied",
+    "forbidden",
+    "captcha",
+    "robot check",
+    "http error",
+    "error 403",
+    "error 404",
+    "error 500",
+    "request blocked",
+    "stack trace",
+    "service unavailable",
+    "bad gateway",
+    "gateway timeout",
+  ];
+  return keywords.reduce((count, keyword) => {
+    return lower.includes(keyword) ? count + 1 : count;
+  }, 0);
+}
+
+function computeGarbledRatio(text: string): {
+  garbledRatio: number;
+  replacementRatio: number;
+  hasLongNoiseRun: boolean;
+} {
+  if (!text) {
+    return { garbledRatio: 0, replacementRatio: 0, hasLongNoiseRun: false };
+  }
+  const totalChars = text.length;
+  const replacementCount = (text.match(/�/g) ?? []).length;
+  const controlCount = (text.match(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g) ?? [])
+    .length;
+  const mojibakeCount = (text.match(/[ÃÂÐÑØåæœ]/g) ?? []).length;
+  const weirdSymbolCount = (
+    text.match(/[^\u4e00-\u9fffA-Za-z0-9\s.,!?;:()'"“”‘’\-_/[\]{}<>@#$%^&*+=|\\]/g) ?? []
+  ).length;
+  const garbledCount = replacementCount + controlCount + mojibakeCount + weirdSymbolCount;
+  const longNoiseRunPattern =
+    /[^\u4e00-\u9fffA-Za-z0-9\s.,!?;:()'"“”‘’\-_/[\]{}<>@#$%^&*+=|\\]{20,}/;
+  return {
+    garbledRatio: totalChars > 0 ? garbledCount / totalChars : 0,
+    replacementRatio: totalChars > 0 ? replacementCount / totalChars : 0,
+    hasLongNoiseRun: longNoiseRunPattern.test(text),
+  };
+}
+
+function evaluatePreLlmQuality(item: CleanItem): {
+  pass: boolean;
+  reason?: PreLlmFilterReason;
+  metrics: Record<string, number>;
+} {
+  if (isPlaceholderContent(item)) {
+    return { pass: false, reason: "placeholder", metrics: { placeholder: 1 } };
+  }
+  const { text, plainText, lines } = buildContentInspectionText(item);
+  if (!plainText) {
+    return { pass: false, reason: "placeholder", metrics: { placeholder: 1 } };
+  }
+
+  const errorKeywordHits = computeErrorKeywordHits(text);
+  const templateLineRatio = computeTemplateLineRatio(lines);
+  const repeatLineRatio = computeRepeatLineRatio(lines);
+  const { garbledRatio, replacementRatio, hasLongNoiseRun } =
+    computeGarbledRatio(text);
+  const sentenceCount = (plainText.match(/[。！？.!?]/g) ?? []).length;
+
+  const metrics = {
+    errorKeywordHits,
+    templateLineRatio: roundScore(templateLineRatio),
+    repeatLineRatio: roundScore(repeatLineRatio),
+    garbledRatio: roundScore(garbledRatio),
+    replacementRatio: roundScore(replacementRatio),
+    sentenceCount,
+    plainTextLength: plainText.length,
+  };
+
+  const errorHitsThreshold = Math.max(
+    1,
+    Math.floor(resolvePreLlmThreshold(PRE_LLM_FILTER_ERROR_KEYWORD_HITS))
+  );
+  if (errorKeywordHits >= errorHitsThreshold && sentenceCount <= 3) {
+    return { pass: false, reason: "error_page", metrics };
+  }
+
+  const garbledRatioThreshold = resolvePreLlmThreshold(
+    PRE_LLM_FILTER_GARBLED_RATIO_THRESHOLD
+  );
+  const replacementRatioThreshold = resolvePreLlmThreshold(
+    PRE_LLM_FILTER_REPLACEMENT_RATIO_THRESHOLD
+  );
+  if (
+    garbledRatio >= garbledRatioThreshold ||
+    replacementRatio >= replacementRatioThreshold ||
+    hasLongNoiseRun
+  ) {
+    return { pass: false, reason: "garbled_content", metrics };
+  }
+
+  const templateRatioThreshold = resolvePreLlmThreshold(
+    PRE_LLM_FILTER_TEMPLATE_LINE_RATIO
+  );
+  if (templateLineRatio >= templateRatioThreshold && sentenceCount <= 4) {
+    return { pass: false, reason: "template_noise", metrics };
+  }
+
+  const repeatRatioThreshold = resolvePreLlmThreshold(
+    PRE_LLM_FILTER_REPEAT_LINE_RATIO
+  );
+  if (repeatLineRatio >= repeatRatioThreshold) {
+    return { pass: false, reason: "repeated_noise", metrics };
+  }
+
+  return { pass: true, metrics };
+}
+
+function applyPreLlmQualityGate(items: CleanItem[]): PreLlmFilterResult {
+  const passed: CleanItem[] = [];
+  const rejected: PreLlmFilterReject[] = [];
+
+  for (const item of items) {
+    const evaluated = evaluatePreLlmQuality(item);
+    if (evaluated.pass) {
+      passed.push(item);
+      continue;
+    }
+    rejected.push({
+      item,
+      reason: evaluated.reason ?? "placeholder",
+      metrics: evaluated.metrics,
+      sampleHash: hashString(
+        `${item.sourceId}:${(item.url ?? "").trim()}:${(item.text ?? "").slice(0, 120)}`
+      ),
+    });
+  }
+  return { passed, rejected };
+}
+
+function applySourceMinCharsFilter(
+  items: CleanItem[],
+  source: SourceWithRelations
+): CleanItem[] {
+  const minChars = resolveSourceFilterMinChars(source);
+  return items.filter((item) => {
+    if (isPlaceholderContent(item)) {
+      return false;
+    }
+    const baseText = (item.markdown || item.text || "").trim();
+    if (!baseText) return false;
+    if (minChars <= 0) return true;
+    const plainText = markdownToText(baseText);
+    return plainText.length >= minChars;
+  });
+}
+
 function normalizeCleanItem(item: CleanItem): CleanItem {
   const normalizedText = item.text.replace(/\s+/g, " ").trim();
   const fingerprint = hashString(
@@ -2141,6 +3264,22 @@ function resolveValidSourceUrls(source: WebSource | DarknetSource): string[] {
     });
 }
 
+function isRetryableSearchError(error: unknown): boolean {
+  if (error instanceof HttpStatusError) {
+    return error.statusCode >= 500;
+  }
+  if (error instanceof Error) {
+    return error.name === "AbortError";
+  }
+  return false;
+}
+
+async function waitForSearchRetry(attempt: number): Promise<void> {
+  if (SEARCH_QUERY_RETRY_BACKOFF_MS <= 0) return;
+  const delayMs = SEARCH_QUERY_RETRY_BACKOFF_MS * Math.max(1, attempt);
+  await new Promise((resolve) => setTimeout(resolve, delayMs));
+}
+
 async function fetchSearchSource(
   source: SearchEngineSource,
   context?: {
@@ -2186,202 +3325,361 @@ async function fetchSearchSource(
     return [];
   }
   const allItems: CleanItem[] = [];
-  const searchSuccessSignatures = await loadRunSearchSuccessSignatures(context?.runId);
+  const enableSearchSuccessDedup = shouldPersistSearchSuccessSignatures({
+    runId: context?.runId,
+    queryId: context?.queryId,
+  });
+  const searchSuccessSignatures = enableSearchSuccessDedup
+    ? await loadRunSearchSuccessSignatures(context?.runId)
+    : new Set<string>();
   const recallOrigin = context?.recallQueryOrigin ?? "static_fallback";
-  for (const recallQuery of searchQueries) {
-    const normalizedRecallQuery = recallQuery.trim();
-    if (!normalizedRecallQuery) continue;
-    const signature = buildSearchSuccessSignature({
-      sourceId: source.id,
-      provider,
-      recallQuery: normalizedRecallQuery,
-    });
-    if (searchSuccessSignatures.has(signature)) {
-      if (context?.runId) {
-        await publishTaskEvent(context.runId, {
-          type: "fetch-search-skip-retry-dup",
+  let successCount = 0;
+  let failedCount = 0;
+  const sourceStartedAt = Date.now();
+  logger.info("search source fetch start", {
+    sourceId: source.id,
+    sourceName: source.name,
+    runId: context?.runId,
+    queryId: context?.queryId,
+    provider,
+    recallQueryCount: searchQueries.length,
+    dedupByQueryRun: enableSearchSuccessDedup,
+  });
+  const queryTasks = searchQueries
+    .map((recallQuery, index) => ({
+      recallQuery: recallQuery.trim(),
+      queryIndex: index + 1,
+      totalQueries: searchQueries.length,
+    }))
+    .filter((task) => task.recallQuery.length > 0);
+  const queryTaskResults = await mapWithConcurrency(
+    queryTasks,
+    SEARCH_QUERY_CONCURRENCY,
+    async (task) => {
+      const signature = buildSearchSuccessSignature({
+        sourceId: source.id,
+        provider,
+        recallQuery: task.recallQuery,
+      });
+      if (searchSuccessSignatures.has(signature)) {
+        if (context?.runId) {
+          await publishTaskEvent(context.runId, {
+            type: "fetch-search-skip-retry-dup",
+            sourceId: source.id,
+            message: `跳过重复检索：${task.recallQuery}`,
+          });
+        }
+        writeWorkerApiIoLog({
+          event: "search-request-response",
+          runId: context?.runId,
+          queryId: context?.queryId,
           sourceId: source.id,
-          message: `跳过重复检索：${normalizedRecallQuery}`,
+          sourceName: source.name,
+          platform:
+            (
+              (source.search as unknown as { platform?: string | null })?.platform ??
+              "unknown"
+            ).toString(),
+          provider,
+          recallQuery: task.recallQuery,
+          recallQueryCount: searchQueries.length,
+          queryOrigin:
+            context?.recallQueries && context.recallQueries.length > 0
+              ? recallOrigin
+              : "objective_fallback",
+          rawRecallQueryCount: context?.recallQueries?.length ?? 0,
+          effectiveRecallQueryCount: searchQueries.length,
+          skippedByRetryDedup: true,
+          url: source.search?.apiEndpoint ?? "",
+          method: "SKIP",
+          statusCode: 0,
+          request: {
+            headers: {},
+            body: null,
+          },
+          response: {
+            body: "",
+          },
+          parsedCount: 0,
         });
-      }
-      writeWorkerApiIoLog({
-        event: "search-request-response",
-        runId: context?.runId,
-        queryId: context?.queryId,
-        sourceId: source.id,
-        sourceName: source.name,
-        platform:
-          (
-            (source.search as unknown as { platform?: string | null })?.platform ??
-            "unknown"
-          ).toString(),
-        provider,
-        recallQuery: normalizedRecallQuery,
-        recallQueryCount: searchQueries.length,
-        queryOrigin:
-          context?.recallQueries && context.recallQueries.length > 0
-            ? recallOrigin
-            : "objective_fallback",
-        rawRecallQueryCount: context?.recallQueries?.length ?? 0,
-        effectiveRecallQueryCount: searchQueries.length,
-        skippedByRetryDedup: true,
-        url: source.search?.apiEndpoint ?? "",
-        method: "SKIP",
-        statusCode: 0,
-        request: {
-          headers: {},
-          body: null,
-        },
-        response: {
-          body: "",
-        },
-        parsedCount: 0,
-      });
-      continue;
-    }
-    const request = buildSearchRequest(source, provider, normalizedRecallQuery);
-    if (!request.url) {
-      return [
-        {
-          text: `搜索引擎 ${source.name} 未配置 API Endpoint，当前 objective: ${objective}`,
-          markdown: `搜索引擎 ${source.name} 结果占位`,
-          platform: source.name,
-          time: new Date(),
-          sourceId: source.id,
-          sourceType: source.category,
-          sourceIsDarknet: source.isDarknet,
-        },
-      ];
-    }
-
-    try {
-      const response = await fetchWithTimeoutDetailed(request.url, {
-        method: request.method,
-        headers: request.headers,
-        body: request.body,
-      }, request.timeoutMs);
-      const parsedResult = parseSearchResult(response.text);
-      writeWorkerApiIoLog({
-        event: "search-request-response",
-        runId: context?.runId,
-        queryId: context?.queryId,
-        sourceId: source.id,
-        sourceName: source.name,
-        platform:
-          (
-            (source.search as unknown as { platform?: string | null })?.platform ??
-            "unknown"
-          ).toString(),
-        provider,
-        recallQuery: normalizedRecallQuery,
-        recallQueryCount: searchQueries.length,
-        queryOrigin:
-          context?.recallQueries && context.recallQueries.length > 0
-            ? recallOrigin
-            : "objective_fallback",
-        rawRecallQueryCount: context?.recallQueries?.length ?? 0,
-        effectiveRecallQueryCount: searchQueries.length,
-        skippedByRetryDedup: false,
-        timeoutMs: request.timeoutMs ?? 12_000,
-        url: request.url,
-        method: request.method,
-        statusCode: response.statusCode,
-        request: {
-          headers: request.headers,
-          body: request.body ?? null,
-        },
-        response: {
-          body: response.text,
-        },
-        parsedCount: parsedResult.items.length,
-        requestId: parsedResult.requestId,
-      });
-      searchSuccessSignatures.add(signature);
-      if (context?.runId) {
-        await persistRunSearchSuccessSignatures(context.runId, searchSuccessSignatures);
+        return { success: false, failed: false, items: [] as CleanItem[] };
       }
 
-      allItems.push(
-        ...parsedResult.items.map((item) => ({
-          title: item.title,
-          text: item.text,
-          markdown: item.markdown,
-          platform: source.name,
-          url: item.url,
-          time: item.time ? new Date(item.time) : new Date(),
+      const request = buildSearchRequest(source, provider, task.recallQuery);
+      if (!request.url) {
+        logger.error("search source missing api endpoint", {
           sourceId: source.id,
-          sourceType: source.category,
-          sourceIsDarknet: source.isDarknet,
-          sourceRequestId: parsedResult.requestId,
-        }))
-      );
-    } catch (error) {
-      writeWorkerApiIoLog({
-        event: "search-request-response",
-        runId: context?.runId,
-        queryId: context?.queryId,
-        sourceId: source.id,
-        sourceName: source.name,
-        platform:
-          (
-            (source.search as unknown as { platform?: string | null })?.platform ??
-            "unknown"
-          ).toString(),
-        provider,
-        recallQuery: normalizedRecallQuery,
-        recallQueryCount: searchQueries.length,
-        queryOrigin:
-          context?.recallQueries && context.recallQueries.length > 0
-            ? recallOrigin
-            : "objective_fallback",
-        rawRecallQueryCount: context?.recallQueries?.length ?? 0,
-        effectiveRecallQueryCount: searchQueries.length,
-        skippedByRetryDedup: false,
-        timeoutMs: request.timeoutMs ?? 12_000,
-        url: request.url,
-        method: request.method,
-        statusCode: -1,
-        request: {
-          headers: request.headers,
-          body: request.body ?? null,
-        },
-        response: {
-          body: "",
-        },
-        parsedCount: 0,
-        error:
-          error instanceof Error
-            ? error.name === "AbortError"
-              ? `Request timeout after ${request.timeoutMs ?? 12_000}ms`
-              : error.message
-            : "unknown search request error",
-      });
-      logger.error("search request failed", {
-        sourceId: source.id,
-        sourceName: source.name,
-        runId: context?.runId,
-        queryId: context?.queryId,
-        provider,
-        url: request.url,
-        error: logger.normalizeError(error),
-      });
+          sourceName: source.name,
+          runId: context?.runId,
+          queryId: context?.queryId,
+          provider,
+          recallQuery: task.recallQuery,
+          queryIndex: task.queryIndex,
+          totalQueries: task.totalQueries,
+        });
+        return { success: false, failed: true, items: [] as CleanItem[] };
+      }
+
+      for (let attempt = 1; attempt <= SEARCH_QUERY_RETRY_LIMIT + 1; attempt++) {
+        const queryStartedAt = Date.now();
+        logger.info("search request start", {
+          sourceId: source.id,
+          sourceName: source.name,
+          runId: context?.runId,
+          queryId: context?.queryId,
+          provider,
+          recallQuery: task.recallQuery,
+          queryIndex: task.queryIndex,
+          totalQueries: task.totalQueries,
+          attempt,
+          maxAttempts: SEARCH_QUERY_RETRY_LIMIT + 1,
+          timeoutMs: request.timeoutMs ?? 12_000,
+          url: request.url,
+          method: request.method,
+        });
+        if (context?.runId) {
+          await publishTaskEvent(context.runId, {
+            type: "fetch-search-query-start",
+            sourceId: source.id,
+            message: `检索中 (${task.queryIndex}/${task.totalQueries})：${task.recallQuery}`,
+            provider,
+            queryIndex: task.queryIndex,
+            totalQueries: task.totalQueries,
+            timeoutMs: request.timeoutMs ?? 12_000,
+          });
+        }
+
+        try {
+          const response = await fetchWithTimeoutDetailed(
+            request.url,
+            {
+              method: request.method,
+              headers: request.headers,
+              body: request.body,
+            },
+            request.timeoutMs
+          );
+          const parsedResult = parseSearchResult(response.text);
+          writeWorkerApiIoLog({
+            event: "search-request-response",
+            runId: context?.runId,
+            queryId: context?.queryId,
+            sourceId: source.id,
+            sourceName: source.name,
+            platform:
+              (
+                (source.search as unknown as { platform?: string | null })?.platform ??
+                "unknown"
+              ).toString(),
+            provider,
+            recallQuery: task.recallQuery,
+            recallQueryCount: searchQueries.length,
+            queryOrigin:
+              context?.recallQueries && context.recallQueries.length > 0
+                ? recallOrigin
+                : "objective_fallback",
+            rawRecallQueryCount: context?.recallQueries?.length ?? 0,
+            effectiveRecallQueryCount: searchQueries.length,
+            skippedByRetryDedup: false,
+            timeoutMs: request.timeoutMs ?? 12_000,
+            url: request.url,
+            method: request.method,
+            statusCode: response.statusCode,
+            request: {
+              headers: request.headers,
+              body: request.body ?? null,
+            },
+            response: {
+              body: response.text,
+            },
+            parsedCount: parsedResult.items.length,
+            requestId: parsedResult.requestId,
+          });
+          if (response.statusCode === 200 && parsedResult.items.length === 0) {
+            logger.warn("search response parsed empty", {
+              sourceId: source.id,
+              sourceName: source.name,
+              runId: context?.runId,
+              queryId: context?.queryId,
+              provider,
+              recallQuery: task.recallQuery,
+              queryIndex: task.queryIndex,
+              totalQueries: task.totalQueries,
+              rootKeys: parsedResult.rootKeys,
+            });
+          }
+          searchSuccessSignatures.add(signature);
+          if (enableSearchSuccessDedup && context?.runId) {
+            await persistRunSearchSuccessSignatures(
+              context.runId,
+              searchSuccessSignatures
+            );
+          }
+          const elapsedMs = Date.now() - queryStartedAt;
+          logger.info("search request done", {
+            sourceId: source.id,
+            sourceName: source.name,
+            runId: context?.runId,
+            queryId: context?.queryId,
+            provider,
+            recallQuery: task.recallQuery,
+            queryIndex: task.queryIndex,
+            totalQueries: task.totalQueries,
+            statusCode: response.statusCode,
+            parsedCount: parsedResult.items.length,
+            elapsedMs,
+            attempt,
+          });
+          if (context?.runId) {
+            await publishTaskEvent(context.runId, {
+              type: "fetch-search-query-done",
+              sourceId: source.id,
+              message: `检索完成 (${task.queryIndex}/${task.totalQueries})：${task.recallQuery}`,
+              provider,
+              queryIndex: task.queryIndex,
+              totalQueries: task.totalQueries,
+              parsedCount: parsedResult.items.length,
+              elapsedMs,
+            });
+          }
+          return {
+            success: true,
+            failed: false,
+            items: parsedResult.items.map((item) => ({
+              title: item.title,
+              text: item.text,
+              markdown: item.markdown,
+              platform: source.name,
+              url: item.url,
+              time: item.time ? new Date(item.time) : new Date(),
+              sourceId: source.id,
+              sourceType: source.category,
+              sourceIsDarknet: source.isDarknet,
+              sourceRequestId: parsedResult.requestId,
+            })),
+          };
+        } catch (error) {
+          const elapsedMs = Date.now() - queryStartedAt;
+          const retryable = isRetryableSearchError(error);
+          const canRetry = retryable && attempt <= SEARCH_QUERY_RETRY_LIMIT;
+          if (canRetry) {
+            logger.warn("search request retrying", {
+              sourceId: source.id,
+              sourceName: source.name,
+              runId: context?.runId,
+              queryId: context?.queryId,
+              provider,
+              recallQuery: task.recallQuery,
+              queryIndex: task.queryIndex,
+              totalQueries: task.totalQueries,
+              elapsedMs,
+              attempt,
+              nextAttempt: attempt + 1,
+              error: logger.normalizeError(error),
+            });
+            await waitForSearchRetry(attempt);
+            continue;
+          }
+          writeWorkerApiIoLog({
+            event: "search-request-response",
+            runId: context?.runId,
+            queryId: context?.queryId,
+            sourceId: source.id,
+            sourceName: source.name,
+            platform:
+              (
+                (source.search as unknown as { platform?: string | null })?.platform ??
+                "unknown"
+              ).toString(),
+            provider,
+            recallQuery: task.recallQuery,
+            recallQueryCount: searchQueries.length,
+            queryOrigin:
+              context?.recallQueries && context.recallQueries.length > 0
+                ? recallOrigin
+                : "objective_fallback",
+            rawRecallQueryCount: context?.recallQueries?.length ?? 0,
+            effectiveRecallQueryCount: searchQueries.length,
+            skippedByRetryDedup: false,
+            timeoutMs: request.timeoutMs ?? 12_000,
+            url: request.url,
+            method: request.method,
+            statusCode: -1,
+            request: {
+              headers: request.headers,
+              body: request.body ?? null,
+            },
+            response: {
+              body: "",
+            },
+            parsedCount: 0,
+            error:
+              error instanceof Error
+                ? error.name === "AbortError"
+                  ? `Request timeout after ${request.timeoutMs ?? 12_000}ms`
+                  : error.message
+                : "unknown search request error",
+          });
+          logger.error("search request failed", {
+            sourceId: source.id,
+            sourceName: source.name,
+            runId: context?.runId,
+            queryId: context?.queryId,
+            provider,
+            url: request.url,
+            queryIndex: task.queryIndex,
+            totalQueries: task.totalQueries,
+            elapsedMs,
+            attempt,
+            error: logger.normalizeError(error),
+          });
+          if (context?.runId) {
+            await publishTaskEvent(context.runId, {
+              type: "fetch-search-query-fail",
+              sourceId: source.id,
+              message: `检索失败 (${task.queryIndex}/${task.totalQueries})：${task.recallQuery}`,
+              provider,
+              queryIndex: task.queryIndex,
+              totalQueries: task.totalQueries,
+              elapsedMs,
+              error:
+                error instanceof Error
+                  ? error.name === "AbortError"
+                    ? `Request timeout after ${request.timeoutMs ?? 12_000}ms`
+                    : error.message
+                  : "unknown search request error",
+            });
+          }
+          return { success: false, failed: true, items: [] as CleanItem[] };
+        }
+      }
+      return { success: false, failed: true, items: [] as CleanItem[] };
     }
+  );
+  for (const result of queryTaskResults) {
+    if (result.success) {
+      successCount += 1;
+    }
+    if (result.failed) {
+      failedCount += 1;
+    }
+    allItems.push(...result.items);
   }
+  logger.info("search source fetch summary", {
+    sourceId: source.id,
+    sourceName: source.name,
+    runId: context?.runId,
+    queryId: context?.queryId,
+    provider,
+    recallQueryCount: searchQueries.length,
+    successCount,
+    failedCount,
+    totalItems: allItems.length,
+    elapsedMs: Date.now() - sourceStartedAt,
+    dedupByQueryRun: enableSearchSuccessDedup,
+  });
 
   const dedupedItems = deduplicateItemsByUrlAndFingerprint(allItems);
-  if (!dedupedItems.length) {
-    return [
-      {
-        text: `搜索引擎 ${source.name} 返回空数据`,
-        markdown: `空数据`,
-        platform: source.name,
-        time: new Date(),
-        sourceId: source.id,
-        sourceType: source.category,
-        sourceIsDarknet: source.isDarknet,
-      },
-    ];
-  }
   return dedupedItems;
 }
 
@@ -2473,6 +3771,8 @@ async function fetchSocialSource(
   const gatherMatchMode = mapQueryFilterModeToGatherMatchMode(
     sourcePolicy?.contentFilterMode
   );
+  const gatherSetupHint =
+    "cd apps/gather && uv pip install --python .venv/bin/python --index-url https://pypi.org/simple --force-reinstall playwright && uv run python -m playwright install chromium";
 
   try {
     for (const recallQuery of normalizedBatchedQueries) {
@@ -2525,9 +3825,26 @@ async function fetchSocialSource(
     }
     return deduplicateItemsByUrlAndFingerprint(normalizedItems);
   } catch (error) {
-    console.error(`[collector] fetchSocialSource error:`, error);
+    const message = error instanceof Error ? error.message : String(error);
+    const isPlaywrightMissing =
+      /Playwright driver binary is missing/i.test(message) ||
+      /uv run (python -m )?playwright install chromium/i.test(message) ||
+      /No module named 'playwright\.__main__'/i.test(message);
+    if (isPlaywrightMissing) {
+      logger.error("gather playwright runtime missing", {
+        sourceId: source.id,
+        sourceName: source.name,
+        gatherUrl,
+        hint: gatherSetupHint,
+        error: message,
+      });
+    } else {
+      console.error(`[collector] fetchSocialSource error:`, error);
+    }
     throw new Error(
-      `Social gather failed for ${source.name}: ${(error as Error).message}`
+      `Social gather failed for ${source.name}: ${message}${
+        isPlaywrightMissing ? `; fix: ${gatherSetupHint}` : ""
+      }`
     );
   }
 }
@@ -3303,7 +4620,7 @@ async function upsertContentSubjectMatches(input: {
           : ContentSubjectMatchSource.GATHER
         : ContentSubjectMatchSource.FUSED;
 
-    await prisma.contentSubjectMatch.upsert({
+    await prismaAny.contentSubjectMatch.upsert({
       where: {
         contentId_keywordId: {
           contentId,
@@ -3405,7 +4722,8 @@ async function analyzeContentWithRetry(
   keywords: QueryKeyword[],
   keywordsSummary: string,
   queryId: string,
-  runId: string
+  runId: string,
+  summaryInput: PreparedSummaryContent
 ): Promise<ContentAnalyzeResult> {
   const subjectInput = keywords.map((keyword) => ({
     keywordId: keyword.id,
@@ -3418,7 +4736,13 @@ async function analyzeContentWithRetry(
   const prompt = stripPromptLike(
     `你是内容分析器。请只输出 JSON，结构为：
 {
+  "title": "简洁、准确的中文标题（4-120字）",
   "summary": "2-3句中文摘要（30-400字）",
+  ${
+    CONTENT_AUTO_CLEAN_ENABLED
+      ? '"cleanedMarkdown": "清洗后的 Markdown 正文（800-1200字，保留关键信息，禁止新增事实）",'
+      : ""
+  }
   "relevance": true/false,
   "subjects": [
     {
@@ -3430,26 +4754,42 @@ async function analyzeContentWithRetry(
 }
 
 要求：
-1) summary 基于内容核心信息，不要编造；
-2) relevance 表示内容是否与查询主题整体相关；
-3) subjects 必须覆盖每个 keywordId；
-4) score 以主题语义为主，不能因为单词子串命中就高分；
-5) 只出现词形但语义无关时，给低分（接近 0）。
+1) title 必须忠于原文，不夸张、不加结论；
+2) summary 基于内容核心信息，不要编造；
+3) relevance 表示内容是否与查询主题整体相关；
+4) subjects 必须覆盖每个 keywordId；
+5) score 以主题语义为主，不能因为单词子串命中就高分；
+6) 只出现词形但语义无关时，给低分（接近 0）;
+${
+  CONTENT_AUTO_CLEAN_ENABLED
+    ? "7) cleanedMarkdown 仅可忠实转述原文，不得引入新事实、外部背景或推断。"
+    : ""
+}
 
 查询关键词概览: ${keywordsSummary}
 主题明细(JSON): ${JSON.stringify(subjectInput)}
 内容:
-${item.text.slice(0, 8000)}`
+${summaryInput.promptText}`
   );
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
-      const result = await llmGateway.json<z.infer<typeof ContentAnalyzeSchema>>(
+      const schema = CONTENT_AUTO_CLEAN_ENABLED
+        ? ContentAnalyzeSchemaWithRewrite
+        : ContentAnalyzeSchema;
+      const result = await llmGateway.json<
+        z.infer<typeof ContentAnalyzeSchema> | z.infer<typeof ContentAnalyzeSchemaWithRewrite>
+      >(
         "content-analyze",
         {
         prompt: redact(prompt),
-        schema: ContentAnalyzeSchema,
+        schema,
         temperature: 0.3,
-        metadata: { queryId, source: item.platform },
+        metadata: {
+          queryId,
+          source: item.platform,
+          extractorUsed: summaryInput.extractorUsed,
+          qualityScore: summaryInput.qualityScore,
+        },
         }
       );
       const subjectsByKeyword = new Map<
@@ -3477,7 +4817,10 @@ ${item.text.slice(0, 8000)}`
         `[collector] content-analyze-success attempt=${attempt} source=${item.platform} summary=${result.summary}`
       );
       return {
+        title: result.title,
         summary: result.summary,
+        cleanedMarkdown:
+          "cleanedMarkdown" in result ? result.cleanedMarkdown : null,
         relevance: result.relevance,
         subjectsByKeyword,
       };
@@ -3497,6 +4840,79 @@ ${item.text.slice(0, 8000)}`
     }
   }
   throw new Error("内容分析失败");
+}
+
+async function analyzeContentMeaningWithRetry(
+  item: CleanItem,
+  runId: string,
+  queryId: string
+): Promise<ContentMeaningResult> {
+  const preview = markdownToText(`${item.title ?? ""}\n${item.markdown ?? item.text}`)
+    .slice(0, CONTENT_MEANING_GATE_PREVIEW_CHARS)
+    .trim();
+  if (!preview) {
+    return { meaningful: false, score: 0, reason: "empty_preview" };
+  }
+  const prompt = stripPromptLike(
+    `你是内容质量闸门。请只输出 JSON，结构为：
+{
+  "meaningful": true/false,
+  "score": 0-1,
+  "reason": "不超过240字的中文原因"
+}
+
+判断标准：
+1) meaningful=true 仅当内容包含可阅读、可理解且有信息价值的主体信息；
+2) meaningful=false 适用于错误页、跳转页、模板噪音、碎片句、广告残片、无语义乱码；
+3) 只判断“是否有意义”，不做扩写；
+4) 严格基于输入内容，不要编造。
+
+平台: ${item.platform}
+链接: ${item.url ?? "N/A"}
+内容前${CONTENT_MEANING_GATE_PREVIEW_CHARS}字:
+${preview}`
+  );
+
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    try {
+      const result = await llmGateway.json<z.infer<typeof ContentMeaningSchema>>(
+        "content-meaning-gate",
+        {
+          prompt: redact(prompt),
+          schema: ContentMeaningSchema,
+          temperature: 0.1,
+          metadata: {
+            runId,
+            queryId,
+            source: item.platform,
+            sourceId: item.sourceId,
+          },
+        }
+      );
+      return {
+        meaningful: result.meaningful && result.score >= CONTENT_MEANING_GATE_MIN_SCORE,
+        score: roundScore(result.score),
+        reason: result.reason.trim().slice(0, 240),
+      };
+    } catch (error) {
+      if (attempt === 2) {
+        logger.warn("content meaning gate failed, fallback pass", {
+          runId,
+          queryId,
+          source: item.platform,
+          sourceId: item.sourceId,
+          error: logger.normalizeError(error),
+        });
+        return {
+          meaningful: true,
+          score: 0.5,
+          reason: "meaning_gate_failed_fallback_pass",
+        };
+      }
+      await new Promise((resolve) => setTimeout(resolve, 300 * attempt));
+    }
+  }
+  return { meaningful: true, score: 0.5, reason: "meaning_gate_fallback_pass" };
 }
 
 async function findExistingContentBySourceRecord(
@@ -3582,6 +4998,146 @@ function buildFallbackSummary(item: CleanItem): string {
   return normalized.slice(0, 180);
 }
 
+function toCleanLines(source: string): string[] {
+  const seen = new Set<string>();
+  return source
+    .split(/\r?\n/)
+    .map((line) => line.replace(/\s+/g, " ").trim())
+    .filter(Boolean)
+    .filter((line) => {
+      const lower = line.toLowerCase();
+      if (
+        /^(home|login|sign in|sign up|register|subscribe|newsletter|share|menu|copyright|all rights reserved)$/.test(
+          lower
+        )
+      ) {
+        return false;
+      }
+      if (
+        /^(首页|登录|注册|订阅|分享|菜单|版权所有|免责声明|上一篇|下一篇)$/.test(
+          line
+        )
+      ) {
+        return false;
+      }
+      if (line.length < 2) return false;
+      if (seen.has(lower)) return false;
+      seen.add(lower);
+      return true;
+    });
+}
+
+function markdownToText(markdown: string): string {
+  return markdown
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/!\[[^\]]*\]\([^)]+\)/g, " ")
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+    .replace(/^#{1,6}\s+/gm, "")
+    .replace(/^>\s+/gm, "")
+    .replace(/^\s*[-*+]\s+/gm, "")
+    .replace(/^\s*\d+\.\s+/gm, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function calculateSummaryQuality(cleanLines: string[], cleanText: string): number {
+  const punctuationCount = (cleanText.match(/[。！？.!?]/g) ?? []).length;
+  const baseQuality =
+    Math.min(0.6, cleanText.length / 3000) +
+    Math.min(0.2, cleanLines.length / 24) +
+    Math.min(0.2, punctuationCount / 16);
+  return roundScore(Math.max(0, Math.min(1, baseQuality)));
+}
+
+function buildPreparedSummaryContent(input: {
+  itemTitle?: string;
+  extractorUsed: PreparedSummaryContent["extractorUsed"];
+  source: string;
+}): PreparedSummaryContent {
+  const cleanLines = toCleanLines(input.source);
+  const cleanMarkdown = cleanLines.join("\n\n").slice(0, CONTENT_FORMATTER_MAX_INPUT_CHARS);
+  const cleanText = markdownToText(cleanMarkdown).slice(0, 12000);
+  const qualityScore = calculateSummaryQuality(cleanLines, cleanText);
+  const promptText = [
+    input.itemTitle ? `标题: ${input.itemTitle}` : "",
+    "正文(Markdown):",
+    cleanMarkdown.slice(0, 7000),
+    "",
+    "正文(PlainText):",
+    cleanText.slice(0, 2500),
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  return {
+    markdown: cleanMarkdown || input.source,
+    text: cleanText || input.source.replace(/\s+/g, " ").trim(),
+    promptText: promptText.slice(0, 9500),
+    extractorUsed: input.extractorUsed,
+    qualityScore,
+  };
+}
+
+function normalizeGeneratedMarkdown(markdown: string | null | undefined): string {
+  const raw = String(markdown ?? "")
+    .replace(/```markdown\n?/gi, "")
+    .replace(/```/g, "")
+    .trim();
+  if (!raw) return "";
+  const cleanLines = toCleanLines(raw);
+  const merged = cleanLines.join("\n\n").trim();
+  if (merged.length < CONTENT_CLEAN_MARKDOWN_MIN_CHARS) {
+    return "";
+  }
+  return merged.slice(0, CONTENT_CLEAN_MARKDOWN_MAX_CHARS);
+}
+
+function normalizeGeneratedSummary(summary: string | null | undefined): string {
+  return String(summary ?? "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 400);
+}
+
+function normalizeGeneratedTitle(title: string | null | undefined): string {
+  return String(title ?? "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 120);
+}
+
+async function prepareContentForSummary(
+  item: CleanItem
+): Promise<PreparedSummaryContent> {
+  const markdownSource = (item.markdown ?? "").trim();
+  const textSource = (item.text ?? "").trim();
+  const extractorUsed: PreparedSummaryContent["extractorUsed"] = markdownSource
+    ? "markdown"
+    : textSource
+      ? "text"
+      : "empty";
+  const fallbackSource = (markdownSource || textSource).slice(
+    0,
+    CONTENT_FORMATTER_MAX_INPUT_CHARS
+  );
+  if (!fallbackSource) {
+    return {
+      markdown: "",
+      text: "",
+      promptText: "",
+      extractorUsed,
+      qualityScore: 0,
+    };
+  }
+
+  return buildPreparedSummaryContent({
+    itemTitle: item.title,
+    extractorUsed,
+    source: fallbackSource,
+  });
+}
+
 async function fetchWithTimeout(
   url: string,
   options: RequestInit = {}
@@ -3603,7 +5159,7 @@ async function fetchWithTimeoutDetailed(
   try {
     const response = await fetch(url, { ...options, signal: controller.signal });
     if (!response.ok) {
-      throw new Error(`请求 ${url} 失败 (${response.status})`);
+      throw new HttpStatusError(`请求 ${url} 失败 (${response.status})`, response.status);
     }
     const text = await response.text();
     return {
@@ -3634,15 +5190,28 @@ function toMarkdown(html: string) {
 
 type SearchResultItem = {
   title?: string;
+  name?: string;
+  headline?: string;
   snippet?: string;
   summary?: string;
+  description?: string;
+  body?: string;
+  text?: string;
   content?: string;
+  content_text?: string;
+  markdown?: string;
   link?: string;
   url?: string;
+  href?: string;
+  source_url?: string;
+  sourceUrl?: string;
   excerpts?: string[] | Array<{ text?: string; content?: string }>;
   publish_date?: string;
   date?: string;
   publishedAt?: string;
+  timestamp?: string;
+  created_at?: string;
+  createdAt?: string;
 };
 
 type SearchProvider = "parallel" | "tavily" | "anspire" | "generic";
@@ -3725,7 +5294,7 @@ function buildSearchRequest(
       toNumberOption(options.request_timeout_ms, options.requestTimeoutMs) ??
       toNumberOption(options.timeout_ms, options.timeoutMs) ??
       toNumberOption(process.env.WORKER_PARALLEL_REQUEST_TIMEOUT_MS) ??
-      90_000;
+      15_000;
     const payload: Record<string, unknown> = {
       mode: pickString(options.mode) ?? "one-shot",
       objective,
@@ -3860,45 +5429,92 @@ function parseSearchResult(payload: string): {
     time?: string;
   }>;
   requestId?: string;
+  rootKeys?: string[];
 } {
   try {
     const json = JSON.parse(payload);
     const root = asObject(json);
     const requestId = pickString(root.Uuid, root.uuid, root.requestId);
-    const candidates = [
-      root.items,
-      root.results,
-      root.data,
-      root.output,
-    ];
-    const rows = candidates.find((candidate) => Array.isArray(candidate));
+    const rows = resolveSearchResultRows(root);
     if (Array.isArray(rows)) {
       const items = (rows as SearchResultItem[])
         .map((item) => normalizeSearchResultItem(item))
         .filter((item) => Boolean(item.text));
-      return { items, requestId };
+      return { items, requestId, rootKeys: Object.keys(root).slice(0, 30) };
     }
+    return { items: [], requestId, rootKeys: Object.keys(root).slice(0, 30) };
   } catch {
     // ignore
   }
   return { items: [] };
 }
 
+function resolveSearchResultRows(root: Record<string, unknown>): unknown[] | null {
+  const candidates: unknown[] = [
+    root.items,
+    root.results,
+    root.data,
+    root.output,
+    root.sources,
+    pickNestedArray(root, ["data", "items"]),
+    pickNestedArray(root, ["data", "results"]),
+    pickNestedArray(root, ["data", "output"]),
+    pickNestedArray(root, ["data", "sources"]),
+    pickNestedArray(root, ["result", "items"]),
+    pickNestedArray(root, ["result", "results"]),
+    pickNestedArray(root, ["result", "sources"]),
+    pickNestedArray(root, ["response", "items"]),
+    pickNestedArray(root, ["response", "results"]),
+    pickNestedArray(root, ["response", "sources"]),
+    pickNestedArray(root, ["output", "items"]),
+    pickNestedArray(root, ["output", "results"]),
+  ];
+  const rows = candidates.find((candidate) => Array.isArray(candidate));
+  return Array.isArray(rows) ? rows : null;
+}
+
+function pickNestedArray(
+  root: Record<string, unknown>,
+  path: string[]
+): unknown[] | null {
+  let current: unknown = root;
+  for (const key of path) {
+    if (!current || typeof current !== "object" || Array.isArray(current)) {
+      return null;
+    }
+    current = (current as Record<string, unknown>)[key];
+  }
+  return Array.isArray(current) ? current : null;
+}
+
 function normalizeSearchResultItem(item: SearchResultItem) {
+  const title = pickString(item.title, item.name, item.headline);
   const excerpts = normalizeExcerpts(item.excerpts);
-  const text =
-    item.snippet ||
-    item.summary ||
-    item.content ||
-    excerpts ||
-    "";
+  const text = pickString(
+    item.snippet,
+    item.summary,
+    item.description,
+    item.body,
+    item.text,
+    item.content,
+    item.content_text,
+    item.markdown,
+    excerpts
+  ) ?? "";
 
   return {
-    title: item.title,
+    title,
     text,
-    markdown: text,
-    url: item.link || item.url,
-    time: item.publishedAt || item.publish_date || item.date,
+    markdown: pickString(item.markdown) ?? text,
+    url: pickString(item.link, item.url, item.href, item.source_url, item.sourceUrl),
+    time: pickString(
+      item.publishedAt,
+      item.publish_date,
+      item.date,
+      item.timestamp,
+      item.createdAt,
+      item.created_at
+    ),
   };
 }
 

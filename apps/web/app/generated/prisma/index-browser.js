@@ -120,31 +120,6 @@ exports.Prisma.TransactionIsolationLevel = makeStrictEnum({
   Serializable: 'Serializable'
 });
 
-exports.Prisma.CategoryScalarFieldEnum = {
-  id: 'id',
-  name: 'name',
-  description: 'description',
-  createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
-};
-
-exports.Prisma.KeywordScalarFieldEnum = {
-  id: 'id',
-  name: 'name',
-  description: 'description',
-  lang: 'lang',
-  categoryId: 'categoryId',
-  includes: 'includes',
-  excludes: 'excludes',
-  deriveLanguages: 'deriveLanguages',
-  enableAiExpand: 'enableAiExpand',
-  synonyms: 'synonyms',
-  active: 'active',
-  deriveSourceId: 'deriveSourceId',
-  createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
-};
-
 exports.Prisma.ProxyScalarFieldEnum = {
   id: 'id',
   name: 'name',
@@ -242,29 +217,6 @@ exports.Prisma.SocialMediaSourceConfigScalarFieldEnum = {
   updatedAt: 'updatedAt'
 };
 
-exports.Prisma.QueryScalarFieldEnum = {
-  id: 'id',
-  name: 'name',
-  description: 'description',
-  enabled: 'enabled',
-  rateLimit: 'rateLimit',
-  frequency: 'frequency',
-  cronSchedule: 'cronSchedule',
-  rules: 'rules',
-  createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
-};
-
-exports.Prisma.QuerySourcePolicyScalarFieldEnum = {
-  id: 'id',
-  queryId: 'queryId',
-  sourceId: 'sourceId',
-  contentFilterEnabled: 'contentFilterEnabled',
-  contentFilterMode: 'contentFilterMode',
-  createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
-};
-
 exports.Prisma.TopicScalarFieldEnum = {
   id: 'id',
   name: 'name',
@@ -342,28 +294,6 @@ exports.Prisma.JobRunScalarFieldEnum = {
   updatedAt: 'updatedAt'
 };
 
-exports.Prisma.QueryRunScalarFieldEnum = {
-  id: 'id',
-  queryId: 'queryId',
-  status: 'status',
-  progress: 'progress',
-  error: 'error',
-  startedAt: 'startedAt',
-  finishedAt: 'finishedAt',
-  meta: 'meta',
-  createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
-};
-
-exports.Prisma.TaskEventScalarFieldEnum = {
-  id: 'id',
-  runId: 'runId',
-  type: 'type',
-  message: 'message',
-  data: 'data',
-  createdAt: 'createdAt'
-};
-
 exports.Prisma.ContentScalarFieldEnum = {
   id: 'id',
   title: 'title',
@@ -375,27 +305,6 @@ exports.Prisma.ContentScalarFieldEnum = {
   url: 'url',
   image: 'image',
   meta: 'meta',
-  createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
-};
-
-exports.Prisma.ContentKeywordScalarFieldEnum = {
-  id: 'id',
-  contentId: 'contentId',
-  keywordId: 'keywordId'
-};
-
-exports.Prisma.ContentSubjectMatchScalarFieldEnum = {
-  id: 'id',
-  contentId: 'contentId',
-  keywordId: 'keywordId',
-  ruleScore: 'ruleScore',
-  aiScore: 'aiScore',
-  matchScore: 'matchScore',
-  matchedIncludes: 'matchedIncludes',
-  matchedExcludes: 'matchedExcludes',
-  matchSource: 'matchSource',
-  reason: 'reason',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 };
@@ -544,15 +453,15 @@ exports.Prisma.QueryMode = {
   insensitive: 'insensitive'
 };
 
-exports.Prisma.NullsOrder = {
-  first: 'first',
-  last: 'last'
-};
-
 exports.Prisma.JsonNullValueFilter = {
   DbNull: Prisma.DbNull,
   JsonNull: Prisma.JsonNull,
   AnyNull: Prisma.AnyNull
+};
+
+exports.Prisma.NullsOrder = {
+  first: 'first',
+  last: 'last'
 };
 exports.ProxyType = exports.$Enums.ProxyType = {
   HTTP: 'HTTP',
@@ -607,12 +516,6 @@ exports.QueryFrequency = exports.$Enums.QueryFrequency = {
   CRONTAB: 'CRONTAB'
 };
 
-exports.QueryContentFilterMode = exports.$Enums.QueryContentFilterMode = {
-  TERM_AND_WORD_BOUNDARY: 'TERM_AND_WORD_BOUNDARY',
-  CONTAINS: 'CONTAINS',
-  SMART: 'SMART'
-};
-
 exports.TopicTermType = exports.$Enums.TopicTermType = {
   CORE: 'CORE',
   EXPANSION: 'EXPANSION',
@@ -639,13 +542,6 @@ exports.ContentType = exports.$Enums.ContentType = {
   Darknet: 'Darknet'
 };
 
-exports.ContentSubjectMatchSource = exports.$Enums.ContentSubjectMatchSource = {
-  QUERY: 'QUERY',
-  GATHER: 'GATHER',
-  AI: 'AI',
-  FUSED: 'FUSED'
-};
-
 exports.FeedbackVote = exports.$Enums.FeedbackVote = {
   UP: 'UP',
   DOWN: 'DOWN',
@@ -664,8 +560,6 @@ exports.MaterialSource = exports.$Enums.MaterialSource = {
 };
 
 exports.Prisma.ModelName = {
-  Category: 'Category',
-  Keyword: 'Keyword',
   Proxy: 'Proxy',
   Credential: 'Credential',
   Source: 'Source',
@@ -674,8 +568,6 @@ exports.Prisma.ModelName = {
   DarknetSourceConfig: 'DarknetSourceConfig',
   SearchEngineSourceConfig: 'SearchEngineSourceConfig',
   SocialMediaSourceConfig: 'SocialMediaSourceConfig',
-  Query: 'Query',
-  QuerySourcePolicy: 'QuerySourcePolicy',
   Topic: 'Topic',
   TopicTerm: 'TopicTerm',
   TopicSource: 'TopicSource',
@@ -683,11 +575,7 @@ exports.Prisma.ModelName = {
   JobTopic: 'JobTopic',
   JobSource: 'JobSource',
   JobRun: 'JobRun',
-  QueryRun: 'QueryRun',
-  TaskEvent: 'TaskEvent',
   Content: 'Content',
-  ContentKeyword: 'ContentKeyword',
-  ContentSubjectMatch: 'ContentSubjectMatch',
   ContentEntity: 'ContentEntity',
   ContentTopicScore: 'ContentTopicScore',
   ContentTopicFeedback: 'ContentTopicFeedback',

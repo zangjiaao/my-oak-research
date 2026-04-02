@@ -1,13 +1,18 @@
 import prisma from "@/lib/prisma";
-import { collectQueue, defaultJobOpts } from "@/lib/queue";
+import { collectFlowQueue, defaultJobOpts } from "@/lib/queue";
 import { badRequest, conflict, json, notFound, serverError } from "@/app/api/_utils/http";
 import { sourceHasLockedRecallArgs } from "@/lib/source-recall-binding";
 import { Prisma } from "@/app/generated/prisma";
 import { z } from "zod";
 
-function isQuickQueryForSource(rules: unknown, sourceId: string): boolean {
-  if (!rules || typeof rules !== "object" || Array.isArray(rules)) return false;
-  const quickRun = (rules as Record<string, unknown>).quickRun;
+function buildQuickJobName(sourceName: string, sourceId: string) {
+  const normalizedName = sourceName.trim().slice(0, 42) || "source";
+  return `Quick • ${normalizedName} • ${sourceId.slice(-6)}`;
+}
+
+function isQuickJobForSource(config: unknown, sourceId: string): boolean {
+  if (!config || typeof config !== "object" || Array.isArray(config)) return false;
+  const quickRun = (config as Record<string, unknown>).quickRun;
   if (!quickRun || typeof quickRun !== "object" || Array.isArray(quickRun)) {
     return false;
   }
@@ -15,56 +20,38 @@ function isQuickQueryForSource(rules: unknown, sourceId: string): boolean {
   return typeof quickRunSourceId === "string" && quickRunSourceId === sourceId;
 }
 
-function buildQuickQueryName(sourceName: string, sourceId: string) {
-  const normalizedName = sourceName.trim().slice(0, 42) || "source";
-  return `Quick • ${normalizedName} • ${sourceId.slice(-6)}`;
-}
-
-async function createQuickQueryForSource(input: {
+async function createQuickJobForSource(input: {
   sourceId: string;
   sourceName: string;
 }) {
-  const quickRunRules = {
+  const config = {
     quickRun: {
       sourceId: input.sourceId,
       mode: "source",
-      noKeywords: true,
     },
   } as Prisma.InputJsonObject;
 
   const createData = {
-    name: buildQuickQueryName(input.sourceName, input.sourceId),
-    description: `Quick run for source ${input.sourceName}`,
+    name: buildQuickJobName(input.sourceName, input.sourceId),
+    type: "SOURCE_ONESHOT" as const,
     enabled: true,
     frequency: "MANUAL" as const,
-    rateLimit: null,
     cronSchedule: null,
-    rules: quickRunRules,
-    keywords: {
-      connect: [],
-    },
-    sources: {
-      connect: [{ id: input.sourceId }],
-    },
-    sourcePolicies: {
-      create: [
-        {
-          sourceId: input.sourceId,
-          contentFilterEnabled: true,
-          contentFilterMode: "TERM_AND_WORD_BOUNDARY" as const,
-        },
-      ],
+    triggerMode: "manual",
+    config,
+    jobSources: {
+      create: [{ sourceId: input.sourceId }],
     },
   };
 
   try {
-    return await prisma.query.create({ data: createData });
+    return await prisma.job.create({ data: createData });
   } catch (error) {
     if (
       error instanceof Prisma.PrismaClientKnownRequestError &&
       error.code === "P2002"
     ) {
-      return prisma.query.create({
+      return prisma.job.create({
         data: {
           ...createData,
           name: `${createData.name}-${Date.now().toString().slice(-4)}`,
@@ -105,56 +92,61 @@ export async function POST(
       return conflict("Source has locked recall args and does not support quick run");
     }
 
-    const existingCandidates = await prisma.query.findMany({
+    const existingCandidates = await prisma.job.findMany({
       where: {
-        sources: {
-          some: { id: sourceId },
+        type: "SOURCE_ONESHOT",
+        jobSources: {
+          some: { sourceId },
         },
       },
       select: {
         id: true,
         enabled: true,
-        rules: true,
+        config: true,
       },
       orderBy: { createdAt: "desc" },
     });
-    const existingQuickQuery = existingCandidates.find((query) =>
-      isQuickQueryForSource(query.rules, sourceId)
+    const existingQuickJob = existingCandidates.find((job) =>
+      isQuickJobForSource(job.config, sourceId)
     );
 
-    let queryId = existingQuickQuery?.id ?? "";
-    const created = !existingQuickQuery;
+    let jobId = existingQuickJob?.id ?? "";
+    const created = !existingQuickJob;
 
-    if (existingQuickQuery) {
-      if (!existingQuickQuery.enabled) {
-        return conflict("Quick query is disabled");
+    if (existingQuickJob) {
+      if (!existingQuickJob.enabled) {
+        await prisma.job.update({
+          where: { id: existingQuickJob.id },
+          data: { enabled: true },
+        });
       }
     } else {
-      const quickQuery = await createQuickQueryForSource({
+      const quickJob = await createQuickJobForSource({
         sourceId,
         sourceName: source.name,
       });
-      queryId = quickQuery.id;
+      jobId = quickJob.id;
     }
 
-    const run = await prisma.queryRun.create({
+    const run = await prisma.jobRun.create({
       data: {
-        queryId,
+        jobId,
         status: "PENDING",
         progress: 0,
+        trigger: "manual",
       },
       select: { id: true },
     });
 
-    await collectQueue.add(
-      "collect-manual",
-      { runId: run.id, queryId, trigger: "manual" },
+    await collectFlowQueue.add(
+      "collect-job-manual",
+      { runId: run.id, jobId, trigger: "manual" },
       defaultJobOpts
     );
 
     return json(
       {
-        queryId,
+        jobId,
         runId: run.id,
         created,
       },

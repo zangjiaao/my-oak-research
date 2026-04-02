@@ -4,6 +4,11 @@ import { TopicUpdateSchema } from "@/app/api/_utils/zod";
 import { logger } from "@/lib/logger";
 import { z } from "zod";
 import { refreshTopicVector } from "@/lib/topic-vector";
+import { scheduleTopicRescore } from "@/lib/queue";
+import {
+  extractTopicRecallLanguages,
+  mergeTopicProfileRecallLanguages,
+} from "@/lib/topic-recall-languages";
 
 const prismaAny = prisma as any;
 
@@ -30,6 +35,7 @@ export async function GET(
 
   return NextResponse.json({
     ...topic,
+    recallLanguages: extractTopicRecallLanguages(topic.profile),
     termsCount: topic?._count?.terms ?? 0,
   });
 }
@@ -60,26 +66,54 @@ export async function PATCH(
     }
 
     const data = parsed.data;
-
+    const payloadObject =
+      payload && typeof payload === "object" && !Array.isArray(payload)
+        ? (payload as Record<string, unknown>)
+        : {};
+    const hasTermsInPayload = Object.prototype.hasOwnProperty.call(
+      payloadObject,
+      "terms"
+    );
+    const hasProfileInPayload = Object.prototype.hasOwnProperty.call(
+      payloadObject,
+      "profile"
+    );
+    const hasRecallLanguagesInPayload = Object.prototype.hasOwnProperty.call(
+      payloadObject,
+      "recallLanguages"
+    );
+    const inputTerms = data.terms ?? [];
+    let nextProfile: unknown = existing.profile ?? null;
+    if (hasProfileInPayload) {
+      nextProfile = data.profile ?? null;
+    }
+    if (hasRecallLanguagesInPayload) {
+      nextProfile = mergeTopicProfileRecallLanguages(
+        nextProfile,
+        data.recallLanguages
+      );
+    }
     const updated = await prismaAny.$transaction(async (tx: any) => {
       const topic = await tx.topic.update({
         where: { id: params.id },
         data: {
           ...(data.name !== undefined ? { name: data.name } : {}),
           ...(data.description !== undefined ? { description: data.description ?? null } : {}),
-          ...(data.profile !== undefined ? { profile: data.profile ?? null } : {}),
+          ...(hasProfileInPayload || hasRecallLanguagesInPayload
+            ? { profile: nextProfile }
+            : {}),
         },
       });
 
-      if (data.terms !== undefined) {
+      if (hasTermsInPayload) {
         await tx.topicTerm.deleteMany({
           where: {
             topicId: params.id,
           },
         });
-        if (data.terms.length > 0) {
+        if (inputTerms.length > 0) {
           await tx.topicTerm.createMany({
-            data: data.terms.map((term) => ({
+            data: inputTerms.map((term) => ({
               topicId: params.id,
               type: term.type,
               value: term.value.trim().toLowerCase(),
@@ -104,8 +138,10 @@ export async function PATCH(
       });
     });
 
+    let vectorRefreshed = false;
     try {
       await refreshTopicVector(prismaAny, params.id);
+      vectorRefreshed = true;
     } catch (error) {
       logger.warn("topic vector refresh failed", {
         topicId: params.id,
@@ -113,9 +149,29 @@ export async function PATCH(
       });
     }
 
+    let rescoreScheduled = false;
+    let rescoreJobId: string | null = null;
+    try {
+      const scheduled = await scheduleTopicRescore({
+        topicId: params.id,
+        trigger: "topic-update",
+      });
+      rescoreScheduled = scheduled.scheduled;
+      rescoreJobId = scheduled.jobId;
+    } catch (error) {
+      logger.warn("topic rescore schedule failed", {
+        topicId: params.id,
+        error: logger.normalizeError(error),
+      });
+    }
+
     return NextResponse.json({
       ...updated,
+      recallLanguages: extractTopicRecallLanguages(updated.profile),
       termsCount: updated?._count?.terms ?? 0,
+      vectorRefreshed,
+      rescoreScheduled,
+      rescoreJobId,
     });
   } catch (error) {
     logger.error("failed to update topic", {

@@ -1735,7 +1735,7 @@ export const SocialMediaFields = ({
           <CardHeader>
             <CardTitle>Gather Request Preview</CardTitle>
             <CardDescription>
-              当前表单将按这个请求体发送给 gather（keywords 由 Query 注入）。
+              当前表单将按这个请求体发送给 gather（keywords 由 Job 注入）。
             </CardDescription>
           </CardHeader>
           <CardContent>

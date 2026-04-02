@@ -9,14 +9,22 @@ import { Textarea } from "@/components/ui/textarea";
 import { ErrorMessage } from "@/components/business";
 import { useTopicMutation } from "@/hooks/useTopicMutation";
 import { TopicWithAggregations } from "@/lib/types";
+import { MultiSelect } from "@/components/common/multi-select";
 
 type TopicFormValues = {
   name: string;
   description: string;
+  recallLanguages: ("zh" | "en" | "ja")[];
   coreTerms: string;
   expansionTerms: string;
   exclusionTerms: string;
 };
+
+const recallLanguageOptions = [
+  { label: "中文 (zh)", value: "zh" },
+  { label: "English (en)", value: "en" },
+  { label: "日本語 (ja)", value: "ja" },
+];
 
 const TERM_SPLIT_RE = /[,\n\r，、;；\t]+/g;
 
@@ -53,11 +61,14 @@ const TopicDialog = ({ topic, triggerButton, open, onOpenChange }: Props) => {
     register,
     handleSubmit,
     reset,
+    watch,
+    setValue,
     formState: { errors },
   } = useForm<TopicFormValues>({
     defaultValues: {
       name: topic?.name || "",
       description: topic?.description || "",
+      recallLanguages: topic?.recallLanguages ?? ["zh", "en", "ja"],
       coreTerms: termsByType(topic, "CORE"),
       expansionTerms: termsByType(topic, "EXPANSION"),
       exclusionTerms: termsByType(topic, "EXCLUSION"),
@@ -69,6 +80,7 @@ const TopicDialog = ({ topic, triggerButton, open, onOpenChange }: Props) => {
     reset({
       name: topic?.name || "",
       description: topic?.description || "",
+      recallLanguages: topic?.recallLanguages ?? ["zh", "en", "ja"],
       coreTerms: termsByType(topic, "CORE"),
       expansionTerms: termsByType(topic, "EXPANSION"),
       exclusionTerms: termsByType(topic, "EXCLUSION"),
@@ -88,6 +100,7 @@ const TopicDialog = ({ topic, triggerButton, open, onOpenChange }: Props) => {
     mutation.mutate({
       name: values.name,
       description: values.description || null,
+      recallLanguages: values.recallLanguages,
       terms: [
         ...coreTerms.map((value) => ({ type: "CORE", value, weight: 1 })),
         ...expansionTerms.map((value) => ({ type: "EXPANSION", value, weight: 1 })),
@@ -116,6 +129,24 @@ const TopicDialog = ({ topic, triggerButton, open, onOpenChange }: Props) => {
           <Label htmlFor="description">Description</Label>
           <Textarea id="description" rows={3} placeholder="Topic description" {...register("description")} />
           <ErrorMessage>{errors.description?.message}</ErrorMessage>
+        </div>
+
+        <div className="grid gap-2">
+          <Label>Recall Languages</Label>
+          <MultiSelect
+            options={recallLanguageOptions}
+            value={watch("recallLanguages")}
+            onValueChange={(next) =>
+              setValue(
+                "recallLanguages",
+                next.filter(
+                  (item): item is "zh" | "en" | "ja" =>
+                    item === "zh" || item === "en" || item === "ja"
+                )
+              )
+            }
+            placeholder="Select recall languages"
+          />
         </div>
 
         <div className="grid gap-2">

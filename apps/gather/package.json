@@ -5,6 +5,7 @@
   "scripts": {
     "build": "dotenvx run -- npm run build:scripts",
     "build:scripts": "dotenvx run -- npx tsc -p scripts/tsconfig.json",
+    "setup": "node ../../scripts/bootstrap-gather.mjs",
     "dev": "dotenvx run -- uv run -m app",
     "start": "dotenvx run -- uv run -m app"
   },

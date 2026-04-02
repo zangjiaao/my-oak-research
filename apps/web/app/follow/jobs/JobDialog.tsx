@@ -10,7 +10,7 @@ import { ControlledSelect } from "@/components/ui/controlled-select";
 import { SelectItem } from "@/components/ui/select";
 import { MultiSelect } from "@/components/common/multi-select";
 import { ErrorMessage } from "@/components/business";
-import { useJobMutation } from "@/hooks/useJobMutation";
+import { JobMutationError, useJobMutation } from "@/hooks/useJobMutation";
 import { JobWithAggregations, SourceWithRelations, TopicWithAggregations } from "@/lib/types";
 
 type JobFormValues = {
@@ -100,6 +100,16 @@ const JobDialog = ({ job, topics, sources, triggerButton, open, onOpenChange }: 
       cronSchedule: values.frequency === "CRONTAB" ? values.cronSchedule || null : null,
       topicIds: values.type === "TOPIC_RETRIEVAL" ? values.topicIds : [],
       sourceBindings: values.sourceIds.map((sourceId) => ({ sourceId })),
+    }, {
+      onError: (error) => {
+        const mutationError = error as JobMutationError;
+        if (mutationError.field === "name" && mutationError.status === 409) {
+          setError("name", {
+            type: "manual",
+            message: "Name already exists. Please choose another one.",
+          });
+        }
+      },
     });
   };
 

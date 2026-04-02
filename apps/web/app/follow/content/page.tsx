@@ -42,6 +42,18 @@ const FollowContent = () => {
   const [noteContentId, setNoteContentId] = useState<string | null>(null);
   const [noteText, setNoteText] = useState("");
   const [savingFeedback, setSavingFeedback] = useState(false);
+  const [rewritingContentId, setRewritingContentId] = useState<string | null>(
+    null
+  );
+  const [savingMaterialContentId, setSavingMaterialContentId] = useState<string | null>(
+    null
+  );
+  const [refreshingContentId, setRefreshingContentId] = useState<string | null>(
+    null
+  );
+  const [interpretingContentId, setInterpretingContentId] = useState<string | null>(
+    null
+  );
   const detailRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   // 获取所有收藏的内容 ID，用于判断是否已收藏
@@ -60,6 +72,7 @@ const FollowContent = () => {
     const keywords: Array<{
       category: "PERSON" | "ORG" | "TECH" | "LOCATION" | "PRODUCT" | "EVENT" | "CONCEPT";
       label: string;
+      source?: "AI" | "RULE";
     }> = [];
     const classifyKeywordCategory = (
       label: string
@@ -106,24 +119,29 @@ const FollowContent = () => {
         | "PRODUCT"
         | "EVENT"
         | "CONCEPT",
-      value: string
+      value: string,
+      source: "AI" | "RULE"
     ) => {
       const label = value.trim();
       if (!label) return;
       if (!isEntityLikeTerm(label)) return;
       if (keywords.some((item) => item.category === category && item.label === label)) return;
-      keywords.push({ category, label });
+      keywords.push({ category, label, source });
     };
+    const selectedScore = getSelectedTopicScore(content);
+    for (const aiKeyword of selectedScore?.llmRerankKeywords ?? []) {
+      pushUnique(aiKeyword.category, aiKeyword.label, "AI");
+    }
     for (const person of content.entities?.persons ?? []) {
-      pushUnique("PERSON", person);
+      pushUnique("PERSON", person, "RULE");
     }
     for (const org of content.entities?.orgs ?? []) {
-      pushUnique("ORG", org);
+      pushUnique("ORG", org, "RULE");
     }
     for (const location of content.entities?.locations ?? []) {
-      pushUnique("LOCATION", location);
+      pushUnique("LOCATION", location, "RULE");
     }
-    if (keywords.length < 4) {
+    if (keywords.filter((item) => item.source === "AI").length === 0 && keywords.length < 4) {
       const fallbackText = [content.detailView?.title, content.title, content.summary]
         .filter(Boolean)
         .join(" ");
@@ -136,13 +154,42 @@ const FollowContent = () => {
         )
       ).slice(0, 24);
       for (const term of fallbackTerms) {
-        pushUnique(classifyKeywordCategory(term), term);
+        pushUnique(classifyKeywordCategory(term), term, "RULE");
       }
     }
     return keywords.slice(0, 8);
   };
 
+  const getSelectedTopicScore = (content: (typeof contents)[number]) => {
+    if (selectedTopicId) {
+      const matched = (content.topicScores ?? []).find(
+        (score) => score.topicId === selectedTopicId
+      );
+      return matched ?? null;
+    }
+    const candidates = content.topicScores ?? [];
+    if (!candidates.length) {
+      return null;
+    }
+    return candidates.reduce((best, current) => {
+      const bestScore = best.finalScore ?? -1;
+      const currentScore = current.finalScore ?? -1;
+      return currentScore > bestScore ? current : best;
+    });
+  };
+
   const getRelevanceScore = (content: (typeof contents)[number]) => {
+    if (
+      selectedTopicId &&
+      content.feedback?.topicId === selectedTopicId &&
+      content.feedback.vote === "DOWN"
+    ) {
+      return 0;
+    }
+    const selectedScore = getSelectedTopicScore(content);
+    if (selectedScore) {
+      return selectedScore.finalScore ?? null;
+    }
     const candidateScores = (content.topicScores ?? [])
       .filter((score) =>
         selectedTopicIds.length ? selectedTopicIds.includes(score.topicId) : true
@@ -213,6 +260,137 @@ const FollowContent = () => {
       await queryClient.invalidateQueries({ queryKey: ["topics"] });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "添加关键词失败");
+    }
+  };
+
+  const stripLeadingMarkdownHeading = (value: string) =>
+    value.replace(/^\s*#{1,6}\s+[^\n]+\n+/u, "").trim();
+
+  const rewriteContent = async (contentId: string) => {
+    setRewritingContentId(contentId);
+    try {
+      const response = await fetch(
+        `/api/focus-bulletin/content/${contentId}/rewrite`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ force: true }),
+        }
+      );
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(payload?.error ?? "Jina 丰富化失败");
+      }
+      toast.success("Jina 内容已更新");
+      await queryClient.invalidateQueries({ queryKey: ["follow-content"] });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Jina 丰富化失败");
+    } finally {
+      setRewritingContentId(null);
+    }
+  };
+
+  const saveMaterialContent = async (contentId: string, materialContent: string) => {
+    setSavingMaterialContentId(contentId);
+    try {
+      const response = await fetch(
+        `/api/focus-bulletin/content/${contentId}/material`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ content: materialContent }),
+        }
+      );
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(payload?.error ?? "内容保存失败");
+      }
+      toast.success("内容已保存");
+      await queryClient.invalidateQueries({ queryKey: ["follow-content"] });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "内容保存失败");
+      throw error;
+    } finally {
+      setSavingMaterialContentId(null);
+    }
+  };
+
+  const refreshContent = async (contentId: string) => {
+    setRefreshingContentId(contentId);
+    let summaryUpdated = false;
+    let rerankUpdated = false;
+    try {
+      const summaryResponse = await fetch(
+        `/api/focus-bulletin/content/${contentId}/summary`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ force: true }),
+        }
+      );
+      const summaryPayload = await summaryResponse.json().catch(() => null);
+      if (!summaryResponse.ok) {
+        throw new Error(summaryPayload?.error ?? "摘要刷新失败");
+      }
+      summaryUpdated = true;
+
+      if (selectedTopicId) {
+        const rerankResponse = await fetch(
+          `/api/focus-bulletin/content/${contentId}/rerank`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ topicId: selectedTopicId }),
+          }
+        );
+        const rerankPayload = await rerankResponse.json().catch(() => null);
+        if (!rerankResponse.ok) {
+          throw new Error(rerankPayload?.error ?? "拓展词刷新失败");
+        }
+        rerankUpdated = true;
+      }
+
+      await queryClient.invalidateQueries({ queryKey: ["follow-content"] });
+      if (summaryUpdated && rerankUpdated) {
+        toast.success("摘要和拓展词已刷新");
+      } else if (summaryUpdated) {
+        toast.success("摘要已刷新（未选择Topic，已跳过拓展词刷新）");
+      }
+    } catch (error) {
+      if (summaryUpdated) {
+        await queryClient.invalidateQueries({ queryKey: ["follow-content"] });
+      }
+      toast.error(error instanceof Error ? error.message : "刷新失败");
+    } finally {
+      setRefreshingContentId(null);
+    }
+  };
+
+  const generateInterpretation = async (contentId: string, force = false) => {
+    if (!selectedTopicId) {
+      toast.error("请先选择 Topic 再生成 AI解读");
+      return;
+    }
+    setInterpretingContentId(contentId);
+    try {
+      const response = await fetch(
+        `/api/focus-bulletin/content/${contentId}/interpret`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ topicId: selectedTopicId, force }),
+        }
+      );
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(payload?.error ?? "AI解读生成失败");
+      }
+      await queryClient.invalidateQueries({ queryKey: ["follow-content"] });
+      toast.success(force ? "AI解读已更新" : "AI解读已生成");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "AI解读生成失败");
+    } finally {
+      setInterpretingContentId(null);
     }
   };
 
@@ -308,7 +486,16 @@ const FollowContent = () => {
     <div className="h-full">
       <ScrollArea className="h-full">
         <div className="flex flex-col gap-3 overflow-visible pb-6 pr-2 pl-1">
-          {sortedContents.map((content) => (
+          {sortedContents.map((content) => {
+            const meta = (content.meta ?? {}) as Record<string, unknown>;
+            const hasJinaContent =
+              typeof meta.jinaContent === "string" && meta.jinaContent.trim().length > 0;
+            const hasJinaUpdatedAt =
+              typeof meta.jinaUpdatedAt === "string" &&
+              meta.jinaUpdatedAt.trim().length > 0;
+            const jinaOptimized = hasJinaContent || hasJinaUpdatedAt;
+            const selectedScore = getSelectedTopicScore(content);
+            return (
             <div
               key={content.id}
               ref={(node) => {
@@ -318,15 +505,29 @@ const FollowContent = () => {
               onClick={() => selectContent(content.id)}
             >
               <NewsDetailCard
-                title={content.detailView?.title ?? content.title}
-                summary={content.summaryView?.summary ?? content.summary}
-                markdown={
+                title={
+                  content.cleanedTitle ??
+                  content.detailView?.title ??
+                  content.title
+                }
+                summary={
+                  content.cleanedSummary ??
+                  content.aiSummary ??
+                  undefined
+                }
+                cleanMarkdown={
+                  content.cleanedMarkdown
+                    ? stripLeadingMarkdownHeading(content.cleanedMarkdown)
+                    : ""
+                }
+                rawText={
+                  content.detailView?.content ||
                   content.detailView?.markdown ||
                   content.markdown ||
-                  content.detailView?.content ||
-                  content.summary ||
-                  "No content details"
+                  ""
                 }
+                url={content.url}
+                metaData={content.meta}
                 author={content.detailView?.author}
                 source={content.summaryView?.source ?? content.platform}
                 publishedAt={content.detailView?.publishedAt ?? content.time}
@@ -377,6 +578,25 @@ const FollowContent = () => {
                       }
                     : undefined
                 }
+                onRewrite={() => {
+                  void rewriteContent(content.id);
+                }}
+                rewriting={rewritingContentId === content.id}
+                jinaOptimized={jinaOptimized}
+                onSaveMaterial={(materialContent) =>
+                  saveMaterialContent(content.id, materialContent)
+                }
+                savingMaterial={savingMaterialContentId === content.id}
+                onRefresh={() => {
+                  void refreshContent(content.id);
+                }}
+                refreshing={refreshingContentId === content.id}
+                topicSelected={Boolean(selectedTopicId)}
+                aiInterpretation={selectedScore?.aiInterpretation ?? null}
+                onGenerateInterpretation={(force) => {
+                  void generateInterpretation(content.id, Boolean(force));
+                }}
+                interpreting={interpretingContentId === content.id}
                 className={
                   selectedContent?.id === content.id
                     ? "border-primary/35 bg-card shadow-[0_0_0_1px_hsl(var(--primary)/0.12)]"
@@ -384,7 +604,8 @@ const FollowContent = () => {
                 }
               />
             </div>
-          ))}
+            );
+          })}
         </div>
       </ScrollArea>
       <AlertDialog

@@ -14,44 +14,6 @@ datasource db {
   provider = "postgresql"
 }
 
-model Category {
-  id          String    @id @default(cuid())
-  name        String
-  description String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  keywords    Keyword[]
-
-  @@unique([name])
-}
-
-model Keyword {
-  id          String  @id @default(cuid())
-  name        String
-  description String?
-  lang        String?
-
-  categoryId String?
-  category   Category? @relation(fields: [categoryId], references: [id])
-
-  includes       String[]
-  excludes       String[]
-  deriveLanguages String[] @default([])
-  enableAiExpand Boolean  @default(false)
-  synonyms       String[]
-  active         Boolean  @default(true)
-  deriveSourceId String?
-  deriveSource   Source?  @relation("KeywordDeriveSource", fields: [deriveSourceId], references: [id])
-
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-  queries         Query[]
-  contentKeywords ContentKeyword[]
-  contentSubjectMatches ContentSubjectMatch[]
-
-  @@unique([name])
-}
-
 enum SourceCategory {
   STREAM
   INTERACTIVE
@@ -165,9 +127,6 @@ model Source {
   search  SearchEngineSourceConfig?
   social  SocialMediaSourceConfig?
   identity SourceIdentity?
-  queries Query[]
-  derivedKeywords Keyword[] @relation("KeywordDeriveSource")
-  querySourcePolicies QuerySourcePolicy[]
   topicSources TopicSource[]
   jobSources JobSource[]
 
@@ -305,42 +264,6 @@ enum QueryContentFilterMode {
   SMART
 }
 
-model Query {
-  id          String  @id @default(cuid())
-  name        String  @unique
-  description String?
-
-  enabled      Boolean        @default(true)
-  rateLimit    Int?
-  frequency    QueryFrequency @default(MANUAL)
-  cronSchedule String? // Field to store crontab string
-
-  keywords Keyword[]
-  sources  Source[]
-  sourcePolicies QuerySourcePolicy[]
-
-  rules Json?
-
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
-  queryRuns QueryRun[]
-}
-
-model QuerySourcePolicy {
-  id                   String                 @id @default(cuid())
-  queryId              String
-  sourceId             String
-  contentFilterEnabled Boolean                @default(true)
-  contentFilterMode    QueryContentFilterMode @default(TERM_AND_WORD_BOUNDARY)
-  createdAt            DateTime               @default(now())
-  updatedAt            DateTime               @updatedAt
-  query                Query                  @relation(fields: [queryId], references: [id], onDelete: Cascade)
-  source               Source                 @relation(fields: [sourceId], references: [id], onDelete: Cascade)
-
-  @@unique([queryId, sourceId])
-  @@index([sourceId])
-}
-
 model Topic {
   id           String      @id @default(cuid())
   name         String      @unique
@@ -449,46 +372,12 @@ model JobRun {
   @@index([jobId, createdAt])
 }
 
-// ------------------------------
-// Task/Run tracking for queries
-// ------------------------------
-
 enum TaskStatus {
   PENDING
   RUNNING
   SUCCEEDED
   FAILED
   CANCELLED
-}
-
-model QueryRun {
-  id         String      @id @default(cuid())
-  queryId    String
-  query      Query       @relation(fields: [queryId], references: [id], onDelete: Cascade)
-  status     TaskStatus  @default(PENDING)
-  progress   Int         @default(0) // 0-100
-  error      String?
-  startedAt  DateTime?
-  finishedAt DateTime?
-  meta       Json?
-  events     TaskEvent[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([queryId, createdAt])
-}
-
-model TaskEvent {
-  id        String   @id @default(cuid())
-  runId     String
-  run       QueryRun @relation(fields: [runId], references: [id], onDelete: Cascade)
-  type      String // e.g. enqueue | start | fetch | clean | summary | store | progress | done | error
-  message   String
-  data      Json?
-  createdAt DateTime @default(now())
-
-  @@index([runId, createdAt])
 }
 
 enum ContentType {
@@ -510,8 +399,6 @@ model Content {
   vector    Unsupported("vector(1536)")?
   searchVector Unsupported("tsvector")?
   meta      Json?
-  keywords  ContentKeyword[]
-  subjectMatches ContentSubjectMatch[]
   topicScores ContentTopicScore[]
   topicFeedbacks ContentTopicFeedback[]
   entities  ContentEntity?
@@ -521,39 +408,6 @@ model Content {
 
   @@index([platform, time])
   @@index([type, time])
-}
-
-model ContentKeyword {
-  id        String  @id @default(cuid())
-  contentId String
-  keywordId String
-  content   Content @relation(fields: [contentId], references: [id], onDelete: Cascade)
-  keyword   Keyword @relation(fields: [keywordId], references: [id], onDelete: Cascade)
-
-  @@unique([contentId, keywordId])
-}
-
-model ContentSubjectMatch {
-  id              String                    @id @default(cuid())
-  contentId       String
-  keywordId       String
-  ruleScore       Float?
-  aiScore         Float?
-  matchScore      Float?
-  matchedIncludes String[]
-  matchedExcludes String[]
-  matchSource     ContentSubjectMatchSource @default(QUERY)
-  reason          String?
-  createdAt       DateTime                  @default(now())
-  updatedAt       DateTime                  @updatedAt
-  content         Content                   @relation(fields: [contentId], references: [id], onDelete: Cascade)
-  keyword         Keyword                   @relation(fields: [keywordId], references: [id], onDelete: Cascade)
-
-  @@unique([contentId, keywordId])
-  @@index([keywordId, matchScore])
-  @@index([keywordId, createdAt])
-  @@index([contentId])
-  @@index([matchSource])
 }
 
 model ContentEntity {

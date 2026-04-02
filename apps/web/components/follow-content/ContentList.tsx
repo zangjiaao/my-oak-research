@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useRef } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { NewsCard } from "@/components/business";
 import { Card, CardContent } from "@/components/ui/card";
@@ -12,9 +12,18 @@ import { useFollowContent } from "./context";
 import { useToggleFavorite, useFavorites } from "@/hooks/useFavorites";
 
 export const ContentList = () => {
-  const { contents, selectedContent, selectContent, isLoading, error } =
-    useFollowContent();
+  const {
+    contents,
+    selectedContent,
+    selectContent,
+    isLoading,
+    hasMore,
+    isFetchingMore,
+    loadMore,
+    error,
+  } = useFollowContent();
   const toggleFavorite = useToggleFavorite();
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
   // 获取所有收藏的内容 ID，用于判断是否已收藏
   const { data: favoritesData } = useFavorites({ limit: 50 });
@@ -24,6 +33,26 @@ export const ContentList = () => {
   );
 
   const isBookmarked = (id: string) => favoriteIds.has(id);
+
+  useEffect(() => {
+    const target = loadMoreRef.current;
+    if (!target || !hasMore) {
+      return;
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const [entry] = entries;
+        if (entry?.isIntersecting) {
+          loadMore();
+        }
+      },
+      { root: null, rootMargin: "160px 0px 240px 0px", threshold: 0.01 }
+    );
+    observer.observe(target);
+    return () => {
+      observer.disconnect();
+    };
+  }, [hasMore, loadMore]);
 
   return (
     <ScrollArea className="h-full">
@@ -145,6 +174,17 @@ export const ContentList = () => {
             </div>
           );
         })}
+        {!isLoading && !error ? (
+          <div ref={loadMoreRef} className="px-2 py-3 text-xs text-muted-foreground">
+            {isFetchingMore
+              ? "加载更多中..."
+              : hasMore
+                ? "下滑加载更多"
+                : contents.length
+                  ? "已加载全部内容"
+                  : ""}
+          </div>
+        ) : null}
       </div>
     </ScrollArea>
   );
